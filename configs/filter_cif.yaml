@@ -1,0 +1,15 @@
+# rebuild
+old_env_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cif.lmdb}
+new_env_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cif_20210930_res9.lmdb}
+
+recipe: ${p:pipelines/recipe/build_af3_training.py}
+metadata_recipe: ${p:pipelines/recipe/load_metadata.py}
+
+convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_dict
+metadata_input:
+  seqID2seq_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/metadata/seq_hash_map.tsv}
+  clusterID2seqID_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cluster/seq_clusters.tsv}
+  signalp_dir: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/signalp}
+
+n_jobs: -1
+chunk_size: 1000

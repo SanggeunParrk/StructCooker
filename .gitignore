@@ -1,0 +1,16 @@
+logs/
+checkpoints/
+*.pt
+*.cif
+pixi.lock
+*.mmcif
+output/
+outputs/
+*.sh
+wandb/
+submits/
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+*.pkl
