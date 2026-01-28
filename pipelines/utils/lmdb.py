@@ -155,7 +155,7 @@ def rebuild_lmdb(  # noqa: PLR0913
             **extra_kwargs,
         )
 
-    def _process_file(key: str) -> tuple[bytes, bytes, Exception | None]:
+    def _process_file(key: str) -> tuple[bytes, bytes, Exception | None] | None:
         """Parse a single file and return (key, compressed_data, error)."""
         data = read_lmdb(old_env_path, key)
         data = convert_func(data) if convert_func is not None else data
@@ -178,11 +178,12 @@ def rebuild_lmdb(  # noqa: PLR0913
                     continue
 
                 output_dict[data_key] = rebuild_data_dict
+            if len(output_dict) == 0:
+                return None
             zcompressed_data = to_bytes(output_dict)
             return key.encode(), zcompressed_data, None
         except Exception as error:  # noqa: BLE001
             return key.encode(), to_bytes({}), error
-
 
     # remove UNL
     old_key_list = extract_key_list(old_env_path)
