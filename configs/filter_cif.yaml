@@ -1,15 +1,21 @@
 # rebuild
-old_env_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cif.lmdb}
-new_env_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cif_20210930_res9.lmdb}
+old_env_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cif_raw.lmdb}
+new_env_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cif_af3_validate_first_filter.lmdb}
 
-recipe: ${p:pipelines/recipe/build_af3_training.py}
+recipe: ${p:pipelines/recipe/first_filter_recipe.py}
 metadata_recipe: ${p:pipelines/recipe/load_metadata.py}
 
 convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_dict
 metadata_input:
-  seqID2seq_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/metadata/seq_hash_map.tsv}
-  clusterID2seqID_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cluster/seq_clusters.tsv}
+  seqid2seq_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/metadata/seq_hash_map.tsv}
+  clusterid2seqid_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cluster/seq_clusters.tsv}
   signalp_dir: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/signalp}
+parameters:
+  resolution_cutoff: 4.5
+  max_token_count: 2560
+  max_chain_count: 20
+  start_date: 2021-09-30
+  end_date: 2024-10-21
 
 n_jobs: -1
 chunk_size: 1000

@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Any
 
 import lmdb
 from datacooker import ConvertFunc, LoadFunc, TransformFunc, parse, rebuild
@@ -51,7 +52,7 @@ def build_lmdb(  # noqa: PLR0913
     chunk_size: int = 10_000,
     n_jobs: int = -1,
     map_size: int = int(1e12),  # ~1TB
-    **extra_kwargs: object,
+    **extra_kwargs: Any,  # noqa: ANN401
 ) -> None:
     """
     Build an LMDB database from parsed data.
@@ -121,6 +122,7 @@ def rebuild_lmdb(  # noqa: PLR0913
     old_env_path: Path,
     new_env_path: Path,
     recipe: Path,
+    parameters: dict[str, Any] | None = None,
     metadata_recipe: Path | None = None,
     metadata_input: dict[str, Path] | None = None,
     convert_func: ConvertFunc| None = None,
@@ -128,7 +130,7 @@ def rebuild_lmdb(  # noqa: PLR0913
     chunk_size: int = 10_000,
     n_jobs: int = -1,
     map_size: int = int(1e12),  # ~1TB
-    **extra_kwargs: object, # including metadata path
+    **extra_kwargs: Any, # including metadata path  # noqa: ANN401
 ) -> None:
     """
     Build an LMDB database from parsed data.
@@ -144,6 +146,9 @@ def rebuild_lmdb(  # noqa: PLR0913
 
     metadata_dict: dict = {}
     if metadata_recipe is not None:
+        if metadata_input is None:
+            msg = "metadata_input must be provided if metadata_recipe is specified."
+            raise ValueError(msg)
         metadata_dict, metadata_targets = rebuild(
             recipe_path=metadata_recipe,
             datadict=metadata_input,
@@ -160,6 +165,8 @@ def rebuild_lmdb(  # noqa: PLR0913
                 datadict:dict = inner_dict.copy()
                 if metadata_recipe is not None:
                     datadict.update(metadata_dict)
+                if parameters is not None:
+                    datadict.update(parameters)
                 rebuild_data_dict, targets = rebuild(
                     recipe_path=recipe,
                     datadict=datadict,

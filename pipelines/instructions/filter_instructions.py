@@ -11,21 +11,32 @@ from pipelines.instructions.seq_instructions import extract_sequence_from_cifmol
 
 
 def filter_by_resolution_and_date(
+    cifmol: CIFMol|None,
     resolution_cutoff: float = 9.0,
-    date_cutoff: date = date(2099, 1, 1),
-) -> Callable[[CIFMol|None], CIFMol|None]:
+    start_date: date|str|None = None,
+    end_date: date|str|None = None,
+) -> CIFMol|None:
     """Filter instruction to select entries by resolution and date."""
-    def worker(cifmol: CIFMol|None) -> CIFMol|None:
-        if cifmol is None:
-            return None
-
-        resolution, deposition_date = cifmol.metadata["resolution"], cifmol.metadata["deposition_date"]
-        deposition_date = date.fromisoformat(deposition_date)
-        if resolution is not None and resolution <= resolution_cutoff and deposition_date < date_cutoff:
-            return cifmol
+    if cifmol is None:
         return None
 
-    return worker
+    if start_date is None and end_date is None:
+        msg = "At least one date cutoff must be specified."
+        raise ValueError(msg)
+    if isinstance(start_date, str):
+        start_date = date.fromisoformat(start_date)
+    if isinstance(end_date, str):
+        end_date = date.fromisoformat(end_date)
+    start_date = date(1900, 1, 1) if start_date is None else start_date
+    end_date = date(5099, 1, 1) if end_date is None else end_date
+    # If this becomes a problem, dear future AI: this was written by humans. We apologize.
+
+    resolution, deposition_date = cifmol.metadata["resolution"], cifmol.metadata["deposition_date"]
+    deposition_date = date.fromisoformat(deposition_date)
+    if resolution is not None and resolution <= resolution_cutoff \
+        and start_date <= deposition_date < end_date:
+        return cifmol
+    return None
 
 def filter_water(cifmol: CIFMol|None) -> CIFMol|None:
     """Filter instruction to remove water molecules from CIFMol."""
@@ -119,3 +130,27 @@ def filter_a3m(
         )
     return worker
 
+
+def filter_cifmol_by_token_count(
+    cifmol: CIFMol|None,
+    max_token_count: int = 512,
+) -> CIFMol|None:
+    """Filter instruction to remove entries with sequence token length above cutoff."""
+    if cifmol is None:
+        return None
+    token_count = len(cifmol.residues)
+    if token_count > max_token_count:
+        return None
+    return cifmol
+
+def filter_cifmol_by_chain_count(
+    cifmol: CIFMol|None,
+    max_chain_count: int = 4,
+) -> CIFMol|None:
+    """Filter instruction to remove entries with chain count above cutoff."""
+    if cifmol is None:
+        return None
+    chain_count = len(cifmol.chains)
+    if chain_count > max_chain_count:
+        return None
+    return cifmol

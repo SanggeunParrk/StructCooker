@@ -37,7 +37,7 @@ def reverse_dict(
     return output_dict
 
 def parse_signalp(signalp_path: Path) -> tuple[int, int] | None:
-    """Parse the signalp output file and extract the sequence IDs."""
+    """Parse the signalp output file and extract the sequence ids."""
     if not signalp_path.exists():
         return None
     with signalp_path.open("r", encoding="utf-8") as f:
@@ -56,8 +56,8 @@ def load_signalp(
             msg = f"SignalP directory {signalp_dir} does not exist."
             raise FileNotFoundError(msg)
         for signalp_file in signalp_dir.glob("*.gff3"):
-            seqID = signalp_file.stem
-            signalp_data[seqID] = parse_signalp(signalp_file)
+            seqid = signalp_file.stem
+            signalp_data[seqid] = parse_signalp(signalp_file)
     return signalp_data
 
 def attach_metadata(
@@ -69,21 +69,21 @@ def attach_metadata(
     if cifmol is None:
         return None
 
-    seqID_list = []
-    clusterID_list = []
+    seqid_list = []
+    clusterid_list = []
     seq_dict = extract_sequence_from_cifmol(cifmol)
     for seq in seq_dict.values():
         seqid = seq2seqid[seq]
-        seqID_list.append(seqid)
+        seqid_list.append(seqid)
         clusterid = seqid2clusterid[seqid]
-        clusterID_list.append(clusterid)
+        clusterid_list.append(clusterid)
     cifmol_dict = cifmol.to_dict()
     cifmol_dict = cast("dict", cifmol_dict)
     cifmol_dict["chains"]["nodes"]["seq_id"] = {
-        "value" : np.array(seqID_list, dtype=str),
+        "value" : np.array(seqid_list, dtype=str),
     }
     cifmol_dict["chains"]["nodes"]["cluster_id"] = {
-        "value" : np.array(clusterID_list, dtype=str),
+        "value" : np.array(clusterid_list, dtype=str),
     }
     cifmol_dict = cast("BioMolDict", cifmol_dict)
     return CIFMolAttached.from_dict(cifmol_dict)
