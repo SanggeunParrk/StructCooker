@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import lmdb
-from datacooker import ConvertFunc, LoadFunc, TransformFunc, parse, rebuild
+from datacooker import ConvertFunc, LoadFunc, TransformFunc, parse_dict, parse_file
 from joblib import Parallel, delayed
 
 from pipelines.utils.convert import from_bytes, to_bytes
@@ -12,7 +12,13 @@ logger = logging.getLogger(__name__)
 
 _ENV_CACHE: dict[tuple[str, bool], lmdb.Environment] = {}
 
-def _get_env(path: Path, *, readonly: bool = True, lock: bool = False) -> lmdb.Environment:
+
+def _get_env(
+    path: Path,
+    *,
+    readonly: bool = True,
+    lock: bool = False,
+) -> lmdb.Environment:
     """Get (or lazily create) an LMDB env for the current process."""
     key = (str(path), readonly)
     env = _ENV_CACHE.get(key)
@@ -70,7 +76,7 @@ def build_lmdb(  # noqa: PLR0913
         """Parse a single file and return (key, compressed_data, error)."""
         key = data_file.name.split(".")[0]
         try:
-            data_dict = parse(
+            data_dict = parse_file(
                 recipe_path=recipe,
                 file_path=data_file,
                 load_func=load_func,
@@ -87,7 +93,11 @@ def build_lmdb(  # noqa: PLR0913
     filtered_data_list = [p for p in data_list if p.stem != "UNL"]
     _already_parsed_keys = extract_key_list(env_path)
     logger.info("Already parsed %d entries. (%s)", len(_already_parsed_keys), env_path)
-    filtered_data_list = [data for data in filtered_data_list if data.name.split(".")[0] not in _already_parsed_keys]
+    filtered_data_list = [
+        data
+        for data in filtered_data_list
+        if data.name.split(".")[0] not in _already_parsed_keys
+    ]
     logger.info("To be parsed %d entries.", len(filtered_data_list))
 
     # --- Parallel processing ---
@@ -125,12 +135,12 @@ def rebuild_lmdb(  # noqa: PLR0913
     parameters: dict[str, Any] | None = None,
     metadata_recipe: Path | None = None,
     metadata_input: dict[str, Path] | None = None,
-    convert_func: ConvertFunc| None = None,
+    convert_func: ConvertFunc | None = None,
     transform_func: TransformFunc | None = None,
     chunk_size: int = 10_000,
     n_jobs: int = -1,
     map_size: int = int(1e12),  # ~1TB
-    **extra_kwargs: Any, # including metadata path  # noqa: ANN401
+    **extra_kwargs: Any,  # including metadata path  # noqa: ANN401
 ) -> None:
     """
     Build an LMDB database from parsed data.
@@ -149,7 +159,7 @@ def rebuild_lmdb(  # noqa: PLR0913
         if metadata_input is None:
             msg = "metadata_input must be provided if metadata_recipe is specified."
             raise ValueError(msg)
-        metadata_dict, metadata_targets = rebuild(
+        metadata_dict = parse_dict(
             recipe_path=metadata_recipe,
             datadict=metadata_input,
             **extra_kwargs,
@@ -162,19 +172,18 @@ def rebuild_lmdb(  # noqa: PLR0913
         output_dict = {}
         try:
             for data_key, inner_dict in data.items():
-                datadict:dict = inner_dict.copy()
+                datadict: dict = inner_dict.copy()
                 if metadata_recipe is not None:
                     datadict.update(metadata_dict)
                 if parameters is not None:
                     datadict.update(parameters)
-                rebuild_data_dict, targets = rebuild(
+                rebuild_data_dict = parse_dict(
                     recipe_path=recipe,
                     datadict=datadict,
                     transform_func=transform_func,
                     **extra_kwargs,
                 )
-                target = targets[0]
-                if rebuild_data_dict[target] is None or rebuild_data_dict[target] == {}:
+                if all(value is None for value in rebuild_data_dict.values()):
                     continue
 
                 output_dict[data_key] = rebuild_data_dict
@@ -189,7 +198,11 @@ def rebuild_lmdb(  # noqa: PLR0913
     old_key_list = extract_key_list(old_env_path)
     _already_parsed_keys = extract_key_list(new_env_path)
     _already_parsed_keys = set(_already_parsed_keys)
-    logger.info("Already parsed %d entries. (%s)", len(_already_parsed_keys), new_env_path)
+    logger.info(
+        "Already parsed %d entries. (%s)",
+        len(_already_parsed_keys),
+        new_env_path,
+    )
     old_set = set(old_key_list)
     key_list = list(old_set - _already_parsed_keys)
     logger.info("To be parsed %d entries.", len(key_list))
@@ -219,7 +232,6 @@ def rebuild_lmdb(  # noqa: PLR0913
                 txn.put(key, zcompressed_data)
 
     new_env.close()
-
 
 
 def merge_lmdb_shards(

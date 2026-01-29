@@ -1,0 +1,4 @@
+input_db_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cif_raw.lmdb}
+extract_recipe_path: ${p:/home/psk6950/StructStickler/pipelines/recipe/extract_fasta.py}
+project_func: pipelines.projection.projection_fasta.write_fasta
+output_data_path: ${p:/home/psk6950/data/StructStickler/fasta/}

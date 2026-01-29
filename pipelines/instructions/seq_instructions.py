@@ -2,6 +2,7 @@ from collections import deque
 from collections.abc import Callable, Iterable
 from typing import TypeVar
 
+import numpy as np
 from numpy.typing import NDArray
 
 from pipelines.cifmol import CIFMol
@@ -9,6 +10,21 @@ from pipelines.cifmol import CIFMol
 InputType = TypeVar("InputType", str, int, float)
 FeatureType = TypeVar("FeatureType")
 NumericType = TypeVar("NumericType", int, float)
+
+
+def filter_water(cifmol: CIFMol | None) -> CIFMol | None:
+    """Filter instruction to remove water molecules from CIFMol."""
+    if cifmol is None:
+        return None
+    water_mask = ~np.isin(cifmol.residues.chem_comp_id, ["HOH", "DOD"])
+    if water_mask.sum() == 0:
+        return None
+    cifmol = cifmol.residues[water_mask].extract()
+
+    if len(cifmol.chains) == 0:
+        return None
+
+    return cifmol
 
 
 def single_value_instruction(
@@ -202,6 +218,7 @@ def graph_to_canonical_sequence(  # noqa: PLR0912, PLR0915
 
     return f"{nodes_str}|{edges_str}"
 
+
 def extract_sequence_from_cifmol(
     cifmol: CIFMol,
 ) -> dict[str, str]:
@@ -231,9 +248,7 @@ def extract_sequence_from_cifmol(
             seq_list = cifmol.chains[
                 cifmol.chains.chain_id == chain_id
             ].residues.chem_comp_id.value
-            bonds = cifmol.chains[
-                cifmol.chains.chain_id == chain_id
-            ].residues.bond
+            bonds = cifmol.chains[cifmol.chains.chain_id == chain_id].residues.bond
             seq = graph_to_canonical_sequence(
                 seq_list,
                 bonds.src_indices,
@@ -250,7 +265,7 @@ def extract_sequence_from_cifmol(
     return seq_dict
 
 
-def build_fasta() -> Callable[[CIFMol], dict[str, str]]:
+def build_fasta(cifmol_dict: dict[str, CIFMol]) -> dict[str, str]:
     """
     Read CIFMol and build sequence string.
 
@@ -262,31 +277,29 @@ def build_fasta() -> Callable[[CIFMol], dict[str, str]]:
         - If branched, use three-letter codes with edge information. (NAG)(NAG)  | (0, 1, 2)
     Skip residues with unknown types or water.
     """
-
-    def _worker(
-        cifmol: CIFMol,
-    ) -> dict[str, str]:
-        fasta_dict = {}
-        chain_ids = cifmol.chains.chain_id.value
-        seq_dict = extract_sequence_from_cifmol(cifmol)
+    fasta_dict = {}
+    for cifmol in cifmol_dict.values():
+        cifmol_wo_water = filter_water(cifmol)
+        if cifmol_wo_water is None:
+            continue
+        chain_ids = cifmol_wo_water.chains.chain_id.value
+        seq_dict = extract_sequence_from_cifmol(cifmol_wo_water)
         for full_chain_id in chain_ids:
             chain_id = full_chain_id.split("_")[0]
             if chain_id in fasta_dict:
                 continue  # skip duplicate chains (due to symmetry operators)
-            entity_type = cifmol.chains[
-                cifmol.chains.chain_id == full_chain_id
+            entity_type = cifmol_wo_water.chains[
+                cifmol_wo_water.chains.chain_id == full_chain_id
             ].entity_type.value[0]
-            header = f">{cifmol.id[0]}_{chain_id} | {entity_type}"
+            header = f">{cifmol_wo_water.id[0]}_{chain_id} | {entity_type}"
             seq = seq_dict[full_chain_id]
 
             fasta_dict[chain_id] = f"{header}\n{seq}\n"
 
-        return fasta_dict
-
-    return _worker
+    return fasta_dict
 
 
-def build_seq_hash_map() -> Callable[[dict[str, str]], dict[str, str]]:
+def build_seq_id_map() -> Callable[[dict[str, str]], dict[str, str]]:
     """
     Build a sequence hash map from CIFMol sequences.
 
@@ -296,8 +309,8 @@ def build_seq_hash_map() -> Callable[[dict[str, str]], dict[str, str]]:
     def _worker(
         fasta_dict: dict[str, str],
     ) -> dict[str, str]:
-        seq_hash_map = {}
-        seq_hash = 0
+        seq_id_map = {}
+        seq_id = 0
 
         for header, sequence in fasta_dict.items():
             mol_type = header.split("|")[1].strip()
@@ -319,16 +332,15 @@ def build_seq_hash_map() -> Callable[[dict[str, str]], dict[str, str]]:
                 case _:
                     mol_identifier = "X"
             key = f"{mol_identifier}{sequence}"
-            if key in seq_hash_map:
+            if key in seq_id_map:
                 continue  # skip duplicate sequences
-            _seq_hash = f"{mol_identifier}{seq_hash:07d}"
-            seq_hash_map[key] = _seq_hash
-            seq_hash += 1
-        new_seq_hash_map = {}
-        for key, value in seq_hash_map.items():
+            _seq_id = f"{mol_identifier}{seq_id:07d}"
+            seq_id_map[key] = _seq_id
+            seq_id += 1
+        new_seq_id_map = {}
+        for key, value in seq_id_map.items():
             sequence = key[1:]
-            new_seq_hash_map[value] = sequence
-        return new_seq_hash_map
-
+            new_seq_id_map[value] = sequence
+        return new_seq_id_map
 
     return _worker
