@@ -1,0 +1,12 @@
+inputs:
+  tmp_dir: ${p:/home/psk6950/data/StructSticklerDB/tmp/seq_cluster30}
+  seq_id_map_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/seq_id_map.tsv}
+  fasta_path: ${p:/home/psk6950/data/StructSticklerDB/fasta/merged.fasta}
+  sabdab_summary_path: ${p:/home/psk6950/data/StructSticklerDB/SabDab/sabdab_summary_all.tsv}
+  mmseqs2_seq_id: 0.3
+  mmseqs2_cov: 0.8
+  mmseqs2_covmode: "0"
+  mmseqs2_clustermode: "1"
+recipe_path: ${p:/home/psk6950/StructStickler/pipelines/recipe/seq_cluster.py}
+project_func: pipelines.projection.projections.write_clusters
+output_data_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/seq_cluster30.tsv}

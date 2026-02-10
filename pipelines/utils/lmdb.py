@@ -128,7 +128,7 @@ def build_lmdb(  # noqa: PLR0913
     env.close()
 
 
-def rebuild_lmdb(  # noqa: PLR0913
+def rebuild_lmdb(  # noqa: PLR0913, PLR0915
     old_env_path: Path,
     new_env_path: Path,
     recipe: Path,
@@ -165,9 +165,13 @@ def rebuild_lmdb(  # noqa: PLR0913
             **extra_kwargs,
         )
 
-    def _process_file(key: str) -> tuple[bytes, bytes, Exception | None] | None:
+    def _process_file(
+        inputs: tuple[bytes, bytes],
+    ) -> tuple[bytes, bytes, Exception | None] | None:
         """Parse a single file and return (key, compressed_data, error)."""
-        data = read_lmdb(old_env_path, key)
+        key, values = inputs
+        data_bytes: bytes = bytes(values)
+        data: dict = from_bytes(data_bytes)
         data = convert_func(data) if convert_func is not None else data
         output_dict = {}
         try:
@@ -189,10 +193,9 @@ def rebuild_lmdb(  # noqa: PLR0913
                 output_dict[data_key] = rebuild_data_dict
             if len(output_dict) == 0:
                 return None
-            zcompressed_data = to_bytes(output_dict)
-            return key.encode(), zcompressed_data, None
+            return key, to_bytes(output_dict), None
         except Exception as error:  # noqa: BLE001
-            return key.encode(), to_bytes({}), error
+            return key, to_bytes({}), error
 
     # remove UNL
     old_key_list = extract_key_list(old_env_path)
@@ -206,6 +209,8 @@ def rebuild_lmdb(  # noqa: PLR0913
     old_set = set(old_key_list)
     key_list = list(old_set - _already_parsed_keys)
     logger.info("To be parsed %d entries.", len(key_list))
+    old_env = lmdb.open(str(old_env_path), readonly=True, lock=False)
+    new_env = lmdb.open(str(new_env_path), map_size=int(map_size))
 
     # --- Parallel processing ---
     for i in range(0, len(key_list), chunk_size):
@@ -216,9 +221,20 @@ def rebuild_lmdb(  # noqa: PLR0913
             len(key_list),
         )
         key_chunk = key_list[i : i + chunk_size]
-        results = Parallel(n_jobs=n_jobs, verbose=10, prefer="processes")(
-            delayed(_process_file)(key) for key in key_chunk
-        )
+        data_chunk = []
+        with old_env.begin() as txn:
+            for key in key_chunk:
+                key_bytes = key.encode()
+                val_bytes = txn.get(key_bytes)
+                if val_bytes is not None:
+                    data_chunk.append((key_bytes, bytes(val_bytes)))
+        results = Parallel(
+            n_jobs=n_jobs,
+            verbose=10,
+            prefer="threads",
+            pre_dispatch="2*n_jobs",
+            inner_max_num_threads=1,
+        )(delayed(_process_file)(data) for data in data_chunk)
         # --- Write results to LMDB ---
         with new_env.begin(write=True) as txn:
             for result in results:

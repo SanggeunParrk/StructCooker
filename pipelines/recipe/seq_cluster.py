@@ -4,9 +4,9 @@ from datacooker import RecipeBook
 
 from pipelines.instructions.seq_cluster_instructions import (
     antibody_cluster,
+    merge_cluster,
     protein_cluster,
     separate_sequences,
-    write_cluster,
 )
 
 """Build a sequence clustering Cooker."""
@@ -22,9 +22,28 @@ seq_cluster_recipe.add(
         {
             "kwargs": {
                 "tmp_dir": ("tmp_dir", Path),
-                "seq_hash_map": ("seq_hash_map", Path),
-                "merged_fasta_path": ("merged_fasta_path", Path),
+                "seq_id_map_path": ("seq_id_map_path", Path),
+                "fasta_path": ("fasta_path", Path),
                 "sabdab_summary_path": ("sabdab_summary_path", Path),
+            },
+        },
+    ],
+)
+
+
+seq_cluster_recipe.add(
+    targets=[
+        (
+            ("antibody_cluster_dict", dict),
+            ("failed_ids", set),
+        ),
+    ],
+    instruction=antibody_cluster,
+    inputs=[
+        {
+            "kwargs": {
+                "tmp_dir": ("tmp_dir", Path),
+                "fasta_path_dict": ("fasta_path_dict", Path),
             },
         },
     ],
@@ -43,21 +62,12 @@ seq_cluster_recipe.add(
             "kwargs": {
                 "tmp_dir": ("tmp_dir", Path),
                 "fasta_path_dict": ("fasta_path_dict", Path),
-            },
-        },
-    ],
-)
-
-seq_cluster_recipe.add(
-    targets=[
-        (("antibody_cluster_dict", dict),),
-    ],
-    instruction=antibody_cluster,
-    inputs=[
-        {
-            "kwargs": {
-                "tmp_dir": ("tmp_dir", Path),
-                "fasta_path_dict": ("fasta_path_dict", Path),
+                "failed_ids": ("failed_ids", set),
+                "seq_id_map_path": ("seq_id_map_path", Path),
+                "mmseqs2_seq_id": ("mmseqs2_seq_id", float | str),
+                "mmseqs2_cov": ("mmseqs2_cov", float | str),
+                "mmseqs2_covmode": ("mmseqs2_covmode", str),
+                "mmseqs2_clustermode": ("mmseqs2_clustermode", str),
             },
         },
     ],
@@ -67,7 +77,7 @@ seq_cluster_recipe.add(
     targets=[
         (("cluster_dict", dict),),
     ],
-    instruction=write_cluster,
+    instruction=merge_cluster,
     inputs=[
         {
             "kwargs": {

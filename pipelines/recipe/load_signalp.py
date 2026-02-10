@@ -3,20 +3,18 @@ from pathlib import Path
 from datacooker import RecipeBook
 
 from pipelines.instructions.metadata_instructions import (
+    build_seqid_map,
     load_signalp,
     load_tsv,
-    reverse_dict,
 )
 
 """Rebuild a CIF lmdb to train AF3"""
 
 metadata_recipe = RecipeBook()
 
-
 metadata_recipe.add(
     targets=[
         (("seqid2seq", dict),),
-        (("clusterid2seqid", dict),),
     ],
     instruction=load_tsv,
     inputs=[
@@ -28,32 +26,19 @@ metadata_recipe.add(
                 "split_by_comma": False,
             },
         },
-        {
-            "kwargs": {
-                "tsv_file_path": ("clusterid2seqid_path", Path),
-            },
-            "params": {
-                "split_by_comma": True,
-            },
-        },
     ],
 )
 
+
 metadata_recipe.add(
     targets=[
-        (("seq2seqid", dict),),
-        (("seqid2clusterid", dict),),
+        (("seqid_map", dict),),  # seq+moltype -> seqid
     ],
-    instruction=reverse_dict,
+    instruction=build_seqid_map,
     inputs=[
         {
             "kwargs": {
-                "input_dict": ("seqid2seq", dict),
-            },
-        },
-        {
-            "kwargs": {
-                "input_dict": ("clusterid2seqid", dict),
+                "seqid2seq": ("seqid2seq", dict),
             },
         },
     ],
@@ -73,5 +58,4 @@ metadata_recipe.add(
 )
 
 RECIPE = metadata_recipe
-TARGETS = ["seq2seqid", "seqid2clusterid", "signalp_dict"]
-
+TARGETS = ["seqid_map", "signalp_dict"]

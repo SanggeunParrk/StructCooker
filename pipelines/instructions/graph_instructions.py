@@ -11,7 +11,12 @@ from biomol.core.feature import EdgeFeature, NodeFeature
 from joblib import Parallel, delayed
 
 from pipelines.cifmol import CIFMol, CIFMolAttached
-from pipelines.instructions.seq_instructions import graph_to_canonical_sequence
+from pipelines.constants import mol_type_map
+from pipelines.instructions.seq_instructions import (
+    extract_sequence_from_cifmol,
+    filter_water,
+    graph_to_canonical_sequence,
+)
 from pipelines.utils.convert import to_bytes
 
 InputType = TypeVar("InputType", str, int, float)
@@ -19,87 +24,80 @@ FeatureType = TypeVar("FeatureType")
 NumericType = TypeVar("NumericType", int, float)
 
 
-def extract_graph_per_cifmol() -> Callable[..., bytes]:
+def extract_graph_per_cifmol(
+    cifmol: CIFMol,
+    seq_to_seq_hash_list: dict[str, list[str]],
+    seq_hash_to_cluster: dict[str, str],
+) -> type[InputType]:
     """Read CIFMol and extract chain-level contact graphs with cluster labels."""
+    chain_id_to_cluster = {}
+    chain_ids = cifmol.chains.chain_id.value
 
-    def _worker(
-        cifmol: CIFMol,
-        seq_to_seq_hash_list: dict[str, list[str]],
-        seq_hash_to_cluster: dict[str, str],
-    ) -> type[InputType]:
-        chain_id_to_cluster = {}
-        chain_ids = cifmol.chains.chain_id.value
-
-        for full_chain_id in chain_ids:
-            entity_type = cifmol.chains[
+    for full_chain_id in chain_ids:
+        entity_type = cifmol.chains[
+            cifmol.chains.chain_id == full_chain_id
+        ].entity_type.value[0]
+        if entity_type == "non-polymer":
+            seq = cifmol.chains[
                 cifmol.chains.chain_id == full_chain_id
-            ].entity_type.value[0]
-            if entity_type == "non-polymer":
-                seq = cifmol.chains[
-                    cifmol.chains.chain_id == full_chain_id
-                ].residues.chem_comp_id.value
-                seq = f"({seq[0]})"
-            elif entity_type == "branched":
-                seq_list = cifmol.chains[
-                    cifmol.chains.chain_id == full_chain_id
-                ].residues.chem_comp_id.value
-                bonds = cifmol.chains[
-                    cifmol.chains.chain_id == full_chain_id
-                ].residues.bond
-                seq = graph_to_canonical_sequence(
-                    seq_list,
-                    bonds.src_indices,
-                    bonds.dst_indices,
-                )
-            else:  # polymer
-                seq = cifmol.chains[
-                    cifmol.chains.chain_id == full_chain_id
-                ].residues.one_letter_code_can.value
-                seq = "".join(seq)
+            ].residues.chem_comp_id.value
+            seq = f"({seq[0]})"
+        elif entity_type == "branched":
+            seq_list = cifmol.chains[
+                cifmol.chains.chain_id == full_chain_id
+            ].residues.chem_comp_id.value
+            bonds = cifmol.chains[cifmol.chains.chain_id == full_chain_id].residues.bond
+            seq = graph_to_canonical_sequence(
+                seq_list,
+                bonds.src_indices,
+                bonds.dst_indices,
+            )
+        else:  # polymer
+            seq = cifmol.chains[
+                cifmol.chains.chain_id == full_chain_id
+            ].residues.one_letter_code_can.value
+            seq = "".join(seq)
 
-            match entity_type:
-                case "polypeptide(L)":
-                    mol_identifier = "P"
-                case "polypeptide(D)":
-                    mol_identifier = "Q"
-                case "polydeoxyribonucleotide":
-                    mol_identifier = "D"
-                case "polyribonucleotide":
-                    mol_identifier = "R"
-                case "polydeoxyribonucleotide/polyribonucleotide hybrid":
-                    mol_identifier = "N"
-                case "branched":
-                    mol_identifier = "B"
-                case "non-polymer":
-                    mol_identifier = "L"
-                case _:
-                    mol_identifier = "X"
+        match entity_type:
+            case "polypeptide(L)":
+                mol_identifier = "P"
+            case "polypeptide(D)":
+                mol_identifier = "Q"
+            case "polydeoxyribonucleotide":
+                mol_identifier = "D"
+            case "polyribonucleotide":
+                mol_identifier = "R"
+            case "polydeoxyribonucleotide/polyribonucleotide hybrid":
+                mol_identifier = "N"
+            case "branched":
+                mol_identifier = "B"
+            case "non-polymer":
+                mol_identifier = "L"
+            case _:
+                mol_identifier = "X"
 
-            seq_hash_list = seq_to_seq_hash_list[seq]
-            seq_hash = next(h for h in seq_hash_list if h.startswith(mol_identifier))
-            chain_id_to_cluster[full_chain_id] = seq_hash_to_cluster[seq_hash]
+        seq_hash_list = seq_to_seq_hash_list[seq]
+        seq_hash = next(h for h in seq_hash_list if h.startswith(mol_identifier))
+        chain_id_to_cluster[full_chain_id] = seq_hash_to_cluster[seq_hash]
 
-        # chain level contact graph
-        contact_graph = cifmol.chains.contact
-        chain_id_list = cifmol.chains.chain_id.value
-        cluster_list = [chain_id_to_cluster[chain_id] for chain_id in chain_id_list]
-        src, dst = contact_graph.src_indices, contact_graph.dst_indices
+    # chain level contact graph
+    contact_graph = cifmol.chains.contact
+    chain_id_list = cifmol.chains.chain_id.value
+    cluster_list = [chain_id_to_cluster[chain_id] for chain_id in chain_id_list]
+    src, dst = contact_graph.src_indices, contact_graph.dst_indices
 
-        cluster_list = np.array(cluster_list)
-        features = {
-            "chain_ids": NodeFeature(np.array(chain_id_list)),
-            "seq_clusters": NodeFeature(cluster_list),
-            "contact_edges": EdgeFeature(
-                value=np.array([1] * len(src)),
-                src_indices=np.array(src),
-                dst_indices=np.array(dst),
-            ),
-        }
-        container = FeatureContainer(features)
-        return to_bytes({"cluster_graph": container})
-
-    return _worker
-
+    cluster_list = np.array(cluster_list)
+    features = {
+        "chain_ids": NodeFeature(np.array(chain_id_list)),
+        "seq_clusters": NodeFeature(cluster_list),
+        "contact_edges": EdgeFeature(
+            value=np.array([1] * len(src)),
+            src_indices=np.array(src),
+            dst_indices=np.array(dst),
+        ),
+    }
+    container = FeatureContainer(features)
+    return to_bytes({"cluster_graph": container})
 
 
 def extract_graph_per_cifmol_attached() -> Callable[..., bytes]:
@@ -453,7 +451,8 @@ def graph_edge_cluster(n_jobs: int = -1) -> Callable[..., type[InputType]]:
             return gid, sorted(keys)
 
         edge_key_lists: list[tuple[int, list[tuple[object, object]]]] = Parallel(
-            n_jobs=n_jobs, verbose=5,
+            n_jobs=n_jobs,
+            verbose=5,
         )(delayed(_extract_edge_keys)(gid) for gid in graph_ids)
 
         # --- 2) Build edge_key -> [graph_id, ...] inverted index ------------------
@@ -521,7 +520,10 @@ def convert_graph_to_bytes(n_jobs: int = -1) -> Callable[..., bytes]:
     return _worker
 
 
-def build_whole_graph(edge_tsv_path: Path, ignore_nodes:list|None=None) -> tuple[nx.Graph, nx.Graph]:
+def build_whole_graph(
+    edge_tsv_path: Path,
+    ignore_nodes: list | None = None,
+) -> tuple[nx.Graph, nx.Graph]:
     """Build a whole graph from edge TSV file."""
     edges = []
     polymer_edges = []
@@ -541,9 +543,9 @@ def build_whole_graph(edge_tsv_path: Path, ignore_nodes:list|None=None) -> tuple
     return whole, polymer
 
 
-def build_category()-> tuple[dict[str, int], dict[str, str], dict[str, int]]:
+def build_category() -> tuple[dict[str, int], dict[str, str], dict[str, int]]:
     """Build category pairs and priority map."""
-    special_map = {"B" : "L", "Q": "P"}
+    special_map = {"B": "L", "Q": "P"}
     category_priority = ["P", "A", "D", "R", "N", "L"]
     priority_map = {c: i for i, c in enumerate(category_priority)}
 
@@ -634,7 +636,10 @@ def split_train_valid(
     if not subgraphs:
         return [], []
 
-    min_edge_counts = {k: min(int(v * (1 - train_ratio)), min_valid_size) for k, v in edge_wo_ligand_counts.items()} # min edges per category in valid set
+    min_edge_counts = {
+        k: min(int(v * (1 - train_ratio)), min_valid_size)
+        for k, v in edge_wo_ligand_counts.items()
+    }  # min edges per category in valid set
 
     # test (DD except)
     remaining_edges = edge_wo_ligand_counts.copy()
@@ -644,19 +649,27 @@ def split_train_valid(
     train_edge_count = dict.fromkeys(remaining_edges, 0)
     for ii, subg in enumerate(subgraphs):
         comp_edges = count_category_count(list(subg.edges()))
-        must_have = {k : comp_edges[k] > min_edge_counts[k] for k in edge_wo_ligand_counts}
+        must_have = {
+            k: comp_edges[k] > min_edge_counts[k] for k in edge_wo_ligand_counts
+        }
         if any(must_have.values()):
             train_indices.add(ii)
-            remaining_edges = {k: remaining_edges[k] - comp_edges[k] for k in remaining_edges}
-            train_edge_count = {k: train_edge_count[k] + comp_edges[k] for k in comp_edges}
+            remaining_edges = {
+                k: remaining_edges[k] - comp_edges[k] for k in remaining_edges
+            }
+            train_edge_count = {
+                k: train_edge_count[k] + comp_edges[k] for k in comp_edges
+            }
 
     remaining_indices = list(range(1, len(subgraphs)))
     remaining_indices.sort(key=lambda i: subgraphs[i].number_of_edges())
 
     for idx in remaining_indices:
         comp_edges = count_category_count(list(subgraphs[idx].edges()))
-        _remaining_edges = {k: remaining_edges[k] - comp_edges[k] for k in remaining_edges}
-        ok = {k : _remaining_edges[k] >= min_edge_counts[k] for k in remaining_edges}
+        _remaining_edges = {
+            k: remaining_edges[k] - comp_edges[k] for k in remaining_edges
+        }
+        ok = {k: _remaining_edges[k] >= min_edge_counts[k] for k in remaining_edges}
         train_edge_count = {k: train_edge_count[k] + comp_edges[k] for k in comp_edges}
         if not all(ok.values()):
             continue
@@ -664,7 +677,9 @@ def split_train_valid(
         remaining_edges = _remaining_edges
 
     train_subgraphs = [subgraphs[i] for i in sorted(train_indices)]
-    valid_subgraphs = [subgraphs[i] for i in range(len(subgraphs)) if i not in train_indices]
+    valid_subgraphs = [
+        subgraphs[i] for i in range(len(subgraphs)) if i not in train_indices
+    ]
 
     train_nodes: set = set().union(*(g.nodes for g in train_subgraphs))
     valid_nodes: set = set().union(*(g.nodes for g in valid_subgraphs))
@@ -688,7 +703,11 @@ def split_train_valid(
 
     return train_edges, valid_edges
 
-def extract_edges(edge_tsv_path: Path, to_be_extracted: list[tuple[str, str]]) -> list[str]:
+
+def extract_edges(
+    edge_tsv_path: Path,
+    to_be_extracted: list[tuple[str, str]],
+) -> list[str]:
     """Extract edges from edge TSV file."""
     extracted_edges = []
     to_be_extracted = set(to_be_extracted)
@@ -698,3 +717,53 @@ def extract_edges(edge_tsv_path: Path, to_be_extracted: list[tuple[str, str]]) -
             if (src, dst) in to_be_extracted or (dst, src) in to_be_extracted:
                 extracted_edges.append(line)
     return extracted_edges
+
+
+def interacting_seq_ids(
+    cifmol_dict: dict[str, dict[str, CIFMol]],
+    seqid_map: dict,
+) -> set[tuple[str, str]]:
+    """Extract interacting sequence IDs from cifmol dict."""
+    interacting_seq_ids: set = set()
+    for cifmol_wrapper in cifmol_dict.values():
+        cifmol = cifmol_wrapper["cifmol"]
+        cifmol_wo_water = filter_water(cifmol)
+        if cifmol_wo_water is None:
+            continue
+        seq_dict, entity_type_dict = extract_sequence_from_cifmol(cifmol_wo_water)
+        seq_id_dict = {}
+
+        for chain_id, seq in seq_dict.items():
+            entity_type = entity_type_dict[chain_id]
+            mol_identifier = mol_type_map.get(entity_type, "X")
+            seq_id = seqid_map[mol_identifier][seq]
+            seq_id_dict[chain_id] = seq_id
+        contact_graph = cifmol_wo_water.chains.contact
+        for src_idx, dst_idx in zip(
+            contact_graph.src_indices,
+            contact_graph.dst_indices,
+            strict=False,
+        ):
+            src_chain = cifmol_wo_water.chains.chain_id.value[src_idx]
+            dst_chain = cifmol_wo_water.chains.chain_id.value[dst_idx]
+            src_seq_id = seq_id_dict[src_chain]
+            dst_seq_id = seq_id_dict[dst_chain]
+            pair_key = sorted((src_seq_id, dst_seq_id))
+            interacting_seq_ids.add((pair_key[0], pair_key[1]))
+
+    return interacting_seq_ids
+
+
+def filter_seq_ids(
+    interacting_seq_ids: set[tuple[str, str]],
+    *,
+    valid_entity_types: set[str],
+) -> set[tuple[str, str]]:
+    """Filter interacting sequence IDs by valid entity types."""
+    filtered_seq_ids: set = set()
+    for seq_id1, seq_id2 in interacting_seq_ids:
+        entity_type1 = seq_id1[0]
+        entity_type2 = seq_id2[0]
+        if entity_type1 in valid_entity_types or entity_type2 in valid_entity_types:
+            filtered_seq_ids.add((seq_id1, seq_id2))
+    return filtered_seq_ids

@@ -1,0 +1,21 @@
+# rebuild
+old_env_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cif_raw.lmdb}
+new_env_path: ${p:/home/psk6950/data/StructSticklerDB/cif_valid_1.lmdb}
+
+recipe: ${p:pipelines/recipe/valid_filter_1.py}
+metadata_recipe: ${p:pipelines/recipe/load_signalp.py}
+
+metadata_input:
+  signalp_dir: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/signalp}
+  seqid2seq_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/seq_id_map.tsv}
+
+convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_dict
+parameters:
+  resolution_cutoff: 4.5
+  max_token_count: 2560
+  max_polymer_chain_count: 20
+  start_date: 2021-09-30
+  end_date: 2023-09-30
+
+n_jobs: -1
+chunk_size: 20000

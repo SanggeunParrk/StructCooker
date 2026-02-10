@@ -5,7 +5,8 @@ from typing import TypeVar
 import numpy as np
 from numpy.typing import NDArray
 
-from pipelines.cifmol import CIFMol
+from pipelines.cifmol import CIFMol, CIFMolAttached
+from pipelines.constants import mol_type_map
 
 InputType = TypeVar("InputType", str, int, float)
 FeatureType = TypeVar("FeatureType")
@@ -220,8 +221,8 @@ def graph_to_canonical_sequence(  # noqa: PLR0912, PLR0915
 
 
 def extract_sequence_from_cifmol(
-    cifmol: CIFMol,
-) -> dict[str, str]:
+    cifmol: CIFMol | CIFMolAttached,
+) -> tuple[dict[str, str], dict[str, str]]:
     """
     Extract sequences from CIFMol and return as a dictionary.
 
@@ -234,11 +235,13 @@ def extract_sequence_from_cifmol(
     Skip residues with unknown types or water.
     """
     seq_dict = {}
+    entity_type_dict = {}
     chain_ids = cifmol.chains.chain_id.value
     for chain_id in chain_ids:
         entity_type = cifmol.chains[
             cifmol.chains.chain_id == chain_id
         ].entity_type.value[0]
+        entity_type_dict[chain_id] = entity_type
         if entity_type == "non-polymer":
             seq = cifmol.chains[
                 cifmol.chains.chain_id == chain_id
@@ -262,10 +265,10 @@ def extract_sequence_from_cifmol(
 
         seq_dict[chain_id] = seq
 
-    return seq_dict
+    return seq_dict, entity_type_dict
 
 
-def build_fasta(cifmol_dict: dict[str, CIFMol]) -> dict[str, str]:
+def build_fasta(cifmol_dict: dict[str, dict[str, CIFMol]]) -> dict[str, str]:
     """
     Read CIFMol and build sequence string.
 
@@ -278,69 +281,73 @@ def build_fasta(cifmol_dict: dict[str, CIFMol]) -> dict[str, str]:
     Skip residues with unknown types or water.
     """
     fasta_dict = {}
-    for cifmol in cifmol_dict.values():
+    for cifmol_wrapper in cifmol_dict.values():
+        cifmol = cifmol_wrapper["cifmol"]
         cifmol_wo_water = filter_water(cifmol)
         if cifmol_wo_water is None:
             continue
         chain_ids = cifmol_wo_water.chains.chain_id.value
-        seq_dict = extract_sequence_from_cifmol(cifmol_wo_water)
-        for full_chain_id in chain_ids:
+        auth_chain_ids = cifmol_wo_water.chains.auth_asym_id.value
+
+        pdb_id = cifmol_wo_water.id[0]
+        alt_id = cifmol_wo_water.alt_id
+        seq_dict, _ = extract_sequence_from_cifmol(cifmol_wo_water)
+        for full_chain_id, auth_chain_id in zip(chain_ids, auth_chain_ids, strict=True):
             chain_id = full_chain_id.split("_")[0]
-            if chain_id in fasta_dict:
+            key = f"{pdb_id}_{chain_id}_{alt_id}"
+            if key in fasta_dict:
                 continue  # skip duplicate chains (due to symmetry operators)
             entity_type = cifmol_wo_water.chains[
                 cifmol_wo_water.chains.chain_id == full_chain_id
             ].entity_type.value[0]
-            header = f">{cifmol_wo_water.id[0]}_{chain_id} | {entity_type}"
+            header = (
+                f">{pdb_id}_{chain_id}_{alt_id} | {entity_type} | Auth:{auth_chain_id}"
+            )
             seq = seq_dict[full_chain_id]
 
-            fasta_dict[chain_id] = f"{header}\n{seq}\n"
+            fasta_dict[key] = f"{header}\n{seq}\n"
 
     return fasta_dict
 
 
-def build_seq_id_map() -> Callable[[dict[str, str]], dict[str, str]]:
+def build_seq_id_map(
+    fasta_dict: dict[str, str],
+    old_seq_id_map: dict[str, str] | None,
+) -> dict[str, str]:
     """
     Build a sequence hash map from CIFMol sequences.
 
     The returned function 'remembers' nothing via closure.
     """
+    seq_id_map = {}
+    seq_id = 0
 
-    def _worker(
-        fasta_dict: dict[str, str],
-    ) -> dict[str, str]:
-        seq_id_map = {}
-        seq_id = 0
+    if old_seq_id_map is not None:
+        old_seq_ids = {int(value[1:]) for value in old_seq_id_map.values()}
+        seq_id = max(old_seq_ids) + 1 if old_seq_ids else 0
 
-        for header, sequence in fasta_dict.items():
-            mol_type = header.split("|")[1].strip()
-            match mol_type:
-                case "polypeptide(L)":
-                    mol_identifier = "P"
-                case "polypeptide(D)":
-                    mol_identifier = "Q"
-                case "polydeoxyribonucleotide":
-                    mol_identifier = "D"
-                case "polyribonucleotide":
-                    mol_identifier = "R"
-                case "polydeoxyribonucleotide/polyribonucleotide hybrid":
-                    mol_identifier = "N"
-                case "branched":
-                    mol_identifier = "B"
-                case "non-polymer":
-                    mol_identifier = "L"
-                case _:
-                    mol_identifier = "X"
-            key = f"{mol_identifier}{sequence}"
-            if key in seq_id_map:
-                continue  # skip duplicate sequences
-            _seq_id = f"{mol_identifier}{seq_id:07d}"
-            seq_id_map[key] = _seq_id
-            seq_id += 1
-        new_seq_id_map = {}
-        for key, value in seq_id_map.items():
-            sequence = key[1:]
-            new_seq_id_map[value] = sequence
-        return new_seq_id_map
+    for header, sequence in fasta_dict.items():
+        mol_type = header.split("|")[1].strip()
+        mol_identifier = mol_type_map.get(mol_type, "X")
+        key = f"{mol_identifier}{sequence}"
 
-    return _worker
+        if old_seq_id_map is not None and key in old_seq_id_map:
+            seq_id_map[key] = old_seq_id_map[key]
+            continue
+        if key in seq_id_map:
+            continue  # skip duplicate sequences
+        _seq_id = f"{mol_identifier}{seq_id:07d}"
+        seq_id_map[key] = _seq_id
+        seq_id += 1
+    new_seq_id_map = {}
+    for key, value in seq_id_map.items():
+        sequence = key[1:]
+        new_seq_id_map[value] = sequence
+
+    # sort by 1. identifier, 2. sequence length
+    return dict(
+        sorted(
+            new_seq_id_map.items(),
+            key=lambda item: (item[0][0], len(item[1])),
+        ),
+    )

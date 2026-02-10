@@ -1,4 +1,6 @@
-input_db_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cif_raw.lmdb}
-extract_recipe_path: ${p:/home/psk6950/StructStickler/pipelines/recipe/extract_fasta.py}
-project_func: pipelines.projection.projection_fasta.write_fasta
-output_data_path: ${p:/home/psk6950/data/StructStickler/fasta/}
+inputs: 
+  fasta_path: ${p:/home/psk6950/data/StructSticklerDB/fasta/merged.fasta}
+  old_seq_id_map_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/metadata/seq_hash_map.tsv}  # optional
+recipe_path: ${p:/home/psk6950/StructStickler/pipelines/recipe/build_seq_id_map.py}
+project_func: pipelines.projection.projections.write_seq_id_map
+output_data_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/seq_id_map.tsv}

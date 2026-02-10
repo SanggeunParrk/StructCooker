@@ -1,14 +1,14 @@
 from datacooker import RecipeBook
 
 from pipelines.cifmol import CIFMol
-from pipelines.instructions.seq_instructions import build_fasta
+from pipelines.instructions.metadata_instructions import extract_metadata
 from pipelines.transforms.cifmol_transforms import convert_to_cifmol_dict
 
-"""Build a CIFMol->fasta Cooker."""
+"""Extract metadata from cifmol"""
 
-fasta_recipe = RecipeBook()
+metadata_recipe = RecipeBook()
 
-fasta_recipe.add(
+metadata_recipe.add(
     targets=[
         (("cifmol_dict", dict[str, dict[str, CIFMol]]),),
     ],
@@ -22,11 +22,11 @@ fasta_recipe.add(
     ],
 )
 
-fasta_recipe.add(
+metadata_recipe.add(
     targets=[
-        (("fasta", str),),
+        (("metadata_dict", dict[str, dict[str, str]]),),
     ],
-    instruction=build_fasta,
+    instruction=extract_metadata,
     inputs=[
         {
             "kwargs": {
@@ -36,5 +36,5 @@ fasta_recipe.add(
     ],
 )
 
-RECIPE = fasta_recipe
-TARGETS = ["fasta"]
+RECIPE = metadata_recipe
+TARGETS = ["metadata_dict"]
