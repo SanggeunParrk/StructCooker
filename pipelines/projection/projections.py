@@ -6,8 +6,7 @@ def write_fasta(data: dict[str, dict[str, dict[str, str]]], output_path: Path) -
     merged_fastas = []
     for fasta_dict in data.values():
         merged_fastas.extend(fasta_dict["fasta"].values())
-    merged_fasta_path = output_path / "merged.fasta"
-    with merged_fasta_path.open("w") as f:
+    with output_path.open("w") as f:
         for fasta in merged_fastas:
             f.write(fasta)
 
@@ -80,11 +79,35 @@ def write_clusters(
 
 
 def write_filtered_seq_ids(
-    data: dict[str, set[tuple[str, str]]],
+    data: dict[str, dict[str, set[tuple[str, str]]]],
     output_path: Path,
 ) -> None:
     """Write filtered sequence IDs to a tab-delimited file."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    filtered_seq_ids = set()
+    for seq_id_dict in data.values():
+        for src_seq_id, dst_seq_id in seq_id_dict["filtered_seq_ids"]:
+            filtered_seq_ids.add((src_seq_id, dst_seq_id))
+    # sort by src_seq_id, dst_seq_id
+    filtered_seq_ids = sorted(filtered_seq_ids, key=lambda x: (x[0], x[1]))
     with output_path.open("w") as f:
-        for src_seq_id, dst_seq_id in data["filtered_seq_ids"]:
+        for src_seq_id, dst_seq_id in sorted(filtered_seq_ids):
+            f.write(f"{src_seq_id}\t{dst_seq_id}\n")
+
+
+def write_filtered_seq_clusters(
+    data: dict[str, set[tuple[str, str]]],
+    output_path: Path,
+) -> None:
+    """Write filtered sequence clusters to a tab-delimited file."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    interacting_seq_clusters = set()
+    for src_seq_id, dst_seq_id in data["interacting_seq_clusters"]:
+        interacting_seq_clusters.add((src_seq_id, dst_seq_id))
+    interacting_seq_clusters = sorted(
+        interacting_seq_clusters,
+        key=lambda x: (x[0], x[1]),
+    )
+    with output_path.open("w") as f:
+        for src_seq_id, dst_seq_id in sorted(interacting_seq_clusters):
             f.write(f"{src_seq_id}\t{dst_seq_id}\n")

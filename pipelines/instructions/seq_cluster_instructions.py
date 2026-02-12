@@ -20,10 +20,12 @@ def run_mmseqs2(  # noqa: PLR0913
     mmseqs2_clustermode: str = "1",
 ) -> None:
     """Run MMSeqs2 to cluster sequences."""
+    print(f"Running MMSeqs2 clustering for {fasta_path}...")
     os.system(  # noqa: S605
         f"mmseqs easy-cluster {fasta_path} {tmp_dir} {tmp_dir}/tmp/ "  # noqa: S108
         f"--min-seq-id {mmseqs2_seq_id} -c {mmseqs2_cov} --cov-mode {mmseqs2_covmode} --cluster-mode {mmseqs2_clustermode}",
     )
+    print(f"MMSeqs2 clustering finished for {fasta_path}")
 
 
 def load_fasta(fasta_path: Path) -> dict[str, str]:
@@ -161,6 +163,8 @@ def _extract_H3L3_sequence(cdr_type: str, sequence: str) -> str:
         seq = res[1]
         if idx in chotia_idx:
             output += seq
+    # remove gaps
+    output = output.replace("-", "")
     return output
 
 

@@ -1,0 +1,6 @@
+recipe_path: ${p:/home/psk6950/StructStickler/pipelines/recipe/extract_interacting_seq_clusters.py}
+project_func: pipelines.projection.projections.write_filtered_seq_clusters
+output_data_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/interacting_seq_clusters30.tsv}
+inputs:
+  interacting_seq_ids_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/interacting_seq_ids.tsv}
+  seqcluster_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/seq_cluster30.tsv}

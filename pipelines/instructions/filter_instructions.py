@@ -2,6 +2,7 @@ from collections.abc import Callable
 from datetime import date
 from typing import cast
 
+import networkx as nx
 import numpy as np
 from biomol.core import FeatureContainer, NodeFeature
 from biomol.core.types import FeatureContainerDict
@@ -189,3 +190,33 @@ def filter_cifmol_by_polymer_chain_count(
     if chain_count > max_polymer_chain_count:
         return None
     return cifmol
+
+
+def filter_valid_2_clusters(
+    train_clusters: set[str],
+    valid_1_clusters: set[str],
+    interacting_seq_clusters: dict[str, list[str]],
+) -> set[str]:
+    """Filter valid_2 clusters to remove those that interact with train or valid_1 clusters."""
+    interacting_seq_clusters_set: set[tuple[str, str]] = set(
+        {(key, value[0]) for key, value in interacting_seq_clusters.items()},
+    )
+    interacting_graph = nx.Graph()
+    interacting_graph.add_nodes_from(train_clusters)
+    interacting_graph.add_nodes_from(valid_1_clusters)
+    interacting_graph.add_edges_from(interacting_seq_clusters_set)
+
+    connected_to_train: set[str] = set()
+    for t in train_clusters:
+        if t in interacting_graph:
+            connected_to_train |= nx.node_connected_component(interacting_graph, t)
+
+    return set(valid_1_clusters) - connected_to_train
+
+
+def filter_cifmol_by_clusters(
+    cifmol: CIFMolAttached,
+    filtered_clusters: set[tuple[str, str]],
+) -> dict[str, dict]:
+    """Filter CIFMol dictionary to keep only entries in the filtered clusters."""
+    breakpoint()

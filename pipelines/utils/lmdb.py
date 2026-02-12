@@ -174,6 +174,25 @@ def rebuild_lmdb(  # noqa: PLR0913, PLR0915
         data: dict = from_bytes(data_bytes)
         data = convert_func(data) if convert_func is not None else data
         output_dict = {}
+        for data_key, inner_dict in data.items():
+            datadict: dict = inner_dict.copy()
+            if metadata_recipe is not None:
+                datadict.update(metadata_dict)
+            if parameters is not None:
+                datadict.update(parameters)
+            rebuild_data_dict = parse_dict(
+                recipe_path=recipe,
+                datadict=datadict,
+                transform_func=transform_func,
+                **extra_kwargs,
+            )
+            if all(value is None for value in rebuild_data_dict.values()):
+                continue
+
+            output_dict[data_key] = rebuild_data_dict
+        if len(output_dict) == 0:
+            return None
+        return key, to_bytes(output_dict), None
         try:
             for data_key, inner_dict in data.items():
                 datadict: dict = inner_dict.copy()
@@ -211,6 +230,22 @@ def rebuild_lmdb(  # noqa: PLR0913, PLR0915
     logger.info("To be parsed %d entries.", len(key_list))
     old_env = lmdb.open(str(old_env_path), readonly=True, lock=False)
     new_env = lmdb.open(str(new_env_path), map_size=int(map_size))
+
+    # test run
+    test_keys = key_list[:10]
+    test_data_chunk = []
+    with old_env.begin() as txn:
+        for key in test_keys:
+            key_bytes = key.encode()
+            val_bytes = txn.get(key_bytes)
+            if val_bytes is not None:
+                test_data_chunk.append((key_bytes, bytes(val_bytes)))
+    test_results = []
+    for data in test_data_chunk:
+        result = _process_file(data)
+        if result is not None:
+            test_results.append(result)
+    logger.info("Test run processed %d / 10 entries.", len(test_results))
 
     # --- Parallel processing ---
     for i in range(0, len(key_list), chunk_size):

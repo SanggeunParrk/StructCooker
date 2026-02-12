@@ -28,3 +28,15 @@ def convert_to_cifmol_dict(
         cifmol_dict[cif_key] = {"cifmol": CIFMol.from_dict(item)}
 
     return cifmol_dict
+
+
+def convert_to_cifmol_transformed(
+    value: dict,
+) -> dict[str, dict[str, CIFMol]]:
+    """Convert a dictionary containing CIFMol data into a dictionary of CIFMol objects."""
+    cifmol_dict: dict[str, dict[str, CIFMol]] = {}
+    for cif_key, _item in value.items():
+        item = _item["cifmol_dict"]
+        item = cast("BioMolDict", item)
+        cifmol_dict[cif_key] = {"cifmol": CIFMol.from_dict(item)}
+    return cifmol_dict

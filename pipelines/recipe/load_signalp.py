@@ -32,7 +32,7 @@ metadata_recipe.add(
 
 metadata_recipe.add(
     targets=[
-        (("seqid_map", dict),),  # seq+moltype -> seqid
+        (("seqid_map", dict),),  # moltype+seq -> seqid
     ],
     instruction=build_seqid_map,
     inputs=[

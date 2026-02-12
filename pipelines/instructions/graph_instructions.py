@@ -767,3 +767,24 @@ def filter_seq_ids(
         if entity_type1 in valid_entity_types or entity_type2 in valid_entity_types:
             filtered_seq_ids.add((seq_id1, seq_id2))
     return filtered_seq_ids
+
+
+def build_interacting_seq_clusters(
+    interacting_seq_ids: dict[str, list[str]],
+    seqclusters2seqids: dict,
+) -> set[tuple[str, str]]:
+    """Build interacting sequence clusters from interacting sequence IDs."""
+    interacting_seq_clusters: set = set()
+    interacting_seq_ids_pair = set(
+        {(key, value[0]) for key, value in interacting_seq_ids.items()},
+    )
+    seqid2cluster = {}
+    for cluster, seqids in seqclusters2seqids.items():
+        for seqid in seqids:
+            seqid2cluster[seqid] = cluster
+    for seq_id1, seq_id2 in interacting_seq_ids_pair:
+        cluster1 = seqid2cluster[seq_id1]
+        cluster2 = seqid2cluster[seq_id2]
+        pair_key = sorted((cluster1, cluster2))
+        interacting_seq_clusters.add((pair_key[0], pair_key[1]))
+    return interacting_seq_clusters

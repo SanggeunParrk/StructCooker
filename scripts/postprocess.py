@@ -35,9 +35,9 @@ def data_transform(
     """Load data and project down."""
     config_dict = load_config(config)
 
-    # necessary fields : input_data_path, recipe_path, project_func, output_data_path
+    # necessary fields : inputs, recipe_path, project_func, output_data_path
     necessary_fields = [
-        "input_data_path",
+        "inputs",
         "recipe_path",
         "project_func",
         "output_data_path",
@@ -51,7 +51,7 @@ def data_transform(
         raise TypeError(msg)
 
     results = parse_dict(
-        datadict={"data_path": config_dict["input_data_path"]},
+        datadict=config_dict["inputs"],
         recipe_path=config_dict["recipe_path"],
         transform_func=config_dict.get("transform_func", None),
     )
@@ -59,6 +59,7 @@ def data_transform(
         data=results,
         output_path=config_dict["output_data_path"],
     )
+    click.echo("Data transformation complete.")
 
 
 @cli.command("db_extract")
@@ -71,9 +72,9 @@ def db_extract(
     """Load data from db and project down collectively."""
     config_dict = load_config(config)
 
-    # necessary fields : input_db_path, extract_recipe_path, project_func, output_data_path
+    # necessary fields : db_path, extract_recipe_path, project_func, output_data_path
     necessary_fields = [
-        "input_db_path",
+        "db_path",
         "extract_recipe_path",
         "project_func",
         "output_data_path",
@@ -86,19 +87,21 @@ def db_extract(
         msg = "'project_func' must be a ProjectFunc callable."
         raise TypeError(msg)
 
-    input_db_path: Path = config_dict["input_db_path"]
+    db_path: Path = config_dict["db_path"]
+    additional_inputs: dict = config_dict.get("additional_inputs", {})
     convert_func: ConvertFunc | None = config_dict.get("convert_func", None)
     transform_func = config_dict.get("transform_func", None)
 
-    key_list = extract_key_list(config_dict["input_db_path"])
+    key_list = extract_key_list(config_dict["db_path"])
 
     def _process_chunk(keys: list[str]) -> dict[tuple[str, str], dict]:
         output_dict = {}
         for key in keys:
-            data = read_lmdb(input_db_path, key)
+            data = read_lmdb(db_path, key)
             data = convert_func(data) if convert_func is not None else data
-            datadict = {"inputs": data}
+            datadict = {"db_data": data}
             datadict.update(**config_dict)
+            datadict.update(**additional_inputs)
 
             output_dict[key] = parse_dict(
                 datadict=datadict,
