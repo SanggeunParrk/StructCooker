@@ -114,6 +114,10 @@ def db_extract(
     key_chunks = [key_list[i : i + n_chunk] for i in range(0, len(key_list), n_chunk)]
     click.echo(f"Processing {len(key_chunks)} chunks of size {n_chunk}...")
 
+    # test run
+    _process_chunk(key_chunks[0])
+    click.echo("Test chunk processed successfully. Proceeding with full extraction...")
+
     # parallel batch
     chunk_results = Parallel(n_jobs=-1, verbose=10)(
         delayed(_process_chunk)(chunk) for chunk in key_chunks

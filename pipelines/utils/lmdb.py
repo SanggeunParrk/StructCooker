@@ -193,28 +193,6 @@ def rebuild_lmdb(  # noqa: PLR0913, PLR0915
         if len(output_dict) == 0:
             return None
         return key, to_bytes(output_dict), None
-        try:
-            for data_key, inner_dict in data.items():
-                datadict: dict = inner_dict.copy()
-                if metadata_recipe is not None:
-                    datadict.update(metadata_dict)
-                if parameters is not None:
-                    datadict.update(parameters)
-                rebuild_data_dict = parse_dict(
-                    recipe_path=recipe,
-                    datadict=datadict,
-                    transform_func=transform_func,
-                    **extra_kwargs,
-                )
-                if all(value is None for value in rebuild_data_dict.values()):
-                    continue
-
-                output_dict[data_key] = rebuild_data_dict
-            if len(output_dict) == 0:
-                return None
-            return key, to_bytes(output_dict), None
-        except Exception as error:  # noqa: BLE001
-            return key, to_bytes({}), error
 
     # remove UNL
     old_key_list = extract_key_list(old_env_path)

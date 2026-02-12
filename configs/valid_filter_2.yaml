@@ -1,6 +1,6 @@
 # rebuild
-old_env_path: ${p:/home/psk6950/data/StructSticklerDB/cif_valid_1.lmdb}
-new_env_path: ${p:/home/psk6950/data/StructSticklerDB/cif_valid_2.lmdb}
+old_env_path: ${p:/home/psk6950/data/StructSticklerDB/cif_attached_valid_1.lmdb}
+new_env_path: ${p:/home/psk6950/data/StructSticklerDB/cif_attached_valid_2.lmdb}
 
 recipe: ${p:pipelines/recipe/valid_filter_2.py}
 metadata_recipe: ${p:pipelines/recipe/valid_filter_2_metadata.py}
@@ -13,13 +13,7 @@ metadata_input:
   seqcluster_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/seq_cluster30.tsv}
   interacting_seq_clusters_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/interacting_seq_clusters30.tsv}
 
-convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_transformed
-parameters:
-  resolution_cutoff: 4.5
-  max_token_count: 2560
-  max_polymer_chain_count: 20
-  start_date: 2021-09-30
-  end_date: 2023-09-30
+convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_attached_transformed
 
 n_jobs: -1
-chunk_size: 20000
+chunk_size: 4000

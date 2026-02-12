@@ -8,7 +8,7 @@ from biomol.core import FeatureContainer, NodeFeature
 from biomol.core.types import FeatureContainerDict
 
 from pipelines.cifmol import CIFMol, CIFMolAttached
-from pipelines.constants import mol_type_map
+from pipelines.constants import mol_type_map, polymer_cluster_types
 from pipelines.instructions.seq_instructions import extract_sequence_from_cifmol
 
 
@@ -198,25 +198,39 @@ def filter_valid_2_clusters(
     interacting_seq_clusters: dict[str, list[str]],
 ) -> set[str]:
     """Filter valid_2 clusters to remove those that interact with train or valid_1 clusters."""
-    interacting_seq_clusters_set: set[tuple[str, str]] = set(
-        {(key, value[0]) for key, value in interacting_seq_clusters.items()},
-    )
+    # only polymer clusters are considered
+    polymer_identifiers = polymer_cluster_types
+    train_polymer_clusters = {c for c in train_clusters if c[1] in polymer_identifiers}
+    valid_1_polymer_clusters = {
+        c for c in valid_1_clusters if c[1] in polymer_identifiers
+    }
+
+    interacting_seq_clusters_set: set[tuple[str, str]] = set()
+    for key, value in interacting_seq_clusters.items():
+        c1, c2 = key, value[0]
+        if c1[1] in polymer_identifiers and c2[1] in polymer_identifiers:
+            interacting_seq_clusters_set.add((c1, c2))
+            interacting_seq_clusters_set.add((c2, c1))
+
     interacting_graph = nx.Graph()
-    interacting_graph.add_nodes_from(train_clusters)
-    interacting_graph.add_nodes_from(valid_1_clusters)
+    interacting_graph.add_nodes_from(train_polymer_clusters)
+    interacting_graph.add_nodes_from(valid_1_polymer_clusters)
     interacting_graph.add_edges_from(interacting_seq_clusters_set)
 
     connected_to_train: set[str] = set()
-    for t in train_clusters:
+    for t in train_polymer_clusters:
         if t in interacting_graph:
             connected_to_train |= nx.node_connected_component(interacting_graph, t)
-
     return set(valid_1_clusters) - connected_to_train
 
 
 def filter_cifmol_by_clusters(
     cifmol: CIFMolAttached,
     filtered_clusters: set[tuple[str, str]],
-) -> dict[str, dict]:
+) -> dict | None:
     """Filter CIFMol dictionary to keep only entries in the filtered clusters."""
-    breakpoint()
+    cluster_id_set = {str(c) for c in cifmol.chains.cluster_id.value}
+    # cluster id set is not a subset of filtered clusters, then return None
+    if not cluster_id_set.issubset(filtered_clusters):
+        return None
+    return cast("dict", cifmol.to_dict())

@@ -1,0 +1,6 @@
+# db extract
+db_path: ${p:/home/psk6950/data/StructSticklerDB/cif_attached_train.lmdb}
+convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_attached_transformed
+extract_recipe_path: ${p:/home/psk6950/StructStickler/pipelines/recipe/analyze_db_profile.py}
+project_func: pipelines.projection.projections.write_statistics
+output_data_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/train_summary.csv}

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from pipelines.constants import cluster_maps
+
 
 def write_fasta(data: dict[str, dict[str, dict[str, str]]], output_path: Path) -> None:
     """Write fasta dictionary to a fasta file."""
@@ -111,3 +113,57 @@ def write_filtered_seq_clusters(
     with output_path.open("w") as f:
         for src_seq_id, dst_seq_id in sorted(interacting_seq_clusters):
             f.write(f"{src_seq_id}\t{dst_seq_id}\n")
+
+
+def convert_to_type(
+    cluster_rep: str,
+    *,
+    merge_ligands: bool = True,
+) -> str:
+    """Convert a molecule type to its cluster representation.
+
+    Args:
+    cluster_rep (str): The cluster representation of the molecule type. (e.g. "P")
+
+    Returns
+    -------
+    str: The molecule type corresponding to the cluster representation. (e.g. "polypeptide(L)")
+    """
+    mol_types = cluster_maps.get(cluster_rep, "Unknown")
+    if merge_ligands and mol_types in {"Branched", "Non-polymer", "Unknown"}:
+        return "Ligand"
+    return mol_types
+
+
+def write_statistics(
+    data: dict[str, dict],
+    output_path: Path,
+) -> None:
+    """Write statistics to a tab-delimited file."""
+    whole_monomer_clusters = set()
+    whole_interface_clusters = set()
+    for inner_dict in data.values():
+        monomer_clusters, interface_clusters = (
+            inner_dict["monomer_clusters"],
+            inner_dict["interface_clusters"],
+        )
+        whole_monomer_clusters.update(monomer_clusters)
+        whole_interface_clusters.update(interface_clusters)
+    monomer_stats = {}
+    interface_stats = {}
+    for cluster_rep in whole_monomer_clusters:
+        mol_type = convert_to_type(cluster_rep[1])
+        monomer_stats[mol_type] = monomer_stats.get(mol_type, 0) + 1
+    for src_rep, dst_rep in whole_interface_clusters:
+        src_type = convert_to_type(src_rep[1])
+        dst_type = convert_to_type(dst_rep[1])
+        type_pair = tuple(sorted([src_type, dst_type]))
+        interface_stats[type_pair] = interface_stats.get(type_pair, 0) + 1
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w") as f:
+        f.write("Monomer Cluster Statistics:\n")
+        for mol_type, count in monomer_stats.items():
+            f.write(f"{mol_type},{count}\n")
+        f.write("\nInterface Cluster Statistics:\n")
+        for type_pair, count in interface_stats.items():
+            f.write(f"{type_pair[0]}-{type_pair[1]},{count}\n")

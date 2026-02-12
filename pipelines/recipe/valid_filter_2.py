@@ -12,7 +12,7 @@ recipe = RecipeBook()
 
 recipe.add(
     targets=[
-        (("filtered_cifmol_dict", dict),),
+        (("cifmol_attached_dict", dict),),
     ],
     instruction=filter_cifmol_by_clusters,
     inputs=[
@@ -20,11 +20,10 @@ recipe.add(
             "kwargs": {
                 "cifmol": ("cifmol", CIFMolAttached),
                 "filtered_clusters": ("filtered_valid_2_clusters", set),
-                "raw_fasta_dict": ("raw_fasta_dict", dict),
             },
         },
     ],
 )
 
 RECIPE = recipe
-TARGETS = ["filtered_cifmol_dict"]
+TARGETS = ["cifmol_attached_dict"]

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, cast
 
-from pipelines.cifmol import CIFMol
+from pipelines.cifmol import CIFMol, CIFMolAttached
 
 if TYPE_CHECKING:
     from biomol.core.types import BioMolDict
@@ -39,4 +39,28 @@ def convert_to_cifmol_transformed(
         item = _item["cifmol_dict"]
         item = cast("BioMolDict", item)
         cifmol_dict[cif_key] = {"cifmol": CIFMol.from_dict(item)}
+    return cifmol_dict
+
+
+def convert_to_cifmol_attached_transformed(
+    value: dict,
+) -> dict[str, dict[str, CIFMolAttached]]:
+    """Convert a dictionary containing CIFMol data into a dictionary of CIFMol objects."""
+    cifmol_dict: dict[str, dict[str, CIFMolAttached]] = {}
+    for cif_key, _item in value.items():
+        item = _item["cifmol_attached_dict"]
+        item = cast("BioMolDict", item)
+        cifmol_dict[cif_key] = {"cifmol": CIFMolAttached.from_dict(item)}
+    return cifmol_dict
+
+
+def convert_to_cifmol_attached_filtered(
+    value: dict,
+) -> dict[str, dict[str, CIFMolAttached]]:
+    """Convert a dictionary containing CIFMol data into a dictionary of CIFMol objects."""
+    cifmol_dict: dict[str, dict[str, CIFMolAttached]] = {}
+    for cif_key, _item in value.items():
+        item = _item["filtered_cifmol_dict"]
+        item = cast("BioMolDict", item)
+        cifmol_dict[cif_key] = {"cifmol": CIFMolAttached.from_dict(item)}
     return cifmol_dict
