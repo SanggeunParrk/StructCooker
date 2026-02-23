@@ -8,7 +8,6 @@ output/
 outputs/
 *.sh
 wandb/
-submits/
 *.pyc
 __pycache__/
 *.py[cod]
