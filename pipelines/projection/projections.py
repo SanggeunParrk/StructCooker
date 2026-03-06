@@ -167,3 +167,15 @@ def write_statistics(
         f.write("\nInterface Cluster Statistics:\n")
         for type_pair, count in interface_stats.items():
             f.write(f"{type_pair[0]}-{type_pair[1]},{count}\n")
+
+def write_each_ccd_cif(
+    data: dict[str, dict[str,str]],
+    output_path: Path,
+):
+    cif_dict = data["each_cif_lines"]
+    print(f"Writing {len(cif_dict)} CIF files to {output_path}...")
+    for cif_id, cif_lines in cif_dict.items():
+        cif_file_path = output_path / f"{cif_id[0]}" / f"{cif_id}.cif"
+        cif_file_path.parent.mkdir(parents=True, exist_ok=True)
+        with cif_file_path.open("w") as f:
+            f.writelines(cif_lines)

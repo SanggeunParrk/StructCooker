@@ -1,0 +1,12 @@
+inputs: 
+  db_ur30: ${p:/public_data/db_protSeq/uniref30/2022_02/UniRef30_2022_02}
+  db_bfd: ${p:/public_data/db_protSeq/bfd/bfd_metaclust_clu_complete_id30_c90_final_seq.sorted_opt}
+  hhsuite_bin_dir: ${p:/home/software/git/hh-suite/build/bin/}
+  signalp_mode: "fast"
+  cpu_per_job: 4
+  mem_per_job: 20 # in GB, total 
+  seq_id_map_path: ${p:/public_data02/BioMolDB_20260224/metadata/seq_id_map.tsv}
+  output_dir: ${p:/public_data02/BioMolDB_20260224/msa/}
+split_recipe_path: ${p:/home/psk6950/practice/StructCooker/pipelines/recipe/load_protein_seqs.py}
+recipe_path: ${p:/home/psk6950/practice/StructCooker/pipelines/recipe/msa_search.py}
+n_jobs: 20 # total 80 CPUs, 4 CPUs per job for HHblits

@@ -10,6 +10,7 @@ from omegaconf import OmegaConf
 
 from pipelines.utils import load_config
 from pipelines.utils.lmdb import extract_key_list, read_lmdb
+from pipelines.utils.data_process import parallel_process
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,6 +27,47 @@ _ENV_CACHE: dict[str, lmdb.Environment] = {}
 def cli() -> None:
     """Build and merge LMDB databases from CIF files."""
 
+
+@cli.command("data_transform_parallel")
+@click.argument("config", type=click.Path(exists=True, path_type=Path))
+def data_transform_parallel(
+    config: Path,
+) -> None:
+    """Load data and project down."""
+    config_dict = load_config(config)
+
+    # necessary fields : inputs, recipe_path, project_func, output_data_path
+    necessary_fields = [
+        "inputs",
+        "split_recipe_path",
+        "recipe_path",
+    ]
+    for field in necessary_fields:
+        if field not in config_dict:
+            msg = f"Missing necessary field '{field}' in config."
+            raise KeyError(msg)
+
+    results = parse_dict(
+        datadict=config_dict["inputs"],
+        recipe_path=config_dict["split_recipe_path"],
+        transform_func=config_dict.get("transform_func", None),
+    )
+    data_list = results.get("data_list", None)
+    if data_list is None:
+        msg = "Expected 'data_list' key in the output of load_recipe."
+        raise KeyError(msg)
+    
+    results = parallel_process(
+        data_list,
+        inputs=config_dict["inputs"],
+        recipe=config_dict["recipe_path"],
+        transform_func=config_dict.get("transform_func", None),
+        chunk_size=config_dict.get("chunk_size", 10_000),
+        n_jobs=config_dict.get("n_jobs", -1),
+        test_run=config_dict.get("test_run", True),
+    )
+
+    click.echo("Data transformation complete.")
 
 @cli.command("data_transform")
 @click.argument("config", type=click.Path(exists=True, path_type=Path))

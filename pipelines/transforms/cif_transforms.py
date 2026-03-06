@@ -1,0 +1,36 @@
+from pathlib import Path
+from typing import Any
+
+from Bio.PDB.MMCIF2Dict import MMCIF2Dict as mmcif2dict  # noqa: N813
+
+
+def dot_transform(key: str) -> list[str]:
+    """Transform a dot-separated key into a list of keys."""
+    return key.split(".")
+
+
+def get_cif_data(cif_path: Path) -> dict[str, Any]:
+    """Parse a CIF file and return its data as a dictionary."""
+    if cif_path.suffix == ".gz":
+        import gzip
+
+        with gzip.open(cif_path, "rt") as f:
+            cif_raw_data = mmcif2dict(f)
+    elif cif_path.suffix == ".cif":
+        cif_raw_data = mmcif2dict(cif_path)
+    else:
+        msg = f"Unsupported file format: {cif_path}"
+        raise ValueError(msg)
+    # Reformat the mmcif2dict output to a more organized structure
+    # into a nested dictionary: {key1 : {key2: [values]}}
+    organized_dict = {}
+    key_list = list(cif_raw_data.keys())
+    for key in key_list:
+        if "." not in key:
+            organized_dict[key] = cif_raw_data[key]
+            continue
+        main_key, sub_key = key.split(".")
+        if main_key not in organized_dict:
+            organized_dict[main_key] = {}
+        organized_dict[main_key][sub_key] = cif_raw_data[key]
+    return organized_dict

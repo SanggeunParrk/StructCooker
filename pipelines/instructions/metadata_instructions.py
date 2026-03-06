@@ -196,3 +196,47 @@ def classify_seq_clusters(
             raise KeyError(msg)
         classified_clusters.add(seqcluster)
     return classified_clusters
+
+def load_fasta(
+    fasta_path: Path,
+) -> dict[str, str]:
+    """Load a FASTA file and return its contents as a dictionary."""
+    fasta_dict = {}
+    with fasta_path.open("r", encoding="utf-8") as f:
+        lines = f.readlines()
+        current_header = None
+        for line in lines:
+            line = line.strip()
+            if line.startswith(">"):
+                current_header = line[1:]  # Remove the '>' character
+                fasta_dict[current_header] = ""
+            elif current_header is not None:
+                fasta_dict[current_header] += line
+            else:
+                msg = "FASTA format error: sequence data found before any header."
+                raise ValueError(msg)
+    return fasta_dict
+
+
+def extract_protein_seqs(
+    seqid2seq: dict[str, list[str]],
+    remove_unknown: bool = True,
+) -> list[dict]:
+    """Extract protein sequences from the seqid2seq mapping."""
+    protein_seqs = []
+    for seqid, seqs in seqid2seq.items():
+        if len(seqs) == 0:
+            msg = f"No sequence found for sequence ID {seqid}."
+            raise ValueError(msg)
+        if len(seqs) > 1:
+            msg = f"Multiple sequences found for sequence ID {seqid}."
+            raise ValueError(msg)
+        seq = seqs[0]
+        mol_identifier = seqid[0]
+        if mol_identifier == "P":
+            if remove_unknown:
+                is_unknown = all(aa == "X" for aa in seq)
+                if is_unknown:
+                    continue
+            protein_seqs.append({"seqid": seqid, "sequence": seq})
+    return protein_seqs

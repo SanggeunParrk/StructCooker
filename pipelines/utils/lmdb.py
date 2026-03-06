@@ -58,6 +58,7 @@ def build_lmdb(  # noqa: PLR0913
     chunk_size: int = 10_000,
     n_jobs: int = -1,
     map_size: int = int(1e12),  # ~1TB
+    test_run: bool = True,
     **extra_kwargs: Any,  # noqa: ANN401
 ) -> None:
     """
@@ -99,6 +100,17 @@ def build_lmdb(  # noqa: PLR0913
         if data.name.split(".")[0] not in _already_parsed_keys
     ]
     logger.info("To be parsed %d entries.", len(filtered_data_list))
+
+    if test_run:
+        test_files = filtered_data_list[:10]
+        test_results = []
+        for data_file in test_files:
+            print(f"Test processing {data_file}...")
+            result = _process_file(data_file)
+            if result is not None:
+                test_results.append(result)
+            if result[2] is not None:
+                raise result[2]
 
     # --- Parallel processing ---
     for i in range(0, len(filtered_data_list), chunk_size):

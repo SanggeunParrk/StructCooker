@@ -1,0 +1,14 @@
+data_dir: ${p:/public_data02/BioMolDB_20260224/cif/raw}
+file_pattern: "*.cif*"
+
+env_path: ${p:/public_data02/BioMolDB_20260224/cif.lmdb}
+
+recipe: ${p:pipelines/recipe/cif_recipe_book.py}
+load_func: pipelines.transforms.cif_transforms.get_cif_data
+transform_func: pipelines.transforms.cif_transforms.dot_transform
+
+ccd_db_path: ${p:/public_data/CCD/biomol_CCD_202602.lmdb}
+
+n_jobs: -1
+chunk_size: 20000
+test_run: false

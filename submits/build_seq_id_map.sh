@@ -1,10 +1,9 @@
 #!/bin/bash
 #SBATCH -J build_seq_id_map
 #SBATCH --ntasks-per-node=1
-#SBATCH -c 32
-#SBATCH --mem=64g
-#SBATCH -p h100
-#SBATCH --qos cssb_h100
+#SBATCH -c 40
+#SBATCH --mem=200g
+#SBATCH -p cpu
 #SBATCH -w node02
 #SBATCH -o ./logs/build_seq_id_map.out
 #SBATCH -e ./logs/build_seq_id_map.err
