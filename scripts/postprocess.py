@@ -23,6 +23,21 @@ OmegaConf.register_new_resolver("p", lambda x: Path(x))
 _ENV_CACHE: dict[str, lmdb.Environment] = {}
 
 
+def _resolve_cli_or_config_int(
+    cli_value: int | None,
+    config_dict: dict,
+    candidate_keys: tuple[str, ...],
+) -> int | None:
+    """Resolve an optional integer from CLI value first, then config keys."""
+    if cli_value is not None:
+        return cli_value
+    for key in candidate_keys:
+        value = config_dict.get(key, None)
+        if value is not None:
+            return int(value)
+    return None
+
+
 @click.group()
 def cli() -> None:
     """Build and merge LMDB databases from CIF files."""
@@ -30,8 +45,22 @@ def cli() -> None:
 
 @cli.command("data_transform_parallel")
 @click.argument("config", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--node-rank",
+    type=int,
+    default=None,
+    help="0-based node rank for multi-node processing.",
+)
+@click.option(
+    "--node-count",
+    type=int,
+    default=None,
+    help="Total number of nodes for multi-node processing.",
+)
 def data_transform_parallel(
     config: Path,
+    node_rank: int | None,
+    node_count: int | None,
 ) -> None:
     """Load data and project down."""
     config_dict = load_config(config)
@@ -56,7 +85,18 @@ def data_transform_parallel(
     if data_list is None:
         msg = "Expected 'data_list' key in the output of load_recipe."
         raise KeyError(msg)
-    
+
+    resolved_node_rank = _resolve_cli_or_config_int(
+        cli_value=node_rank,
+        config_dict=config_dict,
+        candidate_keys=("node_rank", "rank", "shard_idx"),
+    )
+    resolved_node_count = _resolve_cli_or_config_int(
+        cli_value=node_count,
+        config_dict=config_dict,
+        candidate_keys=("node_count", "world_size", "n_shards"),
+    )
+
     results = parallel_process(
         data_list,
         inputs=config_dict["inputs"],
@@ -65,6 +105,8 @@ def data_transform_parallel(
         chunk_size=config_dict.get("chunk_size", 10_000),
         n_jobs=config_dict.get("n_jobs", -1),
         test_run=config_dict.get("test_run", True),
+        node_rank=resolved_node_rank,
+        node_count=resolved_node_count,
     )
 
     click.echo("Data transformation complete.")
