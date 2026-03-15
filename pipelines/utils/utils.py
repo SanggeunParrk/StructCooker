@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Any
 
 from omegaconf import OmegaConf
+import fnmatch
+import os
 
 
 def dotted_to_obj(path: str) -> object:
@@ -35,5 +37,15 @@ def load_config(config_path: Path) -> dict[str, Any]:
 
 
 def load_data_list(data_dir: Path, pattern: str = "*.cif*") -> list[Path]:
-    """Load a list of data file paths from a directory."""
-    return list(data_dir.rglob(pattern))
+    result = []
+    
+    def _scan(dir_path: Path):
+        with os.scandir(dir_path) as it:
+            for entry in it:
+                if entry.is_dir(follow_symlinks=False):
+                    _scan(Path(entry.path))
+                elif fnmatch.fnmatch(entry.name, pattern):
+                    result.append(Path(entry.path))
+    
+    _scan(data_dir)
+    return result
