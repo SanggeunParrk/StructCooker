@@ -1396,7 +1396,7 @@ def build_assembly_dict() -> Callable[..., dict[str, dict[str, NDArray]] | None]
         for residue_idx, atom_id in zip(residue_indices, atom_id_list, strict=True):
             _atom_indices = index_table.residues_to_atoms(np.array([residue_idx]))
 
-            _atom_indices = np.where(atom_id_in_container[_atom_indices] == atom_id)[0]
+            _atom_indices = _atom_indices[np.where(atom_id_in_container[_atom_indices] == atom_id)[0]]
             if len(_atom_indices) == 0:
                 atom_indices.append(np.array([-1], dtype=int))  # e.g. hydrogen
             else:

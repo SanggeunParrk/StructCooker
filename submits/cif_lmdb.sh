@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -J cif_DB
 #SBATCH --ntasks-per-node=1         
-#SBATCH -c 64       
-#SBATCH --mem=400g
+#SBATCH -c 32       
+#SBATCH --mem=600g
 #SBATCH -p gpu
-#SBATCH -w gpu05
+#SBATCH -w gpu04
 #SBATCH -o ./logs/cif_lmdb_%a.out
 #SBATCH -e ./logs/cif_lmdb_%a.err
 #SBATCH --array=0
