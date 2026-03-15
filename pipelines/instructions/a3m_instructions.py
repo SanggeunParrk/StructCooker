@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 
 from biomol.core.container import FeatureContainer
 from biomol.core.feature import NodeFeature
-from utils.mapping import ResidueMapping
+from pipelines.utils.mapping import ResidueMapping
 
 InputType = TypeVar("InputType", str, int, float)
 FeatureType = TypeVar("FeatureType")
@@ -20,12 +20,15 @@ def parse_sequence() -> Callable[..., dict[str, NodeFeature]]:
 
     def _worker(
         raw_sequences: list[str],
-        a3m_type: str = "protein",
+        a3m_type: str | None = "protein",
     ) -> dict[str, NodeFeature]:
         table = str.maketrans(dict.fromkeys(string.ascii_lowercase))
 
         residue_mapping = ResidueMapping()
         max_idx = residue_mapping.MAX_INDEX
+
+        if a3m_type is None:
+            a3m_type = "protein"
 
         match a3m_type.lower():
             case "protein":
