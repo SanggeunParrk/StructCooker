@@ -18,7 +18,7 @@ recipe.add(
     inputs=[
         {
             "kwargs": {
-                "input_a3m_path": ("input_fasta", Path),
+                "input_a3m_path": ("input_a3m_path", Path),
                 "output_path": ("output_path", Path),
             },
         },
