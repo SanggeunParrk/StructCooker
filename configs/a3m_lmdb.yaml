@@ -4,7 +4,7 @@ file_pattern: "P*.a3m"
 env_path: ${p:/data/psk6950/BioMolDB_20260224/a3m.lmdb}
 
 recipe: ${p:pipelines/recipe/a3m_recipe_book.py}
-load_func: pipelines.transforms.a3m_transform.get_a3m_data
+load_func: pipelines.transforms.a3m_transforms.get_a3m_data
 
 n_jobs: -1
 chunk_size: 10000

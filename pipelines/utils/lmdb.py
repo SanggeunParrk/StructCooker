@@ -112,7 +112,7 @@ def build_lmdb(  # noqa: PLR0913
             if result[2] is not None:
                 raise result[2]
     
-    assert 1==0
+
 
     # --- Parallel processing ---
     for i in range(0, len(filtered_data_list), chunk_size):

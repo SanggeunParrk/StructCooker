@@ -54,10 +54,12 @@ def build(
     """
     map_size = int(map_size)
     config_dict = load_config(config)
+    click.echo("Start load data")
     data_list = load_data_list(
         config_dict["data_dir"],
         pattern=config_dict["file_pattern"],
     )
+    click.echo("End load data")
 
     if shard_idx is not None:
         if shard_idx < 0 or shard_idx >= n_shards:

@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH -J hhmake
-#SBATCH --nodes=9
+#SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH -c 112
 #SBATCH --mem=491g
-#SBATCH -p cpu-long
-#SBATCH --qos=cpu-long-q
+#SBATCH -p cpu-standard
+#SBATCH --qos=cpu-standard-q
 #SBATCH -o ./logs/hhmake.out
 #SBATCH -e ./logs/hhmake.err
 
