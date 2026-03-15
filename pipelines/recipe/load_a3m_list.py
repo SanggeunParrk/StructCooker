@@ -16,7 +16,8 @@ recipe.add(
     inputs=[
         {
             "kwargs": {
-				"data_dir": ("data_dir", dict),
+				"data_dir": ("data_dir", Path),
+				"output_dir": ("output_dir", Path),
             },
         },
     ],
