@@ -1,0 +1,7 @@
+inputs: 
+  data_dir: ${p:/data/psk6950/msa/}
+  file_pattern: "P*.a3m"
+split_recipe_path: ${p:/home/psk6950/StructCooker/pipelines/recipe/load_a3m_list.py}
+recipe_path: ${p:/home/psk6950/StructCooker/pipelines/recipe/hhmake.py}
+n_jobs: 112 # total 112 CPUs, 4 CPUs per job for HHblits
+test_run: true
