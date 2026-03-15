@@ -192,6 +192,6 @@ def num_found(msa_db_path: Path) -> int:
 
 if __name__ == "__main__":
     seq_id_map_path = Path("/data/psk6950/BioMolDB_20260224/metadata/seq_id_map.tsv")
-    old_msa_path = Path("/data/psk6950/MSA/new_hash_a3m")
+    old_msa_path = Path("/data/psk6950/MSA/PDB_2024Mar18/new_hash_a3m")
     new_msa_path = Path("/data/psk6950/msa/")	
     main(seq_id_map_path, old_msa_path, new_msa_path)
