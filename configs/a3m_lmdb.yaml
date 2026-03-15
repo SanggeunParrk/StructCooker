@@ -1,0 +1,10 @@
+data_dir: ${p:/data/psk6950/msa/}
+file_pattern: "P*.a3m"
+
+env_path: ${p:/data/psk6950/BioMolDB_20260224/a3m.lmdb}
+
+recipe: ${p:pipelines/recipe/a3m_recipe_book.py}
+
+n_jobs: -1
+chunk_size: 10000
+test_run: true
