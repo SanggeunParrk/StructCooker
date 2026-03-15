@@ -20,7 +20,7 @@ def _run_command(
         raise RuntimeError(msg)
 
 
-def load_a3m_list(data_dir: Path, pattern: str = "P*.a3m") -> list[dict[str, Path]]:
+def load_a3m_list(data_dir: Path, output_dir: Path, pattern: str = "P*.a3m") -> list[dict[str, Path]]:
     result = []
     def _scan(dir_path: Path):
         with os.scandir(dir_path) as it:
@@ -31,7 +31,7 @@ def load_a3m_list(data_dir: Path, pattern: str = "P*.a3m") -> list[dict[str, Pat
                     result.append(
                         {
                             "input_a3m_path": Path(entry.path),
-                            "output_path": Path(entry.path).with_suffix(".hhm"),
+                            "output_path": output_dir / f"{entry.name}.hhm",
                         }
                     )
     
