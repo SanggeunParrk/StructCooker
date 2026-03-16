@@ -2,7 +2,7 @@ inputs:
   tmp_dir: ${p:/public_data02/BioMolDB_20260224/tmp/seq_cluster30}
   seq_id_map_path: ${p:/public_data02/BioMolDB_20260224/metadata/seq_id_map.tsv}
   fasta_path: ${p:/public_data02/BioMolDB_20260224/fasta/merged.fasta}
-  sabdab_summary_path: ${p:/public_data02/BioMolDB_20260224/SabDab/sabdab_summary_all.tsv}
+  sabdab_summary_path: ${p:/public_data02/BioMolDB_20260224/SabDab/sabdab_summary_all_20260316.tsv}
   mmseqs2_seq_id: 0.3
   mmseqs2_cov: 0.8
   mmseqs2_covmode: "0"

@@ -3,8 +3,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH -c 80
 #SBATCH --mem=480g
-#SBATCH -p cpu
-#SBATCH -w node02
+#SBATCH -p gpu
+#SBATCH -w gpu05
 #SBATCH -o ./logs/seq_cluster30.out
 #SBATCH -e ./logs/seq_cluster30.err
 

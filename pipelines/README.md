@@ -4,7 +4,7 @@
 4. cif lmdb (Note that there are broken cif files and corresponding fixed file so you have to replace it.)
 5. extract fasta files
 6. build seq id map (if there exists old seq id map you can use it.)
-7. download sabdab_summary.tsv
+7. download sabdab_summary_all.tsv (Note that sabdab is updated every week)
 8. sequence cluster
 9. msa search (You have to download seq db)
 10. template search (You have to build template db)

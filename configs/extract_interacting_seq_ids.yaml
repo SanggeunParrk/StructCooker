@@ -1,6 +1,6 @@
-db_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cif_raw.lmdb}
+db_path: ${p:/public_data02/BioMolDB_20260224/cif_raw.lmdb}
 extract_recipe_path: ${p:/home/psk6950/StructStickler/pipelines/recipe/extract_interacting_seq_ids.py}
 project_func: pipelines.projection.projections.write_filtered_seq_ids
-output_data_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/interacting_seq_ids.tsv}
+output_data_path: ${p:/public_data02/BioMolDB_20260224/metadata/interacting_seq_ids.tsv}
 additional_inputs:
-  seqid2seq_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/seq_id_map.tsv}
+  seqid2seq_path: ${p:/public_data02/BioMolDB_20260224/metadata/seq_id_map.tsv}
