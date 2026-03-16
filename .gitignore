@@ -6,7 +6,6 @@ pixi.lock
 *.mmcif
 output/
 outputs/
-*.sh
 wandb/
 *.pyc
 __pycache__/
@@ -15,3 +14,4 @@ __pycache__/
 *.pkl
 mmseqs/
 data_util/
+signalp6_fast

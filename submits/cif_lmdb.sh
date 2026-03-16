@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH -J cif_DB
+#SBATCH -J cif_DB_급함
 #SBATCH --ntasks-per-node=1         
-#SBATCH -c 32       
-#SBATCH --mem=600g
+#SBATCH -c 16     
+#SBATCH --mem=800g
 #SBATCH -p gpu
-#SBATCH -w gpu04
+#SBATCH -w gpu05
 #SBATCH -o ./logs/cif_lmdb_%a.out
 #SBATCH -e ./logs/cif_lmdb_%a.err
 #SBATCH --array=0

@@ -56,4 +56,3 @@ def run_hhmake(input_a3m_path: Path, output_path: Path | None) -> str:
     except Exception as e:
         msg = f"Error running hhmake for {input_a3m_path}: {e}"
         raise RuntimeError(msg) from e
-    
