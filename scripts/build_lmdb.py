@@ -176,6 +176,16 @@ def rebuild(
         f"[Done] Built LMDB at {config_dict['new_env_path']} with {key_count} keys.",
     )
 
+@cli.command("check_db")
+@click.argument("db_path", type=click.Path(exists=True, path_type=Path))
+def check_db(db_path: Path) -> None:
+    env = lmdb.open(str(db_path), readonly=True, lock=False)
+    with env.begin() as txn:
+        cursor = txn.cursor()
+        key_count = sum(1 for _ in cursor)
+    env.close()
+    click.echo(f"{db_path}: {key_count} keys")
+
 
 # ==============================================================
 # Entrypoint
