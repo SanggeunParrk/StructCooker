@@ -10,8 +10,8 @@
 #SBATCH -e ./logs/link_a3m.err
 
 
-SRC_DIR="/data/psk6950/pdb_a3m_source"
-DEST_DIR="/data/psk6950/pdb100_a3m"
+SRC_DIR="/data/psk6950/msa"
+DEST_DIR="/data/psk6950/template_db/pdb100_20260224/a3m"
 
 find "$SRC_DIR" -type f -name "P*.a3m" | while read -r file; do
     ln -s "$file" "$DEST_DIR/$(basename "$file")"
