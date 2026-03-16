@@ -2,7 +2,7 @@ from pathlib import Path
 
 from datacooker import RecipeBook
 
-from pipelines.instructions.template_instructions import run_template_search
+from pipelines.instructions.template_instructions import run_hhsearch
 
 """Build a FASTA->MSA (SignalP + HHblits/HHfilter) Cooker."""
 
@@ -12,7 +12,7 @@ recipe.add(
     targets=[
         (("hhsearch_results", dict),),
     ],
-    instruction=run_template_search,
+    instruction=run_hhsearch,
     inputs=[
         {
             "kwargs": {

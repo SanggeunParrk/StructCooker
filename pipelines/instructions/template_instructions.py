@@ -105,7 +105,7 @@ def _hhsearch_command(
 
 
 
-def run_template_search(
+def run_hhsearch(
     msa_path: Path,
     hhr_path: Path,
     *,
@@ -127,6 +127,7 @@ def run_template_search(
         raise FileNotFoundError(msg)
 
     if _is_nonempty(hhr_path):
+        print(f"Output file {hhr_path} already exists and is non-empty. Skipping HHsearch for {msa_path}.")
         return f"Skip {hhr_path.name} (already exists and is non-empty)"
 
 
@@ -141,4 +142,5 @@ def run_template_search(
         ),
         env=hhsuite_env,
     )
+    print(f"HHsearch completed for {msa_path}, output saved to {hhr_path}")
     return f"Done {hhr_path.name}"
