@@ -1,14 +1,14 @@
 # rebuild
-old_env_path: ${p:/home/psk6950/data/StructSticklerDB/cif_train.lmdb}
-new_env_path: ${p:/home/psk6950/data/StructSticklerDB/cif_attached_train.lmdb}
+old_env_path: ${p:/public_data02/BioMolDB_20260224/cif_train.lmdb}
+new_env_path: ${p:/public_data02/BioMolDB_20260224/cif_attached_train.lmdb}
 
 recipe: ${p:pipelines/recipe/attach_metadata.py}
 metadata_recipe: ${p:pipelines/recipe/load_seq_metadata.py}
 
 metadata_input:
-  raw_fasta_path: ${p:/home/psk6950/data/StructSticklerDB/fasta/merged.fasta}
-  seqid2seq_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:/home/psk6950/data/StructSticklerDB/metadata/seq_cluster30.tsv}
+  raw_fasta_path: ${p:/public_data02/BioMolDB_20260224/fasta/merged.fasta}
+  seqid2seq_path: ${p:/public_data02/BioMolDB_20260224/metadata/seq_id_map.tsv}
+  seqcluster_path: ${p:/public_data02/BioMolDB_20260224/metadata/seq_cluster30.tsv}
 
 convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_transformed
 

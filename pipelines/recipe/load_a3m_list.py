@@ -18,6 +18,7 @@ recipe.add(
             "kwargs": {
 				"data_dir": ("data_dir", Path),
 				"output_dir": ("output_dir", Path),
+				"output_pattern": ("output_pattern", str),
             },
         },
     ],

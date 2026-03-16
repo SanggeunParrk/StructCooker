@@ -1,10 +1,9 @@
 #!/bin/bash
 #SBATCH -J valid_filter_1
 #SBATCH --ntasks-per-node=1
-#SBATCH -c 96
-#SBATCH --mem=800g
-#SBATCH --qos cssb_h100
-#SBATCH -p h100
+#SBATCH -c 72
+#SBATCH --mem=328g
+#SBATCH -p cpu
 #SBATCH -w node02
 #SBATCH -o ./logs/valid_filter_1.out
 #SBATCH -e ./logs/valid_filter_1.err

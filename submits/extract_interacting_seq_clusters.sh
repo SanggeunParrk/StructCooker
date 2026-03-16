@@ -3,9 +3,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH -c 96
 #SBATCH --mem=324g
-#SBATCH --qos cssb_h100
-#SBATCH -p h100
-#SBATCH -w node02
+#SBATCH -p gpu
+#SBATCH -w gpu05
 #SBATCH -o ./logs/extract_interacting_seq_clusters.out
 #SBATCH -e ./logs/extract_interacting_seq_clusters.err
 
