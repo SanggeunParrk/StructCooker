@@ -1,5 +1,5 @@
 inputs: 
-  input_dir: ${p:/data/psk6950/msa/}
+  data_dir: ${p:/data/psk6950/msa/}
   output_dir: ${p:/data/psk6950/msa_wo_lower/}
   output_pattern: ".a3m"
 split_recipe_path: ${p:/home/psk6950/StructCooker/pipelines/recipe/load_a3m_list.py}
