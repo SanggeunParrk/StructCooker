@@ -34,7 +34,7 @@ def load_a3m_list(data_dir: Path, output_dir: Path, pattern: str = "P*.a3m", out
                     result.append(
                         {
                             "input_a3m_path": Path(entry.path),
-                            "output_path": output_dir / f"{entry.name}{output_pattern}",
+                            "output_path": output_dir / f"{Path(entry.name).stem}{output_pattern}",
                         }
                     )
     
