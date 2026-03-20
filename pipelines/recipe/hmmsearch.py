@@ -32,6 +32,7 @@ recipe.add(
     inputs=[
         {
             "kwargs": {
+				"output_dir" : {"hmm_output_dir": Path},
                 "hmm_path": ("output_path", Path),
                 "fasta_path": ("fasta_path", Path),
             },
