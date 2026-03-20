@@ -156,6 +156,9 @@ def run_hmmbuild(input_a3m_path: Path, hmm_path: Path | None) -> str:
         str(hmm_path),
         str(input_a3m_path),
     ]
+    if hmm_path.exists() and hmm_path.stat().st_size > 0:
+        print(f"HMM file {hmm_path} already exists and is non-empty. Skipping hmmbuild for {input_a3m_path}.")
+        return f"Skip {hmm_path.name} (already exists and is non-empty)"
     try:
         _run_command(command)
         return "hmm file created at: " + str(hmm_path)
@@ -176,6 +179,9 @@ def run_hmmsearch(
         raise FileNotFoundError(msg)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"{hmm_path.stem}.out"
+    if output_path.exists() and output_path.stat().st_size > 0:
+        print(f"Output file {output_path} already exists and is non-empty. Skipping hmmsearch for {hmm_path}.")
+        return f"Skip {output_path.name} (already exists and is non-empty)"
     command = [
         "hmmsearch",
         "--noali",
