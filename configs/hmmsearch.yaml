@@ -1,6 +1,6 @@
 inputs: 
   fasta_path: ${p:/data/psk6950/BioMolDB_20260224/fasta/polypeptide_L.fasta}
-  data_dir: ${p:/data/psk6950/msa/}
+  data_dir: ${p:/data/psk6950/msa_wo_lower/}
   output_dir: ${p:/data/psk6950/hmm/}
   hhm_output_dir: ${p:/data/psk6950/hhm_output/}
   output_pattern: ".hmm"
