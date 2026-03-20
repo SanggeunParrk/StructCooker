@@ -164,6 +164,7 @@ def run_hmmbuild(input_a3m_path: Path, hmm_path: Path | None) -> str:
         raise RuntimeError(msg) from e
     
 def run_hmmsearch(
+    output_dir: Path,
     hmm_path: Path,
     fasta_path: Path,
 ) -> str:
@@ -173,6 +174,8 @@ def run_hmmsearch(
     if not _is_nonempty(fasta_path):
         msg = f"FASTA file does not exist or is empty: {fasta_path}"
         raise FileNotFoundError(msg)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{hmm_path.stem}.out"
     command = [
         "hmmsearch",
         "--noali",
@@ -192,6 +195,8 @@ def run_hmmsearch(
         "100",
         str(hmm_path),
         str(fasta_path),
+        ">",  # redirect output to file
+        str(output_path),
     ]
     try:
         _run_command(command)
