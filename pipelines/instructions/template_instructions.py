@@ -144,3 +144,58 @@ def run_hhsearch(
     )
     print(f"HHsearch completed for {msa_path}, output saved to {hhr_path}")
     return f"Done {hhr_path.name}"
+
+
+
+def run_hmmbuild(input_a3m_path: Path, hmm_path: Path | None) -> str:
+    # run hmmbuild to convert a3m to hmm
+    if hmm_path is None:
+        hmm_path = input_a3m_path.with_suffix(".hmm")
+    command = [
+        "hmmbuild",
+        str(hmm_path),
+        str(input_a3m_path),
+    ]
+    try:
+        _run_command(command)
+        return "hmm file created at: " + str(hmm_path)
+    except Exception as e:
+        msg = f"Error running hmmbuild for {input_a3m_path}: {e}"
+        raise RuntimeError(msg) from e
+    
+def run_hmmsearch(
+    hmm_path: Path,
+    fasta_path: Path,
+) -> str:
+    if not _is_nonempty(hmm_path):
+        msg = f"HMM file does not exist or is empty: {hmm_path}"
+        raise FileNotFoundError(msg)
+    if not _is_nonempty(fasta_path):
+        msg = f"FASTA file does not exist or is empty: {fasta_path}"
+        raise FileNotFoundError(msg)
+    command = [
+        "hmmsearch",
+        "--noali",
+        "--F1",
+        "0.1",
+        "--F2",
+        "0.1",
+        "--F3",
+        "0.1",
+        "--E",
+        "100",
+        "--incE",
+        "100",
+        "--domE",
+        "100",
+        "--incdomE",
+        "100",
+        str(hmm_path),
+        str(fasta_path),
+    ]
+    try:
+        _run_command(command)
+        return f"hmmsearch completed for {hmm_path} against {fasta_path}"
+    except Exception as e:
+        msg = f"Error running hmmsearch for {hmm_path}: {e}"
+        raise RuntimeError(msg) from e

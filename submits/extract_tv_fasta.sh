@@ -1,10 +1,9 @@
 #!/bin/bash
 #SBATCH -J extract_tv_fasta
 #SBATCH --ntasks-per-node=1
-#SBATCH -c 96
-#SBATCH --mem=400g
-#SBATCH --qos cssb_h100
-#SBATCH -p h100
+#SBATCH -c 40
+#SBATCH --mem=200g
+#SBATCH -p cpu
 #SBATCH -w node02
 #SBATCH -o ./logs/extract_tv_fasta.out
 #SBATCH -e ./logs/extract_tv_fasta.err

@@ -1,0 +1,9 @@
+inputs: 
+  fasta_path: ${p:/data/psk6950/BioMolDB_20260224/fasta/polypeptide_L.fasta}
+  input_dir: ${p:/data/psk6950/msa/}
+  output_dir: ${p:/data/psk6950/hmm/}
+  output_pattern: ".hmm"
+split_recipe_path: ${p:/home/psk6950/StructCooker/pipelines/recipe/load_a3m_list.py}
+recipe_path: ${p:/home/psk6950/StructCooker/pipelines/recipe/hhmsearch.py}
+n_jobs: -1 # total 80 CPUs, 4 CPUs per job for HHblits
+test_run: false

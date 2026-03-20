@@ -1,0 +1,20 @@
+# rebuild
+old_env_path: ${p:/public_data02/BioMolDB_20260224/cif_raw.lmdb}
+new_env_path: ${p:/public_data02/BioMolDB_20260224/cif_train_20260224_res9_chain300.lmdb}
+
+recipe: ${p:pipelines/recipe/train_filter.py}
+metadata_recipe: ${p:pipelines/recipe/load_signalp.py}
+
+metadata_input:
+  signalp_dir: ${p:/public_data02/BioMolDB_20260224/signalp}
+  seqid2seq_path: ${p:/public_data02/BioMolDB_20260224/metadata/seq_id_map.tsv}
+
+convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_dict
+parameters:
+  resolution_cutoff: 9.0
+  max_polymer_chain_count: 300
+  start_date: null
+  end_date: 2026-03-01
+
+n_jobs: -1
+chunk_size: 20000
