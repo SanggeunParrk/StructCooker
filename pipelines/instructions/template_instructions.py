@@ -199,3 +199,20 @@ def run_hmmsearch(
     except Exception as e:
         msg = f"Error running hmmsearch for {hmm_path}: {e}"
         raise RuntimeError(msg) from e
+
+def remove_lower_from_a3m(input_a3m_path: Path, output_path: Path | None) -> str:
+    if output_path is None:
+        output_path = input_a3m_path.with_suffix(".no_lower.a3m")
+    try:
+        with input_a3m_path.open("r") as infile, output_path.open("w") as outfile:
+            for line in infile:
+                if line.startswith(">"):
+                    outfile.write(line)
+                else:
+                    # remove all lowercase letters from the sequence lines
+                    line = ''.join(c for c in line if not c.islower())
+                    outfile.write(line)
+        return f"Lowercase letters removed from {input_a3m_path}, saved to {output_path}"
+    except Exception as e:
+        msg = f"Error processing {input_a3m_path} to remove lowercase letters: {e}"
+        raise RuntimeError(msg) from e
