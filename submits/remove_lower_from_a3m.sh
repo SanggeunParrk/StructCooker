@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH -J remove_lower_from_a3m
-#SBATCH --nodes=12
 #SBATCH --ntasks-per-node=1
 #SBATCH -c 112
 #SBATCH --mem=491g
