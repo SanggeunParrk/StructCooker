@@ -201,7 +201,7 @@ def run_hmmsearch(
         "100",
         str(hmm_path),
         str(fasta_path),
-        ">",  # redirect output to file
+        "-o",  # redirect output to file
         str(output_path),
     ]
     try:
