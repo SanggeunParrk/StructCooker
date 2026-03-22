@@ -199,10 +199,10 @@ def run_hmmsearch(
         "100",
         "--incdomE",
         "100",
+        "-o",
+        str(output_path),
         str(hmm_path),
         str(fasta_path),
-        "-o",  # redirect output to file
-        str(output_path),
     ]
     try:
         _run_command(command)
