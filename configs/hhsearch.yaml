@@ -3,7 +3,7 @@ inputs:
   hhsuite_bin_dir: ${p:/home/psk6950/bin/}
   cpu_per_job: 4
   mem_per_job: 16 # in GB, total
-  input_dir: ${p:/data/psk6950/msa/}
+  data_dir: ${p:/data/psk6950/msa/}
   output_dir: ${p:/data/psk6950/hhr/}
   output_pattern: ".hhr"
 split_recipe_path: ${p:/home/psk6950/StructCooker/pipelines/recipe/load_a3m_list.py}

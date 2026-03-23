@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -J hhsearch
-#SBATCH --nodes=12
+#SBATCH --nodes=9
 #SBATCH --ntasks-per-node=1
 #SBATCH -c 112
 #SBATCH --mem=491g

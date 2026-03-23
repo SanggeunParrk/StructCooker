@@ -160,4 +160,15 @@ def parallel_process(  # noqa: PLR0913
             delayed(_process_item)(data) for data in data_chunk
         )
         results.extend(_results)
+    
+    error_count = sum(1 for _, error in results if error is not None)
+    logger.info("Processing completed with %d errors out of %d entries.", error_count, len(results))
+    if error_count > 0:
+        logger.info("Sample errors:")
+        for i, (_, error) in enumerate(results):
+            if error is not None:
+                logger.info("Error %d: %s", i + 1, str(error))
+                if i >= 9:
+                    break
+
     return results

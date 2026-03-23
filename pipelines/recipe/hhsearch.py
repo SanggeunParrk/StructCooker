@@ -16,8 +16,8 @@ recipe.add(
     inputs=[
         {
             "kwargs": {
-                "msa_path": ("msa_path", Path),
-                "hhr_path": ("hhr_path", Path),
+                "msa_path": ("input_a3m_path", Path),
+                "hhr_path": ("output_path", Path),
                 "cpu": ("cpu_per_job", int),
                 "mem": ("mem_per_job", int),
                 "db_template": ("db_template", str | Path),

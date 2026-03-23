@@ -9,4 +9,4 @@
 #SBATCH -o ./logs/dw_af.out
 #SBATCH -e ./logs/dw_af.err
 
-lftp -e "mirror --parallel=8 -c /pub/databases/alphafold/collaborations/nvda/msas/ ./msas; quit" ftp://ftp.ebi.ac.uk
+lftp -e "mirror --parallel=8 -c /pub/databases/alphafold/collaborations/nvda/msas/ /data/psk6950/AFDB/msas; quit" ftp://ftp.ebi.ac.uk
