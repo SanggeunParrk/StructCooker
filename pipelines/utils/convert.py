@@ -20,14 +20,22 @@ def flatten_data(data: dict) -> tuple[dict, dict]:
             buffer = BytesIO()
             np.save(buffer, np.ascontiguousarray(value), allow_pickle=True)
             flatten[_key] = buffer.getvalue()
+
         elif isinstance(value, dict):
             _template, _flatten = flatten_data(value)
             template[key] = _template
             flatten.update(_flatten)
-        elif isinstance(value, FeatureContainer | IndexTable):
+
+        elif isinstance(value, FeatureContainer):
             _template, _flatten = flatten_data(cast("dict", value.to_dict()))
             template[key] = _template
             flatten.update(_flatten)
+
+        elif isinstance(value, IndexTable):
+            _template, _flatten = flatten_data(indextable_to_dict(value))
+            template[key] = _template
+            flatten.update(_flatten)
+
         else:
             template[key] = value
     return template, flatten
@@ -85,6 +93,7 @@ def from_bytes(byte_data: bytes) -> dict:
     template_dict = header["template"]
     return reconstruct_data(template_dict, flatten_data)
 
+
 def indextable_to_dict(index_table: IndexTable) -> dict:
     """Convert an IndexTable instance to a regular dictionary."""
     return {
@@ -96,12 +105,15 @@ def indextable_to_dict(index_table: IndexTable) -> dict:
         "chain_res_indices": index_table.chain_res_indices.tolist(),
     }
 
+
 def to_dict(data: dict) -> dict:
     """Convert all FeatureContainer and IndexTable instances to regular dictionaries."""
     result = {}
     for key, value in data.items():
-        if isinstance(value, FeatureContainer | IndexTable):
-            result[key] = value.to_dict()
+        if isinstance(value, FeatureContainer):
+            result[key] = to_dict(cast("dict", value.to_dict()))
+        elif isinstance(value, IndexTable):
+            result[key] = indextable_to_dict(value)
         elif isinstance(value, dict):
             result[key] = to_dict(value)
         else:

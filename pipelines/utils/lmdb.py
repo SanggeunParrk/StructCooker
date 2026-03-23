@@ -53,7 +53,10 @@ def build_lmdb(  # noqa: PLR0913
     *data_list: Path,
     env_path: Path,
     recipe: Path,
-    load_func: LoadFunc,
+    inputs: dict[str, float | Path] | None = None,
+    metadata_recipe: Path | None = None,
+    metadata_input: dict[str, Path] | None = None,
+    load_func: LoadFunc | None = None,
     transform_func: TransformFunc | None = None,
     chunk_size: int = 10_000,
     n_jobs: int = -1,
@@ -73,14 +76,31 @@ def build_lmdb(  # noqa: PLR0913
     """
     env = lmdb.open(str(env_path), map_size=int(map_size))
 
+    metadata_dict: dict = {}
+    if metadata_recipe is not None:
+        if metadata_input is None:
+            msg = "metadata_input must be provided if metadata_recipe is specified."
+            raise ValueError(msg)
+        metadata_dict = parse_dict(
+            recipe_path=metadata_recipe,
+            datadict=metadata_input,
+            **extra_kwargs,
+        )
+
     def _process_file(data_file: Path) -> tuple[bytes, bytes, Exception | None]:
         """Parse a single file and return (key, compressed_data, error)."""
         key = data_file.name.split(".")[0]
         try:
+            datadict = {}
+            if inputs is not None:
+                datadict.update(inputs)
+            if metadata_recipe is not None:
+                datadict.update(metadata_dict)
             data_dict = parse_file(
                 recipe_path=recipe,
                 file_path=data_file,
                 load_func=load_func,
+                datadict=datadict,
                 transform_func=transform_func,
                 **extra_kwargs,
             )
@@ -111,8 +131,6 @@ def build_lmdb(  # noqa: PLR0913
                 test_results.append(result)
             if result[2] is not None:
                 raise result[2]
-    
-
 
     # --- Parallel processing ---
     for i in range(0, len(filtered_data_list), chunk_size):

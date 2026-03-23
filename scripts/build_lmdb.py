@@ -7,7 +7,7 @@ import lmdb
 from omegaconf import OmegaConf
 
 from pipelines.utils import load_config, load_data_list
-from pipelines.utils.lmdb import build_lmdb, extract_key_list, rebuild_lmdb, read_lmdb
+from pipelines.utils.lmdb import build_lmdb, extract_key_list, read_lmdb, rebuild_lmdb
 
 logging.basicConfig(
     level=logging.INFO,
@@ -176,9 +176,11 @@ def rebuild(
         f"[Done] Built LMDB at {config_dict['new_env_path']} with {key_count} keys.",
     )
 
+
 @cli.command("check_db")
 @click.argument("db_path", type=click.Path(exists=True, path_type=Path))
 def check_db(db_path: Path) -> None:
+    """Check the number of keys in the LMDB database."""
     env = lmdb.open(str(db_path), readonly=True, lock=False)
     with env.begin() as txn:
         cursor = txn.cursor()
@@ -189,10 +191,11 @@ def check_db(db_path: Path) -> None:
 
 @cli.command("test_db")
 @click.argument("db_path", type=click.Path(exists=True, path_type=Path))
-def check_db(db_path: Path) -> None:
-    key="P0003600"
-    data = read_lmdb(db_path,key)
-    breakpoint()
+def test_db(db_path: Path) -> None:
+    """Test reading a specific key from the LMDB database."""
+    key = "P0003600"
+    data = read_lmdb(db_path, key)
+
 
 # ==============================================================
 # Entrypoint

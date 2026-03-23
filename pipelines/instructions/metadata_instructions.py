@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 from typing import cast
 
@@ -93,7 +94,7 @@ def parse_signalp(signalp_path: Path) -> tuple[int, int] | None:
 
 def load_signalp(
     signalp_dir: Path | None,
-) -> dict[str, list[tuple[int, int]]]:
+) -> dict[str, tuple[int, int]]:
     """Load SignalP data from a directory containing GFF3 files."""
     signalp_data = {}
     if signalp_dir is not None:
@@ -197,6 +198,7 @@ def classify_seq_clusters(
         classified_clusters.add(seqcluster)
     return classified_clusters
 
+
 def load_fasta(
     fasta_path: Path,
 ) -> dict[str, str]:
@@ -205,8 +207,8 @@ def load_fasta(
     with fasta_path.open("r", encoding="utf-8") as f:
         lines = f.readlines()
         current_header = None
-        for line in lines:
-            line = line.strip()
+        for _line in lines:
+            line = _line.strip()
             if line.startswith(">"):
                 current_header = line[1:]  # Remove the '>' character
                 fasta_dict[current_header] = ""
@@ -220,6 +222,7 @@ def load_fasta(
 
 def extract_protein_seqs(
     seqid2seq: dict[str, list[str]],
+    *,
     remove_unknown: bool = True,
 ) -> list[dict]:
     """Extract protein sequences from the seqid2seq mapping."""
@@ -240,3 +243,54 @@ def extract_protein_seqs(
                     continue
             protein_seqs.append({"seqid": seqid, "sequence": seq})
     return protein_seqs
+
+
+def parse_metadata(
+    metadata_path: Path,
+) -> dict[str, time.struct_time]:
+    """Parse the metadata file and return a mapping from sequence cluster ID to earliest query date."""
+    metadata_dict = {}
+    with metadata_path.open("r", encoding="utf-8") as f:
+        lines = f.readlines()
+        lines = lines[1:]  # Skip header
+        for line in lines:
+            parts = line.strip().split("\t")
+            cif_id = parts[0]
+            pdb_id = cif_id.split("_")[0]
+            deposition_date = parts[2]
+            date_struct = time.strptime(deposition_date, "%Y-%m-%d")
+            metadata_dict[pdb_id] = date_struct
+    return metadata_dict
+
+
+def build_template_metadata_map(
+    pdb_id2deposition_date: dict[str, time.struct_time],
+    seq_metadata_map: dict[str, tuple[str, str]],
+    seqid2seq: dict[str, list[str]],
+    signalp_dict: dict[str, tuple[int, int]],
+) -> tuple[dict[str, dict[str, str]], dict[str, time.struct_time], dict[str, str]]:
+    """Build a metadata map from sequence cluster ID to template metadata."""
+    template_metadata_map = {}
+    seqid2earliest_date: dict[str, time.struct_time] = {}
+    filtered_seqid2seq: dict[str, str] = {}  # remove signal peptide
+    for cif_id, (seqid, _) in seq_metadata_map.items():
+        pdb_id = cif_id.split("_")[0]
+        chain_id = cif_id.split("_")[1]
+        deposition_date = pdb_id2deposition_date.get(pdb_id.lower())
+        if deposition_date is None:
+            msg = f"Deposition date not found for PDB ID {pdb_id}."
+            raise KeyError(msg)
+        seq = seqid2seq[seqid][0]
+        if seqid in signalp_dict:
+            seq = seq[signalp_dict[seqid][1] + 1 :]
+        template_metadata_map[f"{pdb_id}_{chain_id}"] = {
+            "deposition_date": deposition_date,
+            "sequence": seq,
+        }
+        filtered_seqid2seq[seqid] = seq
+        if (
+            seqid not in seqid2earliest_date
+            or deposition_date < seqid2earliest_date[seqid]
+        ):
+            seqid2earliest_date[seqid] = deposition_date
+    return template_metadata_map, seqid2earliest_date, filtered_seqid2seq

@@ -9,8 +9,8 @@ from joblib import Parallel, delayed
 from omegaconf import OmegaConf
 
 from pipelines.utils import load_config
-from pipelines.utils.lmdb import extract_key_list, read_lmdb
 from pipelines.utils.data_process import parallel_process
+from pipelines.utils.lmdb import extract_key_list, read_lmdb
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,7 +32,7 @@ def _resolve_cli_or_config_int(
     if cli_value is not None:
         return cli_value
     for key in candidate_keys:
-        value = config_dict.get(key, None)
+        value = config_dict.get(key)
         if value is not None:
             return int(value)
     return None
@@ -110,6 +110,7 @@ def data_transform_parallel(
     )
 
     click.echo("Data transformation complete.")
+
 
 @cli.command("data_transform")
 @click.argument("config", type=click.Path(exists=True, path_type=Path))

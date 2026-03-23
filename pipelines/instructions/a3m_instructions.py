@@ -4,10 +4,9 @@ from collections.abc import Callable
 from typing import TypeVar
 
 import numpy as np
-from numpy.typing import NDArray
-
 from biomol.core.container import FeatureContainer
 from biomol.core.feature import NodeFeature
+
 from pipelines.utils.mapping import ResidueMapping
 
 InputType = TypeVar("InputType", str, int, float)
@@ -144,7 +143,7 @@ def parse_headers() -> Callable[..., dict[str, NodeFeature]]:
         Returns
         -------
             A dictionary with keys "db_name", "db_id", "species", and "rep_id".
-        """  # noqa: E501
+        """
         # Pattern 1: UniRef-style header (with Tax=... and RepID=...)
         pattern1 = re.compile(
             r"^>(?P<db_name>UniRef\d+)_"

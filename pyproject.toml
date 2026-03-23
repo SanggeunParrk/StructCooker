@@ -1,5 +1,5 @@
 [project]
-name = "StructStickler"
+name = "StructCooker"
 version = "0.1.0"
 description = "Benchmark Codes for structure prediction"
 readme = "README.md"
@@ -16,6 +16,7 @@ dependencies = [
     "numpy>=2.2.6,<3",
     "networkx>=3.2",
     "biomol>=1.0.0",
+    "kalign-python==3.5.1",
 ]
 
 [project.optional-dependencies]
@@ -51,7 +52,7 @@ channels = ["conda-forge","bioconda"]
 platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
-structstickler = { path = ".", editable = true }
+structcooker = { path = ".", editable = true }
 mkdocs = ">=1.6,<2"
 mkdocs-material = ">=9.6,<10"
 datacooker = { path = "libs/datacooker", editable = true }
@@ -72,7 +73,7 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = [
-  "src/structstickler",
+  "src/structcooker",
 ]
 
 

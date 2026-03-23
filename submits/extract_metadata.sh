@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -J extract_metadata
 #SBATCH --ntasks-per-node=1
-#SBATCH -c 128
-#SBATCH --mem=800g
-#SBATCH -p h100
-#SBATCH -w node02
+#SBATCH -c 88
+#SBATCH --mem=628g
+#SBATCH -p gpu
+#SBATCH -w gpu04
 #SBATCH -o ./logs/extract_metadata.out
 #SBATCH -e ./logs/extract_metadata.err
 
