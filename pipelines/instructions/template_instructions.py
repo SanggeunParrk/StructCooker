@@ -5,12 +5,13 @@ import subprocess
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import kalign
 import numpy as np
 from biomol.core.index import IndexTable
 
-from pipelines.cifmol.cifmol_attached import CIFMolAttached
+from pipelines.cifmol import CIFMol
 from pipelines.utils.io import load_bytes, load_raw_data
 
 
@@ -430,8 +431,8 @@ def filter_and_align_template_chain_ids(
     return _worker
 
 
-def load_cifmol_attached(db_path: Path, pdb_id: str, chain_id: str) -> CIFMolAttached:
-    """Load the most valuable CIFMolAttached from LMDB by cif_id."""
+def load_cifmol(db_path: Path, pdb_id: str, chain_id: str) -> CIFMol:
+    """Load the most valuable CIFMol from LMDB by cif_id."""
     value = load_raw_data(pdb_id, db_path)
 
     if value is None:
@@ -441,14 +442,30 @@ def load_cifmol_attached(db_path: Path, pdb_id: str, chain_id: str) -> CIFMolAtt
     value = load_bytes(value)
     max_occup_sum = -999
     best_cifmol = None
-    for item in value.values():
-        cifmol = CIFMolAttached.from_dict(item["cifmol_attached_dict"])
+
+    value, metadata = value["assembly_dict"], value["metadata_dict"]
+
+    for cif_key, _item in value.items():
+        assembly_id, model_id, alt_id = cif_key.split("_")
+
+        md = dict(metadata)
+        md["assembly_id"] = assembly_id
+        md["model_id"] = model_id
+        md["alt_id"] = alt_id
+
+        item = dict(_item)
+        item["metadata"] = md
+        item = cast("BioMolDict", item)
+
+        cifmol = CIFMol.from_dict(item)
+
         chain_ids = cifmol.chains.chain_id.value
         chain_ids = {
             chain_id.split("_")[0] for chain_id in chain_ids
         }  # ignore _1, _2 etc.
         if chain_id not in chain_ids:
             continue
+
         occup = cifmol.atoms.occupancy.value
         # nan -> 0
         occup = np.nan_to_num(occup, nan=0.0)
@@ -458,19 +475,21 @@ def load_cifmol_attached(db_path: Path, pdb_id: str, chain_id: str) -> CIFMolAtt
             best_cifmol = cifmol
 
     if best_cifmol is None:
-        msg = f"No valid CIFMolAttached found for key '{pdb_id}' in LMDB database at '{db_path}'."
+        msg = (
+            f"No valid CIFMol found for key '{pdb_id}' in LMDB database at '{db_path}'."
+        )
         raise KeyError(msg)
 
     return best_cifmol
 
 
-def extract_backbone_indices_from_cifmol_attached(
-    cifmol_attached: CIFMolAttached,
+def extract_backbone_indices_from_cifmol(
+    cifmol: CIFMol,
 ) -> np.ndarray:
-    """Extract backbone atom indices (N, CA, C, CB) for each residue in the CIFMolAttached. If CB is missing, use CA coordinates for CB."""
-    residue_num = len(cifmol_attached.residues)
+    """Extract backbone atom indices (N, CA, C, CB) for each residue in the CIFMol. If CB is missing, use CA coordinates for CB."""
+    residue_num = len(cifmol.residues)
     backbone_atom_indices = np.full((residue_num, 4), -1, dtype=int)
-    full_xyz = cifmol_attached.atoms.xyz
+    full_xyz = cifmol.atoms.xyz
 
     def find_atom_index(target_xyz: np.ndarray) -> int:
         if target_xyz.size == 0:
@@ -479,7 +498,7 @@ def extract_backbone_indices_from_cifmol_attached(
         return matched[0] if matched.size > 0 else -1
 
     # To handle various cases of missing atoms, I think using for loop is necessary here instead of vectorized operations. We can optimize later if needed.
-    for ii, residue in enumerate(cifmol_attached.residues):
+    for ii, residue in enumerate(cifmol.residues):
         atom_ids = residue.atoms.id.value
         xyz = residue.atoms.xyz.value
 
@@ -500,11 +519,11 @@ def extract_backbone_indices_from_cifmol_attached(
 
 
 def to_template_mol(
-    cifmol_attached: CIFMolAttached,
+    cifmol: CIFMol,
     align_result: tuple[str, str],
 ) -> dict:
-    """Convert a CIFMolAttached to a template mol by applying the alignment result."""
-    backbone_indices = extract_backbone_indices_from_cifmol_attached(cifmol_attached)
+    """Convert a CIFMol to a template mol by applying the alignment result."""
+    backbone_indices = extract_backbone_indices_from_cifmol(cifmol)
     query, target = align_result
 
     q = np.frombuffer(query.encode(), dtype="S1")
@@ -564,10 +583,10 @@ def to_template_mol(
         output[q_idx] = np.take(arr, t_idx, axis=0)
         return output
 
-    atom_id = _take_atom(cifmol_attached.atoms.id.value)
-    atom_xyz = _take_atom(cifmol_attached.atoms.xyz.value)
-    b_factor = _take_atom(cifmol_attached.atoms.b_factor.value)
-    occupancy = _take_atom(cifmol_attached.atoms.occupancy.value)
+    atom_id = _take_atom(cifmol.atoms.id.value)
+    atom_xyz = _take_atom(cifmol.atoms.xyz.value)
+    b_factor = _take_atom(cifmol.atoms.b_factor.value)
+    occupancy = _take_atom(cifmol.atoms.occupancy.value)
 
     atom_dict = {
         "nodes": {
@@ -580,13 +599,13 @@ def to_template_mol(
     }
 
     one_letter_code_can = _take_residue(
-        cifmol_attached.residues.one_letter_code_can.value,
+        cifmol.residues.one_letter_code_can.value,
     )
-    one_letter_code = _take_residue(cifmol_attached.residues.one_letter_code.value)
-    cif_idx = _take_residue(cifmol_attached.residues.cif_idx.value)
-    auth_idx = _take_residue(cifmol_attached.residues.auth_idx.value)
-    chem_comp_id = _take_residue(cifmol_attached.residues.chem_comp_id.value)
-    hetero = _take_residue(cifmol_attached.residues.hetero.value)
+    one_letter_code = _take_residue(cifmol.residues.one_letter_code.value)
+    cif_idx = _take_residue(cifmol.residues.cif_idx.value)
+    auth_idx = _take_residue(cifmol.residues.auth_idx.value)
+    chem_comp_id = _take_residue(cifmol.residues.chem_comp_id.value)
+    hetero = _take_residue(cifmol.residues.hetero.value)
 
     residue_dict = {
         "nodes": {
@@ -600,10 +619,10 @@ def to_template_mol(
         "edges": {},
     }
 
-    entity_id = cifmol_attached.chains.entity_id.value
-    entity_type = cifmol_attached.chains.entity_type.value
-    chain_id = cifmol_attached.chains.chain_id.value
-    auth_asym_id = cifmol_attached.chains.auth_asym_id.value
+    entity_id = cifmol.chains.entity_id.value
+    entity_type = cifmol.chains.entity_type.value
+    chain_id = cifmol.chains.chain_id.value
+    auth_asym_id = cifmol.chains.auth_asym_id.value
     chain_dict = {
         "nodes": {
             "entity_id": {"value": entity_id},
@@ -619,9 +638,9 @@ def to_template_mol(
             dtype=int,
         ),
         res_to_chain=np.zeros(query_seq_len, dtype=int),
-        n_chain=len(cifmol_attached.chains),
+        n_chain=len(cifmol.chains),
     )
-    metadata = cifmol_attached.metadata
+    metadata = cifmol.metadata
 
     new_dict = {
         "atoms": atom_dict,
@@ -633,20 +652,30 @@ def to_template_mol(
     return new_dict
 
 
+def find_first(prefix: str, arr: np.ndarray) -> str | None:
+    """Find the first string in arr that starts with the given prefix."""
+    mask = np.char.startswith(arr, prefix)
+    return arr[mask][0] if np.any(mask) else None
+
+
 def load_templates(
     cif_db_path: Path,
     align_results: dict[str, tuple[str, str]],
 ) -> dict:
-    """Load CIFMolAttached from LMDB by cif_id."""
+    """Load CIFMol from LMDB by cif_id."""
     if len(align_results) == 0:
         return {}
     template_mols = {}
     for full_id, align_result in align_results.items():
         pdb_id, chain_id = full_id.split("_")
-        cifmol_attached = load_cifmol_attached(cif_db_path, pdb_id.lower(), chain_id)
-        cifmol_attached = cifmol_attached.chains[
-            cifmol_attached.chains.chain_id == f"{chain_id}_1"
-        ].extract()
-        template_mol = to_template_mol(cifmol_attached, align_result)
+        cifmol = load_cifmol(cif_db_path, pdb_id.lower(), chain_id)
+        chain_id = find_first(f"{chain_id}_", cifmol.chains.chain_id.value)
+        try:
+            cifmol = cifmol.chains[cifmol.chains.chain_id == chain_id].extract()
+        except Exception as e:
+            breakpoint()
+            print(f"Error occurred while extracting chain for {full_id}: {e}")
+            continue
+        template_mol = to_template_mol(cifmol, align_result)
         template_mols[full_id] = template_mol
     return template_mols

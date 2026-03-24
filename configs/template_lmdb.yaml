@@ -1,6 +1,6 @@
 # rebuild
 
-data_dir: ${p:/data/psk6950/BioMolDB_20260224/hmm_output}
+data_dir: ${p:/data/psk6950/hmm_output}
 file_pattern: "*.out"
 
 env_path: ${p:/data/psk6950/BioMolDB_20260224/template.lmdb}
@@ -15,7 +15,7 @@ metadata_input:
   signalp_dir: ${p:/data/psk6950/BioMolDB_20260224/signalp}
 
 inputs:
-  cif_db_path: ${p:/data/psk6950/BioMolDB_20260224/cif_attached_train.lmdb}
+  cif_db_path: ${p:/data/psk6950/BioMolDB_20260224/cif_raw.lmdb}
 
 convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_transformed
 
