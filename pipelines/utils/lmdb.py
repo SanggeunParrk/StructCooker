@@ -52,7 +52,6 @@ def extract_key_list(env_path: Path) -> list[str]:
 def build_lmdb(  # noqa: PLR0913
     *data_list: Path,
     env_path: Path,
-    processed_env_path: Path | None,
     recipe: Path,
     inputs: dict[str, float | Path] | None = None,
     metadata_recipe: Path | None = None,
@@ -111,22 +110,10 @@ def build_lmdb(  # noqa: PLR0913
             return key.encode(), to_bytes({}), error
 
     # remove UNL
-    filtered_data_list: list[Path]
-    filtered_data_list = [p for p in data_list if p.stem != "UNL"]
-    already_env_path = (
-        processed_env_path if processed_env_path is not None else env_path
-    )
-    _already_parsed_keys = extract_key_list(already_env_path)
-    logger.info("Already parsed %d entries. (%s)", len(_already_parsed_keys), already_env_path)
-    filtered_data_list = [
-        data
-        for data in filtered_data_list
-        if data.name.split(".")[0] not in _already_parsed_keys
-    ]
-    logger.info("To be parsed %d entries.", len(filtered_data_list))
+    logger.info("To be parsed %d entries.", len(data_list))
 
     if test_run:
-        test_files = filtered_data_list[:10]
+        test_files = data_list[:10]
         test_results = []
         for data_file in test_files:
             print(f"Test processing {data_file}...")
@@ -137,14 +124,14 @@ def build_lmdb(  # noqa: PLR0913
                 raise result[2]
 
     # --- Parallel processing ---
-    for i in range(0, len(filtered_data_list), chunk_size):
+    for i in range(0, len(data_list), chunk_size):
         logger.info(
             "Processing files %d to %d / %d",
             i,
-            min(i + chunk_size, len(filtered_data_list)),
-            len(filtered_data_list),
+            min(i + chunk_size, len(data_list)),
+            len(data_list),
         )
-        data_chunk = filtered_data_list[i : i + chunk_size]
+        data_chunk = data_list[i : i + chunk_size]
 
         results = Parallel(n_jobs=n_jobs, verbose=10, prefer="processes")(
             delayed(_process_file)(data_file) for data_file in data_chunk

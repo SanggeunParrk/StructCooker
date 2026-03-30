@@ -59,6 +59,18 @@ def build(
         config_dict["data_dir"],
         pattern=config_dict["file_pattern"],
     )
+
+    filtered_data_list: list[Path]
+    filtered_data_list = [p for p in data_list if p.stem != "UNL"]
+    _already_parsed_keys = extract_key_list(config_dict["env_path"])
+    click.echo(
+        f"Already parsed {len(_already_parsed_keys)} entries. ({config_dict['env_path']})",
+    )
+    filtered_data_list = [
+        data
+        for data in filtered_data_list
+        if data.name.split(".")[0] not in _already_parsed_keys
+    ]
     click.echo("End load data")
 
     if shard_idx is not None:
@@ -72,15 +84,13 @@ def build(
         click.echo(
             f"Processing shard {shard_idx}/{n_shards} with {len(data_list)} files.",
         )
-        config_dict["processed_env_path"] = Path(config_dict["env_path"])
         config_dict["env_path"] = Path(config_dict["env_path"]).with_name(
             f"{Path(config_dict['env_path']).stem}_shard{shard_idx}{Path(config_dict['env_path']).suffix}",
         )
     else:
-        config_dict["processed_env_path"] = None
         click.echo(f"Processing all {len(data_list)} files as a single shard.")
 
-    build_lmdb(*data_list, **config_dict, map_size=map_size)
+    build_lmdb(*filtered_data_list, **config_dict, map_size=map_size)
 
     # check the key count
     env = lmdb.open(str(config_dict["env_path"]), readonly=True, lock=False)
