@@ -9,10 +9,12 @@ except PackageNotFoundError:
 
 from .cifmol import CIFMol
 from .cifmol_attached import CIFMolAttached
+from .template_mol import TemplateMol
 from .utils import to_cif
 
 __all__ = [
     "CIFMol",
     "CIFMolAttached",
+    "TemplateMol",
     "to_cif",
 ]

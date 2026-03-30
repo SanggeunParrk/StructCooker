@@ -69,4 +69,4 @@ recipe.add(
 )
 
 RECIPE = recipe
-TARGETS = ["seq_metadata_map"]
+TARGETS = ["seq_metadata_map", "seqid2seq", "seqclusters2seqids"]

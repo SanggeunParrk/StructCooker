@@ -1,17 +1,17 @@
 # rebuild
-old_env_path: ${p:/public_data02/BioMolDB_20260224//cif_attached_valid_1.lmdb}
-new_env_path: ${p:/public_data02/BioMolDB_20260224//cif_attached_valid_2.lmdb}
+old_env_path: ${p:/data/psk6950/BioMolDB_20260224//cif_attached_valid_1.lmdb}
+new_env_path: ${p:/data/psk6950/BioMolDB_20260224//cif_attached_valid_2.lmdb}
 
 recipe: ${p:pipelines/recipe/valid_filter_2.py}
 metadata_recipe: ${p:pipelines/recipe/valid_filter_2_metadata.py}
 
 metadata_input:
-  raw_fasta_path: ${p:/public_data02/BioMolDB_20260224//fasta/merged.fasta}
-  train_fasta_path: ${p:/public_data02/BioMolDB_20260224//fasta/train.fasta}
-  valid_1_fasta_path: ${p:/public_data02/BioMolDB_20260224//fasta/valid_1.fasta}
-  seqid2seq_path: ${p:/public_data02/BioMolDB_20260224//metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:/public_data02/BioMolDB_20260224//metadata/seq_cluster30.tsv}
-  interacting_seq_clusters_path: ${p:/public_data02/BioMolDB_20260224//metadata/interacting_seq_clusters30.tsv}
+  raw_fasta_path: ${p:/data/psk6950/BioMolDB_20260224//fasta/merged.fasta}
+  train_fasta_path: ${p:/data/psk6950/BioMolDB_20260224//fasta/train.fasta}
+  valid_1_fasta_path: ${p:/data/psk6950/BioMolDB_20260224//fasta/valid_1.fasta}
+  seqid2seq_path: ${p:/data/psk6950/BioMolDB_20260224//metadata/seq_id_map.tsv}
+  seqcluster_path: ${p:/data/psk6950/BioMolDB_20260224//metadata/seq_cluster30.tsv}
+  interacting_seq_clusters_path: ${p:/data/psk6950/BioMolDB_20260224//metadata/interacting_seq_clusters30.tsv}
 
 convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_attached_transformed
 

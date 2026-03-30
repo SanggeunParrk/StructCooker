@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -J valid_filter_2
-#SBATCH --ntasks-per-node=1
-#SBATCH -c 72
-#SBATCH --mem=328g
-#SBATCH -p cpu
-#SBATCH -w node02
+#SBATCH --ntasks-per-node=1   
+#SBATCH -c 112     
+#SBATCH --mem=491g
+#SBATCH -p cpu-long
+#SBATCH --qos=cpu-long-q
 #SBATCH -o ./logs/valid_filter_2.out
 #SBATCH -e ./logs/valid_filter_2.err
 

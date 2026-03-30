@@ -172,6 +172,16 @@ def db_extract(
         msg = "'project_func' must be a ProjectFunc callable."
         raise TypeError(msg)
 
+    metadata_dict: dict = {}
+    if "metadata_recipe" in config_dict:
+        if "metadata_input" not in config_dict:
+            msg = "metadata_input must be provided if metadata_recipe is specified."
+            raise ValueError(msg)
+        metadata_dict = parse_dict(
+            recipe_path=config_dict["metadata_recipe"],
+            datadict=config_dict["metadata_input"],
+        )
+
     db_path: Path = config_dict["db_path"]
     additional_inputs: dict = config_dict.get("additional_inputs", {})
     convert_func: ConvertFunc | None = config_dict.get("convert_func", None)
@@ -179,14 +189,18 @@ def db_extract(
 
     key_list = extract_key_list(config_dict["db_path"])
 
+    # test
+    key_list = key_list[:50]
+
     def _process_chunk(keys: list[str]) -> dict[tuple[str, str], dict]:
         output_dict = {}
         for key in keys:
             data = read_lmdb(db_path, key)
             data = convert_func(data) if convert_func is not None else data
-            datadict = {"db_data": data}
+            datadict = {"key": key, "db_data": data}
             datadict.update(**config_dict)
             datadict.update(**additional_inputs)
+            datadict.update(metadata_dict)
 
             output_dict[key] = parse_dict(
                 datadict=datadict,

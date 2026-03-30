@@ -227,3 +227,16 @@ def write_edge_node(
 
             to_write = ",".join(formatted_pairs)
             f.write(f"{cluster1}\t{cluster2}\t{to_write}\n")
+
+
+def unittest(
+    data: dict[str, dict[str, str]],
+    output_path: Path,
+):
+    """Write unit test results to a tab-delimited file."""
+    with output_path.open("w") as f:
+        for item_id, _result in data.items():
+            result = _result["results"]
+            if result is None:
+                result = "passed"
+            f.write(f"{item_id}\t{result}\n")

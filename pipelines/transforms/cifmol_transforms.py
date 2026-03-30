@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, cast
 
-from pipelines.cifmol import CIFMol, CIFMolAttached
+from pipelines.cifmol import CIFMol, CIFMolAttached, TemplateMol
 
 if TYPE_CHECKING:
     from biomol.core.types import BioMolDict
@@ -64,3 +64,15 @@ def convert_to_cifmol_attached_filtered(
         item = cast("BioMolDict", item)
         cifmol_dict[cif_key] = {"cifmol": CIFMolAttached.from_dict(item)}
     return cifmol_dict
+
+
+def convert_to_templatemol_dict(
+    value: dict,
+) -> dict[str, TemplateMol]:
+    """Convert a dictionary containing TemplateMol data into a dictionary of TemplateMol objects."""
+    template_mols = value["template_mols"]
+    templatemol_dict: dict[str, TemplateMol] = {}
+    for cif_key, _item in template_mols.items():
+        item = cast("BioMolDict", _item)
+        templatemol_dict[cif_key] = TemplateMol.from_dict(item)
+    return templatemol_dict

@@ -11,7 +11,7 @@ import kalign
 import numpy as np
 from biomol.core.index import IndexTable
 
-from pipelines.cifmol import CIFMol
+from pipelines.cifmol import CIFMol, TemplateMol
 from pipelines.utils.io import load_bytes, load_raw_data
 
 
@@ -679,3 +679,23 @@ def load_templates(
         template_mol = to_template_mol(cifmol, align_result)
         template_mols[full_id] = template_mol
     return template_mols
+
+
+# Unittest functions
+
+
+def length_check(
+    query_seq_id: str,
+    seqid2seq: dict[str, list[str]],
+    templatemol_dict: dict[str, TemplateMol],
+) -> str | None:
+    """Unittest function to check if the length of the query sequence matches the length of the template mol sequences."""
+    query_seq = seqid2seq.get(query_seq_id)
+    if not query_seq:
+        return f"Query sequence for ID {query_seq_id} not found."
+    query_seq = query_seq[0] if isinstance(query_seq, list) else query_seq
+    for full_id, template_mol in templatemol_dict.items():
+        template_seq_len = len(template_mol.residues)
+        if len(query_seq) != template_seq_len:
+            return f"Length mismatch for {full_id}: query length {len(query_seq)} != template length {template_seq_len}"
+    return None
