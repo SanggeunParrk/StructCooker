@@ -1,12 +1,13 @@
 #!/bin/bash
-#SBATCH -J cif_DB_급함
+#SBATCH -J cif_DB
 #SBATCH --ntasks-per-node=1         
-#SBATCH -c 16     
-#SBATCH --mem=800g
-#SBATCH -p gpu
-#SBATCH -w gpu05
-#SBATCH -o ./logs/cif_lmdb.out
-#SBATCH -e ./logs/cif_lmdb.err
+#SBATCH -c 112     
+#SBATCH --mem=491g
+#SBATCH -p cpu-standard
+#SBATCH --qos=cpu-standard-q
+#SBATCH -o ./logs/cif_lmdb_%a.out
+#SBATCH -e ./logs/cif_lmdb_%a.err
+#SBATCH --array=0-7
 
 CONFIG_PATH="configs/cif_lmdb.yaml"
 MAP_SIZE=1000000000000 # ~1TB
