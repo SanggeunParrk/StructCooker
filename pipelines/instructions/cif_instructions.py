@@ -1113,21 +1113,7 @@ def build_full_length_asym_dict() -> Callable[..., dict | None]:
                     dst_indices=atom_dst,
                 )
             else:
-                atom_features["bond_type"] = EdgeFeature(
-                    value=np.array([], dtype=int),
-                    src_indices=np.array([], dtype=int),
-                    dst_indices=np.array([], dtype=int),
-                )  # to avoid key error later
-                atom_features["bond_aromatic"] = EdgeFeature(
-                    value=np.array([], dtype=str),
-                    src_indices=np.array([], dtype=int),
-                    dst_indices=np.array([], dtype=int),
-                )  # to avoid key error later
-                atom_features["bond_stereo"] = EdgeFeature(
-                    value=np.array([], dtype=str),
-                    src_indices=np.array([], dtype=int),
-                    dst_indices=np.array([], dtype=int),
-                )  # to avoid key error later
+                pass
 
         atom_container = FeatureContainer(features=atom_features)
         residue_features = chem_comp_residue_container._features

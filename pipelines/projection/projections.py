@@ -232,7 +232,7 @@ def write_edge_node(
 def unittest(
     data: dict[str, dict[str, str]],
     output_path: Path,
-):
+) -> None:
     """Write unit test results to a tab-delimited file."""
     with output_path.open("w") as f:
         for item_id, _result in data.items():
