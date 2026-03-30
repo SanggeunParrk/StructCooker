@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import click
-
 from datacooker import parse_file
+
 from pipelines.cifmol import CIFMol, to_cif
 from pipelines.transforms.cif_transforms import dot_transform, get_cif_data
 from pipelines.utils.convert import to_dict
@@ -55,7 +55,6 @@ def cli(
         ccd_db_path=ccd_db_path,
     )
     result = to_dict(result)
-    breakpoint()
 
     value, metadata = result["assembly_dict"], result["metadata_dict"]
     cifmol_dict: dict[str, CIFMol] = {}
@@ -75,3 +74,5 @@ def cli(
 if __name__ == "__main__":
     cli()
     # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/hc/1hcu.cif.gz
+    # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/ud/6udr.cif.gz
+    # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/nm/4nmg.cif.gz

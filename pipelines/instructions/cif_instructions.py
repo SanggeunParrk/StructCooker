@@ -17,7 +17,6 @@ FeatureType = TypeVar("FeatureType")
 NumericType = TypeVar("NumericType", int, float)
 
 
-
 def single_value_instruction(
     *,
     dtype: type[InputType],
@@ -46,7 +45,11 @@ def extract_float_single(*args: str | None) -> float | None:
     pattern = re.compile(r"^-?\d+(?:\.\d+)?$")
 
     # Build mask: True if value is a valid float string
-    _list = [float(a[0]) for a in args if isinstance(a, list) and len(a) == 1 and pattern.match(a[0]) is not None]
+    _list = [
+        float(a[0])
+        for a in args
+        if isinstance(a, list) and len(a) == 1 and pattern.match(a[0]) is not None
+    ]
     if len(_list) == 0:
         return None
     # get largest float value
@@ -54,8 +57,7 @@ def extract_float_single(*args: str | None) -> float | None:
     return _list[0]
 
 
-
-def key_stack(**kwargs: list[InputType] | NDArray,) -> type[InputType]:
+def key_stack(**kwargs: list[InputType] | NDArray) -> type[InputType]:
     """Return a configured instruction function that maps fields to node features."""
     return kwargs
 
@@ -820,7 +822,10 @@ def rearrange_atom_site_dict() -> Callable[..., dict | None]:
                 atom_array = np.asarray(rearranged_dict["atom"])
                 auth_idx_array = np.asarray(rearranged_dict["auth_idx"])
                 determinant_array = np.asarray(
-                    [f"{a}.{b}" for a, b in zip(atom_array, auth_idx_array)]
+                    [
+                        f"{a}.{b}"
+                        for a, b in zip(atom_array, auth_idx_array, strict=False)
+                    ],
                 )
                 alt_id_array = np.asarray(rearranged_dict["alt_id"])
                 mask = np.zeros_like(alt_id_array, dtype=bool)
@@ -1047,7 +1052,7 @@ def build_full_length_asym_dict() -> Callable[..., dict | None]:
                     | "polyribonucleotide"
                     | "polydeoxyribonucleotide/polyribonucleotide hybrid"
                 ):  # DNA/RNA
-                    i_atom, i_1_atom = "O3", "P"
+                    i_atom, i_1_atom = "O3'", "P"
                 case _:  # None-polymer or unknown polymer
                     i_atom, i_1_atom = None, None
             if residue_count == 1:
@@ -1056,7 +1061,7 @@ def build_full_length_asym_dict() -> Callable[..., dict | None]:
                 residue_src = np.arange(residue_count - 1)
                 residue_dst = np.arange(1, residue_count)
                 residue_bond = EdgeFeature(
-                    value=np.array([1] * len(residue_src), dtype=int),
+                    value=np.array(["canonical"] * len(residue_src), dtype=str),
                     src_indices=residue_src,
                     dst_indices=residue_dst,
                 )
@@ -1064,14 +1069,14 @@ def build_full_length_asym_dict() -> Callable[..., dict | None]:
                 atom_src = []
                 atom_dst = []
                 for res_idx in range(residue_count - 1):
-                    src_idx = find_atom_index(res_idx, i_1_atom)
-                    dst_idx = find_atom_index(res_idx + 1, i_atom)
+                    src_idx = find_atom_index(res_idx, i_atom)
+                    dst_idx = find_atom_index(res_idx + 1, i_1_atom)
                     if src_idx is not None and dst_idx is not None:
                         atom_src.append(src_idx)
                         atom_dst.append(dst_idx)
                 atom_src = np.array(atom_src, dtype=int)
                 atom_dst = np.array(atom_dst, dtype=int)
-                atom_bond_type_can = np.array([1] * len(atom_src), dtype=int)
+                atom_bond_type_can = np.array(["canonical"] * len(atom_src), dtype=str)
                 atom_aromatic_can = np.array(["N"] * len(atom_src), dtype=str)
                 atom_stereo_can = np.array(["N"] * len(atom_src), dtype=str)
 
@@ -1136,7 +1141,7 @@ def build_full_length_asym_dict() -> Callable[..., dict | None]:
                     value=asym_dict["one_letter_code_can"],
                 ).copy(),
                 "one_letter_code": NodeFeature(
-                    value=asym_dict["one_letter_code"]
+                    value=asym_dict["one_letter_code"],
                 ).copy(),
             },
         )
@@ -1396,7 +1401,9 @@ def build_assembly_dict() -> Callable[..., dict[str, dict[str, NDArray]] | None]
         for residue_idx, atom_id in zip(residue_indices, atom_id_list, strict=True):
             _atom_indices = index_table.residues_to_atoms(np.array([residue_idx]))
 
-            _atom_indices = _atom_indices[np.where(atom_id_in_container[_atom_indices] == atom_id)[0]]
+            _atom_indices = _atom_indices[
+                np.where(atom_id_in_container[_atom_indices] == atom_id)[0]
+            ]
             if len(_atom_indices) == 0:
                 atom_indices.append(np.array([-1], dtype=int))  # e.g. hydrogen
             else:
@@ -1489,11 +1496,12 @@ def build_assembly_dict() -> Callable[..., dict[str, dict[str, NDArray]] | None]
                 chain_container = FeatureContainer.concat(chain_container_list)
 
                 increments = np.array(
-                    [arr.max() + 1 for arr in atom_to_residue_idx_list]
+                    [arr.max() + 1 for arr in atom_to_residue_idx_list],
                 )
                 offsets = np.concatenate([[0], np.cumsum(increments[:-1])])
                 atom_to_residue_idx = [
-                    arr + off for arr, off in zip(atom_to_residue_idx_list, offsets)
+                    arr + off
+                    for arr, off in zip(atom_to_residue_idx_list, offsets, strict=False)
                 ]
                 atom_to_residue_idx = np.concatenate(atom_to_residue_idx)
 
@@ -1580,10 +1588,10 @@ def build_assembly_dict() -> Callable[..., dict[str, dict[str, NDArray]] | None]
                         mapping1 = {val: i for i, val in enumerate(auth_indices1.value)}
                         mapping2 = {val: i for i, val in enumerate(auth_indices2.value)}
                         residue_indices1 = residue_indices1[0] + np.array(
-                            [mapping1[val] for val in auth_idx1]
+                            [mapping1[val] for val in auth_idx1],
                         )
                         residue_indices2 = residue_indices2[0] + np.array(
-                            [mapping2[val] for val in auth_idx2]
+                            [mapping2[val] for val in auth_idx2],
                         )
                         residue_src.append(residue_indices1)
                         residue_dst.append(residue_indices2)
@@ -1648,7 +1656,7 @@ def build_assembly_dict() -> Callable[..., dict[str, dict[str, NDArray]] | None]
     return _worker
 
 
-def neighbor_list_grid(  # noqa: C901, PLR0912, PLR0915
+def neighbor_list_grid(  # noqa: PLR0915
     xyz: np.ndarray,
     d_thr: float,
     n_max: int,
@@ -1850,7 +1858,7 @@ def extract_contact_graph(
     def _function(container_dict: dict) -> FeatureContainer:
         xyz = container_dict["atoms"]["xyz"].value  # (L,3)
         chain_idx = container_dict["index_table"].atoms_to_chains(
-            np.arange(xyz.shape[0])
+            np.arange(xyz.shape[0]),
         )  # (L,)
         # 2) Neighborhood via grid cells
         nbrs, counts = neighbor_list_grid(

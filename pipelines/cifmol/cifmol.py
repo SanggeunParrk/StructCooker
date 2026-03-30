@@ -56,6 +56,10 @@ class CIFAtomView(
     def bond_stereo(self) -> EdgeFeature:
         """Bond stereochemistry between atoms."""
 
+    @property
+    def struct_conn(self) -> EdgeFeature:
+        """struct_conn of atoms."""
+
 
 class CIFResidueView(
     View["CIFAtomView", "CIFResidueView", "CIFChainView", "CIFMol"],
