@@ -1,6 +1,6 @@
 # rebuild
-old_env_path: ${p:/data/psk6950/BioMolDB_20260224/cif_train.lmdb}
-new_env_path: ${p:/data/psk6950/BioMolDB_20260224/cif_attached_train.lmdb}
+old_env_path: ${p:/data/psk6950/BioMolDB_20260224/cif_train_20260224_res9_chain300.lmdb}
+new_env_path: ${p:/data/psk6950/BioMolDB_20260224/cif_attached_train_20260224_res9_chain300.lmdb}
 
 recipe: ${p:pipelines/recipe/attach_metadata.py}
 metadata_recipe: ${p:pipelines/recipe/load_seq_metadata.py}
