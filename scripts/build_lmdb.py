@@ -75,7 +75,9 @@ def build(
         config_dict["env_path"] = Path(config_dict["env_path"]).with_name(
             f"{Path(config_dict['env_path']).stem}_shard{shard_idx}{Path(config_dict['env_path']).suffix}",
         )
+        config_dict["processed_env_path"] = Path(config_dict["env_path"])
     else:
+        config_dict["processed_env_path"] = None
         click.echo(f"Processing all {len(data_list)} files as a single shard.")
 
     build_lmdb(*data_list, **config_dict, map_size=map_size)

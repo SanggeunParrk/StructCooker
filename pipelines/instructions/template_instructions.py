@@ -696,6 +696,7 @@ def length_check(
     query_seq = query_seq[0] if isinstance(query_seq, list) else query_seq
     for full_id, template_mol in templatemol_dict.items():
         template_seq_len = len(template_mol.residues)
+        breakpoint()
         if len(query_seq) != template_seq_len:
             return f"Length mismatch for {full_id}: query length {len(query_seq)} != template length {template_seq_len}"
     return None

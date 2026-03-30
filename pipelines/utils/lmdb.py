@@ -52,6 +52,7 @@ def extract_key_list(env_path: Path) -> list[str]:
 def build_lmdb(  # noqa: PLR0913
     *data_list: Path,
     env_path: Path,
+    processed_env_path: Path | None,
     recipe: Path,
     inputs: dict[str, float | Path] | None = None,
     metadata_recipe: Path | None = None,
@@ -112,7 +113,9 @@ def build_lmdb(  # noqa: PLR0913
     # remove UNL
     filtered_data_list: list[Path]
     filtered_data_list = [p for p in data_list if p.stem != "UNL"]
-    _already_parsed_keys = extract_key_list(env_path)
+    _already_parsed_keys = extract_key_list(
+        processed_env_path if processed_env_path is not None else env_path
+    )
     logger.info("Already parsed %d entries. (%s)", len(_already_parsed_keys), env_path)
     filtered_data_list = [
         data
