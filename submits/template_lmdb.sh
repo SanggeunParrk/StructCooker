@@ -7,11 +7,11 @@
 #SBATCH --qos=cpu-long-q
 #SBATCH -o ./logs/template_lmdb.out
 #SBATCH -e ./logs/template_lmdb.err
-#SBATCH --array=0
+#SBATCH --array=0-7
 
 CONFIG_PATH="configs/template_lmdb.yaml"
 MAP_SIZE=2000000000000 # ~2TB
-N_SHARDS=1
+N_SHARDS=8
 export PYTHONPATH="."
 
 python -u scripts/build_lmdb.py build \
