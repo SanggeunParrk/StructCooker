@@ -3,15 +3,15 @@
 #SBATCH --ntasks-per-node=1         
 #SBATCH -c 112     
 #SBATCH --mem=491g
-#SBATCH -p cpu-standard
-#SBATCH --qos=cpu-standard-q
+#SBATCH -p cpu-long
+#SBATCH --qos=cpu-long-q
 #SBATCH -o ./logs/cif_lmdb_%a.out
 #SBATCH -e ./logs/cif_lmdb_%a.err
 #SBATCH --array=0-7
 
 CONFIG_PATH="configs/cif_lmdb.yaml"
 MAP_SIZE=1000000000000 # ~1TB
-N_SHARDS=1
+N_SHARDS=8
 export PYTHONPATH="."
 
 python -u scripts/build_lmdb.py build \
