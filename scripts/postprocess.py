@@ -189,9 +189,6 @@ def db_extract(
 
     key_list = extract_key_list(config_dict["db_path"])
 
-    # test
-    key_list = key_list[:50]
-
     def _process_chunk(keys: list[str]) -> dict[tuple[str, str], dict]:
         output_dict = {}
         for key in keys:

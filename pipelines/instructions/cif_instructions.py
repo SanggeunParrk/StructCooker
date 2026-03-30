@@ -1008,6 +1008,9 @@ def build_full_length_asym_dict() -> Callable[..., dict | None]:
                 if src_idx is None or dst_idx is None:
                     msg = f"Cannot find atom {atom_id1} in residue {residue_idx1} or atom {atom_id2} in residue {residue_idx2} for branch link."
                     raise ValueError(msg)
+                if src_idx > dst_idx:
+                    # swap to ensure src_idx < dst_idx for undirected edge
+                    src_idx, dst_idx = dst_idx, src_idx
                 atom_src.append(src_idx)
                 atom_dst.append(dst_idx)
                 bond_type_value.append(link_info["bond"])

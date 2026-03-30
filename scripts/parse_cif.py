@@ -68,6 +68,13 @@ def cli(
 
         cifmol = CIFMol.from_dict(item)
         cifmol_dict[cif_key] = cifmol
+        src = cifmol.atoms.bond_type.src
+        dst = cifmol.atoms.bond_type.dst
+        value = cifmol.atoms.bond_type.value
+        import numpy as np
+
+        branch = np.where(value == "branch_link")[0]
+        breakpoint()
         to_cif(cifmol, Path(f"test_{cif_key}.cif"))
 
 
@@ -76,3 +83,4 @@ if __name__ == "__main__":
     # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/hc/1hcu.cif.gz
     # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/ud/6udr.cif.gz
     # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/nm/4nmg.cif.gz
+    # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/lt/7ltb.cif.gz
