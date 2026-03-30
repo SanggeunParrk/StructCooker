@@ -113,10 +113,11 @@ def build_lmdb(  # noqa: PLR0913
     # remove UNL
     filtered_data_list: list[Path]
     filtered_data_list = [p for p in data_list if p.stem != "UNL"]
-    _already_parsed_keys = extract_key_list(
+    already_env_path = (
         processed_env_path if processed_env_path is not None else env_path
     )
-    logger.info("Already parsed %d entries. (%s)", len(_already_parsed_keys), env_path)
+    _already_parsed_keys = extract_key_list(already_env_path)
+    logger.info("Already parsed %d entries. (%s)", len(_already_parsed_keys), already_env_path)
     filtered_data_list = [
         data
         for data in filtered_data_list
