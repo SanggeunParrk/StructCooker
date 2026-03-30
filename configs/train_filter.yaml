@@ -1,5 +1,5 @@
 # rebuild
-old_env_path: ${p:/data/psk6950/BioMolDB_20260224/cif_raw.lmdb}
+old_env_path: ${p:/data/psk6950/BioMolDB_20260224/cif.lmdb}
 new_env_path: ${p:/data/psk6950/BioMolDB_20260224/cif_train.lmdb}
 
 recipe: ${p:pipelines/recipe/train_filter.py}
