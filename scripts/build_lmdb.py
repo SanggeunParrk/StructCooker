@@ -108,12 +108,13 @@ def merge(shard_pattern: str, output: Path, map_size: float, overwrite: bool) ->
     Merge multiple LMDB shard databases into a single LMDB file.
 
     Example:
-        python cif_lmdb.py merge "/data/BioMolDBv2_2024Oct21/cif_shard*.lmdb" -o /data/BioMolDBv2_2024Oct21/cif_merged.lmdb
+        python build_lmdb.py merge "/data/BioMolDBv2_2024Oct21/cif_shard*.lmdb" -o /data/BioMolDBv2_2024Oct21/cif_merged.lmdb
     """
     map_size = int(map_size)
 
     # Expand wildcard pattern
-    shard_paths = sorted(Path().glob(shard_pattern))
+    pattern_path = Path(shard_pattern)
+    shard_paths = sorted(pattern_path.parent.glob(pattern_path.name))
     if not shard_paths:
         msg = f"No LMDB files found for pattern: {shard_pattern}"
         raise click.ClickException(msg)
