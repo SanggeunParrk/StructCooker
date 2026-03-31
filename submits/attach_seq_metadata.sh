@@ -12,3 +12,4 @@ export PYTHONPATH="."
 
 python -m scripts.build_lmdb rebuild "configs/attach_seq_metadata_valid_1.yaml"
 python -m scripts.build_lmdb rebuild "configs/attach_seq_metadata_train.yaml"
+python -m scripts.build_lmdb rebuild "configs/attach_seq_metadata_train_20260224.yaml"
