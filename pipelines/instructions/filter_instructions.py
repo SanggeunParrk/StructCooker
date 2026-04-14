@@ -119,7 +119,7 @@ def filter_a3m(
 
         gap_fraction = np.mean(
             aligned_sequences == gap_character,  # gap character in a3m
-            axis=0,
+            axis=1,
         )
         sorted_indices = np.argsort(gap_fraction)
         selected_indices = sorted_indices[:max_msa_depth]
