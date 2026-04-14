@@ -4,8 +4,6 @@ from collections.abc import Callable
 from typing import TypeVar
 
 import numpy as np
-from biomol.core.container import FeatureContainer
-from biomol.core.feature import NodeFeature
 
 from pipelines.utils.mapping import ResidueMapping
 
@@ -14,13 +12,13 @@ FeatureType = TypeVar("FeatureType")
 NumericType = TypeVar("NumericType", int, float)
 
 
-def parse_sequence() -> Callable[..., dict[str, NodeFeature]]:
+def parse_sequence() -> Callable[..., dict[str, np.ndarray]]:
     """Parse a sequence string into a list of residue symbols."""
 
     def _worker(
         raw_sequences: list[str],
         a3m_type: str | None = "protein",
-    ) -> dict[str, NodeFeature]:
+    ) -> dict[str, np.ndarray]:
         table = str.maketrans(dict.fromkeys(string.ascii_lowercase))
 
         residue_mapping = ResidueMapping()
@@ -69,22 +67,14 @@ def parse_sequence() -> Callable[..., dict[str, NodeFeature]]:
             sequences.append(sequence)
             deletions.append(deletion)
         query_sequence = np.array(list(query_sequence))
-        sequences = np.stack(sequences).astype(np.int32)
-        deletions = np.stack(deletions).astype(np.uint8)
+        sequences = np.stack(sequences).astype(np.uint8)
+        deletions = np.stack(deletions).astype(np.int32)
         deletion_mean = 2 * np.arctan(deletions.astype(np.float32) / 3) / np.pi
         deletion_mean = deletion_mean.mean(axis=0).astype(np.float32)
         profile = np.eye(max_idx + 1, dtype=np.int32)[
             sequences
         ]  # for now, protein only
         profile = np.mean(profile, axis=0).astype(np.float32)
-        sequences = sequences.transpose()
-        deletions = deletions.transpose()
-
-        query_sequence = NodeFeature(value=query_sequence)
-        sequences = NodeFeature(value=sequences)
-        deletions = NodeFeature(value=deletions)
-        deletion_mean = NodeFeature(value=deletion_mean)
-        profile = NodeFeature(value=profile)
 
         return {
             "query_sequence": query_sequence,
@@ -97,12 +87,12 @@ def parse_sequence() -> Callable[..., dict[str, NodeFeature]]:
     return _worker
 
 
-def parse_headers() -> Callable[..., dict[str, NodeFeature]]:
+def parse_headers() -> Callable[..., dict[str, np.ndarray]]:
     """Parse headers from a3m file."""
 
     def _worker(
         headers: list[str],
-    ) -> dict[str, NodeFeature]:
+    ) -> dict[str, np.ndarray]:
         """
         Extract information from a FASTA header.
 
@@ -201,10 +191,10 @@ def parse_headers() -> Callable[..., dict[str, NodeFeature]]:
             species_list.append(species)
             rep_id_list.append(rep_id)
 
-        database_list = NodeFeature(value=np.array(database_list, dtype="S"))
-        database_id = NodeFeature(value=np.array(database_id, dtype="S"))
-        species_list = NodeFeature(value=np.array(species_list, dtype="S"))
-        rep_id_list = NodeFeature(value=np.array(rep_id_list, dtype="S"))
+        database_list = np.array(database_list, dtype="S")
+        database_id = np.array(database_id, dtype="S")
+        species_list = np.array(species_list, dtype="S")
+        rep_id_list = np.array(rep_id_list, dtype="S")
 
         return {
             "database": database_list,
@@ -216,22 +206,16 @@ def parse_headers() -> Callable[..., dict[str, NodeFeature]]:
     return _worker
 
 
-def build_container() -> Callable[..., dict[str, FeatureContainer]]:
+def build_dict() -> Callable[..., dict[str, dict[str, np.ndarray]]]:
     """Build a feature container from parsed a3m data."""
 
     def _worker(
-        sequences: dict[str, NodeFeature],
-        headers: dict[str, NodeFeature],
-    ) -> dict[str, FeatureContainer]:
-        residue_container = FeatureContainer(
-            features=sequences,
-        )
-        chain_container = FeatureContainer(
-            features=headers,
-        )
+        sequences: dict[str, np.ndarray],
+        headers: dict[str, np.ndarray],
+    ) -> dict[str, dict[str, np.ndarray]]:
         return {
-            "residue_container": residue_container,
-            "chain_container": chain_container,
+            "sequences": sequences,
+            "headers": headers,
         }
 
     return _worker

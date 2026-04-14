@@ -1,6 +1,7 @@
 from datacooker import RecipeBook
+
 from pipelines.instructions.a3m_instructions import (
-    build_container,
+    build_dict,
     parse_headers,
     parse_sequence,
 )
@@ -18,12 +19,14 @@ a3m_recipe.add(
         (("parsed_sequences", str),),
     ],
     instruction=parse_sequence(),
-    inputs=[{
-        "kwargs": {
-            "raw_sequences": ("raw_sequences", str | None),
-            "a3m_type": ("a3m_type", str | None),
+    inputs=[
+        {
+            "kwargs": {
+                "raw_sequences": ("raw_sequences", str | None),
+                "a3m_type": ("a3m_type", str | None),
+            },
         },
-    },],
+    ],
 )
 
 a3m_recipe.add(
@@ -31,27 +34,29 @@ a3m_recipe.add(
         (("parsed_headers", dict),),
     ],
     instruction=parse_headers(),
-    inputs=[{
-        "kwargs": {
-            "headers": ("headers", list[str] | None),
+    inputs=[
+        {
+            "kwargs": {
+                "headers": ("headers", list[str] | None),
+            },
         },
-    },
-],
+    ],
 )
 
 a3m_recipe.add(
     targets=[
-        (("msa_container", dict),),
+        (("msa_dict", dict),),
     ],
-    instruction=build_container(),
-    inputs=[{
-        "kwargs": {
-            "sequences": ("parsed_sequences", dict | None),
-            "headers": ("parsed_headers", dict | None),
+    instruction=build_dict(),
+    inputs=[
+        {
+            "kwargs": {
+                "sequences": ("parsed_sequences", dict | None),
+                "headers": ("parsed_headers", dict | None),
+            },
         },
-    },
-],
+    ],
 )
 
 RECIPE = a3m_recipe
-TARGETS = ["msa_container"]
+TARGETS = ["msa_dict"]
