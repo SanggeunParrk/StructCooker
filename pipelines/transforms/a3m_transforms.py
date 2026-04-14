@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from Bio.PDB.MMCIF2Dict import MMCIF2Dict as mmcif2dict  # noqa: N813
+from biomol.core import FeatureContainer
 
 
 def get_a3m_data(a3m_path: Path) -> dict[str, Any]:
@@ -24,4 +24,23 @@ def get_a3m_data(a3m_path: Path) -> dict[str, Any]:
     return {
         "raw_sequences": raw_sequences,
         "headers": headers,
+    }
+
+
+def convert_to_msa_container(
+    value: dict,
+) -> dict[str, dict[str, FeatureContainer]]:
+    """Convert a dictionary containing CIFMol data into a dictionary of CIFMol objects."""
+    value = value["msa_container"]
+    residue_container, chain_container = (
+        value["residue_container"],
+        value["chain_container"],
+    )
+    residue_container = FeatureContainer.from_dict(residue_container)
+    chain_container = FeatureContainer.from_dict(chain_container)
+    return {
+        "msa_container": {
+            "_residue_container": residue_container,
+            "_chain_container": chain_container,
+        },
     }

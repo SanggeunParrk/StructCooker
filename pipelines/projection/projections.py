@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from pipelines.constants import cluster_maps
@@ -188,45 +187,68 @@ def write_edge_node(
     output_path: Path,
 ) -> None:
     """Write edge and node information to a tab-delimited file."""
-    cluster_to_chain_map = {}
-    interface_to_chains_map = {}
-    interface_clusters = set()
+    header = "cluster1\tcluster2\tpdb_id\tassembly_id\tmodel_id\talt_id\tchain_id1\tchain_id2\n"
+    monomer_map = {}
+    interface_map = {}
+
     for value in data.values():
-        monomer_map, interface_map = value["monomer_map"], value["interface_map"]
-        for cluster_id, chain_id_list in monomer_map.items():
-            if cluster_id not in cluster_to_chain_map:
-                cluster_to_chain_map[cluster_id] = set()
-            cluster_to_chain_map[cluster_id].update(chain_id_list)
-        for interface, chain_id_pairs in interface_map.items():
-            if interface not in interface_to_chains_map:
-                interface_to_chains_map[interface] = set()
-            interface_to_chains_map[interface].update(chain_id_pairs)
-            interface_clusters.add(interface[0])
-            interface_clusters.add(interface[1])
+        _monomer_map, _interface_map = value["monomer_map"], value["interface_map"]
+
+        for key in _monomer_map:
+            if key not in monomer_map:
+                monomer_map[key] = []
+            monomer_map[key].extend(_monomer_map[key])
+        for key in _interface_map:
+            if key not in interface_map:
+                interface_map[key] = []
+            interface_map[key].extend(_interface_map[key])
 
     # remove cluster_to_chain_map entries if the cluster is in any interface cluster
-    single_clusters = set(cluster_to_chain_map.keys()) - interface_clusters
-    filtered_cluster_to_chain_map = {
-        key: cluster_to_chain_map[key] for key in single_clusters
+    interface_clusters = {
+        cluster for interface in interface_map for cluster in interface
     }
+    single_clusters = set(monomer_map.keys()) - interface_clusters
+    filtered_monomer_map = {key: monomer_map[key] for key in single_clusters}
+
+    def _extract_info(chain_info: dict) -> tuple[str, str, str, str, str]:
+        return (
+            chain_info["pdb_id"],
+            chain_info["assembly_id"],
+            chain_info["model_id"],
+            chain_info["alt_id"],
+            chain_info["chain_id"],
+        )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w") as f:
-        for cluster1, chain_ids in filtered_cluster_to_chain_map.items():
-            to_write = ",".join(chain_ids)
-            f.write(f"{cluster1}\tNone\t{to_write}\n")
-        for (cluster1, cluster2), chain_id_pairs in interface_to_chains_map.items():
-            formatted_pairs = []
+        f.write(header)
+        for cluster1, chain_info_list in filtered_monomer_map.items():
+            for chain_info in chain_info_list:
+                pdb_id, assembly_id, model_id, alt_id, chain_id = _extract_info(
+                    chain_info,
+                )
+                to_write = f"{cluster1}\tNone\t{pdb_id}\t{assembly_id}\t{model_id}\t{alt_id}\t{chain_id}\tNone\n"
+                f.write(to_write)
+        for (cluster1, cluster2), chain_id_pairs_list in interface_map.items():
+            for chain_id_pairs in chain_id_pairs_list:
+                pdb_id1, assembly_id1, model_id1, alt_id1, chain_id1 = _extract_info(
+                    chain_id_pairs[0],
+                )
+                pdb_id2, assembly_id2, model_id2, alt_id2, chain_id2 = _extract_info(
+                    chain_id_pairs[1],
+                )
+                if (
+                    pdb_id1 != pdb_id2
+                    or assembly_id1 != assembly_id2
+                    or model_id1 != model_id2
+                    or alt_id1 != alt_id2
+                ):
+                    print(
+                        f"Warning: Mismatched CIF info for clusters {cluster1} and {cluster2}.",
+                    )
 
-            for src_chain_id, dst_chain_id in chain_id_pairs:
-                common_prefix = os.path.commonprefix([src_chain_id, dst_chain_id])
-                common_prefix = common_prefix.removesuffix("(")
-
-                shortened_dst = dst_chain_id[len(common_prefix) :]
-                formatted_pairs.append(f"{src_chain_id}:{shortened_dst}")
-
-            to_write = ",".join(formatted_pairs)
-            f.write(f"{cluster1}\t{cluster2}\t{to_write}\n")
+                to_write = f"{cluster1}\t{cluster2}\t{pdb_id1}\t{assembly_id1}\t{model_id1}\t{alt_id1}\t{chain_id1}\t{chain_id2}\n"
+                f.write(to_write)
 
 
 def unittest(

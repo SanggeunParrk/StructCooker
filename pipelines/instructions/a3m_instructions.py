@@ -146,14 +146,14 @@ def parse_headers() -> Callable[..., dict[str, NodeFeature]]:
         """
         # Pattern 1: UniRef-style header (with Tax=... and RepID=...)
         pattern1 = re.compile(
-            r"^>(?P<db_name>UniRef\d+)_"
+            r"^(?P<db_name>UniRef\d+)_"
             r"(?P<db_id>\S+).*?Tax=(?P<species>.*?)\s+TaxID=\S+\s+RepID=(?P<rep_id>\S+)",
             re.IGNORECASE,
         )
 
         # Pattern 2: Pipe-delimited UniProt header (with OS=...)
         pattern2 = re.compile(
-            r"^>(?P<db_name>[^|]+)\|"
+            r"^(?P<db_name>[^|]+)\|"
             r"(?P<db_id>[^|]+)\|"
             r"(?P<rep_id>[^|]+)\s+.*?OS=(?P<species>.*?)\s+(?=GN=|PE=|SV=)",
             re.IGNORECASE,

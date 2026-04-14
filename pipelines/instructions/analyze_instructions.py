@@ -69,8 +69,8 @@ def extract_edge_node(
     dict: A dictionary containing the extracted edge and node information.
     """
     # Placeholder for actual extraction logic
-    monomer_map: dict[str, list[str]] = {}
-    interface_map: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    monomer_map: dict[str, list[dict]] = {}
+    interface_map: dict[tuple[str, str], list[tuple[dict, dict]]] = {}
     for _item in cifmol_dict.values():
         cifmol = _item["cifmol"]
         valid_chains = []
@@ -87,7 +87,6 @@ def extract_edge_node(
             cifmol.model_id,
             cifmol.alt_id,
         )
-        cif_id = f"{pdb_id}_{assembly_id}_{model_id}_{alt_id}"
         cluster_ids = cifmol.chains.cluster_id.value
         chains = cifmol.chains.chain_id.value
         for _cluster_id, _chain_id in zip(cluster_ids, chains, strict=False):
@@ -97,7 +96,15 @@ def extract_edge_node(
             chain_id = str(_chain_id)
             if cluster_id not in monomer_map:
                 monomer_map[cluster_id] = []
-            monomer_map[cluster_id].append(f"{cif_id}_({chain_id})")
+            monomer_map[cluster_id].append(
+                {
+                    "pdb_id": pdb_id,
+                    "assembly_id": assembly_id,
+                    "model_id": model_id,
+                    "alt_id": alt_id,
+                    "chain_id": chain_id,
+                },
+            )
         src_indices, dst_indices = (
             cifmol.chains.contact.src_indices,
             cifmol.chains.contact.dst_indices,
@@ -115,8 +122,20 @@ def extract_edge_node(
                 interface_map[(src_cluster, dst_cluster)] = []
             interface_map[(src_cluster, dst_cluster)].append(
                 (
-                    f"{cif_id}_({cifmol.chains.chain_id.value[src_idx]!s})",
-                    f"{cif_id}_({cifmol.chains.chain_id.value[dst_idx]!s})",
+                    {
+                        "pdb_id": pdb_id,
+                        "assembly_id": assembly_id,
+                        "model_id": model_id,
+                        "alt_id": alt_id,
+                        "chain_id": str(cifmol.chains.chain_id.value[src_idx]),
+                    },
+                    {
+                        "pdb_id": pdb_id,
+                        "assembly_id": assembly_id,
+                        "model_id": model_id,
+                        "alt_id": alt_id,
+                        "chain_id": str(cifmol.chains.chain_id.value[dst_idx]),
+                    },
                 ),
             )
     return monomer_map, interface_map

@@ -40,6 +40,8 @@ def extract_key_list(env_path: Path) -> list[str]:
         set
             A set of all keys in the LMDB database.
     """
+    if not env_path.exists():
+        return []
     env = lmdb.open(str(env_path), readonly=True, lock=False)
     with env.begin() as txn:
         key_set = {
