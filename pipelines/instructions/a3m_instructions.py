@@ -78,7 +78,7 @@ def parse_sequence() -> Callable[..., dict[str, np.ndarray]]:
 
         return {
             "query_sequence": query_sequence,
-            "sequences": sequences,
+            "aligned_sequences": sequences,
             "deletions": deletions,
             "deletion_mean": deletion_mean,
             "profile": profile,

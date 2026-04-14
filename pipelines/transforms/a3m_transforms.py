@@ -10,8 +10,8 @@ def get_a3m_data(a3m_path: Path) -> dict[str, Any]:
         raw_lines = f.readlines()
     raw_sequences = []
     headers = []
-    for line in raw_lines:
-        line = line.strip()
+    for _line in raw_lines:
+        line = _line.strip()
         if line.startswith(">"):
             headers.append(line[1:])
             raw_sequences.append("")
@@ -31,16 +31,14 @@ def convert_to_msa_container(
     value: dict,
 ) -> dict[str, dict[str, FeatureContainer]]:
     """Convert a dictionary containing CIFMol data into a dictionary of CIFMol objects."""
-    value = value["msa_container"]
-    residue_container, chain_container = (
-        value["residue_container"],
-        value["chain_container"],
+    value = value["msa_dict"]
+    sequences, headers = (
+        value["sequences"],
+        value["headers"],
     )
-    residue_container = FeatureContainer.from_dict(residue_container)
-    chain_container = FeatureContainer.from_dict(chain_container)
     return {
-        "msa_container": {
-            "_residue_container": residue_container,
-            "_chain_container": chain_container,
+        "msa_dict": {
+            "_sequences": sequences,
+            "_headers": headers,
         },
     }

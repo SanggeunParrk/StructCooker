@@ -1,4 +1,3 @@
-from biomol.core import FeatureContainer
 from datacooker import RecipeBook
 
 from pipelines.instructions.filter_instructions import (
@@ -12,16 +11,16 @@ recipe = RecipeBook()
 recipe.add(
     targets=[
         (
-            ("residue_container", FeatureContainer),
-            ("chain_container", FeatureContainer),
+            ("sequences", dict),
+            ("headers", dict),
         ),
     ],
     instruction=filter_a3m(max_msa_depth=16_384),
     inputs=[
         {
             "kwargs": {
-                "residue_container": ("_residue_container", FeatureContainer),
-                "chain_container": ("_chain_container", FeatureContainer),
+                "sequences": ("_sequences", dict),
+                "headers": ("_headers", dict),
             },
         },
     ],
@@ -29,4 +28,4 @@ recipe.add(
 
 
 RECIPE = recipe
-TARGETS = ["residue_container", "chain_container"]
+TARGETS = ["sequences", "headers"]
