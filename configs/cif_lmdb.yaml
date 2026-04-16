@@ -1,7 +1,7 @@
 data_dir: ${p:/data/psk6950/BioMolDB_20260224/cif/raw}
 file_pattern: "*.cif*"
 
-env_path: ${p:/data/psk6950/BioMolDB_20260224/cif.lmdb}
+env_path: ${p:/data/psk6950/BioMolDB_test/cif.lmdb}
 
 recipe: ${p:pipelines/recipe/cif_recipe_book.py}
 load_func: pipelines.transforms.cif_transforms.get_cif_data
@@ -9,6 +9,6 @@ transform_func: pipelines.transforms.cif_transforms.dot_transform
 
 ccd_db_path: ${p:/data/psk6950/CCD/biomol_CCD_202602.lmdb}
 
-n_jobs: 16 # due to oom issue
+n_jobs: 4 # due to oom issue
 chunk_size: 20000
 test_run: true

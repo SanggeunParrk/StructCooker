@@ -15,7 +15,7 @@ recipe.add(
             ("headers", dict),
         ),
     ],
-    instruction=filter_a3m(max_msa_depth=16_384),
+    instruction=filter_a3m(max_msa_depth=4096),
     inputs=[
         {
             "kwargs": {
