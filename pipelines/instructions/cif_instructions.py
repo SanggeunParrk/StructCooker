@@ -417,7 +417,7 @@ def parse_scheme_dict() -> Callable[..., dict[str, dict[str, NDArray]] | None]:
         if ins_code is None:
             ins_code = np.array(["." for _ in range(len(auth_idx))])
         auth_idx = [
-            aa if ii == "." else f"{aa}.{ii}"
+            aa if ii in {".", "?"} else f"{aa}.{ii}"
             for aa, ii in zip(auth_idx, ins_code, strict=True)
         ]
         # handle heterogeneous sequence
@@ -526,8 +526,11 @@ def parse_entity_dict() -> Callable[..., dict[str, dict[str, NDArray]] | None]:
         hetero = np.array([1 if 1 in h else 0 for h in seq_num_to_hetero.values()])
 
         if entity_type == "polymer":
-            one_letter_code_can = entity_dict["pdbx_seq_one_letter_code_can"][0]
             one_letter_code = entity_dict["pdbx_seq_one_letter_code"][0]
+            if "pdbx_seq_one_letter_code_can" in entity_dict:
+                one_letter_code_can = entity_dict["pdbx_seq_one_letter_code_can"][0]
+            else:
+                one_letter_code_can = one_letter_code
             one_letter_code_can = one_letter_code_can.replace("\n", "")
             one_letter_code = one_letter_code.replace("\n", "")
             one_letter_code_can = np.array(list(one_letter_code_can))
@@ -1405,6 +1408,18 @@ def build_assembly_dict() -> Callable[..., dict[str, dict[str, NDArray]] | None]
         struct_oper_dict: dict[str, dict[str, NDArray]] | None,
         struct_conn_dict: dict[str, dict[str, NDArray]] | None,
     ) -> dict[str, dict[str, NDArray]] | None:
+        if len(struct_assembly_dict) == 0 or struct_assembly_dict is None:
+            # simply concatenate all chains without applying any symmetry operation, and assign them to a dummy assembly "1_1_."
+            struct_assembly_dict = {
+                "1": {asym_id: ["1"] for asym_id in asym_dict},
+            }
+            struct_oper_dict = {
+                "1": {
+                    "matrix": np.eye(3, dtype=float),
+                    "vector": np.zeros(3, dtype=float),
+                },
+            }
+
         output = {}
         full_asym_id_list = list(asym_dict.keys())
         for assembly_id in struct_assembly_dict:

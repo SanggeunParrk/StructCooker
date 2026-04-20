@@ -1,6 +1,6 @@
 # rebuild
 old_env_path: ${p:/data/psk6950/BioMolDB_20260224/a3m.lmdb}
-new_env_path: ${p:/data/psk6950/BioMolDB_20260224/slim.lmdb}
+new_env_path: ${p:/data/psk6950/BioMolDB_20260224/a3m_4k.lmdb}
 
 recipe: ${p:/home/psk6950/StructCooker/pipelines/recipe/a3m_filter.py}
 

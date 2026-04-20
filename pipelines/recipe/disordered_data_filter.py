@@ -6,22 +6,52 @@ from pipelines.cifmol import CIFMol
 from pipelines.instructions.filter_instructions import (
     filter_by_resolution_and_date,
     filter_cifmol_by_polymer_chain_count,
+    filter_cifmol_by_token_count,
+    filter_min_unresolved_residues,
     filter_signalp,
     filter_water,
 )
 
 """Rebuild a CIF lmdb to train AF3"""
 
-train_filter_recipe = RecipeBook()
+recipe = RecipeBook()
 
 
-train_filter_recipe.add(
+recipe.add(
+    targets=[(("cifmol_filtered_by_min_unresolved_residues", CIFMol),)],
+    instruction=filter_min_unresolved_residues,
+    inputs=[
+        {
+            "kwargs": {
+                "cifmol": ("cifmol", CIFMol),
+                "min_unresolved_residues": ("min_unresolved_residues", int),
+            },
+        },
+    ],
+)
+
+
+recipe.add(
+    targets=[(("cifmol_filtered_by_token_count", CIFMol),)],
+    instruction=filter_cifmol_by_token_count,
+    inputs=[
+        {
+            "kwargs": {
+                "cifmol": ("cifmol_filtered_by_min_unresolved_residues", CIFMol),
+                "max_token_count": ("max_token_count", int),
+            },
+        },
+    ],
+)
+
+
+recipe.add(
     targets=[(("cifmol_filtered_by_chain_count", CIFMol),)],
     instruction=filter_cifmol_by_polymer_chain_count,
     inputs=[
         {
             "kwargs": {
-                "cifmol": ("cifmol", CIFMol),
+                "cifmol": ("cifmol_filtered_by_token_count", CIFMol),
                 "max_polymer_chain_count": ("max_polymer_chain_count", int),
             },
         },
@@ -29,7 +59,7 @@ train_filter_recipe.add(
 )
 
 
-train_filter_recipe.add(
+recipe.add(
     targets=[(("cifmol_filtered_by_resolution_date", CIFMol),)],
     instruction=filter_by_resolution_and_date,
     inputs=[
@@ -45,7 +75,7 @@ train_filter_recipe.add(
 )
 
 
-train_filter_recipe.add(
+recipe.add(
     targets=[(("cifmol_wo_water", CIFMol),)],
     instruction=filter_water,
     inputs=[
@@ -58,7 +88,7 @@ train_filter_recipe.add(
 )
 
 
-train_filter_recipe.add(
+recipe.add(
     targets=[(("cifmol_dict", dict),)],
     instruction=filter_signalp,
     inputs=[
@@ -73,5 +103,5 @@ train_filter_recipe.add(
 )
 
 
-RECIPE = train_filter_recipe
+RECIPE = recipe
 TARGETS = ["cifmol_dict"]

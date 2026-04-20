@@ -3,8 +3,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH -c 40
 #SBATCH --mem=200g
-#SBATCH -p cpu
-#SBATCH -w node02
+#SBATCH -p gpu
+#SBATCH -w gpu05
 #SBATCH -o ./logs/extract_fasta.out
 #SBATCH -e ./logs/extract_fasta.err
 

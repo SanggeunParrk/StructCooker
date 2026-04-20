@@ -74,7 +74,6 @@ def cli(
         import numpy as np
 
         branch = np.where(value == "branch_link")[0]
-        breakpoint()
         to_cif(cifmol, Path(f"test_{cif_key}.cif"))
 
 
@@ -85,3 +84,4 @@ if __name__ == "__main__":
     # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/nm/4nmg.cif.gz
     # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/lt/7ltb.cif.gz
     # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/at/1atp.cif.gz
+    # python scripts/parse_cif.py /public_data/CCD/biomol_CCD_202602.lmdb /home/psk6950/data/BioMolDB_20260224/cif/raw/a9/8a9j.cif.gz

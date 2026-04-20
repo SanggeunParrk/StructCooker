@@ -1,6 +1,9 @@
+import gzip
+import io
 from pathlib import Path
 from typing import Any
 
+import zstandard as zstd
 from Bio.PDB.MMCIF2Dict import MMCIF2Dict as mmcif2dict  # noqa: N813
 
 
@@ -12,10 +15,14 @@ def dot_transform(key: str) -> list[str]:
 def get_cif_data(cif_path: Path) -> dict[str, Any]:
     """Parse a CIF file and return its data as a dictionary."""
     if cif_path.suffix == ".gz":
-        import gzip
-
         with gzip.open(cif_path, "rt") as f:
             cif_raw_data = mmcif2dict(f)
+    elif cif_path.suffix == ".zst":
+        with cif_path.open("rb") as f:
+            dctx = zstd.ZstdDecompressor()
+            with dctx.stream_reader(f) as reader:
+                text_reader = io.TextIOWrapper(reader, encoding="utf-8")
+                cif_raw_data = mmcif2dict(text_reader)
     elif cif_path.suffix == ".cif":
         cif_raw_data = mmcif2dict(cif_path)
     else:

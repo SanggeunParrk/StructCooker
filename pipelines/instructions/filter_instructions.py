@@ -148,13 +148,14 @@ def filter_a3m(
 
 def filter_cifmol_by_token_count(
     cifmol: CIFMol | None,
+    min_token_count: int = 1,
     max_token_count: int = 512,
 ) -> CIFMol | None:
     """Filter instruction to remove entries with sequence token length above cutoff."""
     if cifmol is None:
         return None
     token_count = len(cifmol.residues)
-    if token_count > max_token_count:
+    if token_count < min_token_count or token_count > max_token_count:
         return None
     return cifmol
 
@@ -173,11 +174,11 @@ def filter_cifmol_by_polymer_chain_count(
         "polyribonucleotide",
         "polydeoxyribonucleotide/polyribonucleotide hybrid",
     }
-    chain_count = np.isin(
+    polymer_chain_count = np.isin(
         cifmol.chains.entity_type.value,
         list(polymer_entity_types),
     ).sum()
-    if chain_count > max_polymer_chain_count:
+    if polymer_chain_count > max_polymer_chain_count:
         return None
     return cifmol
 
@@ -224,3 +225,20 @@ def filter_cifmol_by_clusters(
     if not cluster_id_set.issubset(filtered_clusters):
         return None
     return cast("dict", cifmol.to_dict())
+
+
+def filter_min_unresolved_residues(
+    cifmol: CIFMol | None,
+    min_unresolved_residues: int = 40,
+) -> CIFMol | None:
+    """Filter instruction to remove entries with unresolved residues."""
+    if cifmol is None:
+        return None
+    valid_xyz = cifmol.atoms.xyz.value
+    valid_mask = np.isfinite(valid_xyz).all(axis=1)
+    valid_residue_mask = np.zeros(len(cifmol.residues), dtype=bool)
+    valid_residue_mask[cifmol.index_table.atom_to_res[valid_mask]] = True
+    unresolved_residue_count = np.sum(~valid_residue_mask)
+    if unresolved_residue_count > min_unresolved_residues:
+        return None
+    return cifmol

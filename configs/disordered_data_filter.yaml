@@ -1,8 +1,8 @@
 # rebuild
 old_env_path: ${p:/public_data02/BioMolDB_test/cif.lmdb}
-new_env_path: ${p:/public_data02/BioMolDB_test/cif_valid_1.lmdb}
+new_env_path: ${p:/public_data02/BioMolDB_test/cif_disordered_to_predict.lmdb}
 
-recipe: ${p:pipelines/recipe/data_filter.py}
+recipe: ${p:pipelines/recipe/disordered_data_filter.py}
 metadata_recipe: ${p:pipelines/recipe/load_signalp.py}
 
 metadata_input:
@@ -11,11 +11,14 @@ metadata_input:
 
 convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_dict
 parameters:
-  resolution_cutoff: 4.5
+  resolution_cutoff: 9.0
+  min_unresolved_residues: 40
+  min_token_count: 256
   max_token_count: 2560
-  max_polymer_chain_count: 20
-  start_date: 2021-09-30
-  end_date: 2023-09-30
+  min_protein_chain_count: 1
+  max_polymer_chain_count: 48
+  start_date: null
+  end_date: 2026-03-01
 
 n_jobs: -1
 chunk_size: 20000
