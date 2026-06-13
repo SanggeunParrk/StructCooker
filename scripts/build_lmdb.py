@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 import click
-import lmdb
+from datacooker import count_lmdb_entries, merge_lmdb_shards
 from omegaconf import OmegaConf
 
 from pipelines.utils import load_config, load_data_list
@@ -95,11 +95,7 @@ def build(
     build_lmdb(*filtered_data_list, **config_dict, map_size=map_size)
 
     # check the key count
-    env = lmdb.open(str(config_dict["env_path"]), readonly=True, lock=False)
-    with env.begin() as txn:
-        cursor = txn.cursor()
-        key_count = sum(1 for _ in cursor)
-    env.close()
+    key_count = count_lmdb_entries(config_dict["env_path"])
     click.echo(f"[Done] Built LMDB at {config_dict['env_path']} with {key_count} keys.")
 
 
@@ -143,24 +139,15 @@ def merge(shard_pattern: str, output: Path, map_size: float, overwrite: bool) ->
     for s in shard_paths:
         click.echo(f"  - {s}")
 
-    merged_env = lmdb.open(str(output), map_size=map_size)
-    total_keys = 0
-
-    for shard_path in shard_paths:
-        click.echo(f"Merging {shard_path}")
-        shard_env = lmdb.open(str(shard_path), readonly=True, lock=False)
-        with shard_env.begin() as shard_txn, merged_env.begin(write=True) as merged_txn:
-            cursor = shard_txn.cursor()
-            for key, value in cursor:
-                merged_txn.put(key, value)
-                total_keys += 1
-        shard_env.close()
-
-    merged_env.sync()
-    merged_env.close()
+    merge_lmdb_shards(
+        shard_paths,
+        output,
+        map_size=map_size,
+        overwrite=overwrite,
+    )
 
     click.echo(f"[Done] Merged {len(shard_paths)} shards into {output}")
-    click.echo(f"Total keys merged: {total_keys}")
+    click.echo(f"Total keys merged: {count_lmdb_entries(output)}")
 
 
 @cli.command("rebuild")
@@ -196,11 +183,7 @@ def rebuild(
 @click.argument("db_path", type=click.Path(exists=True, path_type=Path))
 def check_db(db_path: Path) -> None:
     """Check the number of keys in the LMDB database."""
-    env = lmdb.open(str(db_path), readonly=True, lock=False)
-    with env.begin() as txn:
-        cursor = txn.cursor()
-        key_count = sum(1 for _ in cursor)
-    env.close()
+    key_count = count_lmdb_entries(db_path)
     click.echo(f"{db_path}: {key_count} keys")
 
 
@@ -209,7 +192,7 @@ def check_db(db_path: Path) -> None:
 def test_db(db_path: Path) -> None:
     """Test reading a specific key from the LMDB database."""
     key = "P0003600"
-    data = read_lmdb(db_path, key)
+    click.echo(f"Loaded test entry for {key}: {sorted(read_lmdb(db_path, key).keys())}")
 
 
 # ==============================================================

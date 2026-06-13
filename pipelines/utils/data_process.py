@@ -1,63 +1,12 @@
 import logging
-import os
 from pathlib import Path
 from typing import Any
 
 from datacooker import TransformFunc, parse_dict
+from datacooker.utils.sharding import resolve_node_config, shard_items
 from joblib import Parallel, delayed
 
 logger = logging.getLogger(__name__)
-
-_NODE_COUNT_ENV_KEYS = ("WORLD_SIZE", "SLURM_NTASKS", "OMPI_COMM_WORLD_SIZE")
-_NODE_RANK_ENV_KEYS = ("RANK", "SLURM_PROCID", "OMPI_COMM_WORLD_RANK")
-
-
-def _read_first_valid_int_env(keys: tuple[str, ...]) -> int | None:
-    """Read the first valid integer value from the provided environment keys."""
-    for key in keys:
-        value = os.environ.get(key)
-        if value is None:
-            continue
-        try:
-            return int(value)
-        except ValueError:
-            logger.warning("Ignoring non-integer env value %s=%s", key, value)
-    return None
-
-
-def _resolve_node_config(
-    node_rank: int | None,
-    node_count: int | None,
-) -> tuple[int, int]:
-    """Resolve node rank/count from args first, then environment variables."""
-    resolved_node_count = (
-        node_count
-        if node_count is not None
-        else _read_first_valid_int_env(_NODE_COUNT_ENV_KEYS)
-    )
-    resolved_node_rank = (
-        node_rank
-        if node_rank is not None
-        else _read_first_valid_int_env(_NODE_RANK_ENV_KEYS)
-    )
-
-    if resolved_node_count is None:
-        resolved_node_count = 1
-    if resolved_node_rank is None:
-        resolved_node_rank = 0
-
-    if resolved_node_count < 1:
-        msg = f"Invalid node_count={resolved_node_count}. Expected >= 1."
-        raise ValueError(msg)
-    if resolved_node_rank < 0 or resolved_node_rank >= resolved_node_count:
-        msg = (
-            f"Invalid node_rank={resolved_node_rank} for node_count="
-            f"{resolved_node_count}."
-        )
-        raise ValueError(msg)
-
-    return resolved_node_rank, resolved_node_count
-
 
 
 def parallel_process(  # noqa: PLR0913
@@ -67,7 +16,7 @@ def parallel_process(  # noqa: PLR0913
     transform_func: TransformFunc | None = None,
     chunk_size: int = 10_000,
     n_jobs: int = -1,
-    test_run: bool = True,
+    test_run: bool = True,  # noqa: FBT001, FBT002
     node_rank: int | None = None,
     node_count: int | None = None,
     **extra_kwargs: Any,  # noqa: ANN401
@@ -90,15 +39,15 @@ def parallel_process(  # noqa: PLR0913
         msg = f"chunk_size must be >= 1, got {chunk_size}."
         raise ValueError(msg)
 
-    resolved_node_rank, resolved_node_count = _resolve_node_config(
+    resolved_node_rank, resolved_node_count = resolve_node_config(
         node_rank=node_rank,
         node_count=node_count,
     )
-    sharded_data_list = [
-        data
-        for i, data in enumerate(data_list)
-        if i % resolved_node_count == resolved_node_rank
-    ]
+    sharded_data_list = shard_items(
+        data_list,
+        node_rank=resolved_node_rank,
+        node_count=resolved_node_count,
+    )
 
     logger.info(
         "Node %d/%d assigned %d/%d entries.",
@@ -127,9 +76,9 @@ def parallel_process(  # noqa: PLR0913
                 transform_func=transform_func,
                 **extra_kwargs,
             )
-            return results, None
         except Exception as error:  # noqa: BLE001
             return {}, error
+        return results, None
 
     logger.info("To be parsed %d entries.", len(sharded_data_list))
 
@@ -143,7 +92,6 @@ def parallel_process(  # noqa: PLR0913
             if result[1] is not None:
                 raise result[1]
         logger.info("Test run successful. Proceeding with full processing...")
-
 
     # --- Parallel processing ---
     results = []
@@ -160,15 +108,20 @@ def parallel_process(  # noqa: PLR0913
             delayed(_process_item)(data) for data in data_chunk
         )
         results.extend(_results)
-    
+
     error_count = sum(1 for _, error in results if error is not None)
-    logger.info("Processing completed with %d errors out of %d entries.", error_count, len(results))
+    logger.info(
+        "Processing completed with %d errors out of %d entries.",
+        error_count,
+        len(results),
+    )
     if error_count > 0:
         logger.info("Sample errors:")
+        max_logged_errors = 10
         for i, (_, error) in enumerate(results):
             if error is not None:
                 logger.info("Error %d: %s", i + 1, str(error))
-                if i >= 9:
+                if i >= max_logged_errors - 1:
                     break
 
     return results

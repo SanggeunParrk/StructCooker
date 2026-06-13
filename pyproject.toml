@@ -55,7 +55,7 @@ platforms = ["linux-64"]
 structcooker = { path = ".", editable = true }
 mkdocs = ">=1.6,<2"
 mkdocs-material = ">=9.6,<10"
-datacooker = { path = "libs/datacooker", editable = true }
+datacooker = { path = "../DataCooker", editable = true }
 
 
 [tool.pixi.dependencies]

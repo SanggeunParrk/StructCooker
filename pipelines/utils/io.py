@@ -1,17 +1,22 @@
 from pathlib import Path
 
-import lmdb
 from biomol.cif import CIFMol
 from biomol.core.types import BioMolDict
 from biomol.core.utils import load_bytes
-from datacooker import Cooker, ParsingCache
+from datacooker import (
+    Cooker,
+    ParsingCache,
+    read_all_lmdb_raw,
+    read_lmdb_raw,
+)
 
 from pipelines.cifmol.cifmol_attached import CIFMolAttached
+from pipelines.utils.convert import from_bytes
 
 
 def load_seq_cluster(
     seq_cluster_tsv_path: Path,
-    merge_ab: bool = False,
+    merge_ab: bool = False,  # noqa: FBT001, FBT002
 ) -> dict[str, list[str]]:
     """Load sequence clusters from a TSV file.
 
@@ -58,84 +63,14 @@ def load_seq_id_to_seq(seq_id_to_seq_path: Path) -> dict[str, str]:
     return seq_dict
 
 
-def extract_lmdb_keys(env_path: Path) -> list[str]:
-    """Extract all keys from the LMDB database."""
-    env = lmdb.open(str(env_path), readonly=True, lock=False)
-    with env.begin() as txn:
-        key_list = [
-            key.decode() for key in txn.cursor().iternext(keys=True, values=False)
-        ]
-    env.close()
-    return key_list
-
-
 def load_raw_data(key: str, env_path: Path) -> bytes | None:
-    """Read a value from the LMDB database by key.
-
-    Args:
-        env_path: Path to the LMDB environment.
-        key: Key of the data to retrieve.
-
-    Returns
-    -------
-        bytes
-            The data dictionary retrieved from the LMDB database.
-
-    """
-    cache = getattr(load_raw_data, "_env_cache", None)
-    if cache is None:
-        cache = {}
-        load_raw_data._env_cache = cache  # pyright: ignore[reportFunctionMemberAccess] # noqa: SLF001
-
-    env_key = str(env_path)
-    env = cache.get(env_key)
-    if env is None:
-        env = lmdb.open(
-            env_key,
-            readonly=True,
-            lock=False,
-            max_readers=4096,
-            readahead=True,
-        )
-        cache[env_key] = env
-
-    with env.begin(buffers=True) as txn:
-        value = txn.get(key.encode())
-
-    if value is None:
-        return None
-    return bytes(value)
+    """Read a raw LMDB payload by key."""
+    return read_lmdb_raw(env_path, key)
 
 
 def load_all_raw_data(env_path: Path) -> dict[str, bytes]:
-    """Read all key-value pairs from the LMDB database.
-
-    Args:
-        env_path: Path to the LMDB environment.
-
-    Returns
-    -------
-        dict
-            A dictionary containing all key-value pairs from the LMDB database.
-
-    """
-    env = lmdb.open(
-        str(env_path),
-        readonly=True,
-        lock=False,
-        max_readers=4096,
-        readahead=True,
-    )
-
-    data_dict = {}
-    with env.begin(buffers=True) as txn:
-        cursor = txn.cursor()
-        for key, value in cursor:
-            key_str = bytes(key).decode()
-            value_bytes = bytes(value)
-            data_dict[key_str] = value_bytes
-
-    return data_dict
+    """Read all raw key-value pairs from an LMDB database."""
+    return read_all_lmdb_raw(env_path)
 
 
 def load_cif(key: str, env_path: Path) -> dict[str, dict[str, CIFMol]]:
@@ -175,21 +110,25 @@ def load_cif(key: str, env_path: Path) -> dict[str, dict[str, CIFMol]]:
     return cifmol_dict
 
 
-def load_cifmol_attached(db_path: Path, pdb_id: str) -> CIFMolAttached:
-    """Load CIFMolAttached from LMDB by cif_id."""
+def load_cifmol_attached(
+    db_path: Path,
+    pdb_id: str,
+) -> dict[str, dict[str, CIFMolAttached]]:
+    """Load attached CIFMol objects from a StructCooker LMDB entry."""
     value = load_raw_data(pdb_id, db_path)
 
     if value is None:
         msg = f"Key '{pdb_id}' not found in LMDB database at '{db_path}'."
         raise KeyError(msg)
 
-    value = load_bytes(value)
-    item = value.get(f"{assembly_id}_{model_id}_{alt_id}")
-    if item is None:
-        msg = f"CIFMolAttached '{pdb_id}' not found in LMDB database at '{db_path}'."
-        raise KeyError(msg)
-    item = item["cifmol_dict"]
-    return CIFMolAttached.from_dict(item)
+    entry = from_bytes(value)
+    cifmol_dict: dict[str, dict[str, CIFMolAttached]] = {}
+    for cif_key, item in entry.items():
+        cifmol_payload = item.get("cifmol_dict")
+        if cifmol_payload is None:
+            continue
+        cifmol_dict[cif_key] = {"cifmol": CIFMolAttached.from_dict(cifmol_payload)}
+    return cifmol_dict
 
 
 def load_cifmols(db_path: Path, seq_id: str) -> list[CIFMol]:

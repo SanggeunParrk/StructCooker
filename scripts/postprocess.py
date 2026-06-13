@@ -4,7 +4,7 @@ from pathlib import Path
 
 import click
 import lmdb
-from datacooker.core import ConvertFunc, ProjectFunc, parse_dict
+from datacooker import ConvertFunc, parse_dict
 from joblib import Parallel, delayed
 from omegaconf import OmegaConf
 
@@ -131,7 +131,7 @@ def data_transform(
         if field not in config_dict:
             msg = f"Missing necessary field '{field}' in config."
             raise KeyError(msg)
-    if not isinstance(config_dict["project_func"], ProjectFunc):
+    if not callable(config_dict["project_func"]):
         msg = "'project_func' must be a ProjectFunc callable."
         raise TypeError(msg)
 
@@ -168,7 +168,7 @@ def db_extract(
         if field not in config_dict:
             msg = f"Missing necessary field '{field}' in config."
             raise KeyError(msg)
-    if not isinstance(config_dict["project_func"], ProjectFunc):
+    if not callable(config_dict["project_func"]):
         msg = "'project_func' must be a ProjectFunc callable."
         raise TypeError(msg)
 

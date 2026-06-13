@@ -1,17 +1,13 @@
-from importlib import import_module
 from pathlib import Path
 from typing import Any
 
+from datacooker import resolve_object, scan_paths
 from omegaconf import OmegaConf
-import fnmatch
-import os
 
 
 def dotted_to_obj(path: str) -> object:
-    """Convert a dotted path string to a Python object."""
-    module_name, attr_name = path.rsplit(".", 1)
-    module = import_module(module_name)
-    return getattr(module, attr_name)
+    """Backward-compatible wrapper around DataCooker's dotted-path resolver."""
+    return resolve_object(path)
 
 
 def load_config(config_path: Path) -> dict[str, Any]:
@@ -37,15 +33,5 @@ def load_config(config_path: Path) -> dict[str, Any]:
 
 
 def load_data_list(data_dir: Path, pattern: str = "*.cif*") -> list[Path]:
-    result = []
-    
-    def _scan(dir_path: Path):
-        with os.scandir(dir_path) as it:
-            for entry in it:
-                if entry.is_dir(follow_symlinks=False):
-                    _scan(Path(entry.path))
-                elif fnmatch.fnmatch(entry.name, pattern):
-                    result.append(Path(entry.path))
-    
-    _scan(data_dir)
-    return result
+    """Backward-compatible wrapper around DataCooker's recursive file scanner."""
+    return scan_paths(data_dir, pattern=pattern)
