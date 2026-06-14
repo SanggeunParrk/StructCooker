@@ -3,9 +3,9 @@ from pathlib import Path
 import click
 from datacooker import parse_file
 
-from pipelines.cifmol import CIFMol, to_cif
-from pipelines.transforms.cif_transforms import dot_transform, get_cif_data
-from pipelines.utils.convert import to_dict
+from structcooker.codecs import to_dict
+from structcooker.models import CIFMol, to_cif
+from structcooker.readers.cif import dot_transform, get_cif_data
 
 
 @click.command()
@@ -21,7 +21,7 @@ from pipelines.utils.convert import to_dict
     "--recipe-path",
     "-r",
     type=click.Path(exists=True, dir_okay=False, file_okay=True, path_type=Path),
-    default=Path("pipelines/recipe/cif_recipe_book.py"),
+    default=Path("src/structcooker/workflows/cif_recipe_book.py"),
     show_default=True,
     help="Path to the Cooker recipe file.",
 )
@@ -68,12 +68,6 @@ def cli(
 
         cifmol = CIFMol.from_dict(item)
         cifmol_dict[cif_key] = cifmol
-        src = cifmol.atoms.bond_type.src
-        dst = cifmol.atoms.bond_type.dst
-        value = cifmol.atoms.bond_type.value
-        import numpy as np
-
-        branch = np.where(value == "branch_link")[0]
         to_cif(cifmol, Path(f"test_{cif_key}.cif"))
 
 

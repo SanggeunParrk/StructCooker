@@ -2,8 +2,8 @@
 old_env_path: ${p:/public_data02/BioMolDB_test//cif_attached_valid_1.lmdb}
 new_env_path: ${p:/public_data02/BioMolDB_test//cif_attached_valid_2.lmdb}
 
-recipe: ${p:pipelines/recipe/valid_filter_2.py}
-metadata_recipe: ${p:pipelines/recipe/valid_filter_2_metadata.py}
+recipe: ${p:src/structcooker/workflows/valid_filter_2.py}
+metadata_recipe: ${p:src/structcooker/workflows/valid_filter_2_metadata.py}
 
 metadata_input:
   raw_fasta_path: ${p:/public_data02/BioMolDB_test//fasta/merged.fasta}
@@ -18,8 +18,8 @@ n_jobs: -1
 chunk_size: 4000
 
 reader:
-  adapter: pipelines.transforms.cifmol_transforms.convert_to_cifmol_attached_transformed
-  deserializer: pipelines.utils.convert.from_bytes
+  adapter: structcooker.readers.cifmol.convert_to_cifmol_attached_transformed
+  deserializer: structcooker.codecs.from_bytes
 
 writer:
-  serializer: pipelines.utils.convert.to_bytes
+  serializer: structcooker.codecs.to_bytes

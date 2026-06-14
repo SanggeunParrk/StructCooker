@@ -1,9 +1,9 @@
 db_path: ${p:/data/psk6950/BioMolDB_test/cif_raw.lmdb}
-extract_recipe_path: ${p:/home/psk6950/practice/StructCooker/pipelines/recipe/extract_metadata.py}
+extract_recipe_path: ${p:/home/psk6950/practice/StructCooker/src/structcooker/workflows/extract_metadata.py}
 output_data_path: ${p:/data/psk6950/BioMolDB_test/metadata/cif_metadata.tsv}
 
 reader:
-  deserializer: pipelines.utils.convert.from_bytes
+  deserializer: structcooker.codecs.from_bytes
 
 writer:
-  materializer: pipelines.projection.projections.write_metadata
+  materializer: structcooker.writers.projections.write_metadata

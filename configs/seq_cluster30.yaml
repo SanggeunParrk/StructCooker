@@ -7,8 +7,8 @@ inputs:
   mmseqs2_cov: 0.8
   mmseqs2_covmode: "0"
   mmseqs2_clustermode: "1"
-recipe_path: ${p:/home/psk6950/practice/StructCooker/pipelines/recipe/seq_cluster.py}
+recipe_path: ${p:/home/psk6950/practice/StructCooker/src/structcooker/workflows/seq_cluster.py}
 output_data_path: ${p:/public_data02/BioMolDB_test/metadata/seq_cluster30.tsv}
 
 writer:
-  materializer: pipelines.projection.projections.write_clusters
+  materializer: structcooker.writers.projections.write_clusters

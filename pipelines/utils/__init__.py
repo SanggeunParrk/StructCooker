@@ -1,1 +1,0 @@
-"""StructCooker utility helpers."""

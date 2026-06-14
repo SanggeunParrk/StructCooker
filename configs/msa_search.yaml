@@ -7,7 +7,7 @@ inputs:
   mem_per_job: 16 # in GB, total 
   seq_id_map_path: ${p:/data/psk6950/BioMolDB_20260224/metadata/seq_id_map.tsv}
   output_dir: ${p:/data/psk6950/msa/}
-split_recipe_path: ${p:/home/psk6950/StructCooker/pipelines/recipe/load_protein_seqs.py}
-recipe_path: ${p:/home/psk6950/StructCooker/pipelines/recipe/msa_search.py}
+split_recipe_path: ${p:/home/psk6950/StructCooker/src/structcooker/workflows/load_protein_seqs.py}
+recipe_path: ${p:/home/psk6950/StructCooker/src/structcooker/workflows/msa_search.py}
 n_jobs: 28 # total 80 CPUs, 4 CPUs per job for HHblits
 test_run: false

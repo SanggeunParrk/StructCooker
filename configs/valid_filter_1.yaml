@@ -2,8 +2,8 @@
 old_env_path: ${p:/public_data02/BioMolDB_test/cif.lmdb}
 new_env_path: ${p:/public_data02/BioMolDB_test/cif_valid_1.lmdb}
 
-recipe: ${p:pipelines/recipe/data_filter.py}
-metadata_recipe: ${p:pipelines/recipe/load_signalp.py}
+recipe: ${p:src/structcooker/workflows/data_filter.py}
+metadata_recipe: ${p:src/structcooker/workflows/load_signalp.py}
 
 metadata_input:
   signalp_dir: ${p:/public_data02/BioMolDB_20260224/signalp}
@@ -20,8 +20,8 @@ n_jobs: -1
 chunk_size: 20000
 
 reader:
-  adapter: pipelines.transforms.cifmol_transforms.convert_to_cifmol_dict
-  deserializer: pipelines.utils.convert.from_bytes
+  adapter: structcooker.readers.cifmol.convert_to_cifmol_dict
+  deserializer: structcooker.codecs.from_bytes
 
 writer:
-  serializer: pipelines.utils.convert.to_bytes
+  serializer: structcooker.codecs.to_bytes
