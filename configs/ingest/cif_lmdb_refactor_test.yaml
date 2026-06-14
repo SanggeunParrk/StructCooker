@@ -1,0 +1,19 @@
+data_dir: ${p:/public_data02/BioMolDB_20260224/cif/raw}
+file_pattern: "*.cif*"
+
+env_path: ${p:/public_data02/BioMolDB_refactor_test/cif.lmdb}
+
+recipe: ${p:src/structcooker/workflows/ingest/cif.py}
+
+ccd_db_path: ${p:/public_data02/CCD/biomol_CCD_202602.lmdb}
+
+n_jobs: 4 # due to oom issue
+chunk_size: 20000
+test_run: true
+
+reader:
+  loader: structcooker.instructions.readers.cif.get_cif_data
+  key_transform: structcooker.instructions.readers.cif.dot_transform
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
