@@ -12,4 +12,4 @@ CONFIG_PATH="configs/seq_cluster30.yaml"
 export PYTHONPATH="."
 export PATH="$PWD/mmseqs/bin:$PATH"
 
-python -m scripts.postprocess data_transform "${CONFIG_PATH}"
+python -m datacooker.cli.workflow run "${CONFIG_PATH}"

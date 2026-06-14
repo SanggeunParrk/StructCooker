@@ -12,6 +12,6 @@ CONFIG_PATH="configs/cif_lmdb.yaml"
 MAP_SIZE=1000000000000 # ~1TB
 export PYTHONPATH="."
 
-python -u scripts/build_lmdb.py build \
+python -u -m datacooker.cli.lmdb build \
   ${CONFIG_PATH} \
   --map-size "${MAP_SIZE}" 

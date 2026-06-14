@@ -11,4 +11,4 @@
 
 export PYTHONPATH="."
 
-python -m scripts.postprocess data_transform "configs/extract_ccd_cif.yaml"
+python -m datacooker.cli.workflow run "configs/extract_ccd_cif.yaml"

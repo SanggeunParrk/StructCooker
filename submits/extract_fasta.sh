@@ -10,4 +10,4 @@
 
 export PYTHONPATH="."
 
-python -m scripts.postprocess db_extract "configs/extract_fasta_whole.yaml"
+python -m datacooker.cli.workflow extract-lmdb "configs/extract_fasta_whole.yaml"

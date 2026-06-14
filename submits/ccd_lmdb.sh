@@ -14,7 +14,7 @@ MAP_SIZE=1000000000000 # ~1TB
 N_SHARDS=1
 export PYTHONPATH="."
 
-python -u scripts/build_lmdb.py build \
+python -u -m datacooker.cli.lmdb build \
   ${CONFIG_PATH} \
   --map-size "${MAP_SIZE}" \
   --shard-idx "${SLURM_ARRAY_TASK_ID}" \

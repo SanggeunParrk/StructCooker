@@ -239,6 +239,6 @@ def filter_min_unresolved_residues(
     valid_residue_mask = np.zeros(len(cifmol.residues), dtype=bool)
     valid_residue_mask[cifmol.index_table.atom_to_res[valid_mask]] = True
     unresolved_residue_count = np.sum(~valid_residue_mask)
-    if unresolved_residue_count > min_unresolved_residues:
+    if unresolved_residue_count < min_unresolved_residues:
         return None
     return cifmol

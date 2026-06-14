@@ -4,7 +4,13 @@ new_env_path: ${p:/data/psk6950/BioMolDB_20260224/a3m_4k.lmdb}
 
 recipe: ${p:/home/psk6950/StructCooker/pipelines/recipe/a3m_filter.py}
 
-convert_func: pipelines.transforms.a3m_transforms.convert_to_msa_container
 
 n_jobs: -1
 chunk_size: 10000
+
+reader:
+  adapter: pipelines.transforms.a3m_transforms.convert_to_msa_container
+  deserializer: pipelines.utils.convert.from_bytes
+
+writer:
+  serializer: pipelines.utils.convert.to_bytes

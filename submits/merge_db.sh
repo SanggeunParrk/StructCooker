@@ -22,4 +22,4 @@ OUTPUT_PATH="/data/psk6950/BioMolDB_20260224/cif.lmdb"
 srun --ntasks="${SLURM_NTASKS}" \
      --ntasks-per-node=1 \
      --cpus-per-task="${SLURM_CPUS_PER_TASK}" \
-     python scripts/build_lmdb.py merge "${INPUT_PATH}" -o "${OUTPUT_PATH}"
+     python -m datacooker.cli.lmdb merge "${INPUT_PATH}" -o "${OUTPUT_PATH}"

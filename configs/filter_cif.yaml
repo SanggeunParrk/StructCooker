@@ -5,7 +5,6 @@ new_env_path: ${p:/home/psk6950/data/StructSticklerDB/cif_af3_validate_first_fil
 recipe: ${p:pipelines/recipe/first_filter_recipe.py}
 metadata_recipe: ${p:pipelines/recipe/load_metadata.py}
 
-convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_dict
 metadata_input:
   seqid2seq_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/metadata/seq_hash_map.tsv}
   clusterid2seqid_path: ${p:/home/psk6950/data/BioMolDBv2_2024Oct21/cluster/seq_clusters.tsv}
@@ -19,3 +18,10 @@ parameters:
 
 n_jobs: -1
 chunk_size: 1000
+
+reader:
+  adapter: pipelines.transforms.cifmol_transforms.convert_to_cifmol_dict
+  deserializer: pipelines.utils.convert.from_bytes
+
+writer:
+  serializer: pipelines.utils.convert.to_bytes

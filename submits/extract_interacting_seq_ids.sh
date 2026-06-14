@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J extract_interacting_seq_ids
 #SBATCH --ntasks-per-node=1
-#SBATCH -c 96
+#SBATCH -c 48
 #SBATCH --mem=324g
 #SBATCH -p gpu
 #SBATCH -w gpu05
@@ -11,4 +11,4 @@
 CONFIG_PATH="configs/extract_interacting_seq_ids.yaml"
 export PYTHONPATH="."
 
-python -m scripts.postprocess db_extract "${CONFIG_PATH}"
+python -m datacooker.cli.workflow extract-lmdb "${CONFIG_PATH}"

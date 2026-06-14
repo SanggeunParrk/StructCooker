@@ -11,4 +11,4 @@
 CONFIG_PATH="configs/disordered_data_filter.yaml"
 export PYTHONPATH="."
 
-python -m scripts.build_lmdb rebuild "${CONFIG_PATH}"
+python -m datacooker.cli.lmdb rebuild "${CONFIG_PATH}"

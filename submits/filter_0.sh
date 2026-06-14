@@ -11,4 +11,4 @@
 CONFIG_PATH="configs/filter_cif.yaml"
 export PYTHONPATH="."
 
-python -m scripts.build_lmdb rebuild "${CONFIG_PATH}"
+python -m datacooker.cli.lmdb rebuild "${CONFIG_PATH}"

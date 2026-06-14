@@ -12,4 +12,4 @@
 
 export PYTHONPATH="."
 
-python -m scripts.build_lmdb check_db /data/psk6950/BioMolDB_20260224/a3m.lmdb
+python -m datacooker.cli.lmdb count /data/psk6950/BioMolDB_20260224/a3m.lmdb

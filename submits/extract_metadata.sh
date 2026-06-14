@@ -12,4 +12,4 @@
 CONFIG_PATH="configs/extract_metadata.yaml"
 export PYTHONPATH="."
 
-python -m scripts.postprocess db_extract "${CONFIG_PATH}"
+python -m datacooker.cli.workflow extract-lmdb "${CONFIG_PATH}"

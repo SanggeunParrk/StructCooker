@@ -13,4 +13,4 @@ export PYTHONPATH="."
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 
 srun --ntasks="${SLURM_NTASKS}" --ntasks-per-node=1 --cpus-per-task="${SLURM_CPUS_PER_TASK}" \
-  python -m scripts.postprocess data_transform_parallel "configs/hhmake.yaml"
+  python -m datacooker.cli.workflow parallel-run "configs/hhmake.yaml"

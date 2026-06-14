@@ -11,4 +11,4 @@
 CONFIG_PATH="configs/train_filter_20260224.yaml"
 export PYTHONPATH="."
 
-python -m scripts.build_lmdb rebuild "${CONFIG_PATH}"
+python -m datacooker.cli.lmdb rebuild "${CONFIG_PATH}"

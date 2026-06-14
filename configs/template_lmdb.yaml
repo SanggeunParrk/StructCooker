@@ -3,21 +3,26 @@
 data_dir: ${p:/data/psk6950/hmm_output}
 file_pattern: "*.out"
 
-env_path: ${p:/data/psk6950/BioMolDB_20260224/template.lmdb}
+env_path: ${p:/data/psk6950/BioMolDB_test/template.lmdb}
 recipe: ${p:pipelines/recipe/build_template_lmdb.py}
 
 metadata_recipe: ${p:pipelines/recipe/load_template_metadata.py}
 metadata_input:
-  metadata_path: ${p:/data/psk6950/BioMolDB_20260224/metadata/cif_metadata.tsv}
-  raw_fasta_path: ${p:/data/psk6950/BioMolDB_20260224/fasta/merged.fasta}
-  seqid2seq_path: ${p:/data/psk6950/BioMolDB_20260224/metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:/data/psk6950/BioMolDB_20260224/metadata/seq_cluster30.tsv}
-  signalp_dir: ${p:/data/psk6950/BioMolDB_20260224/signalp}
+  metadata_path: ${p:/data/psk6950/BioMolDB_test/metadata/cif_metadata.tsv}
+  raw_fasta_path: ${p:/data/psk6950/BioMolDB_test/fasta/merged.fasta}
+  seqid2seq_path: ${p:/data/psk6950/BioMolDB_test/metadata/seq_id_map.tsv}
+  seqcluster_path: ${p:/data/psk6950/BioMolDB_test/metadata/seq_cluster30.tsv}
+  signalp_dir: ${p:/data/psk6950/BioMolDB_test/signalp}
 
 inputs:
-  cif_db_path: ${p:/data/psk6950/BioMolDB_20260224/cif_raw.lmdb}
+  cif_db_path: ${p:/data/psk6950/BioMolDB_test/cif.lmdb}
 
-convert_func: pipelines.transforms.cifmol_transforms.convert_to_cifmol_transformed
 
 n_jobs: -1
 chunk_size: 10000
+
+reader:
+  adapter: pipelines.transforms.cifmol_transforms.convert_to_cifmol_transformed
+
+writer:
+  serializer: pipelines.utils.convert.to_bytes

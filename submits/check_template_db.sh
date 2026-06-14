@@ -10,4 +10,4 @@
 
 export PYTHONPATH="."
 
-python -m scripts.postprocess db_extract "configs/check_template_db.yaml"
+python -m datacooker.cli.workflow extract-lmdb "configs/check_template_db.yaml"

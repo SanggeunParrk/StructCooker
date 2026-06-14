@@ -38,6 +38,7 @@ recipe.add(
         {
             "kwargs": {
                 "cifmol": ("cifmol_filtered_by_min_unresolved_residues", CIFMol),
+                "min_token_count": ("min_token_count", int),
                 "max_token_count": ("max_token_count", int),
             },
         },

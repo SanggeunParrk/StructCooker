@@ -10,7 +10,7 @@
 
 export PYTHONPATH="."
 
-python -m scripts.postprocess db_extract "configs/analyze_train_20260224.yaml"
-python -m scripts.postprocess db_extract "configs/analyze_train.yaml"
-python -m scripts.postprocess db_extract "configs/analyze_valid1.yaml"
-python -m scripts.postprocess db_extract "configs/analyze_valid2.yaml"
+python -m datacooker.cli.workflow extract-lmdb "configs/analyze_train_20260224.yaml"
+python -m datacooker.cli.workflow extract-lmdb "configs/analyze_train.yaml"
+python -m datacooker.cli.workflow extract-lmdb "configs/analyze_valid1.yaml"
+python -m datacooker.cli.workflow extract-lmdb "configs/analyze_valid2.yaml"

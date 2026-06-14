@@ -1,4 +1,9 @@
-db_path: ${p:/public_data02/BioMolDB_20260224/cif_valid_1.lmdb}
+db_path: ${p:/public_data02/BioMolDB_test/cif_valid_1.lmdb}
 extract_recipe_path: ${p:/home/psk6950/practice/StructCooker/pipelines/recipe/extract_tv_fasta.py}
-project_func: pipelines.projection.projections.write_fasta
-output_data_path: ${p:/public_data02/BioMolDB_20260224/fasta/valid_1.fasta}
+output_data_path: ${p:/public_data02/BioMolDB_test/fasta/valid_1.fasta}
+
+reader:
+  deserializer: pipelines.utils.convert.from_bytes
+
+writer:
+  materializer: pipelines.projection.projections.write_fasta

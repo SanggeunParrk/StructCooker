@@ -47,8 +47,8 @@ def cli(
     targets_list: list[str] | None = list(targets) if targets else None
 
     result = parse_file(
-        load_func=get_cif_data,
-        transform_func=dot_transform,
+        loader=get_cif_data,
+        key_transform=dot_transform,
         recipe_path=recipe_path,
         file_path=cif_path,
         targets=targets_list,
