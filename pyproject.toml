@@ -44,6 +44,10 @@ ignore = [
     "E501",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Tests use bare asserts and don't need docstrings/annotations on helpers.
+"tests/**" = ["S101", "D101", "D103", "ANN", "INP001", "PLR2004", "TC003"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
