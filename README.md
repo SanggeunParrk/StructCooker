@@ -18,3 +18,7 @@ StructCooker is a domain package built on top of DataCooker for structural biolo
 - `workflows/exports`: downstream artifact extraction recipes
 - `workflows/search`: MSA, template, and clustering recipes
 - `workflows/analysis`: validation and profiling recipes
+
+## Notes
+
+- `docs/data_flow.md`: original end-to-end data processing flow

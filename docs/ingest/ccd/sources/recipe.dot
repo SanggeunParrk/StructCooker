@@ -1,0 +1,27 @@
+digraph DataCooker {
+    rankdir="LR";
+    graph [fontname="Helvetica"];
+    node [fontname="Helvetica"];
+    edge [fontname="Helvetica"];
+    input__chem_comp [label="_chem_comp", shape=ellipse, style=filled, fillcolor="#eef7ea", color="#4f7a39"];
+    input__chem_comp_atom [label="_chem_comp_atom", shape=ellipse, style=filled, fillcolor="#eef7ea", color="#4f7a39"];
+    input__chem_comp_bond [label="_chem_comp_bond", shape=ellipse, style=filled, fillcolor="#eef7ea", color="#4f7a39"];
+    step_1 [label="step 1\n_chem_comp_dict <- _group_rows(_chem_comp)", shape=box, style="rounded,filled", fillcolor="#f4f1e8", color="#6b5b3e"];
+    step_2 [label="step 2\n_chem_comp_atom_dict <- _group_rows(_chem_comp_atom)", shape=box, style="rounded,filled", fillcolor="#f4f1e8", color="#6b5b3e"];
+    step_3 [label="step 3\n_chem_comp_bond_dict <- _group_rows(_chem_comp_bond)", shape=box, style="rounded,filled", fillcolor="#f4f1e8", color="#6b5b3e"];
+    step_4 [label="step 4\nchem_comp_dict <- _parse_chem_comp(_chem_comp_dict, _chem_comp_atom_dict, _chem_comp_bond_dict)", shape=box, style="rounded,filled", fillcolor="#f4f1e8", color="#6b5b3e"];
+    target__chem_comp_dict [label="_chem_comp_dict", shape=box, style=filled, fillcolor="#e6f0ff", color="#315ea8"];
+    target__chem_comp_atom_dict [label="_chem_comp_atom_dict", shape=box, style=filled, fillcolor="#e6f0ff", color="#315ea8"];
+    target__chem_comp_bond_dict [label="_chem_comp_bond_dict", shape=box, style=filled, fillcolor="#e6f0ff", color="#315ea8"];
+    target_chem_comp_dict [label="chem_comp_dict", shape=doubleoctagon, style=filled, fillcolor="#fff0c2", color="#315ea8"];
+    input__chem_comp -> step_1;
+    step_1 -> target__chem_comp_dict;
+    input__chem_comp_atom -> step_2;
+    step_2 -> target__chem_comp_atom_dict;
+    input__chem_comp_bond -> step_3;
+    step_3 -> target__chem_comp_bond_dict;
+    target__chem_comp_dict -> step_4;
+    target__chem_comp_atom_dict -> step_4;
+    target__chem_comp_bond_dict -> step_4;
+    step_4 -> target_chem_comp_dict;
+}

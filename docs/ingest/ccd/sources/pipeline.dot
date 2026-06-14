@@ -1,0 +1,41 @@
+digraph ccd_ingest_pipeline {
+    rankdir="LR";
+    graph [fontname="Helvetica"];
+    node [fontname="Helvetica"];
+    edge [fontname="Helvetica"];
+
+    subgraph cluster_read {
+        label="Read (reader)";
+        style="rounded,filled"; fillcolor="#f3f8f0"; color="#4f7a39";
+        source [label=":/public_data/CCD/components/\n*.cif*", shape=folder, style=filled, fillcolor="#ffffff", color="#4f7a39"];
+        loader [label="loader\nstructcooker.instructions.readers.cif.get_cif_data", shape=box, style="rounded,filled", fillcolor="#eef7ea", color="#4f7a39"];
+        source -> loader;
+    in_0 [label="_chem_comp", shape=ellipse, style=filled, fillcolor="#eef7ea", color="#4f7a39"];
+    in_1 [label="_chem_comp_atom", shape=ellipse, style=filled, fillcolor="#eef7ea", color="#4f7a39"];
+    in_2 [label="_chem_comp_bond", shape=ellipse, style=filled, fillcolor="#eef7ea", color="#4f7a39"];
+    loader -> in_0;
+    loader -> in_1;
+    loader -> in_2;
+    }
+
+    subgraph cluster_transform {
+        label="Transform (recipe)";
+        style="rounded,filled"; fillcolor="#faf7ef"; color="#6b5b3e";
+        recipe [label="ccd recipe\n4 steps — see recipe.svg", shape=box3d, style=filled, fillcolor="#f4f1e8", color="#6b5b3e"];
+    }
+
+    subgraph cluster_write {
+        label="Write (writer)";
+        style="rounded,filled"; fillcolor="#eef2fb"; color="#315ea8";
+        serializer [label="serializer\nstructcooker.instructions.transforms.codecs.to_bytes", shape=box, style="rounded,filled", fillcolor="#e6f0ff", color="#315ea8"];
+        lmdb [label=":/public_data/CCD/biomol_CCD_202602.lmdb", shape=cylinder, style=filled, fillcolor="#ffffff", color="#315ea8"];
+        serializer -> lmdb;
+    }
+
+    in_0 -> recipe;
+    in_1 -> recipe;
+    in_2 -> recipe;
+    out_0 [label="chem_comp_dict", shape=box, style=filled, fillcolor="#fff0c2", color="#315ea8"];
+    recipe -> out_0;
+    out_0 -> serializer;
+}
