@@ -3,7 +3,7 @@ file_pattern: "*.cif*"
 
 env_path: ${p:/public_data02/BioMolDB_test/cif.lmdb}
 
-recipe: ${p:src/structcooker/workflows/cif_recipe_book.py}
+recipe: ${p:src/structcooker/workflows/ingest/cif.py}
 
 ccd_db_path: ${p:/public_data02/CCD/biomol_CCD_202602.lmdb}
 
@@ -12,8 +12,8 @@ chunk_size: 20000
 test_run: true
 
 reader:
-  loader: structcooker.readers.cif.get_cif_data
-  key_transform: structcooker.readers.cif.dot_transform
+  loader: structcooker.instructions.readers.cif.get_cif_data
+  key_transform: structcooker.instructions.readers.cif.dot_transform
 
 writer:
-  serializer: structcooker.codecs.to_bytes
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

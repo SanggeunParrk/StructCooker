@@ -1,9 +1,9 @@
 db_path: ${p:/public_data02/BioMolDB_test/cif_valid_1.lmdb}
-extract_recipe_path: ${p:/home/psk6950/practice/StructCooker/src/structcooker/workflows/extract_tv_fasta.py}
+extract_recipe_path: ${p:src/structcooker/workflows/exports/tv_fasta.py}
 output_data_path: ${p:/public_data02/BioMolDB_test/fasta/valid_1.fasta}
 
 reader:
-  deserializer: structcooker.codecs.from_bytes
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
 
 writer:
-  materializer: structcooker.writers.projections.write_fasta
+  materializer: structcooker.instructions.writers.projections.write_fasta

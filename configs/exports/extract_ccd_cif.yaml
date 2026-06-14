@@ -1,7 +1,7 @@
 inputs: 
   cif_path: ${p:/public_data/CCD/components.cif/}
-recipe_path: ${p:/home/psk6950/practice/StructCooker/src/structcooker/workflows/extract_ccd_cif.py}
+recipe_path: ${p:src/structcooker/workflows/exports/ccd.py}
 output_data_path: ${p:/public_data/CCD/components}
 
 writer:
-  materializer: structcooker.writers.projections.write_each_ccd_cif
+  materializer: structcooker.instructions.writers.projections.write_each_ccd_cif

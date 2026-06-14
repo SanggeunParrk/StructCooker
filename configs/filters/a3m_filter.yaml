@@ -2,15 +2,15 @@
 old_env_path: ${p:/data/psk6950/BioMolDB_20260224/a3m.lmdb}
 new_env_path: ${p:/data/psk6950/BioMolDB_20260224/a3m_4k.lmdb}
 
-recipe: ${p:/home/psk6950/StructCooker/src/structcooker/workflows/a3m_filter.py}
+recipe: ${p:src/structcooker/workflows/filters/a3m.py}
 
 
 n_jobs: -1
 chunk_size: 10000
 
 reader:
-  adapter: structcooker.readers.a3m.convert_to_msa_container
-  deserializer: structcooker.codecs.from_bytes
+  adapter: structcooker.instructions.readers.a3m.convert_to_msa_container
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
 
 writer:
-  serializer: structcooker.codecs.to_bytes
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

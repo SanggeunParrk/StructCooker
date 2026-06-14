@@ -6,7 +6,7 @@ inputs:
   data_dir: ${p:/data/psk6950/msa/}
   output_dir: ${p:/data/psk6950/hhr/}
   output_pattern: ".hhr"
-split_recipe_path: ${p:/home/psk6950/StructCooker/src/structcooker/workflows/load_a3m_list.py}
-recipe_path: ${p:/home/psk6950/StructCooker/src/structcooker/workflows/hhsearch.py}
+split_recipe_path: ${p:src/structcooker/workflows/search/load_a3m_list.py}
+recipe_path: ${p:src/structcooker/workflows/search/hhsearch.py}
 n_jobs: 28 # total 80 CPUs, 4 CPUs per job for HHblits
 test_run: false

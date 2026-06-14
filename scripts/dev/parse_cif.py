@@ -3,9 +3,9 @@ from pathlib import Path
 import click
 from datacooker import parse_file
 
-from structcooker.codecs import to_dict
-from structcooker.models import CIFMol, to_cif
-from structcooker.readers.cif import dot_transform, get_cif_data
+from structcooker.instructions.transforms.codecs import to_dict
+from structcooker.mols import CIFMol, to_cif
+from structcooker.instructions.readers.cif import dot_transform, get_cif_data
 
 
 @click.command()
@@ -21,7 +21,7 @@ from structcooker.readers.cif import dot_transform, get_cif_data
     "--recipe-path",
     "-r",
     type=click.Path(exists=True, dir_okay=False, file_okay=True, path_type=Path),
-    default=Path("src/structcooker/workflows/cif_recipe_book.py"),
+    default=Path("src/structcooker/workflows/ingest/cif.py"),
     show_default=True,
     help="Path to the Cooker recipe file.",
 )

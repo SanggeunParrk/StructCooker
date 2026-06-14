@@ -3,7 +3,7 @@ inputs:
   output_dir: ${p:/data/psk6950/hhm/}
   file_pattern: "P*.a3m"
   output_pattern: ".hhm"
-split_recipe_path: ${p:/home/psk6950/StructCooker/src/structcooker/workflows/load_a3m_list.py}
-recipe_path: ${p:/home/psk6950/StructCooker/src/structcooker/workflows/hhmake.py}
+split_recipe_path: ${p:src/structcooker/workflows/search/load_a3m_list.py}
+recipe_path: ${p:src/structcooker/workflows/search/hhmake.py}
 n_jobs: 112 # total 112 CPUs, 4 CPUs per job for HHblits
 test_run: true

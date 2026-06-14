@@ -1,8 +1,8 @@
 inputs: 
   fasta_path: ${p:/public_data02/BioMolDB_test/fasta/merged.fasta}
   old_seq_id_map_path: ${p:/public_data02/BioMolDB_test/metadata/seq_id_map.tsv}  # optional
-recipe_path: ${p:/home/psk6950/practice/StructCooker/src/structcooker/workflows/build_seq_id_map.py}
+recipe_path: ${p:src/structcooker/workflows/metadata/seq_id_map.py}
 output_data_path: ${p:/public_data02/BioMolDB_test/metadata/seq_id_map.tsv}
 
 writer:
-  materializer: structcooker.writers.projections.write_seq_id_map
+  materializer: structcooker.instructions.writers.projections.write_seq_id_map

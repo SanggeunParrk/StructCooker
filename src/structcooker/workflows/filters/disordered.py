@@ -1,0 +1,108 @@
+from datetime import date
+
+from datacooker import RecipeBook
+
+from structcooker.mols import CIFMol
+from structcooker.instructions.transforms.filtering import (
+    filter_by_resolution_and_date,
+    filter_cifmol_by_polymer_chain_count,
+    filter_cifmol_by_token_count,
+    filter_min_unresolved_residues,
+    filter_signalp,
+    filter_water,
+)
+
+"""Rebuild a CIF lmdb to train AF3"""
+
+recipe = RecipeBook()
+
+
+recipe.add(
+    targets=[(("cifmol_filtered_by_min_unresolved_residues", CIFMol),)],
+    instruction=filter_min_unresolved_residues,
+    inputs=[
+        {
+            "kwargs": {
+                "cifmol": ("cifmol", CIFMol),
+                "min_unresolved_residues": ("min_unresolved_residues", int),
+            },
+        },
+    ],
+)
+
+
+recipe.add(
+    targets=[(("cifmol_filtered_by_token_count", CIFMol),)],
+    instruction=filter_cifmol_by_token_count,
+    inputs=[
+        {
+            "kwargs": {
+                "cifmol": ("cifmol_filtered_by_min_unresolved_residues", CIFMol),
+                "min_token_count": ("min_token_count", int),
+                "max_token_count": ("max_token_count", int),
+            },
+        },
+    ],
+)
+
+
+recipe.add(
+    targets=[(("cifmol_filtered_by_chain_count", CIFMol),)],
+    instruction=filter_cifmol_by_polymer_chain_count,
+    inputs=[
+        {
+            "kwargs": {
+                "cifmol": ("cifmol_filtered_by_token_count", CIFMol),
+                "max_polymer_chain_count": ("max_polymer_chain_count", int),
+            },
+        },
+    ],
+)
+
+
+recipe.add(
+    targets=[(("cifmol_filtered_by_resolution_date", CIFMol),)],
+    instruction=filter_by_resolution_and_date,
+    inputs=[
+        {
+            "kwargs": {
+                "resolution_cutoff": ("resolution_cutoff", float),
+                "start_date": ("start_date", date | str),
+                "end_date": ("end_date", date | str),
+                "cifmol": ("cifmol_filtered_by_chain_count", CIFMol),
+            },
+        },
+    ],
+)
+
+
+recipe.add(
+    targets=[(("cifmol_wo_water", CIFMol),)],
+    instruction=filter_water,
+    inputs=[
+        {
+            "kwargs": {
+                "cifmol": ("cifmol_filtered_by_resolution_date", CIFMol),
+            },
+        },
+    ],
+)
+
+
+recipe.add(
+    targets=[(("cifmol_dict", dict),)],
+    instruction=filter_signalp,
+    inputs=[
+        {
+            "kwargs": {
+                "cifmol": ("cifmol_wo_water", CIFMol),
+                "seqid_map": ("seqid_map", dict),
+                "signalp_dict": ("signalp_dict", dict),
+            },
+        },
+    ],
+)
+
+
+RECIPE = recipe
+TARGETS = ["cifmol_dict"]
