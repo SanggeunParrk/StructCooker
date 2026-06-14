@@ -1,17 +1,19 @@
 from pathlib import Path
 
-from datacooker import RecipeBook
+from datacooker import (
+    RecipeBook,
+    extract_float_single,
+    key_stack,
+    merge_dict,
+    single_value_instruction,
+)
+
 from structcooker.instructions.transforms.cif import (
     attach_entity,
     build_assembly_dict,
     build_full_length_asym_dict,
     compare_chem_comp,
-    extract_contact_graph,
-    extract_float_single,
-    get_smaller_dict,
     get_struct_oper,
-    key_stack,
-    merge_dict,
     parse_assembly_dict,
     parse_chem_comp,
     parse_entity_dict,
@@ -19,8 +21,9 @@ from structcooker.instructions.transforms.cif import (
     rearrange_atom_site_dict,
     remove_unknown_atom_site,
     remove_unknown_from_struct_conn,
-    single_value_instruction,
 )
+from structcooker.instructions.transforms.geometry import extract_contact_graph
+from structcooker.instructions.transforms.tables import get_smaller_dict
 
 """Build a CIF-specific Cooker.
 
@@ -301,7 +304,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("chem_comp_dict", dict),),
-    instruction=parse_chem_comp(),
+    instruction=parse_chem_comp,
     inputs={
         "kwargs": {
             "chem_comp_dict": ("_chem_comp_dict", dict | None),
@@ -317,7 +320,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("chem_comp_full_dict", dict),),
-    instruction=compare_chem_comp(),
+    instruction=compare_chem_comp,
     inputs={
         "kwargs": {
             "chem_comp_dict": ("chem_comp_dict", dict | None),
@@ -328,7 +331,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("_entity_polymer", dict),),
-    instruction=merge_dict(),
+    instruction=merge_dict,
     inputs={
         "args": (
             ("_entity_poly_dict", dict | None),
@@ -338,7 +341,7 @@ cif_recipe.add(
 )
 cif_recipe.add(
     targets=(("_entity_branched", dict | None),),
-    instruction=merge_dict(),
+    instruction=merge_dict,
     inputs={
         "args": (
             ("_entity_branch_descriptor_dict", dict | None),
@@ -355,7 +358,7 @@ cif_recipe.add(
         (("entity_nonpolymer", dict | None),),
         (("entity_branched", dict | None),),
     ],
-    instruction=parse_entity_dict(),
+    instruction=parse_entity_dict,
     inputs=[
         {
             "kwargs": {"entity_dict": ("_entity_polymer", dict | None)},
@@ -371,7 +374,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("entity_dict", dict),),
-    instruction=merge_dict(),
+    instruction=merge_dict,
     inputs={
         "args": (
             ("_entity_dict", dict),
@@ -389,7 +392,7 @@ cif_recipe.add(
         (("_nonpoly_scheme", dict | None),),
         (("_branch_scheme", dict | None),),
     ],
-    instruction=parse_scheme_dict(),
+    instruction=parse_scheme_dict,
     inputs=[
         {
             "kwargs": {"asym_scheme_dict": ("_pdbx_poly_seq_scheme_dict", dict | None)},
@@ -406,7 +409,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("_asym_scheme_dict", dict),),
-    instruction=merge_dict(),
+    instruction=merge_dict,
     inputs={
         "args": (
             ("_poly_seq_scheme", dict | None),
@@ -419,7 +422,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("_atom_site_wo_unknown_dict", dict | None),),
-    instruction=remove_unknown_atom_site(),
+    instruction=remove_unknown_atom_site,
     inputs={
         "args": (("_atom_site_dict", dict | None),),
     },
@@ -427,7 +430,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("_struct_conn_wo_unknown_dict", dict | None),),
-    instruction=remove_unknown_from_struct_conn(),
+    instruction=remove_unknown_from_struct_conn,
     inputs={
         "args": (("_struct_conn_dict", dict | None),),
     },
@@ -435,7 +438,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("model_alt_atom_site_dict", dict | None),),
-    instruction=rearrange_atom_site_dict(),
+    instruction=rearrange_atom_site_dict,
     inputs={
         "kwargs": {
             "atom_site_dict": ("_atom_site_wo_unknown_dict", dict | None),
@@ -453,7 +456,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("_asym_scheme_entity_dict", dict | None),),
-    instruction=attach_entity(),
+    instruction=attach_entity,
     inputs={
         "kwargs": {
             "asym_dict": ("_asym_scheme_dict", dict | None),
@@ -465,7 +468,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("_asym_dict", dict),),
-    instruction=merge_dict(),
+    instruction=merge_dict,
     inputs={
         "args": (
             ("_asym_scheme_entity_dict", dict | None),
@@ -477,7 +480,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("asym_dict", dict),),
-    instruction=build_full_length_asym_dict(),
+    instruction=build_full_length_asym_dict,
     inputs={
         "kwargs": {
             "asym_dict": ("_asym_dict", dict | None),
@@ -489,7 +492,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("struct_assembly_dict", dict | None),),
-    instruction=parse_assembly_dict(),
+    instruction=parse_assembly_dict,
     inputs={
         "kwargs": {
             "struct_assembly_gen_dict": ("_struct_assembly_gen_dict", dict | None),
@@ -499,7 +502,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("struct_oper_dict", dict | None),),
-    instruction=get_struct_oper(),
+    instruction=get_struct_oper,
     inputs={
         "kwargs": {
             "struct_oper_dict": ("_struct_oper_dict", dict),
@@ -509,7 +512,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("_assembly_dict", dict | None),),
-    instruction=build_assembly_dict(),
+    instruction=build_assembly_dict,
     inputs={
         "kwargs": {
             "asym_dict": ("asym_dict", dict),
