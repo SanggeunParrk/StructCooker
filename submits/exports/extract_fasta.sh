@@ -1,0 +1,13 @@
+#!/bin/bash
+#SBATCH -J extract_fasta
+#SBATCH --ntasks-per-node=1
+#SBATCH -c 40
+#SBATCH --mem=200g
+#SBATCH -p gpu
+#SBATCH -w gpu05
+#SBATCH -o ./logs/extract_fasta.out
+#SBATCH -e ./logs/extract_fasta.err
+
+export PYTHONPATH="."
+
+python -m datacooker.cli.workflow extract-lmdb "configs/exports/extract_fasta_whole.yaml"

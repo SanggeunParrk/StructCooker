@@ -15,3 +15,5 @@ __pycache__/
 mmseqs/
 data_util/
 signalp6_fast
+.pixi/
+.ruff_cache/
