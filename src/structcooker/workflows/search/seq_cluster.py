@@ -2,7 +2,7 @@ from pathlib import Path
 
 from datacooker import RecipeBook
 
-from structcooker.instructions.transforms.seq_cluster import (
+from structcooker.instructions.transforms.sequence import (
     antibody_cluster,
     merge_cluster,
     protein_cluster,

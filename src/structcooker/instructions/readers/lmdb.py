@@ -8,4 +8,4 @@ from structcooker.instructions.transforms.codecs import from_bytes
 
 def read_lmdb(env_path: Path, key: str) -> dict[str, Any]:
     """Read a StructCooker LMDB entry through the shared DataCooker utility."""
-    return _read_lmdb(env_path, key, deserialize=from_bytes)
+    return _read_lmdb(env_path, key, deserializer=from_bytes)

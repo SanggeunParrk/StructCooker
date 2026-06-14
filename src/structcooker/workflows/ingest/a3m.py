@@ -1,6 +1,6 @@
 from datacooker import RecipeBook
 
-from structcooker.instructions.transforms.a3m import (
+from structcooker.instructions.transforms.msa import (
     build_dict,
     parse_headers,
     parse_sequence,

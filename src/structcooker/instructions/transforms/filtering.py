@@ -5,9 +5,9 @@ from typing import cast
 import networkx as nx
 import numpy as np
 
+from structcooker.instructions.transforms.sequence import extract_sequence_from_cifmol
 from structcooker.mols import CIFMol, CIFMolAttached
 from structcooker.utils.mapping import mol_type_map, polymer_cluster_types
-from structcooker.instructions.transforms.sequence import extract_sequence_from_cifmol
 
 
 def filter_by_resolution_and_date(
@@ -43,21 +43,6 @@ def filter_by_resolution_and_date(
     ):
         return cifmol
     return None
-
-
-def filter_water(cifmol: CIFMol | None) -> CIFMol | None:
-    """Filter instruction to remove water molecules from CIFMol."""
-    if cifmol is None:
-        return None
-    water_mask = ~np.isin(cifmol.residues.chem_comp_id, ["HOH", "DOD"])
-    if water_mask.sum() == 0:
-        return None
-    cifmol = cifmol.residues[water_mask].extract()
-
-    if len(cifmol.chains) == 0:
-        return None
-
-    return cifmol
 
 
 def filter_signalp(
