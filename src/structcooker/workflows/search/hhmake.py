@@ -8,21 +8,13 @@ from structcooker.instructions.transforms.template import run_hhmake
 
 recipe = RecipeBook()
 
-recipe.add(
-	targets=[
-		(
-            ("done_result", str),
-		),
-    ],
-	instruction=run_hhmake,
-    inputs=[
-        {
-            "kwargs": {
-                "input_a3m_path": ("input_a3m_path", Path),
-                "output_path": ("output_path", Path),
-            },
-        },
-    ],
+recipe.step(
+    outputs=(("done_result", str),),
+    instruction=run_hhmake,
+    kwargs={
+        "input_a3m_path": ("input_a3m_path", Path),
+        "output_path": ("output_path", Path),
+    },
 )
 
 RECIPE = recipe

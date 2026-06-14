@@ -13,46 +13,36 @@ from structcooker.instructions.transforms.metadata import (
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (("interacting_seq_ids", dict),),
-        (("seqclusters2seqids", dict),),
-    ],
+recipe.step(
+    outputs=(("interacting_seq_ids", dict),),
     instruction=load_tsv,
-    inputs=[
-        {
-            "kwargs": {
-                "tsv_file_path": ("interacting_seq_ids_path", Path),
-            },
-            "params": {
-                "split_by_comma": False,
-            },
-        },
-        {
-            "kwargs": {
-                "tsv_file_path": ("seqcluster_path", Path),
-            },
-            "params": {
-                "split_by_comma": True,
-            },
-        },
-    ],
+    kwargs={
+        "tsv_file_path": ("interacting_seq_ids_path", Path),
+    },
+    params={
+        "split_by_comma": False,
+    },
+)
+
+recipe.step(
+    outputs=(("seqclusters2seqids", dict),),
+    instruction=load_tsv,
+    kwargs={
+        "tsv_file_path": ("seqcluster_path", Path),
+    },
+    params={
+        "split_by_comma": True,
+    },
 )
 
 
-recipe.add(
-    targets=[
-        (("interacting_seq_clusters", dict),),  # seq+moltype -> seqid
-    ],
+recipe.step(
+    outputs=(("interacting_seq_clusters", dict),),
     instruction=build_interacting_seq_clusters,
-    inputs=[
-        {
-            "kwargs": {
-                "interacting_seq_ids": ("interacting_seq_ids", dict),
-                "seqclusters2seqids": ("seqclusters2seqids", dict),
-            },
-        },
-    ],
+    kwargs={
+        "interacting_seq_ids": ("interacting_seq_ids", dict),
+        "seqclusters2seqids": ("seqclusters2seqids", dict),
+    },
 )
 
 RECIPE = recipe

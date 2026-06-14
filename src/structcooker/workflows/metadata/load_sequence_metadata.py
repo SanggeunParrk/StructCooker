@@ -12,60 +12,44 @@ from structcooker.instructions.transforms.metadata import (
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (("raw_fasta_dict", dict),),
-    ],
+recipe.step(
+    outputs=(("raw_fasta_dict", dict),),
     instruction=load_fasta,
-    inputs=[
-        {
-            "kwargs": {
-                "fasta_path": ("raw_fasta_path", str | Path),
-            },
-        },
-    ],
+    kwargs={
+        "fasta_path": ("raw_fasta_path", str | Path),
+    },
 )
 
-recipe.add(
-    targets=[
-        (("seqid2seq", dict),),
-        (("seqclusters2seqids", dict),),
-    ],
+recipe.step(
+    outputs=(("seqid2seq", dict),),
     instruction=load_tsv,
-    inputs=[
-        {
-            "kwargs": {
-                "tsv_file_path": ("seqid2seq_path", Path),
-            },
-            "params": {
-                "split_by_comma": False,
-            },
-        },
-        {
-            "kwargs": {
-                "tsv_file_path": ("seqcluster_path", Path),
-            },
-            "params": {
-                "split_by_comma": True,
-            },
-        },
-    ],
+    kwargs={
+        "tsv_file_path": ("seqid2seq_path", Path),
+    },
+    params={
+        "split_by_comma": False,
+    },
 )
 
-recipe.add(
-    targets=[
-        (("seq_metadata_map", dict),),  # cif_id -> seq id + seq cluster
-    ],
+recipe.step(
+    outputs=(("seqclusters2seqids", dict),),
+    instruction=load_tsv,
+    kwargs={
+        "tsv_file_path": ("seqcluster_path", Path),
+    },
+    params={
+        "split_by_comma": True,
+    },
+)
+
+recipe.step(
+    outputs=(("seq_metadata_map", dict),),
     instruction=build_seq_metadata_map,
-    inputs=[
-        {
-            "kwargs": {
-                "raw_fasta_dict": ("raw_fasta_dict", dict),
-                "seqid2seq": ("seqid2seq", dict),
-                "seqclusters2seqids": ("seqclusters2seqids", dict),
-            },
-        },
-    ],
+    kwargs={
+        "raw_fasta_dict": ("raw_fasta_dict", dict),
+        "seqid2seq": ("seqid2seq", dict),
+        "seqclusters2seqids": ("seqclusters2seqids", dict),
+    },
 )
 
 RECIPE = recipe

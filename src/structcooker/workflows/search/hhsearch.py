@@ -8,23 +8,17 @@ from structcooker.instructions.transforms.template import run_hhsearch
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (("hhsearch_results", dict),),
-    ],
+recipe.step(
+    outputs=(("hhsearch_results", dict),),
     instruction=run_hhsearch,
-    inputs=[
-        {
-            "kwargs": {
-                "msa_path": ("input_a3m_path", Path),
-                "hhr_path": ("output_path", Path),
-                "cpu": ("cpu_per_job", int),
-                "mem": ("mem_per_job", int),
-                "db_template": ("db_template", str | Path),
-                "hhsuite_bin_dir": ("hhsuite_bin_dir", str | Path),
-            },
-        },
-    ],
+    kwargs={
+        "msa_path": ("input_a3m_path", Path),
+        "hhr_path": ("output_path", Path),
+        "cpu": ("cpu_per_job", int),
+        "mem": ("mem_per_job", int),
+        "db_template": ("db_template", str | Path),
+        "hhsuite_bin_dir": ("hhsuite_bin_dir", str | Path),
+    },
 )
 
 RECIPE = recipe

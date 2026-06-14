@@ -15,73 +15,53 @@ from structcooker.mols import CIFMol
 
 filter_recipe = RecipeBook()
 
-filter_recipe.add(
-    targets=[(("cifmol_filtered_by_resolution_date", CIFMol),)],
+filter_recipe.step(
+    outputs=(("cifmol_filtered_by_resolution_date", CIFMol),),
     instruction=filter_by_resolution_and_date,
-    inputs=[
-        {
-            "kwargs": {
-                "resolution_cutoff": ("resolution_cutoff", float),
-                "start_date": ("start_date", date | str),
-                "end_date": ("end_date", date | str),
-                "cifmol": ("cifmol", CIFMol),
-            },
-        },
-    ],
+    kwargs={
+        "resolution_cutoff": ("resolution_cutoff", float),
+        "start_date": ("start_date", date | str),
+        "end_date": ("end_date", date | str),
+        "cifmol": ("cifmol", CIFMol),
+    },
 )
 
-filter_recipe.add(
-    targets=[(("cifmol_filtered_by_chain_count", CIFMol),)],
+filter_recipe.step(
+    outputs=(("cifmol_filtered_by_chain_count", CIFMol),),
     instruction=filter_cifmol_by_polymer_chain_count,
-    inputs=[
-        {
-            "kwargs": {
-                "cifmol": ("cifmol_filtered_by_resolution_date", CIFMol),
-                "max_polymer_chain_count": ("max_polymer_chain_count", int),
-            },
-        },
-    ],
+    kwargs={
+        "cifmol": ("cifmol_filtered_by_resolution_date", CIFMol),
+        "max_polymer_chain_count": ("max_polymer_chain_count", int),
+    },
 )
 
-filter_recipe.add(
-    targets=[(("cifmol_filtered_by_token_count", CIFMol),)],
+filter_recipe.step(
+    outputs=(("cifmol_filtered_by_token_count", CIFMol),),
     instruction=filter_cifmol_by_token_count,
-    inputs=[
-        {
-            "kwargs": {
-                "cifmol": ("cifmol_filtered_by_chain_count", CIFMol),
-                "max_token_count": ("max_token_count", int),
-            },
-        },
-    ],
+    kwargs={
+        "cifmol": ("cifmol_filtered_by_chain_count", CIFMol),
+        "max_token_count": ("max_token_count", int),
+    },
 )
 
 
-filter_recipe.add(
-    targets=[(("cifmol_wo_water", CIFMol),)],
+filter_recipe.step(
+    outputs=(("cifmol_wo_water", CIFMol),),
     instruction=filter_water,
-    inputs=[
-        {
-            "kwargs": {
-                "cifmol": ("cifmol_filtered_by_token_count", CIFMol),
-            },
-        },
-    ],
+    kwargs={
+        "cifmol": ("cifmol_filtered_by_token_count", CIFMol),
+    },
 )
 
 
-filter_recipe.add(
-    targets=[(("cifmol_dict", dict),)],
+filter_recipe.step(
+    outputs=(("cifmol_dict", dict),),
     instruction=filter_signalp,
-    inputs=[
-        {
-            "kwargs": {
-                "cifmol": ("cifmol_wo_water", CIFMol),
-                "seqid_map": ("seqid_map", dict),
-                "signalp_dict": ("signalp_dict", dict),
-            },
-        },
-    ],
+    kwargs={
+        "cifmol": ("cifmol_wo_water", CIFMol),
+        "seqid_map": ("seqid_map", dict),
+        "signalp_dict": ("signalp_dict", dict),
+    },
 )
 
 

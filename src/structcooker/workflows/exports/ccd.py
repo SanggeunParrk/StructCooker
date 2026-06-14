@@ -1,24 +1,19 @@
+from pathlib import Path
+
 from datacooker import RecipeBook
 
-from pathlib import Path
 from structcooker.instructions.transforms.ccd import split_each_cif_files
 
 """Build a CIFMol->fasta Cooker."""
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (("each_cif_lines", dict[str, str]),),
-    ],
+recipe.step(
+    outputs=(("each_cif_lines", dict[str, str]),),
     instruction=split_each_cif_files,
-    inputs=[
-        {
-            "kwargs": {
-                "cif_path": ("cif_path", Path),
-            },
-        },
-    ],
+    kwargs={
+        "cif_path": ("cif_path", Path),
+    },
 )
 
 

@@ -2,7 +2,7 @@ from pathlib import Path
 
 from datacooker import RecipeBook
 
-from structcooker.mols import CIFMol
+from structcooker.instructions.transforms.cifmol import convert_to_cifmol_dict
 from structcooker.instructions.transforms.graph import (
     filter_seq_ids,
     interacting_seq_ids,
@@ -11,88 +11,58 @@ from structcooker.instructions.transforms.metadata import (
     build_seqid_map,
     load_tsv,
 )
-from structcooker.instructions.transforms.cifmol import convert_to_cifmol_dict
+from structcooker.mols import CIFMol
 
 """Extract metadata from cifmol"""
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (("seqid2seq", dict),),
-    ],
+recipe.step(
+    outputs=(("seqid2seq", dict),),
     instruction=load_tsv,
-    inputs=[
-        {
-            "kwargs": {
-                "tsv_file_path": ("seqid2seq_path", Path),
-            },
-            "params": {
-                "split_by_comma": False,
-            },
-        },
-    ],
+    kwargs={
+        "tsv_file_path": ("seqid2seq_path", Path),
+    },
+    params={
+        "split_by_comma": False,
+    },
 )
 
 
-recipe.add(
-    targets=[
-        (("seqid_map", dict),),  # seq+moltype -> seqid
-    ],
+recipe.step(
+    outputs=(("seqid_map", dict),),
     instruction=build_seqid_map,
-    inputs=[
-        {
-            "kwargs": {
-                "seqid2seq": ("seqid2seq", dict),
-            },
-        },
-    ],
+    kwargs={
+        "seqid2seq": ("seqid2seq", dict),
+    },
 )
 
-recipe.add(
-    targets=[
-        (("cifmol_dict", dict[str, dict[str, CIFMol]]),),
-    ],
+recipe.step(
+    outputs=(("cifmol_dict", dict[str, dict[str, CIFMol]]),),
     instruction=convert_to_cifmol_dict,
-    inputs=[
-        {
-            "kwargs": {
-                "value": ("db_data", dict),
-            },
-        },
-    ],
+    kwargs={
+        "value": ("db_data", dict),
+    },
 )
 
-recipe.add(
-    targets=[
-        (("interacting_seq_ids", set[tuple[str, str]]),),
-    ],
+recipe.step(
+    outputs=(("interacting_seq_ids", set[tuple[str, str]]),),
     instruction=interacting_seq_ids,
-    inputs=[
-        {
-            "kwargs": {
-                "cifmol_dict": ("cifmol_dict", dict[str, dict[str, CIFMol]]),
-                "seqid_map": ("seqid_map", dict),
-            },
-        },
-    ],
+    kwargs={
+        "cifmol_dict": ("cifmol_dict", dict[str, dict[str, CIFMol]]),
+        "seqid_map": ("seqid_map", dict),
+    },
 )
 
-recipe.add(
-    targets=[
-        (("filtered_seq_ids", set[tuple[str, str]]),),
-    ],
+recipe.step(
+    outputs=(("filtered_seq_ids", set[tuple[str, str]]),),
     instruction=filter_seq_ids,
-    inputs=[
-        {
-            "kwargs": {
-                "interacting_seq_ids": ("interacting_seq_ids", set[tuple[str, str]]),
-            },
-            "params": {
-                "valid_entity_types": ["P", "Q", "D", "R", "N"],
-            },
-        },
-    ],
+    kwargs={
+        "interacting_seq_ids": ("interacting_seq_ids", set[tuple[str, str]]),
+    },
+    params={
+        "valid_entity_types": ["P", "Q", "D", "R", "N"],
+    },
 )
 
 RECIPE = recipe

@@ -12,49 +12,33 @@ from structcooker.instructions.transforms.metadata import (
 
 metadata_recipe = RecipeBook()
 
-metadata_recipe.add(
-    targets=[
-        (("seqid2seq", dict),),
-    ],
+metadata_recipe.step(
+    outputs=(("seqid2seq", dict),),
     instruction=load_tsv,
-    inputs=[
-        {
-            "kwargs": {
-                "tsv_file_path": ("seqid2seq_path", Path),
-            },
-            "params": {
-                "split_by_comma": False,
-            },
-        },
-    ],
+    kwargs={
+        "tsv_file_path": ("seqid2seq_path", Path),
+    },
+    params={
+        "split_by_comma": False,
+    },
 )
 
 
-metadata_recipe.add(
-    targets=[
-        (("seqid_map", dict),),  # moltype+seq -> seqid
-    ],
+metadata_recipe.step(
+    outputs=(("seqid_map", dict),),
     instruction=build_seqid_map,
-    inputs=[
-        {
-            "kwargs": {
-                "seqid2seq": ("seqid2seq", dict),
-            },
-        },
-    ],
+    kwargs={
+        "seqid2seq": ("seqid2seq", dict),
+    },
 )
 
 
-metadata_recipe.add(
-    targets=[(("signalp_dict", dict),)],
+metadata_recipe.step(
+    outputs=(("signalp_dict", dict),),
     instruction=load_signalp,
-    inputs=[
-        {
-            "kwargs": {
-                "signalp_dir": ("signalp_dir", Path | None),
-            },
-        },
-    ],
+    kwargs={
+        "signalp_dir": ("signalp_dir", Path | None),
+    },
 )
 
 RECIPE = metadata_recipe

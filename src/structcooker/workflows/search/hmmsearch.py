@@ -8,36 +8,24 @@ from structcooker.instructions.transforms.template import run_hmmbuild, run_hmms
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (("hmmbuild_results", dict),),
-    ],
+recipe.step(
+    outputs=(("hmmbuild_results", dict),),
     instruction=run_hmmbuild,
-    inputs=[
-        {
-            "kwargs": {
-                "input_a3m_path": ("input_a3m_path", Path),
-                "hmm_path": ("output_path", Path),
-            },
-        },
-    ],
+    kwargs={
+        "input_a3m_path": ("input_a3m_path", Path),
+        "hmm_path": ("output_path", Path),
+    },
 )
 
 
-recipe.add(
-    targets=[
-        (("hmmsearch_results", dict),),
-    ],
+recipe.step(
+    outputs=(("hmmsearch_results", dict),),
     instruction=run_hmmsearch,
-    inputs=[
-        {
-            "kwargs": {
-				"output_dir" : ("hmm_output_dir", Path),
-                "hmm_path": ("output_path", Path),
-                "fasta_path": ("fasta_path", Path),
-            },
-        },
-    ],
+    kwargs={
+        "output_dir": ("hmm_output_dir", Path),
+        "hmm_path": ("output_path", Path),
+        "fasta_path": ("fasta_path", Path),
+    },
 )
 
 

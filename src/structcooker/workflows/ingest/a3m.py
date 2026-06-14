@@ -14,48 +14,30 @@ with a3m parsing recipes and instructions.
 
 a3m_recipe = RecipeBook()
 
-a3m_recipe.add(
-    targets=[
-        (("parsed_sequences", str),),
-    ],
+a3m_recipe.step(
+    outputs=(("parsed_sequences", str),),
     instruction=parse_sequence(),
-    inputs=[
-        {
-            "kwargs": {
-                "raw_sequences": ("raw_sequences", str | None),
-                "a3m_type": ("a3m_type", str | None),
-            },
-        },
-    ],
+    kwargs={
+        "raw_sequences": ("raw_sequences", str | None),
+        "a3m_type": ("a3m_type", str | None),
+    },
 )
 
-a3m_recipe.add(
-    targets=[
-        (("parsed_headers", dict),),
-    ],
+a3m_recipe.step(
+    outputs=(("parsed_headers", dict),),
     instruction=parse_headers(),
-    inputs=[
-        {
-            "kwargs": {
-                "headers": ("headers", list[str] | None),
-            },
-        },
-    ],
+    kwargs={
+        "headers": ("headers", list[str] | None),
+    },
 )
 
-a3m_recipe.add(
-    targets=[
-        (("msa_dict", dict),),
-    ],
+a3m_recipe.step(
+    outputs=(("msa_dict", dict),),
     instruction=build_dict(),
-    inputs=[
-        {
-            "kwargs": {
-                "sequences": ("parsed_sequences", dict | None),
-                "headers": ("parsed_headers", dict | None),
-            },
-        },
-    ],
+    kwargs={
+        "sequences": ("parsed_sequences", dict | None),
+        "headers": ("parsed_headers", dict | None),
+    },
 )
 
 RECIPE = a3m_recipe

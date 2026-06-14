@@ -11,36 +11,24 @@ from structcooker.instructions.transforms.metadata import (
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (("seqid2seq", dict),),
-    ],
+recipe.step(
+    outputs=(("seqid2seq", dict),),
     instruction=load_tsv,
-    inputs=[
-        {
-            "kwargs": {
-				"tsv_file_path": ("seq_id_map_path", Path),
-            },
-            "params": {
-                "split_by_comma": False,
-            },
-        },
-    ],
+    kwargs={
+        "tsv_file_path": ("seq_id_map_path", Path),
+    },
+    params={
+        "split_by_comma": False,
+    },
 )
 
 
-recipe.add(
-    targets=[
-        (("data_list", list),),
-    ],
+recipe.step(
+    outputs=(("data_list", list),),
     instruction=extract_protein_seqs,
-    inputs=[
-        {
-            "kwargs": {
-				"seqid2seq": ("seqid2seq", dict),
-            },
-        },
-    ],
+    kwargs={
+        "seqid2seq": ("seqid2seq", dict),
+    },
 )
 
 

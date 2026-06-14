@@ -8,22 +8,16 @@ from structcooker.instructions.transforms.filtering import (
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (
-            ("sequences", dict),
-            ("headers", dict),
-        ),
-    ],
+recipe.step(
+    outputs=(
+        ("sequences", dict),
+        ("headers", dict),
+    ),
     instruction=filter_a3m(max_msa_depth=4096),
-    inputs=[
-        {
-            "kwargs": {
-                "sequences": ("_sequences", dict),
-                "headers": ("_headers", dict),
-            },
-        },
-    ],
+    kwargs={
+        "sequences": ("_sequences", dict),
+        "headers": ("_headers", dict),
+    },
 )
 
 

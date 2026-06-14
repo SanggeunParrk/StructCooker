@@ -16,122 +16,102 @@ from structcooker.instructions.transforms.metadata import (
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (("raw_fasta_dict", dict),),
-        (("train_fasta_dict", dict),),
-        (("valid_1_fasta_dict", dict),),
-    ],
+recipe.step(
+    outputs=(("raw_fasta_dict", dict),),
     instruction=load_fasta,
-    inputs=[
-        {
-            "kwargs": {
-                "fasta_path": ("raw_fasta_path", str | Path),
-            },
-        },
-        {
-            "kwargs": {
-                "fasta_path": ("train_fasta_path", str | Path),
-            },
-        },
-        {
-            "kwargs": {
-                "fasta_path": ("valid_1_fasta_path", str | Path),
-            },
-        },
-    ],
+    kwargs={
+        "fasta_path": ("raw_fasta_path", str | Path),
+    },
+)
+
+recipe.step(
+    outputs=(("train_fasta_dict", dict),),
+    instruction=load_fasta,
+    kwargs={
+        "fasta_path": ("train_fasta_path", str | Path),
+    },
+)
+
+recipe.step(
+    outputs=(("valid_1_fasta_dict", dict),),
+    instruction=load_fasta,
+    kwargs={
+        "fasta_path": ("valid_1_fasta_path", str | Path),
+    },
 )
 
 
-recipe.add(
-    targets=[
-        (("seqid2seq", dict),),
-        (("seqclusters2seqids", dict),),
-        (("interacting_seq_clusters", dict),),
-    ],
+recipe.step(
+    outputs=(("seqid2seq", dict),),
     instruction=load_tsv,
-    inputs=[
-        {
-            "kwargs": {
-                "tsv_file_path": ("seqid2seq_path", Path),
-            },
-            "params": {
-                "split_by_comma": False,
-            },
-        },
-        {
-            "kwargs": {
-                "tsv_file_path": ("seqcluster_path", Path),
-            },
-            "params": {
-                "split_by_comma": True,
-            },
-        },
-        {
-            "kwargs": {
-                "tsv_file_path": ("interacting_seq_clusters_path", Path),
-            },
-            "params": {
-                "split_by_comma": False,
-            },
-        },
-    ],
+    kwargs={
+        "tsv_file_path": ("seqid2seq_path", Path),
+    },
+    params={
+        "split_by_comma": False,
+    },
 )
 
-recipe.add(
-    targets=[
-        (("seqid_map", dict),),  # moltype+seq -> seqid
-    ],
+recipe.step(
+    outputs=(("seqclusters2seqids", dict),),
+    instruction=load_tsv,
+    kwargs={
+        "tsv_file_path": ("seqcluster_path", Path),
+    },
+    params={
+        "split_by_comma": True,
+    },
+)
+
+recipe.step(
+    outputs=(("interacting_seq_clusters", dict),),
+    instruction=load_tsv,
+    kwargs={
+        "tsv_file_path": ("interacting_seq_clusters_path", Path),
+    },
+    params={
+        "split_by_comma": False,
+    },
+)
+
+recipe.step(
+    outputs=(("seqid_map", dict),),
     instruction=build_seqid_map,
-    inputs=[
-        {
-            "kwargs": {
-                "seqid2seq": ("seqid2seq", dict),
-            },
-        },
-    ],
+    kwargs={
+        "seqid2seq": ("seqid2seq", dict),
+    },
 )
 
-recipe.add(
-    targets=[
-        (("train_clusters", set),),
-        (("valid_1_clusters", set),),
-    ],
+recipe.step(
+    outputs=(("train_clusters", set),),
     instruction=classify_seq_clusters,
-    inputs=[
-        {
-            "kwargs": {
-                "raw_fasta_dict": ("raw_fasta_dict", dict),
-                "fasta_dict": ("train_fasta_dict", dict),
-                "seqid_map": ("seqid_map", dict),
-                "seqclusters2seqids": ("seqclusters2seqids", dict),
-            },
-        },
-        {
-            "kwargs": {
-                "raw_fasta_dict": ("raw_fasta_dict", dict),
-                "fasta_dict": ("valid_1_fasta_dict", dict),
-                "seqid_map": ("seqid_map", dict),
-                "seqclusters2seqids": ("seqclusters2seqids", dict),
-            },
-        },
-    ],
+    kwargs={
+        "raw_fasta_dict": ("raw_fasta_dict", dict),
+        "fasta_dict": ("train_fasta_dict", dict),
+        "seqid_map": ("seqid_map", dict),
+        "seqclusters2seqids": ("seqclusters2seqids", dict),
+    },
 )
 
-recipe.add(
-    targets=[
-        (("filtered_valid_2_clusters", set),),
-    ],
+recipe.step(
+    outputs=(("valid_1_clusters", set),),
+    instruction=classify_seq_clusters,
+    kwargs={
+        "raw_fasta_dict": ("raw_fasta_dict", dict),
+        "fasta_dict": ("valid_1_fasta_dict", dict),
+        "seqid_map": ("seqid_map", dict),
+        "seqclusters2seqids": ("seqclusters2seqids", dict),
+    },
+)
+
+recipe.step(
+    outputs=(("filtered_valid_2_clusters", set),),
     instruction=filter_valid_2_clusters,
-    inputs=[
-        {
-            "kwargs": {
-                "train_clusters": ("train_clusters", set),
-                "valid_1_clusters": ("valid_1_clusters", set),
-                "interacting_seq_clusters": ("interacting_seq_clusters", dict),
-            },
-        },
-    ],
+    kwargs={
+        "train_clusters": ("train_clusters", set),
+        "valid_1_clusters": ("valid_1_clusters", set),
+        "interacting_seq_clusters": ("interacting_seq_clusters", dict),
+    },
 )
 
 RECIPE = recipe

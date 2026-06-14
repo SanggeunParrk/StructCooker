@@ -8,19 +8,13 @@ from structcooker.instructions.transforms.template import remove_lower_from_a3m
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (("results", str),),
-    ],
+recipe.step(
+    outputs=(("results", str),),
     instruction=remove_lower_from_a3m,
-    inputs=[
-        {
-            "kwargs": {
-                "input_a3m_path": ("input_a3m_path", Path),
-                "output_path": ("output_path", Path),
-            },
-        },
-    ],
+    kwargs={
+        "input_a3m_path": ("input_a3m_path", Path),
+        "output_path": ("output_path", Path),
+    },
 )
 
 

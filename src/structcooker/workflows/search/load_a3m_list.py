@@ -8,20 +8,14 @@ from structcooker.instructions.transforms.template import load_a3m_list
 
 recipe = RecipeBook()
 
-recipe.add(
-    targets=[
-        (("data_list", list),),
-    ],
+recipe.step(
+    outputs=(("data_list", list),),
     instruction=load_a3m_list,
-    inputs=[
-        {
-            "kwargs": {
-				"data_dir": ("data_dir", Path),
-				"output_dir": ("output_dir", Path),
-				"output_pattern": ("output_pattern", str),
-            },
-        },
-    ],
+    kwargs={
+        "data_dir": ("data_dir", Path),
+        "output_dir": ("output_dir", Path),
+        "output_pattern": ("output_pattern", str),
+    },
 )
 
 
