@@ -59,14 +59,16 @@ def your_new_instruction(
     instruction=your_new_instruction(dtype=np.float32, some_config_value=10.0),
 
 """
-from pathlib import Path
+from __future__ import annotations
+
 from collections.abc import Callable
-from typing import TypeVar
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import numpy as np
-from numpy.typing import NDArray
-
+from biomol.core.container import FeatureContainer
 from biomol.core.feature import EdgeFeature, NodeFeature
+from numpy.typing import NDArray
 
 InputType = TypeVar("InputType", str, int, float)
 FeatureType = TypeVar("FeatureType")
@@ -191,3 +193,171 @@ def split_each_cif_files(
     if current_key is not None:
         cif_dict[current_key] = "".join(current_lines)
     return cif_dict
+
+# ---- merged from ccd_validation.py ----
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+# Covalent radii in angstrom (Cordero et al. 2008), keyed by uppercase symbol.
+COVALENT_RADII: dict[str, float] = {
+    "H": 0.31, "B": 0.84, "C": 0.76, "N": 0.71, "O": 0.66, "F": 0.57,
+    "NA": 1.66, "MG": 1.41, "AL": 1.21, "SI": 1.11, "P": 1.07, "S": 1.05,
+    "CL": 1.02, "K": 2.03, "CA": 1.76, "MN": 1.39, "FE": 1.32, "CO": 1.26,
+    "NI": 1.24, "CU": 1.32, "ZN": 1.22, "SE": 1.20, "BR": 1.20, "I": 1.39,
+}
+
+# A bond is plausible when its length is within these multiples of the
+# covalent-radii sum. Generous on the high side to avoid false positives on
+# legitimate long bonds; tight on the low side to catch atom overlaps.
+BOND_MAX_FACTOR = 1.3
+BOND_MIN_FACTOR = 0.5
+
+
+def _issue(code: str, message: str, **detail: object) -> dict[str, Any]:
+    return {"code": code, "message": message, "detail": detail}
+
+
+def _as_atom_container(chem_comp: object) -> FeatureContainer | None:
+    """Coerce a stored entry / container into the atom ``FeatureContainer``.
+
+    Accepts an in-memory entry (``{"atom": FeatureContainer}``), a round-tripped
+    entry (``{"atom": {...nodes/edges...}}``), or an atom container directly.
+    Returns ``None`` for unparsed entries (CCD stores ``None`` for e.g. ``UNL``).
+    """
+    if chem_comp is None:
+        return None
+    if isinstance(chem_comp, FeatureContainer):
+        return chem_comp
+    atom = chem_comp.get("atom") if isinstance(chem_comp, dict) else None
+    if atom is None:
+        return None
+    if isinstance(atom, FeatureContainer):
+        return atom
+    return FeatureContainer.from_dict(atom)
+
+
+def _xyz_float_or_none(row: np.ndarray) -> np.ndarray | None:
+    try:
+        return row.astype(float)
+    except (ValueError, TypeError):
+        return None
+
+
+def check_missing_xyz(atom: FeatureContainer) -> list[dict[str, Any]]:
+    """Report atoms whose ``model_xyz`` is absent or not fully numeric."""
+    ids = atom["id"].value
+    if "model_xyz" not in atom:
+        return [_issue("missing_xyz", "no model_xyz for any atom", count=len(ids))]
+    xyz = atom["model_xyz"].value
+    bad = [
+        str(ids[i])
+        for i in range(len(ids))
+        if _xyz_float_or_none(xyz[i]) is None
+    ]
+    if bad:
+        return [_issue("missing_xyz", "atom(s) missing ideal coordinates", atoms=bad)]
+    return []
+
+
+def _bond_endpoints(atom: FeatureContainer) -> tuple[np.ndarray, np.ndarray] | None:
+    if "bond_type" not in atom:
+        return None
+    bond = atom["bond_type"]
+    return np.asarray(bond.src_indices), np.asarray(bond.dst_indices)
+
+
+def check_bond_integrity(atom: FeatureContainer) -> list[dict[str, Any]]:
+    """Report self-bonds and duplicate bonds.
+
+    (Out-of-range bond indices cannot occur here: ``FeatureContainer`` rejects
+    them at construction, so that invariant is delegated to the container.)
+    """
+    endpoints = _bond_endpoints(atom)
+    if endpoints is None:
+        return []
+    src, dst = endpoints
+    issues: list[dict[str, Any]] = []
+    seen: set[frozenset[int]] = set()
+    for s, d in zip(src.tolist(), dst.tolist(), strict=True):
+        if s == d:
+            issues.append(_issue("self_bond", "atom bonded to itself", atom=int(s)))
+            continue
+        pair = frozenset((int(s), int(d)))
+        if pair in seen:
+            issues.append(_issue("duplicate_bond", "duplicate bond between the same atom pair", src=int(s), dst=int(d)))
+        seen.add(pair)
+    return issues
+
+
+def check_bond_geometry(
+    atom: FeatureContainer,
+    *,
+    max_factor: float = BOND_MAX_FACTOR,
+    min_factor: float = BOND_MIN_FACTOR,
+) -> list[dict[str, Any]]:
+    """Report bonded atoms whose distance is implausible vs covalent radii.
+
+    Only bonds whose both endpoints carry numeric coordinates and whose both
+    elements are in :data:`COVALENT_RADII` are judged; others are skipped.
+    """
+    endpoints = _bond_endpoints(atom)
+    if endpoints is None or "model_xyz" not in atom:
+        return []
+    src, dst = endpoints
+    ids = atom["id"].value
+    elements = atom["element"].value
+    xyz = atom["model_xyz"].value
+    n_atoms = len(ids)
+    issues: list[dict[str, Any]] = []
+    for s, d in zip(src.tolist(), dst.tolist(), strict=True):
+        if not (0 <= s < n_atoms and 0 <= d < n_atoms) or s == d:
+            continue  # structural problems are reported by check_bond_integrity
+        es, ed = str(elements[s]).upper(), str(elements[d]).upper()
+        if es not in COVALENT_RADII or ed not in COVALENT_RADII:
+            continue
+        ps, pd = _xyz_float_or_none(xyz[s]), _xyz_float_or_none(xyz[d])
+        if ps is None or pd is None:
+            continue
+        dist = float(np.linalg.norm(ps - pd))
+        radii_sum = COVALENT_RADII[es] + COVALENT_RADII[ed]
+        if dist > radii_sum * max_factor:
+            issues.append(_issue(
+                "bond_too_long",
+                "bonded atoms are farther apart than a real bond allows",
+                atoms=[str(ids[s]), str(ids[d])], distance=round(dist, 3),
+                max_expected=round(radii_sum * max_factor, 3),
+            ))
+        elif dist < radii_sum * min_factor:
+            issues.append(_issue(
+                "atom_overlap",
+                "bonded atoms are implausibly close",
+                atoms=[str(ids[s]), str(ids[d])], distance=round(dist, 3),
+                min_expected=round(radii_sum * min_factor, 3),
+            ))
+    return issues
+
+
+def validate_atom_container(atom: FeatureContainer) -> list[dict[str, Any]]:
+    """Run all per-entry checks on a single atom container."""
+    return [
+        *check_missing_xyz(atom),
+        *check_bond_integrity(atom),
+        *check_bond_geometry(atom),
+    ]
+
+
+def validate_chem_comp() -> Callable[..., list[dict[str, Any]]]:
+    """Return a DataCooker instruction that validates one ``chem_comp`` entry.
+
+    The instruction returns a list of issue dicts (empty == valid). An unparsed
+    entry (``None``) yields a single ``unparsed`` issue.
+    """
+
+    def _validate(chem_comp: object) -> list[dict[str, Any]]:
+        atom = _as_atom_container(chem_comp)
+        if atom is None:
+            return [_issue("unparsed", "entry has no parsed atom container")]
+        return validate_atom_container(atom)
+
+    return _validate
