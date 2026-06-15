@@ -1,0 +1,18 @@
+data_dir: ${p:/data/shared/cssb_data/openfold_distillation/monomer_distillation_sets_v2/long_monomers/preprocessed}
+file_pattern: "structure.npz"
+
+env_path: ${p:/data/shared/cssb_data/openfold_distillation/lmdb/cif_long.lmdb}
+
+recipe: ${p:src/structcooker/workflows/ingest/openfold_structure.py}
+
+n_jobs: -1
+chunk_size: 10000
+test_run: true
+
+key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
+
+reader:
+  loader: structcooker.instructions.readers.openfold.get_openfold_structure_data
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
