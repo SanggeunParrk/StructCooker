@@ -11,6 +11,9 @@ test_run: true
 
 key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
 
+inputs:
+  ccd_db_path: ${p:/data/psk6950/CCD/biomol_CCD_202602.lmdb}
+
 reader:
   loader: structcooker.instructions.readers.openfold.get_openfold_structure_data
 
