@@ -11,8 +11,8 @@ import kalign
 import numpy as np
 from biomol.core.index import IndexTable
 
-from structcooker.mols import CIFMol, TemplateMol
 from structcooker.instructions.readers.io import load_bytes, load_raw_data
+from structcooker.mols import CIFMol, TemplateMol
 
 
 def _is_nonempty(path: Path) -> bool:
@@ -668,14 +668,13 @@ def load_templates(
     template_mols = {}
     for full_id, align_result in align_results.items():
         pdb_id, chain_id = full_id.split("_")
-        cifmol = load_cifmol(cif_db_path, pdb_id.lower(), chain_id)
-        chain_id = find_first(f"{chain_id}_", cifmol.chains.chain_id.value)
         try:
+            cifmol = load_cifmol(cif_db_path, pdb_id.lower(), chain_id)
+            chain_id = find_first(f"{chain_id}_", cifmol.chains.chain_id.value)
             cifmol = cifmol.chains[cifmol.chains.chain_id == chain_id].extract()
-        except Exception:
+            template_mols[full_id] = to_template_mol(cifmol, align_result)
+        except Exception:  # noqa: BLE001 - skip templates missing from the CIF DB
             continue
-        template_mol = to_template_mol(cifmol, align_result)
-        template_mols[full_id] = template_mol
     return template_mols
 
 
