@@ -54,8 +54,24 @@ def get_openfold_template_data(template_path: Path) -> dict[str, Any]:
 
     Each top-level key is a ``<pdb_id>_<chain_id>`` template hit mapping to an
     ``index`` / ``release_date`` / ``idx_map`` payload. Only protein monomers
-    carry templates (RNA monomers have no ``template.npz``).
+    carry templates (RNA monomers have no ``template.npz``). The sibling
+    ``structure.npz`` provides the query length needed to align templates over
+    the full monomer.
     """
     with np.load(template_path, allow_pickle=True) as handle:
         template_hits = {hit: handle[hit].item() for hit in handle.files}
-    return {"template_hits": template_hits}
+    query_len = 0
+    structure_path = template_path.parent / "structure.npz"
+    if structure_path.exists():
+        with np.load(structure_path, allow_pickle=True) as handle:
+            keys = np.stack(
+                [
+                    handle["chain_id"].astype(str),
+                    handle["res_id"].astype(str),
+                    handle["ins_code"].astype(str),
+                ],
+                axis=1,
+            )
+            _, first_idx = np.unique(keys, axis=0, return_index=True)
+            query_len = len(first_idx)
+    return {"template_hits": template_hits, "query_len": query_len}

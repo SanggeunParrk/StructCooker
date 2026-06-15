@@ -13,8 +13,6 @@ from collections.abc import Callable
 
 import numpy as np
 
-_TEMPLATE_FIELDS = ("index", "release_date", "idx_map")
-
 
 def merge_msa_sources() -> Callable[..., dict[str, np.ndarray]]:
     """Collapse the per-source MSA payloads into one alignment.
@@ -104,15 +102,46 @@ def parse_openfold_msa_headers() -> Callable[..., dict[str, np.ndarray]]:
     return _worker
 
 
-def build_template_dict() -> Callable[..., dict[str, dict[str, object]]]:
-    """Normalise per-hit template payloads into a single ``template_dict``."""
+def reconstruct_template_alignments() -> Callable[..., dict[str, tuple[str, str]]]:
+    """Express each template hit's ``idx_map`` as a placeholder query/template alignment.
+
+    ``idx_map`` lists matched ``(query_residue, template_residue)`` index pairs.
+    A gapped alignment of placeholder residues is built so the reused
+    ``load_templates`` / ``to_template_mol`` recover exactly those pairs over the
+    full query length (residue identity is irrelevant there — only gap masks
+    are used).
+    """
 
     def _worker(
         template_hits: dict[str, dict[str, object]],
-    ) -> dict[str, dict[str, object]]:
-        return {
-            hit: {field: payload[field] for field in _TEMPLATE_FIELDS}
-            for hit, payload in template_hits.items()
-        }
+        query_len: int,
+    ) -> dict[str, tuple[str, str]]:
+        align_results: dict[str, tuple[str, str]] = {}
+        for hit, payload in template_hits.items():
+            idx_map = np.asarray(payload["idx_map"], dtype=np.int64)
+            order = np.argsort(idx_map[:, 0], kind="stable")
+            pairs = idx_map[order]
+            query_chars: list[str] = []
+            target_chars: list[str] = []
+            q_cur = t_cur = 0
+            for qi, ti in pairs.tolist():
+                while q_cur < qi:
+                    query_chars.append("A")
+                    target_chars.append("-")
+                    q_cur += 1
+                while t_cur < ti:
+                    query_chars.append("-")
+                    target_chars.append("A")
+                    t_cur += 1
+                query_chars.append("A")
+                target_chars.append("A")
+                q_cur += 1
+                t_cur += 1
+            while q_cur < query_len:
+                query_chars.append("A")
+                target_chars.append("-")
+                q_cur += 1
+            align_results[hit] = ("".join(query_chars), "".join(target_chars))
+        return align_results
 
     return _worker
