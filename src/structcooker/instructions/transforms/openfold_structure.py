@@ -26,10 +26,26 @@ if TYPE_CHECKING:
     from biomol.core.types import BioMolDict
 
 _PROTEIN_3TO1 = {
-    "ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C",
-    "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H", "ILE": "I",
-    "LEU": "L", "LYS": "K", "MET": "M", "PHE": "F", "PRO": "P",
-    "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V",
+    "ALA": "A",
+    "ARG": "R",
+    "ASN": "N",
+    "ASP": "D",
+    "CYS": "C",
+    "GLN": "Q",
+    "GLU": "E",
+    "GLY": "G",
+    "HIS": "H",
+    "ILE": "I",
+    "LEU": "L",
+    "LYS": "K",
+    "MET": "M",
+    "PHE": "F",
+    "PRO": "P",
+    "SER": "S",
+    "THR": "T",
+    "TRP": "W",
+    "TYR": "Y",
+    "VAL": "V",
 }
 _RNA_1 = {"A": "A", "C": "C", "G": "G", "U": "U"}
 # OpenFold3 distillation molecule_type_id encoding (protein=0, rna=1, ...),
@@ -60,6 +76,15 @@ def _first_per_group(group_ids: np.ndarray, values: np.ndarray) -> np.ndarray:
     return values[first_idx]
 
 
+def _empty_edge(value_shape: tuple[int, ...], value_dtype: str) -> EdgeFeature:
+    """Return an edge feature with no edges (a materialised but empty field)."""
+    return EdgeFeature(
+        value=np.empty(value_shape, dtype=value_dtype),
+        src_indices=np.empty((0,), dtype=np.int64),
+        dst_indices=np.empty((0,), dtype=np.int64),
+    )
+
+
 def build_hierarchy() -> Callable[..., dict[str, Any]]:
     """Recover the atom→residue→chain hierarchy from the flat atom table."""
 
@@ -78,13 +103,19 @@ def build_hierarchy() -> Callable[..., dict[str, Any]]:
             "atom_to_res": atom_to_res,
             "res_to_chain": res_to_chain,
             "n_chain": int(res_to_chain[-1] + 1) if len(res_to_chain) else 0,
-            "res_name": _first_per_group(atom_to_res, atom_arrays["res_name"].astype(str)),
+            "res_name": _first_per_group(
+                atom_to_res, atom_arrays["res_name"].astype(str)
+            ),
             "res_id": _first_per_group(atom_to_res, res_id),
-            "res_hetero": _first_per_group(atom_to_res, atom_arrays["hetero"]).astype(np.int64),
+            "res_hetero": _first_per_group(atom_to_res, atom_arrays["hetero"]).astype(
+                np.int64
+            ),
             "res_mol_type": _first_per_group(atom_to_res, mol_type),
             "chain_id": _first_per_group(res_to_chain, res_chain_id),
             "entity_id": _first_per_group(res_to_chain, res_entity_id),
-            "chain_mol_type": _first_per_group(res_to_chain, _first_per_group(atom_to_res, mol_type)),
+            "chain_mol_type": _first_per_group(
+                res_to_chain, _first_per_group(atom_to_res, mol_type)
+            ),
         }
 
     return _worker
@@ -101,7 +132,9 @@ def _read_ccd_entry(ccd_db_path: Path, res_name: str) -> dict[str, Any] | None:
 def load_ccd_entries() -> Callable[..., dict[str, Any]]:
     """Load the CCD component for every residue name present in the structure."""
 
-    def _worker(atom_arrays: dict[str, np.ndarray], ccd_db_path: Path) -> dict[str, Any]:
+    def _worker(
+        atom_arrays: dict[str, np.ndarray], ccd_db_path: Path
+    ) -> dict[str, Any]:
         path = Path(ccd_db_path)
         names = np.unique(atom_arrays["res_name"].astype(str)).tolist()
         return {res_name: _read_ccd_entry(path, res_name) for res_name in names}
@@ -141,7 +174,9 @@ def derive_atom_features() -> Callable[..., dict[str, np.ndarray]]:
         stereo = np.full(n, "N", dtype="<U1")
         charge = np.full(n, "0", dtype="<U2")
         model_xyz = np.full((n, 3), "", dtype="<U7")
-        lookups = {r: _ccd_atom_lookup(ccd_cache.get(r)) for r in np.unique(res_name).tolist()}
+        lookups = {
+            r: _ccd_atom_lookup(ccd_cache.get(r)) for r in np.unique(res_name).tolist()
+        }
         for i in range(n):
             feat = lookups[res_name[i]].get(atom_name[i])
             if feat is None:
@@ -150,7 +185,12 @@ def derive_atom_features() -> Callable[..., dict[str, np.ndarray]]:
             stereo[i] = feat["stereo"]
             charge[i] = feat["charge"]
             model_xyz[i] = feat["model_xyz"]
-        return {"aromatic": aromatic, "stereo": stereo, "charge": charge, "model_xyz": model_xyz}
+        return {
+            "aromatic": aromatic,
+            "stereo": stereo,
+            "charge": charge,
+            "model_xyz": model_xyz,
+        }
 
     return _worker
 
@@ -192,17 +232,33 @@ def derive_bond_edges() -> Callable[..., dict[str, np.ndarray]]:
         bond_type = np.full(m, "SING", dtype="<U21")
         bond_aromatic = np.full(m, "N", dtype="<U1")
         bond_stereo = np.full(m, "N", dtype="<U1")
+        res_bonds: dict[tuple[int, int], str] = {}
         for k in range(m):
             i, j = src[k], dst[k]
             if atom_to_res[i] == atom_to_res[j]:
                 hit = chem.get(
-                    (str(res_name[i]), frozenset({str(atom_name[i]), str(atom_name[j])})),
+                    (
+                        str(res_name[i]),
+                        frozenset({str(atom_name[i]), str(atom_name[j])}),
+                    ),
                 )
                 if hit is not None:
                     bond_type[k], bond_aromatic[k], bond_stereo[k] = hit
+            else:
+                pair = (int(atom_to_res[i]), int(atom_to_res[j]))
+                res_bonds.setdefault(pair, str(bond_type[k]))
+        res_src = np.array([p[0] for p in res_bonds], dtype=np.int64)
+        res_dst = np.array([p[1] for p in res_bonds], dtype=np.int64)
+        res_bond_value = np.array(list(res_bonds.values()), dtype="<U21")
         return {
-            "src": src, "dst": dst,
-            "bond_type": bond_type, "bond_aromatic": bond_aromatic, "bond_stereo": bond_stereo,
+            "src": src,
+            "dst": dst,
+            "bond_type": bond_type,
+            "bond_aromatic": bond_aromatic,
+            "bond_stereo": bond_stereo,
+            "res_src": res_src,
+            "res_dst": res_dst,
+            "res_bond_value": res_bond_value,
         }
 
     return _worker
@@ -247,10 +303,7 @@ def derive_chain_features() -> Callable[..., dict[str, np.ndarray]]:
         entity_id = hierarchy["entity_id"].astype(str)
         mol_type = hierarchy["chain_mol_type"]
         entity_type = np.array(
-            [
-                _OPENFOLD_MOL_TYPE.get(int(t), MoleculeType.NA).value
-                for t in mol_type
-            ],
+            [_OPENFOLD_MOL_TYPE.get(int(t), MoleculeType.NA).value for t in mol_type],
             dtype="<U49",
         )
         return {
@@ -286,15 +339,37 @@ def assemble_cifmol() -> Callable[..., "BioMolDict"]:
                 "xyz": NodeFeature(atom_arrays["coord"].astype(np.float64)),
                 "b_factor": NodeFeature(np.zeros(n_atoms, dtype=np.float64)),
                 "occupancy": NodeFeature(atom_arrays["occupancy"].astype(np.float64)),
-                "bond_type": EdgeFeature(bonds["bond_type"], bonds["src"], bonds["dst"]),
-                "bond_aromatic": EdgeFeature(bonds["bond_aromatic"], bonds["src"], bonds["dst"]),
-                "bond_stereo": EdgeFeature(bonds["bond_stereo"], bonds["src"], bonds["dst"]),
+                "bond_type": EdgeFeature(
+                    bonds["bond_type"], bonds["src"], bonds["dst"]
+                ),
+                "bond_aromatic": EdgeFeature(
+                    bonds["bond_aromatic"], bonds["src"], bonds["dst"]
+                ),
+                "bond_stereo": EdgeFeature(
+                    bonds["bond_stereo"], bonds["src"], bonds["dst"]
+                ),
+                "struct_conn": _empty_edge((0, 2), "<U6"),
             },
         )
-        residues = FeatureContainer({k: NodeFeature(v) for k, v in residue_features.items()})
-        chains = FeatureContainer({k: NodeFeature(v) for k, v in chain_features.items()})
+        residue_fields: dict[str, NodeFeature | EdgeFeature] = {
+            k: NodeFeature(v) for k, v in residue_features.items()
+        }
+        residue_fields["bond"] = EdgeFeature(
+            bonds["res_bond_value"],
+            bonds["res_src"],
+            bonds["res_dst"],
+        )
+        residue_fields["struct_conn"] = _empty_edge((0,), "int64")
+        residues = FeatureContainer(residue_fields)
+        chain_fields: dict[str, NodeFeature | EdgeFeature] = {
+            k: NodeFeature(v) for k, v in chain_features.items()
+        }
+        chain_fields["contact"] = _empty_edge((0,), "int32")
+        chains = FeatureContainer(chain_fields)
         index_table = IndexTable.from_parents(
-            hierarchy["atom_to_res"], hierarchy["res_to_chain"], n_chain=hierarchy["n_chain"],
+            hierarchy["atom_to_res"],
+            hierarchy["res_to_chain"],
+            n_chain=hierarchy["n_chain"],
         )
         return CIFMol(
             atom_container=atoms,

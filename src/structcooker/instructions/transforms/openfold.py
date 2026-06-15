@@ -92,11 +92,12 @@ def parse_openfold_msa_headers() -> Callable[..., dict[str, np.ndarray]]:
             database_id.append(did)
             species.append("N/A")
             rep_id.append(did)
+        # stored as bytes (|S) to match the existing a3m headers
         return {
-            "database": np.array(database),
-            "database_id": np.array(database_id),
-            "species": np.array(species),
-            "rep_id": np.array(rep_id),
+            "database": np.array([s.encode() for s in database]),
+            "database_id": np.array([s.encode() for s in database_id]),
+            "species": np.array([s.encode() for s in species]),
+            "rep_id": np.array([s.encode() for s in rep_id]),
         }
 
     return _worker
