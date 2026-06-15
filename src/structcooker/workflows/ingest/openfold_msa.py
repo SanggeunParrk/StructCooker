@@ -21,13 +21,13 @@ msa_recipe = RecipeBook()
 
 msa_recipe.add(
     targets=(("alignment", dict),),
-    instruction=merge_msa_sources(),
+    instruction=merge_msa_sources,
     inputs={"kwargs": {"msa_sources": ("msa_sources", dict)}},
 )
 
 msa_recipe.add(
     targets=(("raw_sequences", list),),
-    instruction=reconstruct_a3m_sequences(),
+    instruction=reconstruct_a3m_sequences,
     inputs={"kwargs": {"alignment": ("alignment", dict)}},
 )
 
@@ -44,7 +44,7 @@ msa_recipe.add(
 
 msa_recipe.add(
     targets=(("parsed_headers", dict),),
-    instruction=parse_openfold_msa_headers(),
+    instruction=parse_openfold_msa_headers,
     inputs={"kwargs": {"alignment": ("alignment", dict)}},
 )
 

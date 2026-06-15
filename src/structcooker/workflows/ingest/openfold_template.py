@@ -20,7 +20,7 @@ template_recipe = RecipeBook()
 
 template_recipe.add(
     targets=(("align_results", dict),),
-    instruction=reconstruct_template_alignments(),
+    instruction=reconstruct_template_alignments,
     inputs={
         "kwargs": {
             "template_hits": ("template_hits", dict),

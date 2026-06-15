@@ -24,13 +24,13 @@ structure_recipe = RecipeBook()
 
 structure_recipe.add(
     targets=(("hierarchy", dict),),
-    instruction=build_hierarchy(),
+    instruction=build_hierarchy,
     inputs={"kwargs": {"atom_arrays": ("atom_arrays", dict)}},
 )
 
 structure_recipe.add(
     targets=(("ccd_cache", dict),),
-    instruction=load_ccd_entries(),
+    instruction=load_ccd_entries,
     inputs={
         "kwargs": {
             "atom_arrays": ("atom_arrays", dict),
@@ -41,31 +41,31 @@ structure_recipe.add(
 
 structure_recipe.add(
     targets=(("atom_features", dict),),
-    instruction=derive_atom_features(),
+    instruction=derive_atom_features,
     inputs={"kwargs": {"atom_arrays": ("atom_arrays", dict), "ccd_cache": ("ccd_cache", dict)}},
 )
 
 structure_recipe.add(
     targets=(("bonds", dict),),
-    instruction=derive_bond_edges(),
+    instruction=derive_bond_edges,
     inputs={"kwargs": {"atom_arrays": ("atom_arrays", dict), "ccd_cache": ("ccd_cache", dict)}},
 )
 
 structure_recipe.add(
     targets=(("residue_features", dict),),
-    instruction=derive_residue_features(),
+    instruction=derive_residue_features,
     inputs={"kwargs": {"hierarchy": ("hierarchy", dict), "ccd_cache": ("ccd_cache", dict)}},
 )
 
 structure_recipe.add(
     targets=(("chain_features", dict),),
-    instruction=derive_chain_features(),
+    instruction=derive_chain_features,
     inputs={"kwargs": {"hierarchy": ("hierarchy", dict)}},
 )
 
 structure_recipe.add(
     targets=(("cifmol_dict", dict),),
-    instruction=assemble_cifmol(),
+    instruction=assemble_cifmol,
     inputs={
         "kwargs": {
             "atom_arrays": ("atom_arrays", dict),
