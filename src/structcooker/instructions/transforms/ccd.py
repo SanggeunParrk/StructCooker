@@ -347,17 +347,13 @@ def validate_atom_container(atom: FeatureContainer) -> list[dict[str, Any]]:
     ]
 
 
-def validate_chem_comp() -> Callable[..., list[dict[str, Any]]]:
-    """Return a DataCooker instruction that validates one ``chem_comp`` entry.
+def validate_chem_comp(chem_comp: object) -> list[dict[str, Any]]:
+    """Validate one ``chem_comp`` entry.
 
-    The instruction returns a list of issue dicts (empty == valid). An unparsed
-    entry (``None``) yields a single ``unparsed`` issue.
+    Returns a list of issue dicts (empty == valid). An unparsed entry
+    (``None``) yields a single ``unparsed`` issue.
     """
-
-    def _validate(chem_comp: object) -> list[dict[str, Any]]:
-        atom = _as_atom_container(chem_comp)
-        if atom is None:
-            return [_issue("unparsed", "entry has no parsed atom container")]
-        return validate_atom_container(atom)
-
-    return _validate
+    atom = _as_atom_container(chem_comp)
+    if atom is None:
+        return [_issue("unparsed", "entry has no parsed atom container")]
+    return validate_atom_container(atom)

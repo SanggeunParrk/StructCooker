@@ -43,7 +43,7 @@ msa_recipe.add(
 
 msa_recipe.add(
     targets=(("parsed_sequences", dict),),
-    instruction=parse_sequence(),
+    instruction=parse_sequence,
     inputs={
         "kwargs": {
             "raw_sequences": ("raw_sequences", list),
@@ -60,7 +60,7 @@ msa_recipe.add(
 
 msa_recipe.add(
     targets=(("msa_dict", dict),),
-    instruction=build_dict(),
+    instruction=build_dict,
     inputs={
         "kwargs": {
             "sequences": ("parsed_sequences", dict),

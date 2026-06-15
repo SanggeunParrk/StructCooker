@@ -100,32 +100,26 @@ def extract_graph_per_cifmol(
     return to_bytes({"cluster_graph": container})
 
 
-def extract_graph_per_cifmol_attached() -> Callable[..., bytes]:
+def extract_graph_per_cifmol_attached(cifmol: CIFMolAttached) -> bytes:
     """Read CIFMolAttached and extract chain-level contact graphs with cluster labels."""
+    # chain level contact graph
+    contact_graph = cifmol.chains.contact
+    chain_id_list = cifmol.chains.chain_id.value
+    cluster_list = cifmol.chains.cluster_id.value
+    src, dst = contact_graph.src_indices, contact_graph.dst_indices
 
-    def _worker(
-        cifmol: CIFMolAttached,
-    ) -> type[InputType]:
-        # chain level contact graph
-        contact_graph = cifmol.chains.contact
-        chain_id_list = cifmol.chains.chain_id.value
-        cluster_list = cifmol.chains.cluster_id.value
-        src, dst = contact_graph.src_indices, contact_graph.dst_indices
-
-        cluster_list = np.array(cluster_list)
-        features = {
-            "chain_ids": NodeFeature(np.array(chain_id_list)),
-            "seq_clusters": NodeFeature(cluster_list),
-            "contact_edges": EdgeFeature(
-                value=np.array([1] * len(src)),
-                src_indices=np.array(src),
-                dst_indices=np.array(dst),
-            ),
-        }
-        container = FeatureContainer(features)
-        return to_bytes({"cluster_graph": container})
-
-    return _worker
+    cluster_list = np.array(cluster_list)
+    features = {
+        "chain_ids": NodeFeature(np.array(chain_id_list)),
+        "seq_clusters": NodeFeature(cluster_list),
+        "contact_edges": EdgeFeature(
+            value=np.array([1] * len(src)),
+            src_indices=np.array(src),
+            dst_indices=np.array(dst),
+        ),
+    }
+    container = FeatureContainer(features)
+    return to_bytes({"cluster_graph": container})
 
 
 def extract_graphs(n_jobs: int = -1) -> Callable[..., type[InputType]]:

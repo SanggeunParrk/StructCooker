@@ -19,7 +19,7 @@ validate_recipe = RecipeBook()
 
 validate_recipe.step(
     outputs=("issues", list),
-    instruction=validate_chem_comp(),
+    instruction=validate_chem_comp,
     kwargs={"chem_comp": ("chem_comp", dict | None)},
 )
 
