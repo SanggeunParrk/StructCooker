@@ -37,6 +37,16 @@ extra:
 nav:
   - Overview: index.md
   - Getting Started: getting-started.md
+  - Data flow: data-flow.md
   - Tutorials:
       - Overview: tutorials.md
+      - CCD ingest: tutorials/ingest-ccd.md
+      - CIF ingest: tutorials/ingest-cif.md
+      - MSA ingest: tutorials/ingest-msa.md
+      - Template ingest: tutorials/ingest-template.md
       - OpenFold3 distillation ingest: tutorials/openfold-distillation.md
+      - Search: tutorials/search.md
+      - Metadata: tutorials/metadata.md
+      - Filters: tutorials/filters.md
+      - Exports: tutorials/exports.md
+      - Analysis: tutorials/analysis.md
