@@ -18,7 +18,6 @@ from biomol.core.index import IndexTable
 
 from structcooker.instructions.readers.lmdb import read_lmdb
 from structcooker.mols import CIFMol
-from structcooker.utils.mapping import MoleculeType
 
 if TYPE_CHECKING:
     from biomol.core.types import BioMolDict
@@ -30,13 +29,14 @@ _PROTEIN_3TO1 = {
     "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V",
 }
 _RNA_1 = {"A": "A", "C": "C", "G": "G", "U": "U"}
-# OpenFold3 distillation molecule_type_id encoding (protein=0, rna=1, ...),
-# which differs from StructCooker's internal MoleculeType ordering.
-_OPENFOLD_MOL_TYPE = {
-    0: MoleculeType.PROTEIN,
-    1: MoleculeType.RNA,
-    2: MoleculeType.DNA,
-    3: MoleculeType.LIGAND,
+# OpenFold3 distillation molecule_type_id (protein=0, rna=1, dna=2, ligand=3)
+# mapped to the mmCIF entity_poly.type vocabulary the reference cif LMDB stores
+# in chains.entity_type, so the field matches verbatim.
+_OPENFOLD_ENTITY_TYPE = {
+    0: "polypeptide(L)",
+    1: "polyribonucleotide",
+    2: "polydeoxyribonucleotide",
+    3: "non-polymer",
 }
 
 
@@ -259,7 +259,7 @@ def derive_chain_features(
     chain_id = chain_ids.astype(str)
     entity_id = entity_ids.astype(str)
     entity_type = np.array(
-        [_OPENFOLD_MOL_TYPE.get(int(t), MoleculeType.NA).value for t in chain_mol_types],
+        [_OPENFOLD_ENTITY_TYPE.get(int(t), "non-polymer") for t in chain_mol_types],
         dtype="<U49",
     )
     return {
