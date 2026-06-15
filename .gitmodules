@@ -1,0 +1,4 @@
+[submodule "libs/datacooker"]
+	path = libs/datacooker
+	url = git@github.com:CSSB-SNU/DataCooker.git
+	branch = main
