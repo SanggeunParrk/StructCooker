@@ -1,0 +1,42 @@
+site_name: StructCooker
+site_description: A biomolecular domain package built on top of DataCooker.
+site_url: https://SanggeunParrk.github.io/StructCooker/
+repo_url: https://github.com/SanggeunParrk/StructCooker
+repo_name: SanggeunParrk/StructCooker
+docs_dir: docs_src
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - footnotes
+  - def_list
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra:
+  datacooker_docs: https://CSSB-SNU.github.io/DataCooker/
+
+nav:
+  - Overview: index.md
+  - Getting Started: getting-started.md
+  - Tutorials:
+      - Overview: tutorials.md
+      - OpenFold3 distillation ingest: tutorials/openfold-distillation.md
