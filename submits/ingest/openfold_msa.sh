@@ -13,11 +13,14 @@
 SET="${1:-long}"
 CONFIG_PATH="configs/ingest/openfold_msa_${SET}.yaml"
 MAP_SIZE=2000000000000 # ~2TB
-N_SHARDS=1
+N_SHARDS="${N_SHARDS:-1}"
 export PYTHONPATH="."
 
-pixi run python -u -m datacooker.cli.lmdb build \
-  "${CONFIG_PATH}" \
-  --map-size "${MAP_SIZE}" \
-  --shard-idx "${SLURM_ARRAY_TASK_ID}" \
-  --n-shards "${N_SHARDS}"
+if [ "${N_SHARDS}" -gt 1 ]; then
+  pixi run python -u -m datacooker.cli.lmdb build \
+    "${CONFIG_PATH}" --map-size "${MAP_SIZE}" \
+    --shard-idx "${SLURM_ARRAY_TASK_ID}" --n-shards "${N_SHARDS}"
+else
+  pixi run python -u -m datacooker.cli.lmdb build \
+    "${CONFIG_PATH}" --map-size "${MAP_SIZE}"
+fi
