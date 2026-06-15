@@ -17,17 +17,19 @@ _UNIREF = re.compile(r"^(?P<db>UniRef\d+)_(?P<id>\S+)")
 
 def merge_msa_sources(
     msa_sources: dict[str, dict[str, np.ndarray]],
-) -> dict[str, np.ndarray]:
-    """Collapse the per-source MSA payloads into one alignment.
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Collapse the per-source MSA payloads into the ``(msa, deletions, metadata)`` arrays.
 
     Protein monomers expose a single source; RNA monomers expose several
     (``rnacentral_hits`` / ``nt_hits`` / ``rfam_hits``) that share the query
-    columns, so their hit rows are concatenated below a single query row.
+    columns, so their hit rows are concatenated below a single query row. The
+    three arrays are returned as distinct outputs so each downstream instruction
+    depends only on the columns it actually consumes.
     """
     sources = list(msa_sources.values())
     first = sources[0]
     if len(sources) == 1:
-        return {k: first[k] for k in ("msa", "deletion_matrix", "metadata")}
+        return first["msa"], first["deletion_matrix"], first["metadata"]
     # keep the query (row 0) once, then every source's hit rows
     msa = [first["msa"]]
     deletion = [first["deletion_matrix"]]
@@ -36,29 +38,29 @@ def merge_msa_sources(
         msa.append(src["msa"][1:])
         deletion.append(src["deletion_matrix"][1:])
         metadata.append(src["metadata"][1:])
-    return {
-        "msa": np.concatenate(msa, axis=0),
-        "deletion_matrix": np.concatenate(deletion, axis=0),
-        "metadata": np.concatenate(metadata, axis=0),
-    }
+    return (
+        np.concatenate(msa, axis=0),
+        np.concatenate(deletion, axis=0),
+        np.concatenate(metadata, axis=0),
+    )
 
 
-def reconstruct_a3m_sequences(alignment: dict[str, np.ndarray]) -> list[str]:
+def reconstruct_a3m_sequences(msa: np.ndarray, deletion_matrix: np.ndarray) -> list[str]:
     """Express the aligned matrix + deletion counts as raw a3m strings.
 
     Each query column keeps its (upper-cased) residue; ``deletion_matrix[i, j]``
     lower-case placeholders are inserted before column ``j`` so that the reused
     ``parse_sequence`` recovers exactly the same aligned residues and deletions.
     """
-    upper = np.char.upper(alignment["msa"].astype("<U1"))
-    deletions = alignment["deletion_matrix"].astype(np.int64)
+    upper = np.char.upper(msa.astype("<U1"))
+    deletions = deletion_matrix.astype(np.int64)
     return [
         "".join("a" * int(d) + c for c, d in zip(row, dels, strict=True))
         for row, dels in zip(upper, deletions, strict=True)
     ]
 
 
-def parse_openfold_msa_headers(alignment: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+def parse_openfold_msa_headers(metadata: np.ndarray) -> dict[str, np.ndarray]:
     r"""Parse distillation MSA metadata into the standard header fields.
 
     Protein rows look like ``UniRef100_<id>\t<mmseqs stats>``; RNA rows look
@@ -67,7 +69,7 @@ def parse_openfold_msa_headers(alignment: dict[str, np.ndarray]) -> dict[str, np
     already does). Stored as bytes (``|S``) to match the existing a3m headers.
     """
     database, database_id, species, rep_id = [], [], [], []
-    for raw in alignment["metadata"].tolist():
+    for raw in metadata.tolist():
         head = str(raw).split("\t", 1)[0].strip()
         m = _UNIREF.match(head)
         if m:

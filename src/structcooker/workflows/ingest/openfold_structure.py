@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.openfold_structure import (
@@ -23,7 +24,17 @@ instruction.
 structure_recipe = RecipeBook()
 
 structure_recipe.add(
-    targets=(("hierarchy", dict),),
+    targets=(
+        ("atom_to_res", np.ndarray),
+        ("res_to_chain", np.ndarray),
+        ("n_chain", int),
+        ("res_names", np.ndarray),
+        ("res_ids", np.ndarray),
+        ("res_hetero", np.ndarray),
+        ("chain_ids", np.ndarray),
+        ("entity_ids", np.ndarray),
+        ("chain_mol_types", np.ndarray),
+    ),
     instruction=build_hierarchy,
     inputs={"kwargs": {"atom_arrays": ("atom_arrays", dict)}},
 )
@@ -54,13 +65,26 @@ structure_recipe.add(
 structure_recipe.add(
     targets=(("residue_features", dict),),
     instruction=derive_residue_features,
-    inputs={"kwargs": {"hierarchy": ("hierarchy", dict), "ccd_cache": ("ccd_cache", dict)}},
+    inputs={
+        "kwargs": {
+            "res_names": ("res_names", np.ndarray),
+            "res_ids": ("res_ids", np.ndarray),
+            "res_hetero": ("res_hetero", np.ndarray),
+            "ccd_cache": ("ccd_cache", dict),
+        },
+    },
 )
 
 structure_recipe.add(
     targets=(("chain_features", dict),),
     instruction=derive_chain_features,
-    inputs={"kwargs": {"hierarchy": ("hierarchy", dict)}},
+    inputs={
+        "kwargs": {
+            "chain_ids": ("chain_ids", np.ndarray),
+            "entity_ids": ("entity_ids", np.ndarray),
+            "chain_mol_types": ("chain_mol_types", np.ndarray),
+        },
+    },
 )
 
 structure_recipe.add(
@@ -69,7 +93,9 @@ structure_recipe.add(
     inputs={
         "kwargs": {
             "atom_arrays": ("atom_arrays", dict),
-            "hierarchy": ("hierarchy", dict),
+            "atom_to_res": ("atom_to_res", np.ndarray),
+            "res_to_chain": ("res_to_chain", np.ndarray),
+            "n_chain": ("n_chain", int),
             "atom_features": ("atom_features", dict),
             "bonds": ("bonds", dict),
             "residue_features": ("residue_features", dict),

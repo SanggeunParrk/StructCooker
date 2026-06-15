@@ -1,3 +1,4 @@
+import numpy as np
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.msa import build_dict, parse_sequence
@@ -20,7 +21,11 @@ resulting ``msa_dict`` matches the schema of the existing a3m LMDB
 msa_recipe = RecipeBook()
 
 msa_recipe.add(
-    targets=(("alignment", dict),),
+    targets=(
+        ("msa", np.ndarray),
+        ("deletion_matrix", np.ndarray),
+        ("metadata", np.ndarray),
+    ),
     instruction=merge_msa_sources,
     inputs={"kwargs": {"msa_sources": ("msa_sources", dict)}},
 )
@@ -28,7 +33,12 @@ msa_recipe.add(
 msa_recipe.add(
     targets=(("raw_sequences", list),),
     instruction=reconstruct_a3m_sequences,
-    inputs={"kwargs": {"alignment": ("alignment", dict)}},
+    inputs={
+        "kwargs": {
+            "msa": ("msa", np.ndarray),
+            "deletion_matrix": ("deletion_matrix", np.ndarray),
+        },
+    },
 )
 
 msa_recipe.add(
@@ -45,7 +55,7 @@ msa_recipe.add(
 msa_recipe.add(
     targets=(("parsed_headers", dict),),
     instruction=parse_openfold_msa_headers,
-    inputs={"kwargs": {"alignment": ("alignment", dict)}},
+    inputs={"kwargs": {"metadata": ("metadata", np.ndarray)}},
 )
 
 msa_recipe.add(

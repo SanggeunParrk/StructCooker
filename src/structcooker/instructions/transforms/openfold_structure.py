@@ -92,8 +92,21 @@ def _ccd_atom_lookup(entry: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
     }
 
 
-def build_hierarchy(atom_arrays: dict[str, np.ndarray]) -> dict[str, Any]:
-    """Recover the atom→residue→chain hierarchy from the flat atom table."""
+def build_hierarchy(
+    atom_arrays: dict[str, np.ndarray],
+) -> tuple[
+    np.ndarray, np.ndarray, int,
+    np.ndarray, np.ndarray, np.ndarray,
+    np.ndarray, np.ndarray, np.ndarray,
+]:
+    """Recover the atom→residue→chain hierarchy from the flat atom table.
+
+    Returns the index mapping (``atom_to_res`` / ``res_to_chain`` / ``n_chain``)
+    plus the per-residue (``res_names`` / ``res_ids`` / ``res_hetero``) and
+    per-chain (``chain_ids`` / ``entity_ids`` / ``chain_mol_types``) attribute
+    arrays as distinct outputs, so the residue / chain / assembly steps each
+    depend only on the level they consume.
+    """
     chain_id = atom_arrays["chain_id"].astype(str)
     res_id = atom_arrays["res_id"]
     ins_code = atom_arrays["ins_code"].astype(str)
@@ -104,19 +117,17 @@ def build_hierarchy(atom_arrays: dict[str, np.ndarray]) -> dict[str, Any]:
     res_chain_id = _first_per_group(atom_to_res, chain_id)
     res_entity_id = _first_per_group(atom_to_res, entity_id)
     res_to_chain = _group_ids(res_chain_id, res_entity_id)
-    return {
-        "atom_to_res": atom_to_res,
-        "res_to_chain": res_to_chain,
-        "n_chain": int(res_to_chain[-1] + 1) if len(res_to_chain) else 0,
-        "res_name": _first_per_group(atom_to_res, atom_arrays["res_name"].astype(str)),
-        "res_id": _first_per_group(atom_to_res, res_id),
-        "res_hetero": _first_per_group(atom_to_res, atom_arrays["hetero"]).astype(np.int64),
-        "chain_id": _first_per_group(res_to_chain, res_chain_id),
-        "entity_id": _first_per_group(res_to_chain, res_entity_id),
-        "chain_mol_type": _first_per_group(
-            res_to_chain, _first_per_group(atom_to_res, mol_type),
-        ),
-    }
+    return (
+        atom_to_res,
+        res_to_chain,
+        int(res_to_chain[-1] + 1) if len(res_to_chain) else 0,
+        _first_per_group(atom_to_res, atom_arrays["res_name"].astype(str)),
+        _first_per_group(atom_to_res, res_id),
+        _first_per_group(atom_to_res, atom_arrays["hetero"]).astype(np.int64),
+        _first_per_group(res_to_chain, res_chain_id),
+        _first_per_group(res_to_chain, res_entity_id),
+        _first_per_group(res_to_chain, _first_per_group(atom_to_res, mol_type)),
+    )
 
 
 def load_ccd_entries(
@@ -212,41 +223,43 @@ def derive_bond_edges(
 
 
 def derive_residue_features(
-    hierarchy: dict[str, Any],
+    res_names: np.ndarray,
+    res_ids: np.ndarray,
+    res_hetero: np.ndarray,
     ccd_cache: dict[str, Any],
 ) -> dict[str, np.ndarray]:
     """Derive residue-level features (formula from CCD, one-letter codes, indices)."""
-    res_name = hierarchy["res_name"]
-    res_id = hierarchy["res_id"].astype(str)
-    n = len(res_name)
+    res_id = res_ids.astype(str)
+    n = len(res_names)
     formula = np.full(n, "", dtype="<U15")
     one_letter = np.full(n, "X", dtype="<U1")
-    for i, r in enumerate(res_name.tolist()):
+    for i, r in enumerate(res_names.tolist()):
         entry = ccd_cache.get(r)
         if entry is not None:
             formula[i] = str(entry["residue"]["nodes"]["formula"]["value"][0])[:15]
         one_letter[i] = _PROTEIN_3TO1.get(r, _RNA_1.get(r, "X"))
     return {
-        "id": res_name.astype("<U34"),
+        "id": res_names.astype("<U34"),
         "formula": formula,
         "cif_idx": res_id.astype("<U21"),
         "auth_idx": res_id.astype("<U21"),
-        "chem_comp_id": res_name.astype("<U5"),
-        "hetero": hierarchy["res_hetero"],
+        "chem_comp_id": res_names.astype("<U5"),
+        "hetero": res_hetero,
         "one_letter_code_can": one_letter,
         "one_letter_code": one_letter,
     }
 
 
-def derive_chain_features(hierarchy: dict[str, Any]) -> dict[str, np.ndarray]:
+def derive_chain_features(
+    chain_ids: np.ndarray,
+    entity_ids: np.ndarray,
+    chain_mol_types: np.ndarray,
+) -> dict[str, np.ndarray]:
     """Derive chain-level features (``entity_type`` from ``molecule_type_id``)."""
-    chain_id = hierarchy["chain_id"].astype(str)
-    entity_id = hierarchy["entity_id"].astype(str)
+    chain_id = chain_ids.astype(str)
+    entity_id = entity_ids.astype(str)
     entity_type = np.array(
-        [
-            _OPENFOLD_MOL_TYPE.get(int(t), MoleculeType.NA).value
-            for t in hierarchy["chain_mol_type"]
-        ],
+        [_OPENFOLD_MOL_TYPE.get(int(t), MoleculeType.NA).value for t in chain_mol_types],
         dtype="<U49",
     )
     return {
@@ -259,7 +272,9 @@ def derive_chain_features(hierarchy: dict[str, Any]) -> dict[str, np.ndarray]:
 
 def assemble_cifmol(  # noqa: PLR0913
     atom_arrays: dict[str, np.ndarray],
-    hierarchy: dict[str, Any],
+    atom_to_res: np.ndarray,
+    res_to_chain: np.ndarray,
+    n_chain: int,
     atom_features: dict[str, np.ndarray],
     bonds: dict[str, np.ndarray],
     residue_features: dict[str, np.ndarray],
@@ -295,9 +310,7 @@ def assemble_cifmol(  # noqa: PLR0913
         k: NodeFeature(v) for k, v in chain_features.items()
     }
     chain_fields["contact"] = _empty_edge((0,), "int32")
-    index_table = IndexTable.from_parents(
-        hierarchy["atom_to_res"], hierarchy["res_to_chain"], n_chain=hierarchy["n_chain"],
-    )
+    index_table = IndexTable.from_parents(atom_to_res, res_to_chain, n_chain=n_chain)
     return CIFMol(
         atom_container=atoms,
         residue_container=FeatureContainer(residue_fields),
