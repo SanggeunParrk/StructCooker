@@ -1,0 +1,23 @@
+data_dir: ${p:/data/shared/cssb_data/openfold_distillation/new_dist_structures}
+file_pattern: "concat_cfdb_uniref100_filtered.a3m"
+
+env_path: ${p:/data/shared/cssb_data/openfold_distillation/lmdb/msa_disordered.lmdb}
+
+# The disordered set ships raw a3m (not preprocessed npz), so it reuses the
+# canonical a3m recipe; only the LMDB key comes from the entry folder.
+recipe: ${p:src/structcooker/workflows/ingest/a3m.py}
+
+n_jobs: -1
+chunk_size: 10000
+test_run: true
+
+key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
+
+inputs:
+  a3m_type: protein
+
+reader:
+  loader: structcooker.instructions.readers.a3m.get_a3m_data
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
