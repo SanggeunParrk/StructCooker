@@ -15,6 +15,7 @@ key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
 
 inputs:
   a3m_type: protein
+  max_depth: null
 
 reader:
   loader: structcooker.instructions.readers.a3m.get_a3m_data

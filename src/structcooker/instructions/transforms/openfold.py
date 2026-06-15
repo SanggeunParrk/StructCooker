@@ -45,6 +45,23 @@ def merge_msa_sources(
     )
 
 
+def cap_msa_depth(
+    msa: np.ndarray,
+    deletion_matrix: np.ndarray,
+    metadata: np.ndarray,
+    max_depth: int | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Cap the MSA to at most ``max_depth`` rows.
+
+    Deep distillation alignments (long monomers reach millions of rows) blow up
+    memory; this keeps the query (row 0) plus the first ``max_depth - 1`` hits.
+    A ``None`` cap or an already-shallow alignment is returned unchanged.
+    """
+    if max_depth is None or len(msa) <= max_depth:
+        return msa, deletion_matrix, metadata
+    return msa[:max_depth], deletion_matrix[:max_depth], metadata[:max_depth]
+
+
 def reconstruct_a3m_sequences(msa: np.ndarray, deletion_matrix: np.ndarray) -> list[str]:
     """Express the aligned matrix + deletion counts as raw a3m strings.
 

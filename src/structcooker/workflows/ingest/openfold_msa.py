@@ -3,6 +3,7 @@ from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.msa import build_dict, parse_sequence
 from structcooker.instructions.transforms.openfold import (
+    cap_msa_depth,
     merge_msa_sources,
     parse_openfold_msa_headers,
     reconstruct_a3m_sequences,
@@ -22,12 +23,30 @@ msa_recipe = RecipeBook()
 
 msa_recipe.add(
     targets=(
+        ("msa_all", np.ndarray),
+        ("deletion_all", np.ndarray),
+        ("metadata_all", np.ndarray),
+    ),
+    instruction=merge_msa_sources,
+    inputs={"kwargs": {"msa_sources": ("msa_sources", dict)}},
+)
+
+# Cap deep alignments (e.g. long monomers) to bound memory; no-op when max_depth is null.
+msa_recipe.add(
+    targets=(
         ("msa", np.ndarray),
         ("deletion_matrix", np.ndarray),
         ("metadata", np.ndarray),
     ),
-    instruction=merge_msa_sources,
-    inputs={"kwargs": {"msa_sources": ("msa_sources", dict)}},
+    instruction=cap_msa_depth,
+    inputs={
+        "kwargs": {
+            "msa": ("msa_all", np.ndarray),
+            "deletion_matrix": ("deletion_all", np.ndarray),
+            "metadata": ("metadata_all", np.ndarray),
+            "max_depth": ("max_depth", int | None),
+        },
+    },
 )
 
 msa_recipe.add(
