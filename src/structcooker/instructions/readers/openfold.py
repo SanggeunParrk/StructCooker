@@ -23,6 +23,16 @@ def openfold_entry_key(path: Path) -> str:
     return path.parent.name
 
 
+def openfold_chain_key(path: Path) -> str:
+    """Return the file stem as the key.
+
+    The disordered (PDB-derived) alignment / template arrays are stored flat as
+    ``<pdbid>_<chain>.npz`` rather than one folder per entry, so the key is the
+    file stem instead of the parent folder name.
+    """
+    return path.stem
+
+
 def get_openfold_msa_data(alignment_path: Path) -> dict[str, Any]:
     """Load an ``alignment.npz`` file into its per-source MSA payloads.
 

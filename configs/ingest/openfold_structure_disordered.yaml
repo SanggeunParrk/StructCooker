@@ -1,0 +1,21 @@
+data_dir: ${p:/data/shared/cssb_data/openfold_distillation/disordered_set/structure_files}
+file_pattern: "*.npz"
+
+env_path: ${p:/data/shared/cssb_data/openfold_distillation/lmdb/cif_disordered.lmdb}
+
+recipe: ${p:src/structcooker/workflows/ingest/openfold_structure.py}
+
+n_jobs: 1
+chunk_size: 10000
+test_run: true
+
+key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
+
+inputs:
+  ccd_db_path: ${p:/data/psk6950/CCD/biomol_CCD_202602.lmdb}
+
+reader:
+  loader: structcooker.instructions.readers.openfold.get_openfold_structure_data
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

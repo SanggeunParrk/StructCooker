@@ -8,6 +8,7 @@ from .openfold import (
     get_openfold_msa_data,
     get_openfold_structure_data,
     get_openfold_template_data,
+    openfold_chain_key,
     openfold_entry_key,
 )
 from .sequence import load_fasta, load_seq_id_map
@@ -25,6 +26,7 @@ __all__ = [
     "load_fasta",
     "load_raw_data",
     "load_seq_id_map",
+    "openfold_chain_key",
     "openfold_entry_key",
     "read_lmdb",
 ]

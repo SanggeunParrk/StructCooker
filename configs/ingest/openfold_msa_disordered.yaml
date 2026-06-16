@@ -1,24 +1,25 @@
-data_dir: ${p:/data/shared/cssb_data/openfold_distillation/new_dist_structures}
-file_pattern: "concat_cfdb_uniref100_filtered.a3m"
+# Disordered (PDB-derived) MSAs live flat as alignment_arrays/<id>_<chain>.npz
+# with the same multi-source schema as monomers, so the openfold_msa recipe is
+# reused; only the key comes from the file stem (per chain).
+data_dir: ${p:/data/shared/cssb_data/openfold_distillation/disordered_set/alignment_arrays}
+file_pattern: "*.npz"
 
 env_path: ${p:/data/shared/cssb_data/openfold_distillation/lmdb/msa_disordered.lmdb}
 
-# The disordered set ships raw a3m (not preprocessed npz), so it reuses the
-# canonical a3m recipe; only the LMDB key comes from the entry folder.
-recipe: ${p:src/structcooker/workflows/ingest/a3m.py}
+recipe: ${p:src/structcooker/workflows/ingest/openfold_msa.py}
 
-n_jobs: -1
+n_jobs: 1
 chunk_size: 10000
 test_run: true
 
-key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
+key_builder: structcooker.instructions.readers.openfold.openfold_chain_key
 
 inputs:
   a3m_type: protein
-  max_depth: null
+  max_depth: 65536
 
 reader:
-  loader: structcooker.instructions.readers.a3m.get_a3m_data
+  loader: structcooker.instructions.readers.openfold.get_openfold_msa_data
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes
