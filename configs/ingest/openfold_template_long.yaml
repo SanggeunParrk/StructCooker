@@ -12,7 +12,7 @@ test_run: true
 key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
 
 inputs:
-  cif_db_path: ${p:/data/psk6950/BioMolDB_20260224/cif.lmdb}
+  cif_chain_db_path: ${p:/data/psk6950/BioMolDB_revisit/cif_chain.lmdb}
 
 reader:
   loader: structcooker.instructions.readers.openfold.get_openfold_template_data

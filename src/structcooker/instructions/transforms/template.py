@@ -1,3 +1,4 @@
+import copy
 import fnmatch
 import os
 import re
@@ -5,7 +6,7 @@ import subprocess
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import kalign
 import numpy as np
@@ -13,6 +14,9 @@ from biomol.core.index import IndexTable
 
 from structcooker.instructions.readers.io import load_bytes, load_raw_data
 from structcooker.mols import CIFMol, TemplateMol
+
+if TYPE_CHECKING:
+    from biomol.core.types import BioMolDict
 
 
 def _is_nonempty(path: Path) -> bool:
@@ -483,6 +487,49 @@ def load_cifmol(db_path: Path, pdb_id: str, chain_id: str) -> CIFMol:
     return best_cifmol
 
 
+def cif_record_to_chains(record: dict) -> dict[str, object]:
+    """Split a decoded cif record into per-chain CIFMol dicts.
+
+    Mirrors :func:`load_cifmol`'s selection for every base chain: the base chain
+    is taken from the highest-total-occupancy assembly that contains it, then
+    extracted. Returns ``{base_chain: biomoldict}`` so a per-chain cif LMDB can
+    be prebuilt once, turning template lookups into a light keyed read.
+
+    BioMol's ``extract()`` mutates the array buffers it works on, so each chain
+    is built from a deep copy of the chosen assembly (fresh buffers) and
+    extracted exactly once -- the same contract the per-hit path relies on.
+    Selection reads occupancy / chain ids straight from the raw arrays to avoid
+    building assemblies that are never used.
+    """
+    assemblies = record["assembly_dict"]
+    metadata = record["metadata_dict"]
+    # base chain -> (assembly total occupancy, assembly key)
+    best: dict[str, tuple[float, str]] = {}
+    for cif_key, item in assemblies.items():
+        occupancy = np.asarray(
+            item["atoms"]["nodes"]["occupancy"]["value"], dtype=np.float64,
+        )
+        occup_sum = float(np.nan_to_num(occupancy, nan=0.0).sum())
+        chain_ids = item["chains"]["nodes"]["chain_id"]["value"]
+        for base in {str(cid).split("_")[0] for cid in chain_ids}:
+            if base not in best or occup_sum > best[base][0]:
+                best[base] = (occup_sum, cif_key)
+
+    chains: dict[str, object] = {}
+    for base, (_, cif_key) in best.items():
+        assembly_id, model_id, alt_id = cif_key.split("_")
+        md = dict(metadata)
+        md["assembly_id"], md["model_id"], md["alt_id"] = assembly_id, model_id, alt_id
+        biomol = copy.deepcopy(assemblies[cif_key])  # fresh buffers for extract()
+        biomol["metadata"] = md
+        cifmol = CIFMol.from_dict(cast("BioMolDict", biomol))
+        full = find_first(f"{base}_", cifmol.chains.chain_id.value)
+        if full is None:
+            continue
+        chains[base] = cifmol.chains[cifmol.chains.chain_id == full].extract().to_dict()
+    return chains
+
+
 def extract_backbone_indices_from_cifmol(
     cifmol: CIFMol,
 ) -> np.ndarray:
@@ -674,6 +721,33 @@ def load_templates(
             cifmol = cifmol.chains[cifmol.chains.chain_id == chain_id].extract()
             template_mols[full_id] = to_template_mol(cifmol, align_result)
         except Exception:  # noqa: BLE001 - skip templates missing from the CIF DB
+            continue
+    return template_mols
+
+
+def load_templates_from_chain_db(
+    cif_chain_db_path: Path,
+    align_results: dict[str, tuple[str, str]],
+) -> dict:
+    """Build template mols from a prebuilt per-chain cif LMDB (light path).
+
+    Each hit ``<pdbid>_<chain>`` is a direct keyed read of the already-extracted
+    chain (see :mod:`scripts.maintenance.build_cif_chain`), so the expensive
+    decode + per-assembly rebuild + extract is done once at build time instead
+    of per hit. Output matches :func:`load_templates` (same ``to_template_mol``).
+    """
+    if len(align_results) == 0:
+        return {}
+    template_mols = {}
+    for full_id, align_result in align_results.items():
+        pdb_id, chain_id = full_id.split("_")
+        raw = load_raw_data(f"{pdb_id.lower()}_{chain_id}", cif_chain_db_path)
+        if raw is None:
+            continue
+        try:
+            cifmol = CIFMol.from_dict(cast("BioMolDict", load_bytes(raw)))
+            template_mols[full_id] = to_template_mol(cifmol, align_result)
+        except Exception:  # noqa: BLE001 - skip malformed / missing chains
             continue
     return template_mols
 
