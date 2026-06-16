@@ -13,7 +13,7 @@ key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
 
 inputs:
   a3m_type: rna
-  max_depth: null
+  max_depth: 65536
 
 reader:
   loader: structcooker.instructions.readers.openfold.get_openfold_msa_data

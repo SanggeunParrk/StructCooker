@@ -5,8 +5,8 @@
 #SBATCH --mem=491g
 #SBATCH -p cpu-long
 #SBATCH --qos=cpu-long-q
-#SBATCH -o ./logs/openfold_structure_%a.out
-#SBATCH -e ./logs/openfold_structure_%a.err
+#SBATCH -o ./logs/%x_%A_%a.out
+#SBATCH -e ./logs/%x_%A_%a.err
 #SBATCH --array=0
 
 # Usage: sbatch submits/ingest/openfold_structure.sh <long|short|rna>
