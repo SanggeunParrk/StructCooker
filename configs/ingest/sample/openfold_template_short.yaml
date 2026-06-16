@@ -1,0 +1,21 @@
+data_dir: ${p:/data/shared/cssb_data/openfold_distillation/sample100/short}
+file_pattern: "template.npz"
+
+env_path: ${p:/data/shared/cssb_data/openfold_distillation/lmdb_sample/template_short.lmdb}
+
+recipe: ${p:src/structcooker/workflows/ingest/openfold_template.py}
+
+n_jobs: 2
+chunk_size: 20
+test_run: true
+
+key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
+
+inputs:
+  cif_db_path: ${p:/data/psk6950/BioMolDB_20260224/cif.lmdb}
+
+reader:
+  loader: structcooker.instructions.readers.openfold.get_openfold_template_data
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
