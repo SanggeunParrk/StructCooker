@@ -1,12 +1,12 @@
 import numpy as np
 from datacooker import RecipeBook
 
-from structcooker.instructions.transforms.msa import build_dict, parse_sequence
+from structcooker.instructions.transforms.msa import build_dict
 from structcooker.instructions.transforms.openfold import (
+    build_msa_features,
     cap_msa_depth,
     merge_msa_sources,
     parse_openfold_msa_headers,
-    reconstruct_a3m_sequences,
 )
 
 """Build an OpenFold3 distillation MSA Cooker.
@@ -50,22 +50,12 @@ msa_recipe.add(
 )
 
 msa_recipe.add(
-    targets=(("raw_sequences", list),),
-    instruction=reconstruct_a3m_sequences,
+    targets=(("parsed_sequences", dict),),
+    instruction=build_msa_features,
     inputs={
         "kwargs": {
             "msa": ("msa", np.ndarray),
             "deletion_matrix": ("deletion_matrix", np.ndarray),
-        },
-    },
-)
-
-msa_recipe.add(
-    targets=(("parsed_sequences", dict),),
-    instruction=parse_sequence,
-    inputs={
-        "kwargs": {
-            "raw_sequences": ("raw_sequences", list),
             "a3m_type": ("a3m_type", str | None),
         },
     },
