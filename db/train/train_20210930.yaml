@@ -1,0 +1,30 @@
+# train_20210930 — res≤9Å, ≤300 polymer chains, RELEASE date ≤ 2021-09-30.
+# Schema B. Rebuild from cif_pdb_attached. giant + normal collapse into one DB
+# (size tiers are a build-time concern, not a semantic split); residue10k dropped.
+schema: B
+
+old_env_path: ${p:/data/shared/cssb_data/BioMol_test/pdb/cif/cif_pdb_attached.lmdb}
+new_env_path: ${p:/data/shared/cssb_data/BioMol_test/pdb/cif/cif_pdb_attached_train_20210930_res9_chain300.lmdb}
+
+recipe: ${p:src/structcooker/workflows/filters/data.py}
+metadata_recipe: ${p:src/structcooker/workflows/metadata/load_signalp.py}
+
+metadata_input:
+  signalp_dir: ${p:/data/shared/cssb_data/BioMol_test/materials/intermediate/signalp}
+  seqid2seq_path: ${p:/data/shared/cssb_data/BioMol_test/metadata/seq_id_map.tsv}
+
+parameters:
+  resolution_cutoff: 9.0
+  max_token_count: null
+  max_polymer_chain_count: 300
+  start_date: null
+  end_date: 2021-09-30
+
+split_entries: true
+
+reader:
+  adapter: structcooker.instructions.transforms.cifmol.convert_to_cifmol_dict
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

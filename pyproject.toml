@@ -17,7 +17,11 @@ dependencies = [
     "networkx>=3.2",
     "biomol>=1.0.0",
     "kalign-python==3.5.1",
+    "ray>=2.56,<3",
 ]
+
+[project.scripts]
+structcooker = "structcooker.cli:main"
 
 [project.optional-dependencies]
 docs = [
@@ -47,6 +51,8 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Tests use bare asserts and don't need docstrings/annotations on helpers.
 "tests/**" = ["S101", "D101", "D103", "ANN", "INP001", "PLR2004", "TC003"]
+# Maintenance/ops scripts: print-based progress logs and inline magic values are fine.
+"scripts/**" = ["T201", "INP001", "PLR2004", "PLR0913", "PLR0915", "D103"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"

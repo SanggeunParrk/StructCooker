@@ -1,0 +1,22 @@
+# a3m_d2k — a3m capped to depth 2000. Schema E. Rebuild from a3m.lmdb.
+# Same cap_msa_depth op as a3m_d16k (only max_depth differs), absorbing the legacy
+# scripts/maintenance/lightweight_msa.py + build_msa_long_d2k.sh downsample bypass
+# into planning-first datacooker. Rebuilding via to_bytes also re-frames the value
+# as standard zstd, fixing the legacy streaming-codec variant (schemas.py note).
+schema: E
+
+old_env_path: ${p:/data/shared/cssb_data/BioMol/lmdb/pdb/msa/a3m.lmdb}
+new_env_path: ${p:/data/shared/cssb_data/BioMol/lmdb/pdb/msa/a3m_d2k.lmdb}
+
+recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
+
+parameters:
+  max_depth: 2000
+
+
+reader:
+  adapter: structcooker.instructions.transforms.openfold.adapt_msa_for_cap
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

@@ -1,0 +1,45 @@
+# train_20210930_mpnn — MPNN model-input view of train_20210930. Schema H.
+#
+# Two changes vs the source, both aimed at the dataloader rather than at
+# completeness:
+#   * keep only the features the MPNN + Cropper read (everything else — the CCD
+#     bond graph, reference conformer coords, b-factor/occupancy, duplicate
+#     residue labels — is dropped),
+#   * explode each entry's {assembly, model, altloc} sub-entries into their own
+#     keys, so one training sample is one key and a read decompresses only that
+#     sample instead of all ~2.9 of an entry's sub-entries.
+#
+# The explode costs disk: zstd was deduplicating the near-identical altloc copies
+# inside one record, and splitting them removes that window. ~48G -> ~31G, where
+# keeping the nesting would reach ~21G. The trade is deliberate — see
+# docs/mpnn_pruning.md.
+schema: H
+
+old_env_path: ${p:/data/shared/cssb_data/BioMol/lmdb/pdb/cif/cif_pdb_attached_train_20210930_res9_chain300.lmdb}
+new_env_path: ${p:/data/shared/cssb_data/BioMol/lmdb/pdb/cif/cif_mpnn_train_20210930_res9_chain300.lmdb}
+
+recipe: ${p:src/structcooker/workflows/filters/mpnn.py}
+
+split_entries: true
+explode_entries: true
+explode_value_key: mpnn_dict
+
+parameters:
+  # atoms.id stays: the model selects N/CA/C/O by name, and after pruning it
+  # costs ~0.3 KB/record compressed.
+  atom_features: [xyz, id]
+  residue_features: [cif_idx, one_letter_code_can]
+  # seq_id feeds signalp lookup / entity identity, cluster_id feeds
+  # cluster-balanced sampling; both are ~0.1 KB/record.
+  chain_features: [entity_type, chain_id, seq_id, cluster_id]
+  atom_edge_features: []
+  residue_edge_features: []
+  chain_edge_features: [contact]      # Cropper's interface crops
+  compact_index_table: true           # CSR maps rebuilt on load
+
+reader:
+  adapter: structcooker.instructions.transforms.cifmol.convert_to_cifmol_attached_transformed
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

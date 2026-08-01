@@ -1,0 +1,15 @@
+# ccd — CCD chem-component reference DB from component .cif files. Schema G. Build.
+# Reference/support DB (input to cif ingest via ccd_db_path), not a training DB.
+schema: G
+
+env_path: ${p:/data/shared/cssb_data/BioMol_test/ccd/biomol_CCD.lmdb}
+data_dir: ${p:/public_data/CCD/components}
+file_pattern: "*.cif*"
+
+recipe: ${p:src/structcooker/workflows/ingest/ccd.py}
+
+reader:
+  loader: structcooker.instructions.readers.cif.get_cif_data
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

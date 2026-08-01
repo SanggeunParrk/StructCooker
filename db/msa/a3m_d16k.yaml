@@ -1,0 +1,22 @@
+# a3m_d16k — a3m capped to depth 16000. Schema E. Rebuild from a3m.lmdb.
+# Planning-first replacement for scripts/maintenance/lightweight_msa.py: routed
+# through datacooker so it inherits gc-safe forked workers (the legacy script's
+# circular-ref RSS creep OOM'd at hand-tuned mem) and size-tier planning.
+# Target is the real BioMol tree (production sibling of a3m_d2k / a3m_d512).
+schema: E
+
+old_env_path: ${p:/data/shared/cssb_data/BioMol/lmdb/pdb/msa/a3m.lmdb}
+new_env_path: ${p:/data/shared/cssb_data/BioMol/lmdb/pdb/msa/a3m_d16k.lmdb}
+
+recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
+
+parameters:
+  max_depth: 16000
+
+
+reader:
+  adapter: structcooker.instructions.transforms.openfold.adapt_msa_for_cap
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

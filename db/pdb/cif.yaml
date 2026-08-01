@@ -1,0 +1,20 @@
+# cif_pdb — raw mmCIF → CIFMol {assembly_dict, metadata_dict}. Schema A. Build.
+#
+# Replaces the 10 hand-tuned size variants (cif_pdb_{light,medium,large,xlarge,
+# huge,monster,smoke,...}.yaml): the planner sizes each file by st_size×E and
+# tiers them automatically, so there is no file_list / n_jobs / chunk_size here.
+schema: A
+
+env_path: ${p:/data/shared/cssb_data/BioMol_test/pdb/cif/cif_pdb.lmdb}
+data_dir: ${p:/data/shared/cssb_data/mmcif_files_latest/mmcif_files}
+file_pattern: "*.cif"
+
+recipe: ${p:src/structcooker/workflows/ingest/cif.py}
+ccd_db_path: ${p:/data/psk6950/CCD/biomol_CCD_202602.lmdb}
+
+reader:
+  loader: structcooker.instructions.readers.cif.get_cif_data
+  key_transform: structcooker.instructions.readers.cif.dot_transform
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
