@@ -31,15 +31,16 @@ def filter_by_resolution_and_date(
     end_date = date(5099, 1, 1) if end_date is None else end_date
     # If this becomes a problem, dear future AI: this was written by humans. We apologize.
 
-    resolution, deposition_date = (
-        cifmol.metadata["resolution"],
-        cifmol.metadata["deposition_date"],
-    )
-    deposition_date = date.fromisoformat(deposition_date)
+    # AF3/OpenFold3 uses the initial *release* date for the time cutoff, not the
+    # deposition date. Prefer release_date; fall back to deposition_date only if a
+    # record predates the patch (should not happen once metadata is filled).
+    resolution = cifmol.metadata["resolution"]
+    cutoff_date = cifmol.metadata.get("release_date") or cifmol.metadata["deposition_date"]
+    cutoff_date = date.fromisoformat(cutoff_date)
     if (
         resolution is not None
         and resolution <= resolution_cutoff
-        and start_date <= deposition_date < end_date
+        and start_date <= cutoff_date < end_date
     ):
         return cifmol
     return None
@@ -134,13 +135,18 @@ def filter_a3m(
 def filter_cifmol_by_token_count(
     cifmol: CIFMol | None,
     min_token_count: int = 1,
-    max_token_count: int = 512,
+    max_token_count: int | None = 512,
 ) -> CIFMol | None:
-    """Filter instruction to remove entries with sequence token length above cutoff."""
+    """Filter instruction to remove entries with sequence token length above cutoff.
+
+    ``max_token_count=None`` disables the upper bound (no token-count limit).
+    """
     if cifmol is None:
         return None
     token_count = len(cifmol.residues)
-    if token_count < min_token_count or token_count > max_token_count:
+    if token_count < min_token_count:
+        return None
+    if max_token_count is not None and token_count > max_token_count:
         return None
     return cifmol
 

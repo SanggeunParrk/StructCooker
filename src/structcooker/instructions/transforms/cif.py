@@ -1515,3 +1515,54 @@ def build_assembly_dict(
     return output
 
 
+def extract_release_date(
+    data_content_type: list | str | None,
+    major_revision: list | str | None,
+    minor_revision: list | str | None,
+    revision_date: list | str | None,
+    deposition_date: str | None = None,
+) -> str | None:
+    """Initial *coordinate-model* PDB release date for the AF3/OpenFold3 cutoff.
+
+    ``_pdbx_audit_revision_history`` can interleave separate ``data_content_type``
+    tracks (notably 'EM metadata', which releases on its own timeline). The value
+    we want is the initial release of the 'Structure model' track (major=1,
+    minor=0). Falls back to the earliest 'Structure model' revision, then the
+    earliest revision of any type, then the deposition date.
+    """
+
+    def _aslist(x: list | str | None) -> list:
+        if x is None:
+            return []
+        return x if isinstance(x, list) else [x]
+
+    dct = _aslist(data_content_type)
+    major = _aslist(major_revision)
+    minor = _aslist(minor_revision)
+    revs = _aslist(revision_date)
+
+    def _valid(r: object) -> bool:
+        return bool(r) and str(r)[0].isdigit()
+
+    init = [
+        r for i, r in enumerate(revs)
+        if i < len(dct) and dct[i] == "Structure model"
+        and i < len(major) and str(major[i]).strip() == "1"
+        and i < len(minor) and str(minor[i]).strip() == "0"
+        and _valid(r)
+    ]
+    if init:
+        return min(init)
+    sm = [
+        r for i, r in enumerate(revs)
+        if i < len(dct) and dct[i] == "Structure model" and _valid(r)
+    ]
+    if sm:
+        return min(sm)
+    good = [r for r in revs if _valid(r)]
+    if good:
+        return min(good)
+    dep = _aslist(deposition_date)
+    return dep[0] if dep else None
+
+

@@ -5,6 +5,7 @@ from typing import cast
 import numpy as np
 from biomol.core import NodeFeature
 
+from structcooker.instructions.transforms.sequence import filter_water
 from structcooker.mols import CIFMol, CIFMolAttached
 from structcooker.utils.mapping import mol_type_map
 
@@ -110,8 +111,17 @@ def load_signalp(
 def attach_metadata(
     cifmol: CIFMol,
     seq_metadata_map: dict[str, tuple[str, str]],
-) -> dict:
-    """Attach metadata to a CIFMol object."""
+) -> dict | None:
+    """Attach metadata to a CIFMol object.
+
+    Water is removed first so the chain set matches the fasta / seq_id_map
+    (``build_fasta`` filters water before assigning sequence ids); an all-water
+    entry yields ``None`` and is skipped by the rebuild runner.
+    """
+    cifmol_nw = filter_water(cifmol)
+    if cifmol_nw is None:
+        return None
+    cifmol = cifmol_nw
     pdbid = cifmol.id[0]
     alt_id = cifmol.alt_id
     seq_id_list = []
@@ -156,6 +166,7 @@ def extract_metadata(
         metadata_dict[cif_key] = {}
         resolution = cifmol.metadata.get("resolution", "NA")
         deposition_date = cifmol.metadata.get("deposition_date", "NA")
+        release_date = cifmol.metadata.get("release_date", "NA")
         chain_num = len(cifmol.chains)
         residue_num = len(cifmol.residues)
         atom_num = len(cifmol.atoms)
@@ -165,6 +176,7 @@ def extract_metadata(
         including_Dform = "Yes" if including_Dform else "No"
         metadata_dict[cif_key]["resolution"] = str(resolution)
         metadata_dict[cif_key]["deposition_date"] = str(deposition_date)
+        metadata_dict[cif_key]["release_date"] = str(release_date)
         metadata_dict[cif_key]["chain_num"] = str(chain_num)
         metadata_dict[cif_key]["residue_num"] = str(residue_num)
         metadata_dict[cif_key]["atom_num"] = str(atom_num)
@@ -245,22 +257,133 @@ def extract_protein_seqs(
     return protein_seqs
 
 
+def extract_rna_seqs(
+    seqid2seq: dict[str, list[str]],
+    *,
+    remove_unknown: bool = True,
+) -> list[dict]:
+    """Extract RNA sequences (``R``-prefixed seq ids) from the seqid2seq mapping.
+
+    Mirror of :func:`extract_protein_seqs` for the RNA moltype so the same
+    ``parallel-run`` split/search plumbing can drive RNA MSA generation.
+    """
+    rna_seqs = []
+    for seqid, seqs in seqid2seq.items():
+        if len(seqs) == 0:
+            msg = f"No sequence found for sequence ID {seqid}."
+            raise ValueError(msg)
+        if len(seqs) > 1:
+            msg = f"Multiple sequences found for sequence ID {seqid}."
+            raise ValueError(msg)
+        seq = seqs[0]
+        mol_identifier = seqid[0]
+        if mol_identifier == "R":
+            if remove_unknown and all(nt == "N" for nt in seq):
+                continue
+            rna_seqs.append({"seqid": seqid, "sequence": seq})
+    return rna_seqs
+
+
+def _read_pdb_rna_sequences(pdb_fasta_path: Path) -> set[str]:
+    """Collect unique polyribonucleotide sequences from a BioMolDB chain FASTA.
+
+    Headers look like ``>100D_A_. | polyribonucleotide | Auth:A``; only chains
+    whose moltype field is exactly ``polyribonucleotide`` (pure RNA, not
+    DNA/RNA hybrids) are kept.
+    """
+    rna_seqs: set[str] = set()
+    is_rna = False
+    chunks: list[str] = []
+    with pdb_fasta_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            if line.startswith(">"):
+                if is_rna and chunks:
+                    rna_seqs.add("".join(chunks))
+                chunks = []
+                fields = line.split(" | ")
+                is_rna = len(fields) > 1 and fields[1].strip() == "polyribonucleotide"
+            elif is_rna:
+                chunks.append(line.strip())
+        if is_rna and chunks:
+            rna_seqs.add("".join(chunks))
+    return rna_seqs
+
+
+def extract_pdb_rna_seqs(
+    seqid2seq: dict[str, list[str]],
+    *,
+    pdb_fasta_path: Path,
+    remove_unknown: bool = True,
+) -> list[dict]:
+    """Extract PDB-only RNA work items (one per unique polyribonucleotide seq).
+
+    ``seqid2seq`` (from the global seq_id_map) also contains RNA-distillation
+    sequences, so restrict to sequences that actually appear as
+    ``polyribonucleotide`` chains in the PDB chain FASTA, mapping each back to
+    its ``R``-prefixed seq id.
+    """
+    pdb_rna = _read_pdb_rna_sequences(Path(pdb_fasta_path))
+    seq_to_id: dict[str, str] = {}
+    for seqid, seqs in seqid2seq.items():
+        if seqid[:1] == "R" and seqs:
+            seq_to_id.setdefault(seqs[0], seqid)
+    out: list[dict] = []
+    seen: set[str] = set()
+    for seq in pdb_rna:
+        seqid = seq_to_id.get(seq)
+        if seqid is None or seqid in seen:
+            continue
+        if remove_unknown and all(nt == "N" for nt in seq):
+            continue
+        seen.add(seqid)
+        out.append({"seqid": seqid, "sequence": seq})
+    # Shortest first: nhmmer cost scales with query length, so processing short
+    # RNAs first clears the bulk of the set quickly and lets every worker focus
+    # on the expensive long rRNA tail instead of starving behind it.
+    out.sort(key=lambda item: len(item["sequence"]))
+    return out
+
+
 def parse_metadata(
     metadata_path: Path,
 ) -> dict[str, time.struct_time]:
-    """Parse the metadata file and return a mapping from sequence cluster ID to earliest query date."""
+    """Map PDB id -> the date used for the AF3/OpenFold3 template time cutoff.
+
+    Header-aware: prefers the ``release_date`` column (initial PDB release),
+    falling back to ``deposition_date`` for backward compatibility. The id column
+    may be a bare ``pdbid`` or a ``cif_id`` (``{pdbid}_...``); either resolves to
+    the lowercase PDB id.
+    """
     metadata_dict = {}
     with metadata_path.open("r", encoding="utf-8") as f:
-        lines = f.readlines()
-        lines = lines[1:]  # Skip header
-        for line in lines:
-            parts = line.strip().split("\t")
-            cif_id = parts[0]
-            pdb_id = cif_id.split("_")[0]
-            deposition_date = parts[2]
-            date_struct = time.strptime(deposition_date, "%Y-%m-%d")
-            metadata_dict[pdb_id] = date_struct
+        header = f.readline().rstrip("\n").split("\t")
+        col = {name: i for i, name in enumerate(header)}
+        id_idx = col.get("pdbid", col.get("cif_id", 0))
+        if "release_date" in col:
+            date_idx = col["release_date"]
+        elif "deposition_date" in col:
+            date_idx = col["deposition_date"]
+        else:  # legacy positional layout: cif_id, resolution, deposition_date, ...
+            date_idx = 2
+        for line in f:
+            parts = line.rstrip("\n").split("\t")
+            pdb_id = parts[id_idx].split("_")[0].lower()
+            date_str = parts[date_idx]
+            if not date_str:
+                continue
+            metadata_dict[pdb_id] = time.strptime(date_str, "%Y-%m-%d")
     return metadata_dict
+
+
+def build_chain2seqid_map(
+    seq_metadata_map: dict[str, tuple[str, str]],
+) -> dict[str, str]:
+    """Map ``{pdbid}_{chain}`` -> seq_id for chain-keyed template builds."""
+    chain2seqid: dict[str, str] = {}
+    for cif_id, (seqid, _) in seq_metadata_map.items():
+        parts = cif_id.split("_")
+        chain2seqid[f"{parts[0]}_{parts[1]}"] = seqid
+    return chain2seqid
 
 
 def build_template_metadata_map(
@@ -294,3 +417,43 @@ def build_template_metadata_map(
         ):
             seqid2earliest_date[seqid] = deposition_date
     return template_metadata_map, seqid2earliest_date, filtered_seqid2seq
+
+
+def load_chain_templates(path: Path) -> dict[str, list[str]]:
+    """chain -> [template ids] from Phase 2's chain_to_templates.tsv.
+
+    Lines for chains with no templates ('chain\\t') are skipped, so a chain is
+    present only if it has >=1 template.
+    """
+    out: dict[str, list[str]] = {}
+    with Path(path).open() as f:
+        for line in f:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 2 or not parts[1]:
+                continue
+            out[parts[0]] = parts[1].split(",")
+    return out
+
+
+def invert_seqid_to_chains(path: Path) -> dict[str, str]:
+    """chain -> seq_id, inverted from Phase 1's seqid_to_chains.tsv."""
+    out: dict[str, str] = {}
+    with Path(path).open() as f:
+        for line in f:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 2 or not parts[1]:
+                continue
+            for chain in parts[1].split(","):
+                out[chain] = parts[0]
+    return out
+
+
+def load_seq_tsv(path: Path) -> dict[str, str]:
+    """Load a two-column '<key>\\t<sequence>' TSV into a dict (single value)."""
+    out: dict[str, str] = {}
+    with Path(path).open() as f:
+        for line in f:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) >= 2 and parts[1]:
+                out[parts[0]] = parts[1]
+    return out

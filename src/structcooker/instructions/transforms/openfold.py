@@ -116,6 +116,50 @@ def build_msa_features(
     }
 
 
+def adapt_msa_for_cap(data: dict) -> dict:
+    """Reader adapter for the depth-cap rebuild: expose ``msa_dict`` as ``msa_src``.
+
+    ``from_bytes`` yields ``{"msa_dict": {...}}``. The cap recipe writes its result
+    back as ``msa_dict`` (so the serialized value matches the source), which would
+    collide with an identically-named input and make the recipe engine return the
+    *uncapped* input for that target. Renaming the input to ``msa_src`` breaks the
+    collision while keeping the output name — and thus the on-disk layout — intact.
+    """
+    return {"msa_src": data["msa_dict"]}
+
+
+def cap_msa_dict(msa_dict: dict, max_depth: int) -> dict:
+    """Cap a built ``msa_dict`` (sequences/headers) to ``max_depth`` rows.
+
+    Lightweights an existing MSA DB without re-reading the source: truncates the
+    depth-indexed arrays (aligned_sequences / deletions / headers) to the query
+    plus the first ``max_depth - 1`` hits, and recomputes ``deletion_mean`` /
+    ``profile`` over the capped rows (same formulas as :func:`build_msa_features`,
+    operating on the stored residue indices). A no-op for shallow MSAs.
+    """
+    seqs = msa_dict["sequences"]
+    aligned = np.asarray(seqs["aligned_sequences"])
+    if aligned.shape[0] <= max_depth:
+        return msa_dict
+    aligned = aligned[:max_depth]
+    deletions = np.asarray(seqs["deletions"])[:max_depth]
+    n_rows, length = aligned.shape
+    n_classes = np.asarray(seqs["profile"]).shape[1]
+    deletion_mean = (2 * np.arctan(deletions.astype(np.float32) / 3) / np.pi).mean(axis=0).astype(np.float32)
+    flat = aligned.astype(np.int64) + np.arange(length) * n_classes
+    counts = np.bincount(flat.ravel(), minlength=length * n_classes)
+    profile = (counts.reshape(length, n_classes) / n_rows).astype(np.float32)
+    capped_sequences = {
+        "query_sequence": seqs["query_sequence"],
+        "aligned_sequences": aligned,
+        "deletions": deletions,
+        "deletion_mean": deletion_mean,
+        "profile": profile,
+    }
+    capped_headers = {k: np.asarray(v)[:max_depth] for k, v in msa_dict["headers"].items()}
+    return {"sequences": capped_sequences, "headers": capped_headers}
+
+
 def parse_openfold_msa_headers(metadata: np.ndarray) -> dict[str, np.ndarray]:
     r"""Parse distillation MSA metadata into the standard header fields.
 
@@ -160,7 +204,12 @@ def reconstruct_template_alignments(
     """
     align_results: dict[str, tuple[str, str]] = {}
     for hit, payload in template_hits.items():
-        idx_map = np.asarray(payload["idx_map"], dtype=np.int64)
+        # idx_map is 1-based (indices run 1..N over query/template residues); shift
+        # to 0-based for indexing the residue arrays. Without this the last-residue
+        # pair (index == chain length) overruns the 0-based array -> IndexError, and
+        # every hit is silently shifted by one residue.
+        idx_map = np.asarray(payload["idx_map"], dtype=np.int64) - 1
+        np.clip(idx_map, 0, None, out=idx_map)
         order = np.argsort(idx_map[:, 0], kind="stable")
         pairs = idx_map[order]
         query_chars: list[str] = []

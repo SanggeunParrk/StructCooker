@@ -9,6 +9,7 @@ from typing import TypeVar
 import numpy as np
 
 from structcooker.utils.mapping import ResidueMapping
+from structcooker.utils.seq_id import seq_id_shard_path
 
 DEFAULT_DB_UR30 = Path(
     "/data/shared/cssb_data/db_protSeq/uniref30/2022_02/UniRef30_2022_02",
@@ -17,6 +18,33 @@ DEFAULT_DB_BFD = Path(
     "/data/shared/cssb_data/db_protSeq/bfd/bfd_metaclust_clu_complete_id30_c90_final_seq.sorted_opt",
 )
 DEFAULT_HHSUITE_BIN = Path("/software/hhsuite/build/bin")
+
+# RNA MSA (AlphaFold3-style): nhmmer over Rfam / RNAcentral / nucleotide
+# collection, hits realigned to the query with hmmalign, cropped to 5000.
+DEFAULT_DB_RFAM = Path("/data/psk6950/rmsa_db/rfam.fasta")
+DEFAULT_DB_RNACENTRAL = Path("/data/psk6950/rmsa_db/rnacentral.fasta")
+DEFAULT_DB_NT = Path("/data/psk6950/rmsa_db/nucleotide_collection.fasta")
+RNA_MSA_MAX_SEQUENCES = 5000
+_SHORT_RNA_LEN = 50
+# Long rRNA are the pathological case: scan cost scales with query length, and a
+# 2-3knt rRNA against the 27GB DB set takes hours. For such queries we skip the
+# 10.7GB nucleotide-collection DB (Rfam + RNAcentral already cover conserved
+# rRNA well). We only do this for queries that both look like rRNA (their
+# RNAcentral hits are majority rRNA-typed) AND are long enough to be expensive.
+_NT_SKIP_MIN_LEN = 1000
+_RRNA_HIT_FRACTION = 0.5
+# Long RNAs (>= this) in the PDB are essentially all rRNA. Even after dropping
+# nt, scanning the 16GB RNAcentral DB with a ~1-5knt query is O(query x DB) and
+# takes many hours (a 1.5knt query at a few cores can run ~half a day), which
+# stalls the whole run. For these we search Rfam only (215MB, curated rRNA
+# families) -- minutes per query -- which is ample coverage for conserved rRNA.
+_RFAM_ONLY_MIN_LEN = 1000
+# hmmalign is single-threaded and roughly O(n_seqs x query_len^2); for very long
+# rRNA (~2-3knt) with the full 5000 hits it runs for hours or effectively hangs.
+# Cap the alignment depth for these -- 1000 sequences is still a deep rRNA MSA.
+_ALIGN_LONG_LEN = 2000
+_ALIGN_LONG_MAX_SEQS = 1000
+_RNA_MSA_ALLOWED_CHARS = set("ACGUNX")
 
 
 def _is_nonempty(path: Path) -> bool:
@@ -108,8 +136,7 @@ def make_input_fasta(
     sequence: str,
     output_dir: Path,
 ) -> tuple[Path, Path]:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    out_dir = output_dir / seqid[:4] / seqid
+    out_dir = seq_id_shard_path(output_dir, seqid) / seqid
     out_dir.mkdir(parents=True, exist_ok=True)
     fasta_path = out_dir / f"{seqid}.fasta"
     fasta_path.parent.mkdir(parents=True, exist_ok=True)
@@ -265,6 +292,328 @@ def run_msa_search(  # noqa: PLR0913
 
     return f"Done {input_fasta}"
 
+
+def _nhmmer_command(
+    query_fasta: Path,
+    db_path: Path,
+    tbl_out: Path,
+    *,
+    cpu: int,
+    f3: str,
+) -> list[str]:
+    """AlphaFold3 RNA nhmmer invocation (E=1e-3, watson strand, RNA alphabet).
+
+    Only the compact ``--tblout`` hit table is produced (one line per hit,
+    already sorted best-E-value first) -- crucially NOT ``-A``, whose full
+    per-hit alignment output is unbounded and explodes to hundreds of GB for
+    conserved RNAs (e.g. rRNA) that hit millions of database sequences.
+    """
+    return [
+        "nhmmer",
+        "-o",
+        "/dev/null",
+        "--noali",
+        "--tblout",
+        str(tbl_out),
+        "-E",
+        "0.001",
+        "--incE",
+        "0.001",
+        "--rna",
+        "--watson",
+        "--F3",
+        f3,
+        "--cpu",
+        str(cpu),
+        str(query_fasta),
+        str(db_path),
+    ]
+
+
+def _read_top_tblout(tbl_path: Path, limit: int) -> list[tuple[float, str, str, str]]:
+    """Read the top ``limit`` hits (E-value, target, from, to) from a tblout.
+
+    nhmmer writes tblout sorted by ascending E-value, so the first ``limit``
+    data rows are the best hits and the rest of the (potentially multi-GB) file
+    can be ignored.
+    """
+    hits: list[tuple[float, str, str, str]] = []
+    with tbl_path.open("r") as f:
+        for raw_line in f:
+            if raw_line.startswith("#"):
+                continue
+            cols = raw_line.split()
+            if len(cols) < 13:  # noqa: PLR2004
+                continue
+            target, alifrom, alito, evalue = cols[0], cols[6], cols[7], cols[12]
+            try:
+                hits.append((float(evalue), target, alifrom, alito))
+            except ValueError:
+                continue
+            if len(hits) >= limit:
+                break
+    return hits
+
+
+def _a2m_to_a3m_line(a2m_seq: str) -> str:
+    """Convert one a2m aligned sequence to a3m (drop insert-state gap dots)."""
+    return a2m_seq.replace(".", "")
+
+
+def _parse_fasta_alignment(path: Path) -> dict[str, str]:
+    """Parse an aligned-FASTA / a2m file into {name: aligned sequence}."""
+    aligned: dict[str, str] = {}
+    name: str | None = None
+    chunks: list[str] = []
+    with path.open("r") as f:
+        for raw_line in f:
+            line = raw_line.rstrip("\n")
+            if line.startswith(">"):
+                if name is not None:
+                    aligned[name] = "".join(chunks)
+                name = line[1:].split()[0]
+                chunks = []
+            else:
+                chunks.append(line)
+    if name is not None:
+        aligned[name] = "".join(chunks)
+    return aligned
+
+
+def _nhmmer_top_hits(  # noqa: PLR0913
+    input_fasta: Path,
+    work: Path,
+    dbs: tuple[tuple[str, Path], ...],
+    *,
+    cpu: int,
+    f3: str,
+    max_sequences: int,
+) -> dict[str, list[tuple[float, str, str, str]]]:
+    """Run nhmmer over each DB; return best hits grouped by DB tag.
+
+    Each value is a list of ``(evalue, target, from, to)`` for that DB's best
+    hits (already E-value ordered), capped at ``max_sequences`` per DB.
+    """
+    hits_by_db: dict[str, list[tuple[float, str, str, str]]] = {}
+    for tag, db_path in dbs:
+        tbl_out = work / f"{tag}.tbl"
+        if not _is_nonempty(tbl_out):
+            _run_command(_nhmmer_command(input_fasta, db_path, tbl_out, cpu=cpu, f3=f3))
+        hits_by_db[tag] = _read_top_tblout(tbl_out, max_sequences)
+    return hits_by_db
+
+
+def _esl_sfetch_subseqs(
+    db_path: Path,
+    hits: list[tuple[float, str, str, str]],
+    namefile: Path,
+    out_fasta: Path,
+) -> dict[str, str]:
+    """Fetch hit subsequences from ``db_path`` via esl-sfetch; return {name: seq}.
+
+    ``namefile`` is written in Easel GDF format (``newname from to source``)
+    and the DB is expected to carry an ``.ssi`` index built once up front with
+    ``esl-sfetch --index``.
+    """
+    if not hits:
+        return {}
+    with namefile.open("w") as f:
+        for _evalue, target, a, b in hits:
+            f.write(f"{target}/{a}-{b} {a} {b} {target}\n")
+    _run_command(
+        ["esl-sfetch", "-Cf", "-o", str(out_fasta), str(db_path), str(namefile)],
+    )
+    return _read_fasta(out_fasta)
+
+
+def _read_fasta(path: Path) -> dict[str, str]:
+    """Parse a (unaligned) FASTA file into {name: sequence}."""
+    seqs: dict[str, str] = {}
+    name: str | None = None
+    chunks: list[str] = []
+    with path.open("r") as f:
+        for raw_line in f:
+            line = raw_line.rstrip("\n")
+            if line.startswith(">"):
+                if name is not None:
+                    seqs[name] = "".join(chunks)
+                name = line[1:].split()[0]
+                chunks = []
+            else:
+                chunks.append(line.strip())
+    if name is not None:
+        seqs[name] = "".join(chunks)
+    return seqs
+
+
+def _search_and_fetch(  # noqa: PLR0913
+    input_fasta: Path,
+    work: Path,
+    dbs: tuple[tuple[str, Path], ...],
+    *,
+    cpu: int,
+    f3: str,
+    max_sequences: int,
+    raw_hits: dict[str, str],
+    evalues: dict[str, float],
+) -> None:
+    """Run nhmmer over ``dbs``, fetch hit subsequences, update raw_hits/evalues."""
+    db_paths = dict(dbs)
+    hits_by_db = _nhmmer_top_hits(
+        input_fasta, work, dbs, cpu=cpu, f3=f3, max_sequences=max_sequences,
+    )
+    for tag, hits in hits_by_db.items():
+        for evalue, target, a, b in hits:
+            evalues.setdefault(f"{target}/{a}-{b}", evalue)
+        fetched = _esl_sfetch_subseqs(
+            db_paths[tag], hits, work / f"{tag}.gdf", work / f"{tag}.hits.fasta",
+        )
+        for name, seq in fetched.items():
+            raw_hits.setdefault(name, seq.upper())
+
+
+def _rrna_fraction(hits_fasta: Path) -> tuple[int, int]:
+    """Return (rRNA-typed hit count, total hit count) for a fetched hits FASTA.
+
+    RNAcentral FASTA headers carry the RNA type as the token after the name
+    (e.g. ``>URS0000AF1685/12-83 rRNA from 3 species``); esl-sfetch preserves it,
+    so a query whose hits are majority ``rRNA`` is itself rRNA.
+    """
+    rrna = total = 0
+    if not hits_fasta.exists():
+        return 0, 0
+    with hits_fasta.open("r") as f:
+        for line in f:
+            if not line.startswith(">"):
+                continue
+            total += 1
+            parts = line.split()
+            if len(parts) > 1 and parts[1] == "rRNA":
+                rrna += 1
+    return rrna, total
+
+
+def _read_query_sequence(input_fasta: Path) -> str:
+    query_seq = ""
+    with input_fasta.open("r") as f:
+        for line in f:
+            if not line.startswith(">"):
+                query_seq += line.strip()
+    return query_seq
+
+
+def _sanitize_rna_query_sequence(seq: str) -> str:
+    """Map non-RNA polymer letters, e.g. aminoacylated PHE/P, to X."""
+    return "".join(nt if nt in _RNA_MSA_ALLOWED_CHARS else "X" for nt in seq.upper())
+
+
+def run_rna_msa_search(  # noqa: PLR0913
+    input_fasta: Path,
+    out_dir: Path,
+    *,
+    cpu: int = 8,
+    db_rfam: Path = DEFAULT_DB_RFAM,
+    db_rnacentral: Path = DEFAULT_DB_RNACENTRAL,
+    db_nt: Path = DEFAULT_DB_NT,
+    max_sequences: int = RNA_MSA_MAX_SEQUENCES,
+    nt_skip_min_len: int = _NT_SKIP_MIN_LEN,
+    rfam_only_min_len: int = _RFAM_ONLY_MIN_LEN,
+) -> str:
+    """Build an AlphaFold3-style RNA MSA for one query FASTA.
+
+    nhmmer searches Rfam and RNAcentral (and, unless the query is a long rRNA,
+    the nucleotide collection); the pooled hits are fetched with esl-sfetch,
+    realigned to the query with hmmalign, ranked by E-value, deduplicated by
+    ``accession/from-to`` and cropped to ``max_sequences``. The result is
+    written as ``<seqid>.a3m`` in ``out_dir`` (query first). If no hits are
+    found a query-only a3m is written.
+
+    Long rRNA (query >= ``nt_skip_min_len`` whose RNAcentral hits are majority
+    rRNA-typed) skip the huge nucleotide-collection scan, which would otherwise
+    take hours; every other query -- including long non-rRNA -- keeps the full
+    three-database AlphaFold3 search.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    seqid = input_fasta.stem
+    final_a3m = out_dir / f"{seqid}.a3m"
+    if _is_nonempty(final_a3m):
+        return f"Done {input_fasta} (cached)"
+
+    raw_query_seq = _read_query_sequence(input_fasta)
+    query_seq = _sanitize_rna_query_sequence(raw_query_seq)
+    if query_seq != raw_query_seq:
+        with input_fasta.open("w") as f:
+            f.write(f">{seqid}\n{query_seq}\n")
+    f3 = "0.02" if len(query_seq) < _SHORT_RNA_LEN else "0.00005"
+
+    work = out_dir / "nhmmer"
+    work.mkdir(parents=True, exist_ok=True)
+
+    raw_hits: dict[str, str] = {}
+    evalues: dict[str, float] = {}
+
+    # Very long RNA (large rRNA): Rfam only -- RNAcentral/nt scans would take
+    # hours and these are curated rRNA families in Rfam anyway.
+    if len(query_seq) >= rfam_only_min_len:
+        _search_and_fetch(
+            input_fasta, work, (("rfam", db_rfam),),
+            cpu=cpu, f3=f3, max_sequences=max_sequences,
+            raw_hits=raw_hits, evalues=evalues,
+        )
+    else:
+        # Stage 1: Rfam + RNAcentral. RNAcentral hit types tell us whether the
+        # query is rRNA, which decides whether to run the expensive nt scan.
+        _search_and_fetch(
+            input_fasta, work, (("rfam", db_rfam), ("rnacentral", db_rnacentral)),
+            cpu=cpu, f3=f3, max_sequences=max_sequences,
+            raw_hits=raw_hits, evalues=evalues,
+        )
+        rrna, total = _rrna_fraction(work / "rnacentral.hits.fasta")
+        is_long_rrna = (
+            len(query_seq) >= nt_skip_min_len
+            and total > 0
+            and rrna / total >= _RRNA_HIT_FRACTION
+        )
+        # Stage 2: nucleotide collection, skipped only for long rRNA.
+        if not is_long_rrna:
+            _search_and_fetch(
+                input_fasta, work, (("nt", db_nt),),
+                cpu=cpu, f3=f3, max_sequences=max_sequences,
+                raw_hits=raw_hits, evalues=evalues,
+            )
+
+    if not raw_hits:
+        with final_a3m.open("w") as f:
+            f.write(f">{seqid}\n{query_seq}\n")
+        return f"Done {input_fasta} (query-only)"
+
+    align_cap = (
+        _ALIGN_LONG_MAX_SEQS if len(query_seq) >= _ALIGN_LONG_LEN else max_sequences
+    )
+    ordered = sorted(raw_hits, key=lambda n: evalues.get(n, float("inf")))[:align_cap]
+    hits_fasta = work / "hits.fasta"
+    with hits_fasta.open("w") as f:
+        for name in ordered:
+            f.write(f">{name}\n{raw_hits[name]}\n")
+
+    query_hmm = work / "query.hmm"
+    _run_command(["hmmbuild", "--rna", str(query_hmm), str(input_fasta)])
+    aligned_a2m = work / "aligned.a2m"
+    _run_command(
+        [
+            "hmmalign", "--rna", "--trim", "--outformat", "a2m",
+            "-o", str(aligned_a2m), str(query_hmm), str(hits_fasta),
+        ],
+    )
+    aligned = _parse_fasta_alignment(aligned_a2m)
+
+    with final_a3m.open("w") as f:
+        f.write(f">{seqid}\n{query_seq}\n")
+        for hit_name in ordered:
+            a2m_seq = aligned.get(hit_name)
+            if a2m_seq:
+                f.write(f">{hit_name}\n{_a2m_to_a3m_line(a2m_seq)}\n")
+    return f"Done {input_fasta}"
 
 
 # ---- merged from a3m.py ----

@@ -44,6 +44,7 @@ def write_metadata(
         "cif_id",
         "resolution",
         "deposition_date",
+        "release_date",
         "chain_num",
         "residue_num",
         "atom_num",

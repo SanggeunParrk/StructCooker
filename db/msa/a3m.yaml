@@ -3,8 +3,8 @@
 # them by st_size×E directly (unlike the template key-list builds).
 schema: E
 
-env_path: ${p:/data/shared/cssb_data/BioMol_test/pdb/msa/a3m.lmdb}
-data_dir: ${p:/data/shared/cssb_data/BioMol_test/materials/intermediate/msa}
+env_path: ${p:/data/shared/cssb_data/BioMol_clean/pdb/msa/a3m.lmdb}
+data_dir: ${p:/data/shared/cssb_data/BioMol_clean/materials/intermediate/msa}
 file_pattern: "P*.a3m"
 
 recipe: ${p:src/structcooker/workflows/ingest/a3m.py}

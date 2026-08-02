@@ -13,6 +13,7 @@ from structcooker.instructions.transforms.cif import (
     build_assembly_dict,
     build_full_length_asym_dict,
     compare_chem_comp,
+    extract_release_date,
     get_struct_oper,
     parse_assembly_dict,
     parse_chem_comp,
@@ -47,10 +48,26 @@ cif_recipe = RecipeBook()
 cif_recipe.add(
     targets=(
         ("deposition_date", str),
-	),
+    ),
     instruction=single_value_instruction(dtype=str),
     inputs={
         "args": (("_pdbx_database_status.recvd_initial_deposition_date", str),),
+    },
+)
+
+# AF3/OpenFold3 time cutoff uses the initial *release* date of the coordinate
+# model ('Structure model' track), not deposition and not the 'EM metadata' track.
+cif_recipe.add(
+    targets=(("release_date", str | None),),
+    instruction=extract_release_date,
+    inputs={
+        "kwargs": {
+            "data_content_type": ("_pdbx_audit_revision_history.data_content_type", list | None),
+            "major_revision": ("_pdbx_audit_revision_history.major_revision", list | None),
+            "minor_revision": ("_pdbx_audit_revision_history.minor_revision", list | None),
+            "revision_date": ("_pdbx_audit_revision_history.revision_date", list | None),
+            "deposition_date": ("deposition_date", str),
+        },
     },
 )
 
@@ -73,6 +90,7 @@ cif_recipe.add(
         "kwargs": {
             "id": ("_entry.id", list),
             "deposition_date": ("deposition_date", str),
+            "release_date": ("release_date", str | None),
             "resolution": ("resolution", float | None),
         },
     },
@@ -525,7 +543,7 @@ cif_recipe.add(
 
 cif_recipe.add(
     targets=(("assembly_dict", dict | None),),
-    instruction=extract_contact_graph(d_thr=6.0, n_max=128),
+    instruction=extract_contact_graph(d_thr=6.0),
     inputs={
         "kwargs": {
             "assembly_dict": ("_assembly_dict", dict | None),

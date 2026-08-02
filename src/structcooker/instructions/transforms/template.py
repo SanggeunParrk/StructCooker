@@ -14,6 +14,7 @@ from biomol.core.index import IndexTable
 
 from structcooker.instructions.readers.io import load_bytes, load_raw_data
 from structcooker.mols import CIFMol, TemplateMol
+from structcooker.utils.seq_id import seq_id_from_name, seq_id_shard_path
 
 if TYPE_CHECKING:
     from biomol.core.types import BioMolDict
@@ -60,10 +61,16 @@ def load_a3m_list(
                 if entry.is_dir(follow_symlinks=False):
                     _scan(Path(entry.path))
                 elif fnmatch.fnmatch(entry.name, pattern):
+                    seq_id = seq_id_from_name(entry.name)
+                    output_parent = (
+                        seq_id_shard_path(output_dir, seq_id)
+                        if seq_id is not None
+                        else output_dir
+                    )
                     result.append(
                         {
                             "input_a3m_path": Path(entry.path),
-                            "output_path": output_dir
+                            "output_path": output_parent
                             / f"{Path(entry.name).stem}{output_pattern}",
                         },
                     )
@@ -206,8 +213,12 @@ def run_hmmsearch(
     if not _is_nonempty(fasta_path):
         msg = f"FASTA file does not exist or is empty: {fasta_path}"
         raise FileNotFoundError(msg)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"{hmm_path.stem}.out"
+    seq_id = seq_id_from_name(hmm_path.name)
+    output_parent = (
+        seq_id_shard_path(output_dir, seq_id) if seq_id is not None else output_dir
+    )
+    output_parent.mkdir(parents=True, exist_ok=True)
+    output_path = output_parent / f"{hmm_path.stem}.out"
     if output_path.exists() and output_path.stat().st_size > 0:
         print(
             f"Output file {output_path} already exists and is non-empty. Skipping hmmsearch for {hmm_path}.",
@@ -530,6 +541,37 @@ def cif_record_to_chains(record: dict) -> dict[str, object]:
     return chains
 
 
+# Skip records whose largest assembly exceeds this atom count: a handful of giant
+# assemblies would otherwise blow one worker's memory. Matches the legacy
+# build_cif_chain guard (env DC_CIFCHAIN_MAX_ATOMS); 0 disables it.
+CIFCHAIN_MAX_ATOMS = int(os.environ.get("DC_CIFCHAIN_MAX_ATOMS", "1500000") or "0")
+
+
+def adapt_cif_record_to_chains(data: dict) -> dict:
+    """Reader adapter for the ``chain/cif_chain`` rebuild (split_entries + explode).
+
+    Splits a decoded cif record (``{assembly_dict, metadata_dict}``) into per-chain
+    sub-entries ``{base_chain: {"biomoldict": biomoldict}}`` -- best-occupancy
+    assembly per chain, via :func:`cif_record_to_chains` -- so the rebuild writes one
+    record per chain keyed ``<pdbid>_<base_chain>`` (Schema C). Records whose largest
+    assembly exceeds ``CIFCHAIN_MAX_ATOMS`` are skipped (empty mapping), and an
+    unparsable record is skipped too -- the same records the legacy builder dropped.
+    """
+    assemblies = data.get("assembly_dict") or {}
+    if CIFCHAIN_MAX_ATOMS:
+        max_atoms = max(
+            (len(a["atoms"]["nodes"]["id"]["value"]) for a in assemblies.values()),
+            default=0,
+        )
+        if max_atoms > CIFCHAIN_MAX_ATOMS:
+            return {}
+    try:
+        chains = cif_record_to_chains(data)
+    except Exception:  # noqa: BLE001 - skip unparsable records (reported as failed)
+        return {}
+    return {base: {"biomoldict": bd} for base, bd in chains.items()}
+
+
 def extract_backbone_indices_from_cifmol(
     cifmol: CIFMol,
 ) -> np.ndarray:
@@ -699,6 +741,149 @@ def to_template_mol(
     return new_dict
 
 
+def build_chain_template(  # noqa: PLR0913
+    file_path: Path,
+    template_metadata_map: dict[str, dict],
+    chain2seqid: dict[str, str],
+    seqid2earliest_date: dict[str, time.struct_time],
+    filtered_seqid2seq: dict[str, str],
+    hmm_dir: Path,
+    cif_db_path: Path,
+    date_cutoff: str = "2021-09-30",
+    day_diff_cutoff: int = 60,
+    topk: int = 20,
+) -> dict:
+    """Build one chain's template mols, keyed by chain instead of seq_id.
+
+    ``file_path`` is the ``{pdbid}_{chain}`` work item. Template hits come from
+    the chain's seq_id hmmsearch output but are filtered against THIS chain's own
+    deposition date (not the sequence's earliest occurrence). Returns
+    ``{hit: template_mol}`` (empty dict if the chain has no usable templates).
+    """
+    chain = Path(file_path).name
+    seq_id = chain2seqid.get(chain)
+    meta = template_metadata_map.get(chain)
+    query_seq = filtered_seqid2seq.get(seq_id) if seq_id else None
+    if seq_id is None or meta is None or query_seq is None:
+        return {}
+    hmm_path = Path(hmm_dir) / seq_id[0] / seq_id[-3:] / f"{seq_id}.out"
+    if not hmm_path.exists():
+        return {}
+    template_chain_ids, _earliest, _q = extract_sequences(
+        hmm_path, seqid2earliest_date, filtered_seqid2seq,
+    )
+    # Drop hits absent from the metadata map (chains not in the current PDB set /
+    # naming mismatches); they carry no date or sequence to align against.
+    template_chain_ids = [h for h in template_chain_ids if h in template_metadata_map]
+    worker = filter_and_align_template_chain_ids(
+        date_cutoff=date_cutoff, day_diff_cutoff=day_diff_cutoff, topk=topk,
+    )
+    align_results = worker(query_seq, meta["deposition_date"], template_chain_ids, template_metadata_map)
+    return load_templates(Path(cif_db_path), align_results)
+
+
+_HMM_HIT_RE = re.compile(
+    r"""
+    ^\s*
+    [0-9.eE+-]+ \s+[0-9.]+ \s+[0-9.]+
+    \s+[0-9.eE+-]+ \s+[0-9.]+ \s+[0-9.]+
+    \s+[0-9.]+ \s+\d+
+    \s+(\S+)
+    \s+\|
+    """,
+    re.MULTILINE | re.VERBOSE,
+)
+
+
+def _parse_hmm_hits(text: str) -> list[str]:
+    """Ordered unique template chain ids ('<pdbid>_<chain>') from hmm .out text."""
+    hits: list[str] = []
+    seen: set[str] = set()
+    for raw in _HMM_HIT_RE.findall(text):
+        tid = "_".join(raw.split("_")[:2])
+        if tid not in seen:
+            seen.add(tid)
+            hits.append(tid)
+    return hits
+
+
+def build_seqid_template_mols(  # noqa: PLR0913
+    file_path: Path,
+    query_seqs: dict[str, str],
+    template_seqs: dict[str, str],
+    reduced_hmm_dir: Path,
+    cif_chain_db_path: Path,
+    min_seq_len: int = 10,
+    min_query_coverage: float = 0.1,
+    max_query_coverage: float = 0.95,
+) -> tuple[dict, list[str]]:
+    """Phase 3: build the union template mols for one seq_id.
+
+    ``file_path`` is a seq_id. The reduced hmm (written by Phase 2) already holds
+    only the union of hits selected -- with the per-chain 60-day date filter --
+    by any chain of this seq_id, so here we build a mol for EVERY hit (no date
+    re-filter): kalign + query-coverage + ``to_template_mol`` via the per-chain
+    cif LMDB. The expensive alignment is thus done once per seq_id instead of
+    once per chain.
+
+    Only SEQUENCES are needed (not dates, not the full 16.9 M seq_id map):
+    ``query_seqs`` (seq_id -> seq) and ``template_seqs`` (chain -> seq) are the
+    lean maps that replace load_template_metadata's ~8 GB of state.
+    Returns ``(template_mols, template_ids)``.
+    """
+    seq_id = Path(file_path).name
+    query_seq = query_seqs.get(seq_id)
+    if not query_seq:
+        return {}, []
+    hmm_path = Path(reduced_hmm_dir) / seq_id[0] / seq_id[-3:] / f"{seq_id}.reduced.out"
+    if not hmm_path.exists():
+        return {}, []
+    # Parse hits directly (extract_sequences derives the seq_id from the file
+    # stem, which is '<seq_id>.reduced' here).
+    hits = _parse_hmm_hits(hmm_path.read_text(encoding="utf-8"))
+    align_results: dict[str, tuple[str, str]] = {}
+    for tid in hits:
+        tseq = template_seqs.get(tid)
+        if tseq is None or len(tseq) < min_seq_len:
+            continue
+        aligned_query, aligned_template, coverage = run_kalign(
+            query_seq=query_seq, template_seq=tseq,
+        )
+        if min_query_coverage <= coverage <= max_query_coverage:
+            align_results[tid] = (aligned_query, aligned_template)
+    mols = load_templates_from_chain_db(Path(cif_chain_db_path), align_results)
+    return mols, list(mols.keys())
+
+
+def build_chain_from_seqid_db(
+    file_path: Path,
+    chain2seqid: dict[str, str],
+    chain2templates: dict[str, list[str]],
+    seqid_template_db_path: Path,
+    topk: int = 20,
+) -> dict:
+    """Phase 4: assemble one chain's template mols by lookup (no alignment).
+
+    ``file_path`` is a ``{pdbid}_{chain}``. ``chain2templates[chain]`` is the
+    chain's date-filtered candidate ids in e-value order (Phase 2, up to ~60).
+    We keep those that survived Phase 3's coverage/length filter (i.e. are in the
+    seq_id union mol DB) and take the top ``topk`` in e-value order -- so coverage
+    drops are backfilled from lower-ranked candidates, matching AF3's "keep up to
+    20 after filtering". Pure keyed read + select -- no kalign, no CIF decode.
+    """
+    chain = Path(file_path).name
+    seq_id = chain2seqid.get(chain)
+    tids = chain2templates.get(chain)
+    if seq_id is None or not tids:
+        return {}
+    raw = load_raw_data(seq_id, str(seqid_template_db_path))
+    if raw is None:
+        return {}
+    union = load_bytes(raw).get("template_mols", {})
+    kept = [tid for tid in tids if tid in union][:topk]
+    return {tid: union[tid] for tid in kept}
+
+
 def find_first(prefix: str, arr: np.ndarray) -> str | None:
     """Find the first string in arr that starts with the given prefix."""
     mask = np.char.startswith(arr, prefix)
@@ -725,9 +910,34 @@ def load_templates(
     return template_mols
 
 
+def rank_template_hits_by_coverage(
+    template_hits: dict[str, dict[str, object]],
+    query_len: int,
+    min_coverage: float = 0.1,
+) -> dict[str, dict[str, object]]:
+    """Order template hits by query coverage (descending), dropping low-coverage ones.
+
+    Coverage = unique query residues aligned (``idx_map[:, 0]``) / ``query_len``.
+    Computed from ``idx_map`` alone -- no per-chain decode -- so the caller can
+    decode the highest-coverage hits first and stop once it has enough
+    (see :func:`load_templates_from_chain_db`'s ``max_keep``).
+    """
+    if not template_hits or query_len <= 0:
+        return template_hits
+    scored: list[tuple[float, str]] = []
+    for hit, payload in template_hits.items():
+        idx_map = np.asarray(payload["idx_map"], dtype=np.int64)
+        coverage = len(np.unique(idx_map[:, 0])) / query_len
+        if coverage >= min_coverage:
+            scored.append((min(coverage, 1.0), hit))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return {hit: template_hits[hit] for _, hit in scored}
+
+
 def load_templates_from_chain_db(
     cif_chain_db_path: Path,
     align_results: dict[str, tuple[str, str]],
+    max_keep: int | None = None,
 ) -> dict:
     """Build template mols from a prebuilt per-chain cif LMDB (light path).
 
@@ -735,6 +945,11 @@ def load_templates_from_chain_db(
     chain (see :mod:`scripts.maintenance.build_cif_chain`), so the expensive
     decode + per-assembly rebuild + extract is done once at build time instead
     of per hit. Output matches :func:`load_templates` (same ``to_template_mol``).
+
+    Hits are decoded in ``align_results`` order; with ``max_keep`` set the loop
+    stops once that many templates have been built successfully -- so when the
+    caller pre-orders by coverage, only the best ~``max_keep`` (plus the failures
+    skipped along the way) are ever decoded.
     """
     if len(align_results) == 0:
         return {}
@@ -747,8 +962,10 @@ def load_templates_from_chain_db(
         try:
             cifmol = CIFMol.from_dict(cast("BioMolDict", load_bytes(raw)))
             template_mols[full_id] = to_template_mol(cifmol, align_result)
-        except Exception:  # noqa: BLE001 - skip malformed / missing chains
+        except Exception:  # noqa: BLE001 - skip chains whose idx_map overruns our extraction
             continue
+        if max_keep is not None and len(template_mols) >= max_keep:
+            break
     return template_mols
 
 

@@ -2,16 +2,16 @@
 # Source = cif_pdb (schema A). split_entries fans an entry into its assemblies.
 schema: B
 
-old_env_path: ${p:/data/shared/cssb_data/BioMol_test/pdb/cif/cif_pdb.lmdb}
-new_env_path: ${p:/data/shared/cssb_data/BioMol_test/pdb/cif/cif_pdb_attached.lmdb}
+old_env_path: ${p:/data/shared/cssb_data/BioMol_clean/pdb/cif/cif_pdb.lmdb}
+new_env_path: ${p:/data/shared/cssb_data/BioMol_clean/pdb/cif/cif_pdb_attached.lmdb}
 
 recipe: ${p:src/structcooker/workflows/metadata/attach.py}
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.py}
 
 metadata_input:
-  raw_fasta_path: ${p:/data/shared/cssb_data/BioMol_test/materials/raw/fasta/cif_pdb.fasta}
-  seqid2seq_path: ${p:/data/shared/cssb_data/BioMol_test/metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:/data/shared/cssb_data/BioMol_test/metadata/seq_cluster40.tsv}
+  raw_fasta_path: ${p:/data/shared/cssb_data/BioMol_clean/materials/raw/fasta/cif_pdb.fasta}
+  seqid2seq_path: ${p:/data/shared/cssb_data/BioMol_clean/metadata/seq_id_map.tsv}
+  seqcluster_path: ${p:/data/shared/cssb_data/BioMol_clean/metadata/seq_cluster40.tsv}
 
 split_entries: true
 

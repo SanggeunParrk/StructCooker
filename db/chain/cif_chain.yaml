@@ -1,0 +1,25 @@
+# cif_chain — per-chain BioMol dict, one key <pdbid>_<chain>. Schema C.
+#
+# 1:N explode rebuild from the base cif DB: the reader adapter splits each PDB
+# record into per-chain sub-entries (best-occupancy assembly, cif_record_to_chains)
+# and the recipe passes each chain's biomoldict through, so explode writes one record
+# per chain. Replaces scripts/maintenance/build_cif_chain.py.
+#
+# Test output → BioMol_clean; source is the read-only production base cif.
+schema: C
+
+old_env_path: ${p:/data/shared/cssb_data/BioMol/lmdb/pdb/cif/cif_pdb.lmdb}
+new_env_path: ${p:/data/shared/cssb_data/BioMol_clean/lmdb/chain/cif_chain.lmdb}
+
+recipe: ${p:src/structcooker/workflows/exports/cif_chain.py}
+
+split_entries: true
+explode_entries: true
+explode_value_key: biomoldict
+
+reader:
+  adapter: structcooker.instructions.transforms.template.adapt_cif_record_to_chains
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

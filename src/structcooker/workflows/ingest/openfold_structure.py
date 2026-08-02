@@ -11,6 +11,7 @@ from structcooker.instructions.transforms.openfold_structure import (
     derive_chain_features,
     derive_residue_features,
     load_ccd_entries,
+    wrap_cifmol,
 )
 
 """Build an OpenFold3 distillation structure (CIFMol) Cooker.
@@ -104,5 +105,16 @@ structure_recipe.add(
     },
 )
 
+structure_recipe.add(
+    targets=(("assembly_dict", dict), ("metadata_dict", dict)),
+    instruction=wrap_cifmol,
+    inputs={
+        "kwargs": {
+            "cifmol_dict": ("cifmol_dict", dict),
+            "entry_id": ("entry_id", str),
+        },
+    },
+)
+
 RECIPE = structure_recipe
-TARGETS = ["cifmol_dict"]
+TARGETS = ["assembly_dict", "metadata_dict"]

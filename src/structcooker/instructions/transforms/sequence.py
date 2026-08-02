@@ -286,6 +286,9 @@ def build_fasta(cifmol_dict: dict[str, dict[str, CIFMol]]) -> dict[str, str]:
     return fasta_dict
 
 
+_SEQ_ID_WIDTH = 20  # zero-pad width of the numeric part of a seq id
+
+
 def build_seq_id_map(
     fasta_dict: dict[str, str],
     old_seq_id_map: dict[str, str] | None,
@@ -308,11 +311,13 @@ def build_seq_id_map(
         key = f"{mol_identifier}{sequence}"
 
         if old_seq_id_map is not None and key in old_seq_id_map:
-            seq_id_map[key] = old_seq_id_map[key]
+            # keep the existing numeric id, only widen to the current width
+            old = old_seq_id_map[key]
+            seq_id_map[key] = f"{old[0]}{int(old[1:]):0{_SEQ_ID_WIDTH}d}"
             continue
         if key in seq_id_map:
             continue  # skip duplicate sequences
-        _seq_id = f"{mol_identifier}{seq_id:07d}"
+        _seq_id = f"{mol_identifier}{seq_id:0{_SEQ_ID_WIDTH}d}"
         seq_id_map[key] = _seq_id
         seq_id += 1
     new_seq_id_map = {}

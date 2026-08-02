@@ -4,6 +4,7 @@ from datacooker import RecipeBook
 
 from structcooker.instructions.readers.sequence import load_fasta
 from structcooker.instructions.transforms.metadata import (
+    build_chain2seqid_map,
     build_seq_metadata_map,
     build_template_metadata_map,
     load_signalp,
@@ -89,5 +90,18 @@ recipe.step(
     },
 )
 
+recipe.step(
+    outputs=(("chain2seqid", dict),),
+    instruction=build_chain2seqid_map,
+    kwargs={
+        "seq_metadata_map": ("seq_metadata_map", dict),
+    },
+)
+
 RECIPE = recipe
-TARGETS = ["template_metadata_map", "seqid2earliest_date", "filtered_seqid2seq"]
+TARGETS = [
+    "template_metadata_map",
+    "seqid2earliest_date",
+    "filtered_seqid2seq",
+    "chain2seqid",
+]

@@ -32,7 +32,7 @@ _TEMPLATE_RESIDUE_NODE_FIELDS = (
     "one_letter_code_can", "one_letter_code", "cif_idx", "auth_idx", "chem_comp_id", "hetero",
 )
 _TEMPLATE_METADATA_KEYS = (
-    "id", "deposition_date", "resolution", "assembly_id", "model_id", "alt_id",
+    "id", "deposition_date", "release_date", "resolution", "assembly_id", "model_id", "alt_id",
 )
 _INDEX_TABLE_KEYS = (
     "atom_to_res", "res_to_chain", "res_atom_indptr",

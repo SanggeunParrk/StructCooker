@@ -12,6 +12,7 @@ name (every entry shares the same ``alignment.npz`` / ``structure.npz`` /
 be wired into a build config via ``key_builder``.
 """
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,39 @@ def openfold_chain_key(path: Path) -> str:
     file stem instead of the parent folder name.
     """
     return path.stem
+
+
+_DISORDERED_SEQID: dict[str, str] | None = None
+
+
+def _disordered_seqid_map() -> dict[str, str]:
+    """Load (and cache) the precomputed ``{id}_{chain}`` -> seq_id map.
+
+    The path comes from the ``DISORDERED_SEQID_MAP`` env var (a TSV built by
+    ``scripts/maintenance/precompute_disordered_seqid.py``).
+    """
+    global _DISORDERED_SEQID  # noqa: PLW0603 - process-local cache
+    if _DISORDERED_SEQID is None:
+        map_path = Path(os.environ["DISORDERED_SEQID_MAP"])
+        mapping: dict[str, str] = {}
+        with map_path.open() as handle:
+            for line in handle:
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) == 2:  # noqa: PLR2004 - stem, seq_id
+                    mapping[parts[0]] = parts[1]
+        _DISORDERED_SEQID = mapping
+    return _DISORDERED_SEQID
+
+
+def openfold_disordered_seqid_key(path: Path) -> str:
+    """Key a disordered chain npz by its chain seq_id.
+
+    Maps the ``{id}_{chain}`` file stem to the chain's seq_id so the disordered
+    MSA/template DBs are keyed exactly like the PDB pipeline (per-chain seq_id).
+    Homomer chains sharing a sequence collapse onto one seq_id, matching PDB's
+    sequence-level deduplication.
+    """
+    return _disordered_seqid_map()[path.stem]
 
 
 def get_openfold_msa_data(alignment_path: Path) -> dict[str, Any]:
@@ -56,7 +90,51 @@ def get_openfold_structure_data(structure_path: Path) -> dict[str, Any]:
     """
     with np.load(structure_path, allow_pickle=True) as handle:
         atom_arrays = {field: handle[field] for field in handle.files}
-    return {"atom_arrays": atom_arrays}
+    return {"atom_arrays": atom_arrays, "entry_id": structure_path.parent.name}
+
+
+def get_disordered_template_data(npz_path: Path) -> dict[str, Any]:
+    """Load one disordered template chain (``templates/<id>/<id>_<chain>.npz``).
+
+    Same atom-table schema as ``structure.npz`` (reuses the structure recipe),
+    but the entry id is the file stem (``<id>_<chain>``). The per-folder
+    ``chain_id_to_moltype.npz`` index is skipped (raises so the runner drops it).
+    """
+    if npz_path.name == "chain_id_to_moltype.npz":
+        msg = "moltype index, not a template chain"
+        raise ValueError(msg)
+    out = get_openfold_structure_data(npz_path)
+    out["entry_id"] = npz_path.stem
+    return out
+
+
+def get_disordered_template_group(moltype_path: Path) -> dict[str, Any]:
+    """Load all template chains of one disordered query folder.
+
+    Anchored on the per-folder ``chain_id_to_moltype.npz`` (one per query, so the
+    build key is the query id), this reads every sibling ``<id>_<chain>.npz`` atom
+    table and returns them keyed by file stem (the template hit id).
+    """
+    templates: dict[str, Any] = {}
+    for npz_path in sorted(moltype_path.parent.glob("*.npz")):
+        if npz_path.name == "chain_id_to_moltype.npz":
+            continue
+        with np.load(npz_path, allow_pickle=True) as handle:
+            templates[npz_path.stem] = {field: handle[field] for field in handle.files}
+    return {"templates_atom_arrays": templates}
+
+
+def get_disordered_template_chain(npz_path: Path) -> dict[str, Any]:
+    """Load ONE disordered template chain atom table (per-chain, seq_id-keyed build).
+
+    The disordered template DB is keyed per chain by seq_id (like the PDB
+    template DB), so each ``<id>_<chain>.npz`` is read individually. Returns the
+    single chain's atom table keyed by its stem so ``build_disordered_template_mols``
+    yields ``{template_mols: {"{id}_{chain}": mol}}`` -- matching the PDB layout.
+    """
+    with np.load(npz_path, allow_pickle=True) as handle:
+        arrays = {field: handle[field] for field in handle.files}
+    return {"templates_atom_arrays": {npz_path.stem: arrays}}
 
 
 def get_openfold_template_data(template_path: Path) -> dict[str, Any]:

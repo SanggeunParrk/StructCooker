@@ -49,7 +49,7 @@ engine: `structcooker` materializes a schema-stripped `engine.yaml` in the workd
 
 ## Targets
 
-Every DB writes under **`/data/shared/cssb_data/BioMol_test/`** — the original
+Every DB writes under **`/data/shared/cssb_data/BioMol_clean/`** — the original
 `BioMol/` tree is left untouched until a rebuilt DB is verified against it.
 
 ## Layout

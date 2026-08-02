@@ -10,7 +10,7 @@ per conceptual step (group, CCD lookup, per-level feature derivation, assemble).
 """
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 from biomol.core import EdgeFeature, FeatureContainer, NodeFeature
@@ -317,3 +317,60 @@ def assemble_cifmol(  # noqa: PLR0913
         chain_container=FeatureContainer(chain_fields),
         index_table=index_table,
     ).to_dict()
+
+
+def _build_one_cifmol(atom_arrays: dict, ccd_db_path: Path) -> dict:
+    """Run the full structure pipeline on one atom table -> CIFMol dict."""
+    (atom_to_res, res_to_chain, n_chain, res_names, res_ids,
+     res_hetero, chain_ids, entity_ids, chain_mol_types) = build_hierarchy(atom_arrays)
+    ccd_cache = load_ccd_entries(atom_arrays, ccd_db_path)
+    atom_features = derive_atom_features(atom_arrays, ccd_cache)
+    bonds = derive_bond_edges(atom_arrays, ccd_cache)
+    residue_features = derive_residue_features(res_names, res_ids, res_hetero, ccd_cache)
+    chain_features = derive_chain_features(chain_ids, entity_ids, chain_mol_types)
+    return assemble_cifmol(
+        atom_arrays, atom_to_res, res_to_chain, n_chain,
+        atom_features, bonds, residue_features, chain_features,
+    )
+
+
+def build_disordered_template_mols(templates_atom_arrays: dict, ccd_db_path: Path) -> dict:
+    """Per-query disordered templates -> ``{hit_id: template mol}`` (template_mols).
+
+    Each disordered query folder holds one ``<id>_<chain>.npz`` atom table per
+    template chain. A full CIFMol is built for each, then reduced to the same
+    4-backbone-atom-per-residue (N, CA, C, CB) template representation the
+    long/short/PDB template DBs use (via :func:`to_template_mol`), so the stored
+    ``atoms.xyz`` is ``(n_res, 4, 3)`` as the template consumer expects. Without
+    this reduction the record kept every side-chain atom (~8/residue), which the
+    consumer's ``reshape(n_res, 4, 3)`` cannot load.
+
+    The disordered templates carry no query alignment, so an identity alignment
+    (query == target == the template's own sequence) is used.
+    """
+    from structcooker.instructions.transforms.template import to_template_mol
+
+    mols: dict = {}
+    for hit_id, atom_arrays in templates_atom_arrays.items():
+        try:
+            cifmol = CIFMol.from_dict(
+                cast("BioMolDict", _build_one_cifmol(atom_arrays, ccd_db_path)),
+            )
+            seq = "".join(str(c) for c in cifmol.residues.one_letter_code_can.value)
+            mols[hit_id] = to_template_mol(cifmol, (seq, seq))
+        except Exception:  # noqa: BLE001, S112, PERF203 - skip malformed template chains
+            continue
+    return mols
+
+
+def wrap_cifmol(cifmol_dict: dict, entry_id: str) -> tuple[dict, dict]:
+    """Wrap a predicted CIFMol into the reference cif.lmdb layout (two outputs).
+
+    Returns ``(assembly_dict, metadata_dict)`` as separate recipe targets so the
+    record is stored flat as ``{assembly_dict: {"1_1_.": cifmol}, metadata_dict:
+    {id, ...}}`` -- matching the PDB cif DB layout directly at build time (no
+    post-hoc rewrap, no extra wrapper key). ``id`` is the entry key (mgnify id).
+    """
+    assembly_dict = {"1_1_.": cifmol_dict}
+    metadata_dict = {"id": [entry_id], "deposition_date": None, "release_date": None, "resolution": None}
+    return assembly_dict, metadata_dict
