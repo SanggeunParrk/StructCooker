@@ -1,9 +1,15 @@
 # ccd — CCD chem-component reference DB from component .cif files. Schema G. Build.
 # Reference/support DB (input to cif ingest via ccd_db_path), not a training DB.
+#
+# Raw input (external): the wwPDB Chemical Component Dictionary. Obtain it with
+#   curl -o components.cif.gz \
+#     https://files.wwpdb.org/pub/pdb/data/monomers/components.cif.gz
+# then split the single concatenated file into one <COMP_ID>.cif per `data_` block
+# under data_dir/ (the build is file-per-component: one .cif -> one LMDB key).
 schema: G
 
 env_path: ${p:/data/shared/cssb_data/BioMol_clean/ccd/biomol_CCD.lmdb}
-data_dir: ${p:/public_data/CCD/components}
+data_dir: ${p:/data/shared/cssb_data/BioMol_clean/materials/raw/ccd/components}
 file_pattern: "*.cif*"
 
 recipe: ${p:src/structcooker/workflows/ingest/ccd.py}
