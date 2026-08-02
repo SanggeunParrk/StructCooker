@@ -3,8 +3,8 @@
 # (size tiers are a build-time concern, not a semantic split); residue10k dropped.
 schema: B
 
-old_env_path: ${p:/data/shared/cssb_data/BioMol_clean/pdb/cif/cif_pdb_attached.lmdb}
-new_env_path: ${p:/data/shared/cssb_data/BioMol_clean/pdb/cif/cif_pdb_attached_train_20210930_res9_chain300.lmdb}
+old_env_path: ${p:/data/shared/cssb_data/BioMol_clean/lmdb/pdb/cif/cif_pdb_attached.lmdb}
+new_env_path: ${p:/data/shared/cssb_data/BioMol_clean/lmdb/pdb/cif/cif_pdb_attached_train_20210930_res9_chain300.lmdb}
 
 recipe: ${p:src/structcooker/workflows/filters/data.py}
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_signalp.py}

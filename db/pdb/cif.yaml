@@ -5,7 +5,7 @@
 # tiers them automatically, so there is no file_list / n_jobs / chunk_size here.
 schema: A
 
-env_path: ${p:/data/shared/cssb_data/BioMol_clean/pdb/cif/cif_pdb.lmdb}
+env_path: ${p:/data/shared/cssb_data/BioMol_clean/lmdb/pdb/cif/cif_pdb.lmdb}
 data_dir: ${p:/data/shared/cssb_data/mmcif_files_latest/mmcif_files}
 file_pattern: "*.cif"
 

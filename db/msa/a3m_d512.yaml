@@ -4,7 +4,7 @@
 schema: E
 
 old_env_path: ${p:/data/shared/cssb_data/BioMol/lmdb/pdb/msa/a3m.lmdb}
-new_env_path: ${p:/data/shared/cssb_data/BioMol/lmdb/pdb/msa/a3m_d512.lmdb}
+new_env_path: ${p:/data/shared/cssb_data/BioMol_clean/lmdb/pdb/msa/a3m_d512.lmdb}
 
 recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
 
