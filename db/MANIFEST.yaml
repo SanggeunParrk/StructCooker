@@ -1,0 +1,23 @@
+# The BioMol db set as a dependency DAG.
+#
+# `structcooker build-all` topologically sorts these and submits each config's
+# pipeline with `--depends-on` the terminal (index) job of its upstream configs,
+# so the whole set reproduces from one command with SLURM enforcing the order.
+#
+# Each entry: <db name> : [<upstream db name>, ...]. Only the ✅ (clean-config)
+# databases from db/STATUS.md are listed; 🔴/⏸️ rows are added as they are ported.
+
+ccd/ccd: []
+msa/a3m: []
+
+pdb/cif: [ccd/ccd]                      # cif build reads the ccd DB for bond graphs
+pdb/cif_attached: [pdb/cif]
+chain/cif_chain: [pdb/cif]
+
+msa/a3m_d16k: [msa/a3m]
+msa/a3m_d2k: [msa/a3m]
+msa/a3m_d512: [msa/a3m]
+
+train/train_20210930: [pdb/cif_attached]
+train/train_20260301: [pdb/cif_attached]
+train/train_20210930_mpnn: [train/train_20210930]

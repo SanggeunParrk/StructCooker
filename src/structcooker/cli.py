@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 import click
+from omegaconf import OmegaConf
 
 from datacooker.config import load_config
 
@@ -80,6 +81,8 @@ def list_dbs() -> None:
     """List every db/*.yaml with its inferred op, schema, and target."""
     rows: list[tuple[str, str, str, str]] = []
     for f in sorted(DB_ROOT.rglob("*.yaml")):
+        if f.name == "MANIFEST.yaml":
+            continue
         try:
             cfg = load_config(f)
         except Exception as exc:                       # noqa: BLE001
@@ -96,39 +99,128 @@ def list_dbs() -> None:
         click.echo(f"{name:<{w}}  {op:<7}  schema={schema:<3}  {target}")
 
 
-@cli.command("build")
-@click.argument("name")
-@click.option("--workdir", type=click.Path(path_type=Path), default=None,
-              help="Scratch for tier item-lists + sbatch scripts "
-                   "(default: logs/pipeline/<name>).")
-@click.option("--dry-run", is_flag=True, help="Plan + write scripts, do not sbatch.")
-@click.option("--show", is_flag=True,
-              help="Print the resolved schema/E + datacooker invocation and exit.")
-def build(name: str, workdir: Path | None, dry_run: bool, show: bool) -> None:
-    """Plan + build (or rebuild) the DB named by its db/*.yaml (op auto-inferred)."""
+_TERMINAL_RE = re.compile(r"^PIPELINE_TERMINAL_JOB=(.*)$", re.MULTILINE)
+
+
+def _submit_pipeline(
+    name: str,
+    workdir: Path | None,
+    *,
+    dry_run: bool,
+    depends_on: tuple[str, ...] = (),
+) -> tuple[int, str | None]:
+    """Materialize the engine config for ``name`` and submit its pipeline.
+
+    Returns ``(returncode, terminal_job_id)`` -- the terminal id (the pipeline's
+    final index stage) lets ``build-all`` afterok-chain the next config onto it.
+    Streams the pipeline output through while capturing it to parse that id.
+    """
     db_path = _resolve_db(name)
     cfg = load_config(db_path)
     schema = _schema_of(cfg, db_path)
     expansion = schemas.expansion(schema)
     op = "rebuild" if cfg.get("old_env_path") else "build"
     wd = Path(workdir) if workdir else REPO / "logs" / "pipeline" / Path(name).name
-
     click.echo(f"[structcooker] {db_path.relative_to(REPO)}  op={op}  "
-               f"schema={schema}  E={expansion}")
-    if show:
-        engine = wd / "engine.yaml"
-        argv = [*PIPELINE_CLI, str(engine), "--workdir", str(wd),
-                "--schema", schema, "--expansion", str(expansion), "--repo", str(REPO)]
-        click.echo("  (engine.yaml materialized on real build)")
-        click.echo("  " + " ".join(argv))
-        return
+               f"schema={schema}  E={expansion}"
+               + (f"  afterok={','.join(depends_on)}" if depends_on else ""))
     engine = _write_engine_yaml(db_path, wd)
     argv = [*PIPELINE_CLI, str(engine), "--workdir", str(wd),
             "--schema", schema, "--expansion", str(expansion), "--repo", str(REPO)]
+    if depends_on:
+        argv += ["--depends-on", ",".join(depends_on)]
     if dry_run:
         argv.append("--dry-run")
-    click.echo("  " + " ".join(argv))
-    raise SystemExit(subprocess.call(argv))
+    proc = subprocess.run(argv, capture_output=True, text=True, check=False)  # noqa: S603
+    click.echo(proc.stdout, nl=False)
+    if proc.stderr:
+        click.echo(proc.stderr, nl=False, err=True)
+    m = _TERMINAL_RE.search(proc.stdout or "")
+    job_id = (m.group(1).strip() or None) if m else None
+    return proc.returncode, job_id
+
+
+@cli.command("build")
+@click.argument("name")
+@click.option("--workdir", type=click.Path(path_type=Path), default=None,
+              help="Scratch for tier item-lists + sbatch scripts "
+                   "(default: logs/pipeline/<name>).")
+@click.option("--dry-run", is_flag=True, help="Plan + write scripts, do not sbatch.")
+@click.option("--depends-on", "depends_on", default="",
+              help="Comma-separated upstream job ids to afterok-wait on.")
+@click.option("--show", is_flag=True,
+              help="Print the resolved schema/E + datacooker invocation and exit.")
+def build(name: str, workdir: Path | None, dry_run: bool,
+          depends_on: str, show: bool) -> None:
+    """Plan + build (or rebuild) the DB named by its db/*.yaml (op auto-inferred)."""
+    if show:
+        db_path = _resolve_db(name)
+        cfg = load_config(db_path)
+        schema = _schema_of(cfg, db_path)
+        wd = Path(workdir) if workdir else REPO / "logs" / "pipeline" / Path(name).name
+        argv = [*PIPELINE_CLI, str(wd / "engine.yaml"), "--workdir", str(wd),
+                "--schema", schema, "--expansion", str(schemas.expansion(schema)),
+                "--repo", str(REPO)]
+        click.echo("  (engine.yaml materialized on real build)\n  " + " ".join(argv))
+        return
+    deps = tuple(d for d in depends_on.split(",") if d.strip())
+    rc, _ = _submit_pipeline(name, workdir, dry_run=dry_run, depends_on=deps)
+    raise SystemExit(rc)
+
+
+@cli.command("build-all")
+@click.option("--manifest", type=click.Path(path_type=Path), default=None,
+              help="DB dependency manifest (default: db/MANIFEST.yaml).")
+@click.option("--workdir", type=click.Path(path_type=Path), default=None,
+              help="Parent scratch dir (each DB gets a <workdir>/<name> subdir).")
+@click.option("--dry-run", is_flag=True, help="Plan + write scripts, do not sbatch.")
+def build_all(manifest: Path | None, workdir: Path | None, dry_run: bool) -> None:
+    """Build the whole DB set in dependency order, afterok-chaining each config.
+
+    Reads ``db/MANIFEST.yaml`` (``name: [upstream, ...]``), topologically sorts it,
+    and submits each DB's pipeline with ``--depends-on`` the terminal job ids of its
+    upstream DBs -- so the entire BioMol set reproduces from one command with SLURM
+    enforcing the order.
+    """
+    man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST.yaml"
+    if not man_path.exists():
+        msg = f"no manifest at {man_path}"
+        raise click.ClickException(msg)
+    deps_map = {str(k): [str(d) for d in (v or [])]
+                for k, v in OmegaConf.to_container(OmegaConf.load(man_path)).items()}
+    order = _toposort(deps_map)
+    click.echo(f"[build-all] {len(order)} DBs in dependency order:\n  "
+               + " -> ".join(order))
+    terminal: dict[str, str | None] = {}
+    for name in order:
+        upstream = tuple(j for d in deps_map[name] if (j := terminal.get(d)))
+        rc, job_id = _submit_pipeline(name, (Path(workdir) / name) if workdir else None,
+                                      dry_run=dry_run, depends_on=upstream)
+        if rc != 0:
+            msg = f"{name} pipeline submit failed (rc={rc}); aborting chain."
+            raise click.ClickException(msg)
+        terminal[name] = job_id
+    click.echo("[build-all] all pipelines submitted.")
+
+
+def _toposort(deps_map: dict[str, list[str]]) -> list[str]:
+    """Topological sort (deterministic); raises on unknown deps or cycles."""
+    for name, ds in deps_map.items():
+        for d in ds:
+            if d not in deps_map:
+                msg = f"{name!r} depends on unknown {d!r}"
+                raise click.ClickException(msg)
+    order: list[str] = []
+    remaining = dict(deps_map)
+    while remaining:
+        ready = sorted(n for n, ds in remaining.items() if all(d in order for d in ds))
+        if not ready:
+            msg = f"dependency cycle among: {sorted(remaining)}"
+            raise click.ClickException(msg)
+        order.extend(ready)
+        for n in ready:
+            del remaining[n]
+    return order
 
 
 def main() -> None:
