@@ -23,10 +23,10 @@ site/
 *.out
 
 # ops / dev scratch (not library source) — tracked keeper files stay tracked
-scripts/dev/
-scripts/maintenance/
 submits/
 pipelines/
 /DESIGN_datacooker_planning.md
 /PLAN_rewrite.md
 /pdb_msa_depth_summary.tsv
+scripts/
+configs/
