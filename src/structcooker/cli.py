@@ -168,19 +168,33 @@ def build(name: str, workdir: Path | None, dry_run: bool,
     raise SystemExit(rc)
 
 
+def _is_resolved(name: str) -> bool:
+    """Is this DB node already built? The pipeline's final stage writes
+    ``<target>.index.tsv``, so its presence means the build completed — the
+    node is resolved and can be skipped on an incremental run."""
+    cfg = load_config(_resolve_db(name))
+    target = cfg.get("new_env_path") or cfg.get("env_path")
+    return bool(target) and Path(f"{target}.index.tsv").exists()
+
+
 @cli.command("build-all")
 @click.option("--manifest", type=click.Path(path_type=Path), default=None,
               help="DB dependency manifest (default: db/MANIFEST.yaml).")
 @click.option("--workdir", type=click.Path(path_type=Path), default=None,
               help="Parent scratch dir (each DB gets a <workdir>/<name> subdir).")
 @click.option("--dry-run", is_flag=True, help="Plan + write scripts, do not sbatch.")
-def build_all(manifest: Path | None, workdir: Path | None, dry_run: bool) -> None:
-    """Build the whole DB set in dependency order, afterok-chaining each config.
+@click.option("--force", is_flag=True,
+              help="Rebuild every node, even ones already resolved (index exists).")
+def build_all(manifest: Path | None, workdir: Path | None,
+              dry_run: bool, force: bool) -> None:
+    """Reproduce the whole DB set incrementally — a DAG of pipelines (each itself a DAG).
 
-    Reads ``db/MANIFEST.yaml`` (``name: [upstream, ...]``), topologically sorts it,
-    and submits each DB's pipeline with ``--depends-on`` the terminal job ids of its
-    upstream DBs -- so the entire BioMol set reproduces from one command with SLURM
-    enforcing the order.
+    Reads ``db/MANIFEST.yaml`` (``name: [upstream, ...]``), topologically sorts it, and
+    submits each DB's pipeline with ``--depends-on`` the terminal job ids of its
+    upstream DBs, so SLURM enforces the order. It is INCREMENTAL: a node whose output
+    is already built (``<target>.index.tsv`` present) is SKIPPED, and downstream nodes
+    afterok-wait only on upstream nodes actually submitted this run — so re-running
+    fills in just what's missing. ``--force`` rebuilds everything.
     """
     man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST.yaml"
     if not man_path.exists():
@@ -191,8 +205,16 @@ def build_all(manifest: Path | None, workdir: Path | None, dry_run: bool) -> Non
     order = _toposort(deps_map)
     click.echo(f"[build-all] {len(order)} DBs in dependency order:\n  "
                + " -> ".join(order))
-    terminal: dict[str, str | None] = {}
+    terminal: dict[str, str | None] = {}   # only nodes SUBMITTED this run
+    built: list[str] = []
+    skipped: list[str] = []
     for name in order:
+        if not force and _is_resolved(name):
+            skipped.append(name)
+            click.echo(f"[build-all] skip (resolved): {name}")
+            continue
+        # afterok only on upstream nodes we actually submitted; resolved upstream
+        # already has its output on disk, so no dependency is needed.
         upstream = tuple(j for d in deps_map[name] if (j := terminal.get(d)))
         rc, job_id = _submit_pipeline(name, (Path(workdir) / name) if workdir else None,
                                       dry_run=dry_run, depends_on=upstream)
@@ -200,7 +222,9 @@ def build_all(manifest: Path | None, workdir: Path | None, dry_run: bool) -> Non
             msg = f"{name} pipeline submit failed (rc={rc}); aborting chain."
             raise click.ClickException(msg)
         terminal[name] = job_id
-    click.echo("[build-all] all pipelines submitted.")
+        built.append(name)
+    click.echo(f"[build-all] submitted {len(built)}, skipped {len(skipped)} "
+               f"already-resolved ({len(order)} total).")
 
 
 def _toposort(deps_map: dict[str, list[str]]) -> list[str]:
