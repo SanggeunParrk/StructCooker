@@ -8,8 +8,8 @@
 # Test output → BioMol_clean; source is the read-only production base cif.
 schema: C
 
-old_env_path: ${p:/data/shared/cssb_data/BioMol/lmdb/pdb/cif/cif_pdb.lmdb}
-new_env_path: ${p:/data/shared/cssb_data/BioMol_clean/lmdb/chain/cif/cif_chain.lmdb}
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/chain/cif/cif_chain.lmdb}
 
 recipe: ${p:src/structcooker/workflows/exports/cif_chain.py}
 

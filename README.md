@@ -20,7 +20,11 @@ git clone --recursive <repo-url> && cd StructCooker
 # 2. environment (pixi installs StructCooker + DataCooker + biomol + hmmer/kalign/…)
 pixi install && pixi shell
 
-# 3. see what you can build
+# 3. point the two roots at your machine (portable across servers)
+export DATA_ROOT=/path/to/raw/downloads   # mmCIF, CCD, OpenFold, … (read)
+export OUTPUT_ROOT=/path/to/reproduced/db # where built LMDBs go   (write)
+
+# 4. see what you can build
 structcooker list
 
 # 4. build one database (submits the planning-first SLURM pipeline)
@@ -40,8 +44,10 @@ still need porting (🔴) or are deferred (⏸️). [docs/roadmap.md](docs/roadm
 the full dependency DAG for the three deliverables — the PDB set + training DBs,
 the OpenFold distillation sets, and the MPNN training view.
 
-Reproduced databases are written to `BioMol_clean/` (the production `BioMol/` tree is
-read-only). Correctness bar: a rebuilt DB is decode-level identical to production.
+Every config resolves its paths from two env vars — `DATA_ROOT` (raw inputs, read)
+and `OUTPUT_ROOT` (reproduced DBs, write) — so the same configs run on any server by
+pointing those two at the right places (they default to this cluster's layout).
+Correctness bar: a rebuilt DB is decode-level identical to production.
 
 ## How it fits together
 

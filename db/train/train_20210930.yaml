@@ -3,15 +3,15 @@
 # (size tiers are a build-time concern, not a semantic split); residue10k dropped.
 schema: B
 
-old_env_path: ${p:/data/shared/cssb_data/BioMol_clean/lmdb/pdb/cif/cif_pdb_attached.lmdb}
-new_env_path: ${p:/data/shared/cssb_data/BioMol_clean/lmdb/pdb/cif/cif_pdb_attached_train_20210930_res9_chain300.lmdb}
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb_attached.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb_attached_train_20210930_res9_chain300.lmdb}
 
 recipe: ${p:src/structcooker/workflows/filters/data.py}
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_signalp.py}
 
 metadata_input:
-  signalp_dir: ${p:/data/shared/cssb_data/BioMol_clean/materials/intermediate/signalp}
-  seqid2seq_path: ${p:/data/shared/cssb_data/BioMol_clean/metadata/seq_id_map.tsv}
+  signalp_dir: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/signalp}
+  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
 
 parameters:
   resolution_cutoff: 9.0

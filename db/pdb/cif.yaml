@@ -5,12 +5,12 @@
 # tiers them automatically, so there is no file_list / n_jobs / chunk_size here.
 schema: A
 
-env_path: ${p:/data/shared/cssb_data/BioMol_clean/lmdb/pdb/cif/cif_pdb.lmdb}
-data_dir: ${p:/data/shared/cssb_data/mmcif_files_latest/mmcif_files}
+env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/mmcif_files_latest/mmcif_files}
 file_pattern: "*.cif"
 
 recipe: ${p:src/structcooker/workflows/ingest/cif.py}
-ccd_db_path: ${p:/data/shared/cssb_data/BioMol_clean/ccd/biomol_CCD.lmdb}
+ccd_db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/ccd/biomol_CCD.lmdb}
 
 reader:
   loader: structcooker.instructions.readers.cif.get_cif_data
