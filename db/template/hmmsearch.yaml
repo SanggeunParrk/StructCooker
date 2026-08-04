@@ -1,0 +1,17 @@
+# template Phase 0 — hmmbuild(query a3m -> HMM) + hmmsearch(HMM vs template L-chain DB).
+# PARALLEL op (split the query a3m dir into work items, run each). Produces per-query
+# hmm .out files consumed by Phase 1/2. Idempotent (skips existing HMM/.out).
+# Upstream intermediates (derivable but not yet on the clean surface): the L-chain
+# template fasta + the lowercase-stripped query a3m dir.
+split_recipe_path: ${p:src/structcooker/workflows/search/load_a3m_list.py}
+recipe_path: ${p:src/structcooker/workflows/search/hmmsearch.py}
+
+inputs:
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/pdb_polypeptide_L.fasta}
+  data_dir: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/msa_wo_lower}
+  output_dir: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/hmm}
+  hmm_output_dir: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/hmm_output}
+  output_pattern: ".hmm"
+
+n_jobs: -1
+test_run: false

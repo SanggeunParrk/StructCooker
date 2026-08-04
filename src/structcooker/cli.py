@@ -88,12 +88,15 @@ def _op_of(cfg: dict) -> str:
     """
     if cfg.get("old_env_path"):
         return "rebuild"
+    if cfg.get("split_recipe") or cfg.get("split_recipe_path"):
+        return "parallel"                       # split items, process each (e.g. hmmsearch)
     if cfg.get("output_data_path"):
         reads_db = any(cfg.get(k) for k in ("db_path", "extract_recipe", "extract_recipe_path"))
         return "extract" if reads_db else "materialize"
     if cfg.get("env_path"):
         return "build"
-    msg = "config needs old_env_path (rebuild) / env_path (build) / output_data_path (project)"
+    msg = ("config needs old_env_path (rebuild) / env_path (build) / "
+           "output_data_path (project) / split_recipe (parallel)")
     raise click.ClickException(msg)
 
 
@@ -169,7 +172,7 @@ def _submit_pipeline(
     return proc.returncode, job_id
 
 
-_WORKFLOW_CMD = {"materialize": "run", "extract": "extract-lmdb"}
+_WORKFLOW_CMD = {"materialize": "run", "extract": "extract-lmdb", "parallel": "parallel-run"}
 WORKFLOW_CLI = [sys.executable, "-u", "-m", "datacooker.cli.workflow"]
 
 
