@@ -1,0 +1,20 @@
+# distillation_short msa capped to depth 2000. Schema E. Rebuild from short_msa.
+# Same cap_msa_depth op as the PDB a3m_* caps (only max_depth differs); rebuilding
+# via to_bytes also re-frames the value as standard zstd. Validate small vs
+# production, do NOT full-build (per project rule).
+schema: E
+
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_short/msa/msa_short.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_short/msa/msa_short_d2k.lmdb}
+
+recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
+
+parameters:
+  max_depth: 2000
+
+reader:
+  adapter: structcooker.instructions.transforms.openfold.adapt_msa_for_cap
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

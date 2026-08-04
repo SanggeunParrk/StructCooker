@@ -1,0 +1,20 @@
+# distillation_rna cif — CIFMol from OpenFold3 rna distillation. Schema A. Build.
+# Mirror of long_cif.yaml for the rna set. Base structure build (feeds rna_cif_attached).
+# Code-complete; validate small vs production, do NOT full-build (per project rule).
+schema: A
+
+env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_rna/cif/cif_rna.lmdb}
+data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/rna_distillation_set/rna_monomer_preprocessed_cache}
+file_pattern: "structure.npz"
+
+recipe: ${p:src/structcooker/workflows/ingest/openfold_structure.py}
+key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
+
+inputs:
+  ccd_db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/ccd/biomol_CCD.lmdb}
+
+reader:
+  loader: structcooker.instructions.readers.openfold.get_openfold_structure_data
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

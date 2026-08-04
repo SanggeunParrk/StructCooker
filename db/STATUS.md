@@ -17,6 +17,7 @@ builds must be absorbed into a datacooker recipe/op before they get a config).
 | `msa/a3m` | build | E | real `*.a3m` files → st_size |
 | `msa/a3m_d16k` / `a3m_d2k` / `a3m_d512` | rebuild | E | a3m `.index.tsv` (depth cap 16000/2000/512) |
 | `ccd/ccd` | build | G | component `.cif` files → st_size |
+| `chain/cif_chain` | rebuild | C | cif_pdb_attached `.index.tsv` (split→explode per chain; verified 333/333 decode-identical) |
 
 Replaces the 10 hand-tuned `cif_pdb_{light,medium,large,xlarge,huge,monster,smoke,…}`
 variants with `pdb/cif.yaml` alone. Schema **G** (CCD chem-component) added for `ccd`.
@@ -97,8 +98,7 @@ watchdog). Full `libs/datacooker/tests` suite **53/53 green** under ray-only.
 
 | db | current builder | why not clean |
 |---|---|---|
-| `chain/cif_chain` | `scripts/maintenance/build_cif_chain.py` | script, not a datacooker config — absorb into a recipe |
-| `chain/cif_chain_seq` | `scripts/maintenance/build_chain_seq.py` | ditto |
+| `chain/cif_chain_seq` | `scripts/maintenance/build_chain_seq.py` | script, not a datacooker config — absorb into a recipe |
 | `template/seqid_mols` (Phase 3) | `ingest/seqid_template_mols` | **items are seqids, not files** → planner st_size sizing N/A; also multi-input (metadata + cif_chain lookup) |
 | `template/chain` (Phase 4) | `ingest/chain_template_from_seqid` | items are chain keys, not files — same sizing gap |
 | `template/pdb` (lower) | `scripts/maintenance/rekey_*` | uppercase→lowercase rekey — absorb as a datacooker `rekey` op |
@@ -111,7 +111,34 @@ Planning-first `build` sizes items by input-file `st_size`. Key-list builds
 Options: size uniformly (n items × mean), or read the source `cif_chain`/seqid index
 for per-key bytes. Until then these stay on their existing submits.
 
-## ⏸️ Deferred — code/config only, build later (per user)
+## ⏸️ Distillation — code/config only, validate small, never full-build (per user)
 
-`distillation/{long,short,rna,disordered}`: `cif_*_attached`, `msa_*_{d2k,d512,d5k}`,
-`template_topn_*`, `template_disordered`. Write configs + recipes, tag build deferred.
+The OpenFold3 distillation sets. **Recipes exist** (`workflows/ingest/openfold_*`);
+configs are ported onto the clean `db/distillation/` surface (env-var paths, schema tag,
+ops knobs dropped — same shape as long_cif). Production stores the *downstream* DBs
+(`cif_*_attached`, capped `msa_*_{d2k,d512,d5k}`, `template_topn_*`/`_disordered`), so the
+full chain is base → derived.
+
+**✅ ported + resolve + small-validated (21 configs):**
+
+| kind | schema | configs |
+|---|---|---|
+| structure (base cif) | A | `{long,short,rna,disordered}_cif` |
+| msa (base, depth 65536) | E | `{long,short,rna,disordered}_msa` |
+| msa depth-caps | E | `{long,disordered}_msa_{d2k,d512}`, `{short,rna}_msa_{d2k,d512,d5k}` |
+| template (top-N) | D | `{long,short}_template_topn` |
+| template (disordered) | D | `disordered_template` |
+
+Base-structure pipeline validated in-process (Ray-free): one real `structure.npz`
+(`MGYP003648360693`) → recipe → schema-A valid → serialize/deserialize round-trips.
+
+**🔴 still blocked — `cif_*_attached` (schema B):** needs two upstreams first, so NOT
+fabricated:
+1. a **rewrap** step (`scripts/maintenance/rewrap_cif.py`, `cif_{set}` → `cif_{set}_wrapped`)
+   — still script-only, absorb into a datacooker recipe like the other 🔴 rows;
+2. the **metadata** tsvs (`seq_id_map.tsv`, `seq_cluster40.tsv`) on the clean surface —
+   themselves unported (see PDB metadata). Source of truth: `configs/metadata/attach_cif_*_revisit.yaml`
+   (attach recipe + `fasta/{set}.fasta`), ready to mirror once the two upstreams land.
+
+By project rule these configs are code-complete only: validate on a small sample vs the
+existing production DBs, **do not full-build** (they already exist).

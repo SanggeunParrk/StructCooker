@@ -1,0 +1,21 @@
+# distillation_rna msa — OpenFold3 rna alignments -> msa_dict. Schema E. Build.
+# Mirror of openfold_msa_rna. Base (depth 65536) msa; feeds rna_msa_d2k / _d512 caps.
+# Code-complete; validate small vs production, do NOT full-build (per project rule).
+schema: E
+
+env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_rna/msa/msa_rna.lmdb}
+data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/rna_distillation_set/rna_monomer_preprocessed_cache}
+file_pattern: "alignment.npz"
+
+recipe: ${p:src/structcooker/workflows/ingest/openfold_msa.py}
+key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
+
+inputs:
+  a3m_type: rna
+  max_depth: 65536
+
+reader:
+  loader: structcooker.instructions.readers.openfold.get_openfold_msa_data
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
