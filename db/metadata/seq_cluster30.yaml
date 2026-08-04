@@ -1,0 +1,26 @@
+# seq_cluster30 — mmseqs2 sequence clusters at 0.30 identity (antibodies via cd-hit).
+# MATERIALIZE op (recipe -> cluster TSV). Feeds attach / valid / template dedup.
+#
+# Inputs it needs (provided/upstream):
+#   • seq_id_map (from db/metadata/seq_id_map) — respects SEQID_SEED for id consistency
+#   • fasta to cluster — SEQCLUSTER_FASTA (default: this build's cif_pdb.fasta).
+#     NOTE: production clustered the UNION corpus (pdb + distillation = all.fasta);
+#     for decode-identical cluster labels set SEQCLUSTER_FASTA to that union fasta.
+#     mmseqs2 is deterministic given the same corpus + params + version, so no seed
+#     artifact is needed (unlike seq_id_map) — only the right corpus + pinned mmseqs2.
+#   • SabDab antibody summary — external download, like CCD/mmCIF (DATA_ROOT/external).
+recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30.tsv}
+
+inputs:
+  tmp_dir: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/tmp/seq_cluster30}
+  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+  fasta_path: ${p:${oc.env:SEQCLUSTER_FASTA,${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}}
+  sabdab_summary_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/external/SabDab/sabdab_summary_all.tsv}
+  mmseqs2_seq_id: 0.30
+  mmseqs2_cov: 0.8
+  mmseqs2_covmode: "0"
+  mmseqs2_clustermode: "1"
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_clusters

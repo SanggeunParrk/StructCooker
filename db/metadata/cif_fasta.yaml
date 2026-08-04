@@ -1,0 +1,12 @@
+# cif_fasta — chain sequences from pdb/cif_pdb -> merged fasta.
+# EXTRACT op (reads the LMDB, projects a fasta). Feeds seq_id_map + seq_cluster.
+# No schema (produces a .fasta, not an LMDB).
+db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+extract_recipe_path: ${p:src/structcooker/workflows/exports/fasta.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
+
+reader:
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta

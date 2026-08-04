@@ -84,6 +84,7 @@ ipykernel = ">=6.30.1,<7"
 hmmer = "==3.3.2"
 anarci = "*"
 cd-hit = "*"
+mmseqs2 = "*"   # protein sequence clustering (seq_cluster); cd-hit is for antibodies
 
 
 [tool.hatch.metadata]
