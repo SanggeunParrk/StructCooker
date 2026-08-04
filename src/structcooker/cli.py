@@ -140,15 +140,19 @@ def _submit_pipeline(
     *,
     dry_run: bool,
     depends_on: tuple[str, ...] = (),
-) -> tuple[int, str | None]:
+    cfg: dict | None = None,
+) -> str | None:
     """Materialize the engine config for ``name`` and submit its pipeline.
 
-    Returns ``(returncode, terminal_job_id)`` -- the terminal id (the pipeline's
-    final index stage) lets ``build-all`` afterok-chain the next config onto it.
-    Streams the pipeline output through while capturing it.
+    Returns the terminal job id (the pipeline's final index stage) so ``build-all`` can
+    afterok-chain the next config onto it. Raises ``ClickException`` on any failure -- a
+    non-zero exit, or a clean exit with no terminal id (output format drift) -- so a
+    caller never mistakes a failed submit for a skip. Pass ``cfg`` to reuse an
+    already-loaded config.
     """
     db_path = _resolve_db(name)
-    cfg = load_config(db_path)
+    if cfg is None:
+        cfg = load_config(db_path)
     schema = _schema_of(cfg, db_path)
     expansion = schemas.expansion(schema)
     op = "rebuild" if cfg.get("old_env_path") else "build"
@@ -167,15 +171,18 @@ def _submit_pipeline(
     click.echo(proc.stdout, nl=False)
     if proc.stderr:
         click.echo(proc.stderr, nl=False, err=True)
+    if proc.returncode != 0:
+        msg = f"{name} pipeline submit failed (rc={proc.returncode})."
+        raise click.ClickException(msg)
     m = _TERMINAL_RE.search(proc.stdout or "")
     job_id = (m.group(1).strip() or None) if m else None
-    if proc.returncode == 0 and job_id is None:
+    if job_id is None:
         # A clean pipeline always emits PIPELINE_TERMINAL_JOB. Missing it means the
         # output format drifted -- fail loud rather than let build-all treat this as
         # "skipped" and submit dependents with no afterok (silent out-of-order run).
         msg = f"{name}: pipeline exited 0 but emitted no terminal job id (format drift?)"
         raise click.ClickException(msg)
-    return proc.returncode, job_id
+    return job_id
 
 
 _WORKFLOW_CMD = {"materialize": "run", "extract": "extract-lmdb", "parallel": "parallel-run"}
@@ -194,18 +201,23 @@ def _submit_workflow(
     op: str,
     dry_run: bool,
     depends_on: tuple[str, ...] = (),
-) -> tuple[int, str | None]:
-    """Submit a projection op (materialize / extract) as a single SLURM job.
+    cfg: dict | None = None,
+) -> str | None:
+    """Submit a projection op (materialize / extract / parallel) as a single SLURM job.
 
     These configs produce a file (a TSV/fasta projection), not an LMDB, so they run
-    through ``datacooker.cli.workflow`` (single-process ``run`` / ``extract-lmdb``),
-    not the planning-first tier pipeline. One ``run_once`` job, afterok-chainable, so
-    build-all can thread these metadata nodes into the DAG like any other.
+    through ``datacooker.cli.workflow`` (single-process ``run`` / ``extract-lmdb`` /
+    ``parallel-run``), not the planning-first tier pipeline. Returns the ``run_once`` job
+    id (afterok-chainable, so build-all threads these nodes into the DAG like any other);
+    ``run_once`` raises on submit failure, so a returned id is always real. Pass ``cfg``
+    to reuse an already-loaded config.
     """
     from datacooker.executors.slurm import SlurmExecutor
 
     db_path = _resolve_db(name)
-    target = load_config(db_path).get("output_data_path")
+    if cfg is None:
+        cfg = load_config(db_path)
+    target = cfg.get("output_data_path")
     wd = Path(workdir) if workdir else REPO / "logs" / "workflow" / Path(name).name
     click.echo(f"[structcooker] {db_path.relative_to(REPO)}  op={op}  -> {target}"
                + (f"  afterok={','.join(depends_on)}" if depends_on else ""))
@@ -214,7 +226,7 @@ def _submit_workflow(
     execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
     handle = execu.run_once(name=Path(name).name, argv=argv,
                             mem_gb=mem_gb, cores=cores, depends_on=depends_on)
-    return 0, handle.job_id
+    return handle.job_id
 
 
 @cli.command("build")
@@ -235,17 +247,17 @@ def build(name: str, workdir: Path | None, dry_run: bool,
     (projection ops that write a TSV/fasta, not an LMDB) run through
     ``datacooker.cli.workflow`` as a single job.
     """
-    op = _op_of(load_config(_resolve_db(name)))
+    db_path = _resolve_db(name)
+    cfg = load_config(db_path)
+    op = _op_of(cfg)
     deps = tuple(d for d in depends_on.split(",") if d.strip())
     if op in _WORKFLOW_CMD:
         if show:
-            click.echo(f"  op={op} -> {' '.join([*WORKFLOW_CLI, _WORKFLOW_CMD[op], str(_resolve_db(name))])}")
+            click.echo(f"  op={op} -> {' '.join([*WORKFLOW_CLI, _WORKFLOW_CMD[op], str(db_path)])}")
             return
-        rc, _ = _submit_workflow(name, workdir, op=op, dry_run=dry_run, depends_on=deps)
-        raise SystemExit(rc)
+        _submit_workflow(name, workdir, op=op, dry_run=dry_run, depends_on=deps, cfg=cfg)
+        return
     if show:
-        db_path = _resolve_db(name)
-        cfg = load_config(db_path)
         schema = _schema_of(cfg, db_path)
         wd = Path(workdir) if workdir else REPO / "logs" / "pipeline" / Path(name).name
         argv = [*PIPELINE_CLI, str(wd / "engine.yaml"), "--workdir", str(wd),
@@ -253,8 +265,7 @@ def build(name: str, workdir: Path | None, dry_run: bool,
                 "--repo", str(REPO)]
         click.echo("  (engine.yaml materialized on real build)\n  " + " ".join(argv))
         return
-    rc, _ = _submit_pipeline(name, workdir, dry_run=dry_run, depends_on=deps)
-    raise SystemExit(rc)
+    _submit_pipeline(name, workdir, dry_run=dry_run, depends_on=deps, cfg=cfg)
 
 
 def _meta_book(deps_map: dict[str, list[str]], *,
@@ -287,20 +298,15 @@ def _meta_book(deps_map: dict[str, list[str]], *,
                 return None
             depends_on = tuple(j for j in upstream if j)
             wd = (Path(workdir) / name) if workdir else None
-            # dispatch by op: projection ops (materialize/extract) go through the
-            # workflow runner, build/rebuild through the planning-first pipeline.
-            if _op_of(cfg) in _WORKFLOW_CMD:
-                rc, job_id = _submit_workflow(name, wd, op=_op_of(cfg),
-                                              dry_run=dry_run, depends_on=depends_on)
-                if rc != 0:
-                    msg = f"{name} workflow submit failed (rc={rc})."
-                    raise click.ClickException(msg)
-                return job_id
-            rc, job_id = _submit_pipeline(name, wd, dry_run=dry_run, depends_on=depends_on)
-            if rc != 0:
-                msg = f"{name} pipeline submit failed (rc={rc})."
-                raise click.ClickException(msg)
-            return job_id
+            # dispatch by op: projection ops (materialize/extract/parallel) go through
+            # the workflow runner, build/rebuild through the planning-first pipeline.
+            # Both submitters raise on failure, so a returned id is always real.
+            op = _op_of(cfg)
+            if op in _WORKFLOW_CMD:
+                return _submit_workflow(name, wd, op=op, dry_run=dry_run,
+                                        depends_on=depends_on, cfg=cfg)
+            return _submit_pipeline(name, wd, dry_run=dry_run,
+                                    depends_on=depends_on, cfg=cfg)
         submit.__name__ = f"submit[{name}]"
         return submit
 
