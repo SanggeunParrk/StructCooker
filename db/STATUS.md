@@ -111,17 +111,28 @@ is ported under `db/metadata/`:
 ### Key-list sizing gap — CLOSED
 A build with `keyed: true` sizes items by **count** (uniform), not input `st_size`,
 so key-list builds (items are seqids/chain-ids, resolved by lookup) plan cleanly.
-Template Phase 3/4 (`template/seqid_template_mols`, `template/chain_template`, schema D)
-and `msa/msa_rna`, `valid/valid1`, `valid/valid2` are now ported and resolve.
 
-## 🔴 Still script-only (absorb into a recipe/op)
+### Template hmm pipeline — ABSORBED (4th op: `parallel`)
+The full template pipeline is now on the clean surface, wired in MANIFEST order
+`hmmsearch → template_candidates → template_seqs → seqid_template_mols → chain_template`:
 
-| db | current builder | why not clean yet |
+| config | op | notes |
 |---|---|---|
-| `chain/cif_chain_seq` | `build_chain_seq.py` | simple fasta → keyed-seq LMDB; absorb as a build recipe |
-| `template/pdb` (lower) | `rekey_seq_id_db.py` | uppercase→lowercase / width rekey — absorb as a datacooker `rekey` op + key_map |
-| `template` Phase 1/2 | `precompute_template_candidates.py` + hmmsearch | the **hmm pipeline** (hmmsearch over all chains → reduced HMMs + seq maps + key filelists) that feeds Phase 3/4 — a large external-tool pipeline, not yet on the clean surface |
-| valid intermediate attach | (attach on valid_1) | `valid1 → attach → cif_attached_valid_1 → valid2`; reuse the pdb/cif_attached pattern |
+| `template/hmmsearch` | parallel | Phase 0 — hmmbuild(query a3m→HMM) + hmmsearch(vs L-chain DB). `split_recipe` → `datacooker.cli.workflow parallel-run`. Idempotent |
+| `template/template_candidates` | materialize | Phase 1/2 — seqid_to_chains, chain_to_templates, reduced_hmm (verbatim port; logic verified on synthetic inputs) |
+| `template/template_seqs` | materialize | Phase 3 seq maps (seqid_to_seq, chain_to_seq) — supersedes the old cif_chain_seq LMDB |
+| `template/seqid_template_mols` / `chain_template` | build (keyed) | Phase 3/4, schema D |
+
+`msa/msa_rna`, `valid/valid1`, `valid/valid1_attach`, `valid/valid2` are also ported.
+
+## 🔴 Small remaining derivations (minor)
+
+| item | what | note |
+|---|---|---|
+| key filelists | `template_chain_filelist.txt` (protein chains), `seqid_template_filelist.txt` (= `cut -f1 seqid_to_chains`) | tiny list projections feeding the Phase 3/4 keyed builds |
+| hmmsearch inputs | `pdb_polypeptide_L.fasta` (L-chain filter of cif fasta), `msa_wo_lower` (a3m insertion-strip) | small extract/filter derivations |
+| `template/pdb` (lower) | `rekey_seq_id_db.py` | optional case/width rekey — absorb as a `rekey` op once the exact transform is confirmed |
+| external inputs (provided) | SabDab, signalp, raw RNA a3m | downloaded/tool outputs, like mmCIF/CCD — not reproduced here |
 
 ## ⏸️ Distillation — code/config only, validate small, never full-build (per user)
 
