@@ -24,18 +24,40 @@ pixi install && pixi shell
 export DATA_ROOT=/path/to/raw/downloads   # mmCIF, CCD, OpenFold, … (read)
 export OUTPUT_ROOT=/path/to/reproduced/db # where built LMDBs go   (write)
 
-# 4. see what you can build
+# 4. (optional) to reproduce the EXISTING BioMol set identically, seed the seq_id map
+#    -- seq_id is an assigned counter, so from scratch you'd get a different (but
+#    self-consistent) id space. Omit this to build a fresh set.
+python -c "from huggingface_hub import hf_hub_download; \
+  hf_hub_download('biomol/seq-id-map','seq_id_map.tsv.gz',repo_type='dataset',local_dir='$DATA_ROOT/metadata')"
+gunzip -f $DATA_ROOT/metadata/seq_id_map.tsv.gz
+export SEQID_SEED=$DATA_ROOT/metadata/seq_id_map.tsv
+
+# 5. see what you can build
 structcooker list
 
-# 4. build one database (submits the planning-first SLURM pipeline)
-structcooker build pdb/cif          # raw mmCIF  -> pdb/cif
-structcooker build pdb/cif_attached # + metadata -> pdb/cif_attached
-structcooker build msa/a3m_d16k     # a3m depth-capped to 16000
+# 6a. build one database (op auto-inferred from the config)
+structcooker build pdb/cif           # raw mmCIF   -> pdb/cif        (build)
+structcooker build metadata/seq_id_map  # cif fasta -> seq_id map    (materialize)
+structcooker build pdb/cif_attached  # + metadata  -> pdb/cif_attached (rebuild)
+
+# 6b. or reproduce the whole DAG in dependency order, incrementally
+structcooker build-all               # skips whatever is already built
 ```
 
-`build` submits a SLURM job array (tiers → merge → index, afterok-chained), so you
-need a SLURM cluster and the raw inputs on disk. See
-[docs/roadmap.md](docs/roadmap.md) for how raw inputs are obtained.
+`structcooker build` auto-infers the op from each config: **build/rebuild** run the
+planning-first SLURM pipeline (tiers → merge → index, afterok-chained); **materialize/
+extract** (metadata projections that write a TSV/fasta, not an LMDB) run a single
+workflow job. `build-all` wires every config into one DAG (`db/MANIFEST.yaml`) and
+submits them SLURM-ordered, skipping already-built outputs. You need a SLURM cluster
+and the raw inputs on disk. See [docs/roadmap.md](docs/roadmap.md) for raw inputs.
+
+**Reproducing production identically vs. a fresh set.** Most DBs rebuild decode-level
+identical to production from raw inputs. The exception is `seq_id_map`: seq_id is an
+assigned running counter, not a hash, so an unseeded build mints a *different* (but
+internally coherent) id space, which then threads through everything keyed by seq_id.
+Set `SEQID_SEED` to the published map (above) to match production; leave it unset for a
+fresh set. `seq_cluster` matches production given the same corpus (`SEQCLUSTER_FASTA`)
++ mmseqs2 version — it is deterministic, so it needs no seed.
 
 ## What you can build
 
