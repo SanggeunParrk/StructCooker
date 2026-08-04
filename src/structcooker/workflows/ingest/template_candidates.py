@@ -1,15 +1,14 @@
-from datacooker import RecipeBook
-
-from structcooker.instructions.transforms.template_candidates import (
-    precompute_candidates,
-)
-
 """Template Phase 1/2 — seq_id -> chains and chain -> <=topk templates (+ reduced hmm).
 
 Materialize recipe: the instruction reads the hmm outputs + fasta + maps and writes
 seqid_to_chains / chain_to_templates / reduced_hmm as side effects, returning a status
 (output_data_path = chain_to_templates.tsv is the build-done marker).
 """
+from datacooker import RecipeBook
+
+from structcooker.instructions.transforms.template_candidates import (
+    precompute_candidates,
+)
 
 recipe = RecipeBook()
 

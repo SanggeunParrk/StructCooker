@@ -1,8 +1,7 @@
+"""Recipe: the protein-chain work list (pdbid_chain of polypeptide(L) chains)."""
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.filelists import fasta_chain_list
-
-"""Small list/fasta projection for the template pipeline."""
 
 recipe = RecipeBook()
 recipe.step(

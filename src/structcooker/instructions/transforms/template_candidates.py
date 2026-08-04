@@ -55,7 +55,7 @@ def _load_pdb_dates(path: str | Path) -> dict[str, dt.date]:
     (``cif_id\tresolution\tdeposition_date``).
     """
     dates: dict[str, dt.date] = {}
-    with Path(path).open() as f:
+    with Path(path).open(encoding="utf-8") as f:
         head = f.readline().rstrip("\n").split("\t")
         col = {name: i for i, name in enumerate(head)}
         id_i = col.get("pdbid", col.get("cif_id", 0))
@@ -76,7 +76,7 @@ def _load_pdb_dates(path: str | Path) -> dict[str, dt.date]:
 
 
 def _read_chain_list(path: str | Path) -> list[str]:
-    with Path(path).open() as f:
+    with Path(path).open(encoding="utf-8") as f:
         return [ln.strip() for ln in f if ln.strip()]
 
 
@@ -85,7 +85,7 @@ def _parse_cif_fasta(path: str | Path, wanted: set[str]) -> dict[str, str]:
     chain_seq: dict[str, str] = {}
     cur: str | None = None
     buf: list[str] = []
-    with Path(path).open() as f:
+    with Path(path).open(encoding="utf-8") as f:
         for line in f:
             if line.startswith(">"):
                 if cur is not None and cur in wanted:
@@ -104,7 +104,7 @@ def _parse_cif_fasta(path: str | Path, wanted: set[str]) -> dict[str, str]:
 def _stream_seq_to_id(path: str | Path, needed: set[str]) -> dict[str, str]:
     """Map sequence -> seq_id, streamed from seq_id_map.tsv, filtered to ``needed``."""
     seq_to_id: dict[str, str] = {}
-    with Path(path).open() as f:
+    with Path(path).open(encoding="utf-8") as f:
         for line in f:
             parts = line.rstrip("\n").split("\t")
             if len(parts) >= 2 and parts[1] in needed:
@@ -219,7 +219,7 @@ def _phase1(
     out_path = Path(out_seqid_chains)
     if out_path.exists():
         seqid_chains: dict[str, list[str]] = {}
-        with out_path.open() as f:
+        with out_path.open(encoding="utf-8") as f:
             for line in f:
                 sid, cs = line.rstrip("\n").split("\t")
                 seqid_chains[sid] = cs.split(",") if cs else []
@@ -235,7 +235,7 @@ def _phase1(
         if sid is not None:
             grouped[sid].append(chain)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w") as out:
+    with out_path.open("w", encoding="utf-8") as out:
         for sid, cs in grouped.items():
             out.write(f"{sid}\t{','.join(cs)}\n")
     return dict(grouped)
@@ -279,7 +279,7 @@ def precompute_candidates(
     n_chain = n_with = 0
     out_path = Path(out_chain_templates)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w") as out:
+    with out_path.open("w", encoding="utf-8") as out:
         for per_seqid in results:
             for chain, tids in per_seqid:
                 n_chain += 1
@@ -303,7 +303,7 @@ def precompute_seqs(
     ``precompute_template_seqs.py``.
     """
     needed: set[str] = set()
-    with Path(seqid_chains).open() as f:
+    with Path(seqid_chains).open(encoding="utf-8") as f:
         for line in f:
             sid = line.split("\t", 1)[0]
             if sid:
@@ -311,7 +311,7 @@ def precompute_seqs(
 
     n = 0
     Path(out_seqid_seq).parent.mkdir(parents=True, exist_ok=True)
-    with Path(seq_id_map).open() as f, Path(out_seqid_seq).open("w") as out:
+    with Path(seq_id_map).open(encoding="utf-8") as f, Path(out_seqid_seq).open("w", encoding="utf-8") as out:
         for line in f:
             p = line.rstrip("\n").split("\t")
             if len(p) >= 2 and p[0] in needed:
@@ -323,7 +323,7 @@ def precompute_seqs(
     is_prot = False
     buf: list[str] = []
     Path(out_chain_seq).parent.mkdir(parents=True, exist_ok=True)
-    with Path(cif_fasta).open() as f, Path(out_chain_seq).open("w") as out:
+    with Path(cif_fasta).open(encoding="utf-8") as f, Path(out_chain_seq).open("w", encoding="utf-8") as out:
         for line in f:
             if line.startswith(">"):
                 if cur is not None and is_prot:

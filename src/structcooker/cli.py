@@ -169,10 +169,21 @@ def _submit_pipeline(
         click.echo(proc.stderr, nl=False, err=True)
     m = _TERMINAL_RE.search(proc.stdout or "")
     job_id = (m.group(1).strip() or None) if m else None
+    if proc.returncode == 0 and job_id is None:
+        # A clean pipeline always emits PIPELINE_TERMINAL_JOB. Missing it means the
+        # output format drifted -- fail loud rather than let build-all treat this as
+        # "skipped" and submit dependents with no afterok (silent out-of-order run).
+        msg = f"{name}: pipeline exited 0 but emitted no terminal job id (format drift?)"
+        raise click.ClickException(msg)
     return proc.returncode, job_id
 
 
 _WORKFLOW_CMD = {"materialize": "run", "extract": "extract-lmdb", "parallel": "parallel-run"}
+# Single-node resource sizing per projection op. Config keys can't carry hints (the
+# workflow CLI re-reads the yaml and rejects unknown keys), so size by op: parallel
+# fans out (full node); extract runs joblib over a whole DB; materialize is mostly
+# single-process (a couple stream a multi-GB fasta, hence the mem headroom).
+_WORKFLOW_RESOURCES = {"parallel": (490, 112), "extract": (200, 32), "materialize": (128, 8)}
 WORKFLOW_CLI = [sys.executable, "-u", "-m", "datacooker.cli.workflow"]
 
 
@@ -199,9 +210,10 @@ def _submit_workflow(
     click.echo(f"[structcooker] {db_path.relative_to(REPO)}  op={op}  -> {target}"
                + (f"  afterok={','.join(depends_on)}" if depends_on else ""))
     argv = [*WORKFLOW_CLI, _WORKFLOW_CMD[op], str(db_path)]
+    mem_gb, cores = _WORKFLOW_RESOURCES[op]
     execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
     handle = execu.run_once(name=Path(name).name, argv=argv,
-                            mem_gb=490, cores=112, depends_on=depends_on)
+                            mem_gb=mem_gb, cores=cores, depends_on=depends_on)
     return 0, handle.job_id
 
 

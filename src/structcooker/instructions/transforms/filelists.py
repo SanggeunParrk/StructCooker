@@ -23,7 +23,7 @@ def filter_fasta_polypeptide_l(fasta_path: str | Path, out_path: str | Path) -> 
     n = 0
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     keep = False
-    with Path(fasta_path).open() as f, Path(out_path).open("w") as out:
+    with Path(fasta_path).open(encoding="utf-8") as f, Path(out_path).open("w", encoding="utf-8") as out:
         for line in f:
             if line.startswith(">"):
                 keep = _L_TYPE in line
@@ -43,7 +43,7 @@ def fasta_chain_list(fasta_path: str | Path, out_path: str | Path) -> str:
     """
     n = 0
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-    with Path(fasta_path).open() as f, Path(out_path).open("w") as out:
+    with Path(fasta_path).open(encoding="utf-8") as f, Path(out_path).open("w", encoding="utf-8") as out:
         for line in f:
             if line.startswith(">") and _L_TYPE in line:
                 out.write(_chain_id(line[1:]) + "\n")
@@ -55,7 +55,7 @@ def tsv_key_list(tsv_path: str | Path, out_path: str | Path) -> str:
     """Write column-0 keys of a TSV, one per line (e.g. seqid_to_chains -> seq_ids)."""
     n = 0
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-    with Path(tsv_path).open() as f, Path(out_path).open("w") as out:
+    with Path(tsv_path).open(encoding="utf-8") as f, Path(out_path).open("w", encoding="utf-8") as out:
         for line in f:
             key = line.split("\t", 1)[0].strip()
             if key:
