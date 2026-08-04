@@ -20,13 +20,20 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
+from datacooker.api import execute
+from datacooker.conditions import output_absent
+from datacooker.config import load_config
+from datacooker.errors import StepExecutionError
+from datacooker.recipe import RecipeBook
 from omegaconf import OmegaConf
 
-from datacooker.config import load_config
-
 from structcooker import schemas
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 REPO = Path(__file__).resolve().parents[2]          # StructCooker/
 DB_ROOT = REPO / "db"
@@ -73,7 +80,7 @@ def _write_engine_yaml(db_path: Path, workdir: Path) -> Path:
 
 @click.group()
 def cli() -> None:
-    """Declarative, planning-first BioMol DB builds."""
+    """Build BioMol DBs declaratively (planning-first)."""
 
 
 @cli.command("list")
@@ -108,15 +115,12 @@ def _submit_pipeline(
     *,
     dry_run: bool,
     depends_on: tuple[str, ...] = (),
-    condition: str | None = None,
 ) -> tuple[int, str | None]:
     """Materialize the engine config for ``name`` and submit its pipeline.
 
     Returns ``(returncode, terminal_job_id)`` -- the terminal id (the pipeline's
-    final index stage) lets ``build-all`` afterok-chain the next config onto it. When a
-    ``condition`` (dotted predicate) evaluates False in the engine, the pipeline no-ops
-    and the terminal id comes back ``None`` (the caller treats that as "condition said
-    skip, nothing to chain onto"). Streams the pipeline output through while capturing it.
+    final index stage) lets ``build-all`` afterok-chain the next config onto it.
+    Streams the pipeline output through while capturing it.
     """
     db_path = _resolve_db(name)
     cfg = load_config(db_path)
@@ -132,8 +136,6 @@ def _submit_pipeline(
             "--schema", schema, "--expansion", str(expansion), "--repo", str(REPO)]
     if depends_on:
         argv += ["--depends-on", ",".join(depends_on)]
-    if condition:
-        argv += ["--condition", condition]
     if dry_run:
         argv.append("--dry-run")
     proc = subprocess.run(argv, capture_output=True, text=True, check=False)  # noqa: S603
@@ -173,7 +175,50 @@ def build(name: str, workdir: Path | None, dry_run: bool,
     raise SystemExit(rc)
 
 
-_INCREMENTAL_CONDITION = "datacooker.conditions.output_absent"
+def _meta_book(deps_map: dict[str, list[str]], *,
+               workdir: Path | None, dry_run: bool, force: bool) -> RecipeBook:
+    """Turn the MANIFEST dep-map into a datacooker ``RecipeBook`` — one step per DB.
+
+    Each DB is a step ``<name> <- submit(*upstream_job_ids)``: the instruction submits
+    the DB's SLURM pipeline afterok-chained on whatever upstream ids it receives and
+    returns this DB's terminal job id — or ``None`` when the DB is already built. That
+    ``None`` **is** the "if": datacooker's only conditional is an instruction returning
+    None, and the engine propagates it downstream (a skipped upstream arrives as a None
+    arg, i.e. no afterok). ``--force`` drops the skip. Topological order, cycle detection,
+    the unknown-dependency check, and the afterok data-flow are all the engine's job
+    (``execution_order`` / ``resolve`` / ``validate``), not ours — build-all is just a
+    recipe, cooked in-process by :func:`datacooker.api.execute`.
+
+    Typing: an **input** dep is ``str`` (a real upstream job id is mandatory, so an
+    unknown MANIFEST dep — not a declared target — trips ``MissingDependencyError``),
+    while an **output** is ``str | None`` (this DB's id, or None when skipped). A skipped
+    upstream still flows because ``resolve`` reads it from the context by name before any
+    type check.
+    """
+    book = RecipeBook()
+
+    def make_submit(name: str) -> Callable[..., str | None]:
+        def submit(*upstream: str | None) -> str | None:
+            if not force and not output_absent(load_config(_resolve_db(name))):
+                click.echo(f"[build-all] {name}: output present -> skip")
+                return None
+            depends_on = tuple(j for j in upstream if j)
+            wd = (Path(workdir) / name) if workdir else None
+            rc, job_id = _submit_pipeline(name, wd, dry_run=dry_run, depends_on=depends_on)
+            if rc != 0:
+                msg = f"{name} pipeline submit failed (rc={rc})."
+                raise click.ClickException(msg)
+            return job_id
+        submit.__name__ = f"submit[{name}]"
+        return submit
+
+    for name, deps in deps_map.items():
+        book.step(
+            outputs=(name, str | None),
+            instruction=make_submit(name),
+            args=[(d, str) for d in deps],
+        )
+    return book
 
 
 @cli.command("build-all")
@@ -183,68 +228,39 @@ _INCREMENTAL_CONDITION = "datacooker.conditions.output_absent"
               help="Parent scratch dir (each DB gets a <workdir>/<name> subdir).")
 @click.option("--dry-run", is_flag=True, help="Plan + write scripts, do not sbatch.")
 @click.option("--force", is_flag=True,
-              help="Rebuild every node, even ones already built (drops the condition).")
+              help="Rebuild every node, even ones already built (drops the skip).")
 def build_all(manifest: Path | None, workdir: Path | None,
               dry_run: bool, force: bool) -> None:
     """Reproduce the whole DB set incrementally — a DAG of pipelines (each itself a DAG).
 
-    Reads ``db/MANIFEST.yaml`` (``name: [upstream, ...]``), topologically sorts it, and
-    submits each DB's pipeline with ``--depends-on`` the terminal job ids of its upstream
-    DBs, so SLURM enforces the order. Each pipeline is gated by the datacooker
-    ``condition`` ``output_absent``: a node already built no-ops (returns no job), and
-    downstream nodes afterok-wait only on upstream actually submitted this run — so
-    re-running fills in just what's missing. ``--force`` drops the condition (rebuild all).
+    ``db/MANIFEST.yaml`` (``name: [upstream, ...]``) becomes a datacooker ``RecipeBook``
+    (one step per DB), which the engine cooks in-process: it topologically orders the
+    nodes, threads each DB's terminal job id into its dependents as ``--depends-on`` (so
+    SLURM enforces the order), and skips any DB already built — a step whose instruction
+    returns ``None``. Re-running therefore fills in only what's missing. ``--force``
+    rebuilds every node. No hand-rolled toposort/afterok/condition: it's all data-flow.
     """
     man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST.yaml"
     if not man_path.exists():
         msg = f"no manifest at {man_path}"
         raise click.ClickException(msg)
-    deps_map = {str(k): [str(d) for d in (v or [])]
-                for k, v in OmegaConf.to_container(OmegaConf.load(man_path)).items()}
-    order = _toposort(deps_map)
+    raw_manifest = OmegaConf.to_container(OmegaConf.load(man_path))
+    if not isinstance(raw_manifest, dict):
+        msg = f"manifest {man_path} must be a mapping of name -> [deps]"
+        raise click.ClickException(msg)
+    deps_map = {str(k): [str(d) for d in (v or [])] for k, v in raw_manifest.items()}
+    book = _meta_book(deps_map, workdir=workdir, dry_run=dry_run, force=force)
+    order = [r.target_names[0] for r in book.execution_order()]
     click.echo(f"[build-all] {len(order)} DBs in dependency order:\n  "
                + " -> ".join(order))
-    condition = None if force else _INCREMENTAL_CONDITION
-    terminal: dict[str, str | None] = {}   # only nodes actually submitted this run
-    built: list[str] = []
-    skipped: list[str] = []
-    for name in order:
-        # afterok only on upstream nodes we actually submitted; a condition-skipped
-        # upstream already has its output on disk, so no dependency is needed.
-        upstream = tuple(j for d in deps_map[name] if (j := terminal.get(d)))
-        rc, job_id = _submit_pipeline(name, (Path(workdir) / name) if workdir else None,
-                                      dry_run=dry_run, depends_on=upstream,
-                                      condition=condition)
-        if rc != 0:
-            msg = f"{name} pipeline submit failed (rc={rc}); aborting chain."
-            raise click.ClickException(msg)
-        if job_id:
-            terminal[name] = job_id
-            built.append(name)
-        else:                       # condition returned False -> pipeline no-op'd
-            skipped.append(name)
+    try:
+        results = execute(book, {})            # cook the meta-graph (engine orders + runs)
+    except StepExecutionError as exc:
+        raise click.ClickException(str(exc.original_exception or exc)) from exc
+    built = [n for n, job_id in results.items() if job_id]
+    skipped = [n for n in results if n not in built]
     click.echo(f"[build-all] submitted {len(built)}, skipped {len(skipped)} "
-               f"(condition) ({len(order)} total).")
-
-
-def _toposort(deps_map: dict[str, list[str]]) -> list[str]:
-    """Topological sort (deterministic); raises on unknown deps or cycles."""
-    for name, ds in deps_map.items():
-        for d in ds:
-            if d not in deps_map:
-                msg = f"{name!r} depends on unknown {d!r}"
-                raise click.ClickException(msg)
-    order: list[str] = []
-    remaining = dict(deps_map)
-    while remaining:
-        ready = sorted(n for n, ds in remaining.items() if all(d in order for d in ds))
-        if not ready:
-            msg = f"dependency cycle among: {sorted(remaining)}"
-            raise click.ClickException(msg)
-        order.extend(ready)
-        for n in ready:
-            del remaining[n]
-    return order
+               f"(already built) ({len(order)} total).")
 
 
 def main() -> None:
