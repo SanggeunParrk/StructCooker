@@ -163,13 +163,12 @@ full chain is base → derived.
 Base-structure pipeline validated in-process (Ray-free): one real `structure.npz`
 (`MGYP003648360693`) → recipe → schema-A valid → serialize/deserialize round-trips.
 
-**🔴 still blocked — `cif_*_attached` (schema B):** needs two upstreams first, so NOT
-fabricated:
-1. a **rewrap** step (`scripts/maintenance/rewrap_cif.py`, `cif_{set}` → `cif_{set}_wrapped`)
-   — still script-only, absorb into a datacooker recipe like the other 🔴 rows;
-2. the **metadata** tsvs (`seq_id_map.tsv`, `seq_cluster40.tsv`) on the clean surface —
-   themselves unported (see PDB metadata). Source of truth: `configs/metadata/attach_cif_*_revisit.yaml`
-   (attach recipe + `fasta/{set}.fasta`), ready to mirror once the two upstreams land.
+**✅ `cif_*_attached` (schema B) — ported (25 configs total).** Previously blocked on a
+rewrap step + missing metadata; both resolved. The base `cif_{set}` already emits the
+wrapped `assembly_dict`/`metadata_dict` layout (the openfold_structure recipe), so no
+separate rewrap is needed, and `seq_id_map` / `seq_cluster40` are now on the clean
+surface (see the metadata section). `cif_{long,short,rna,disordered}_attached` are plain
+A→B rebuilds of the base + the shared attach recipe (proven by pdb/cif_attached).
 
 By project rule these configs are code-complete only: validate on a small sample vs the
 existing production DBs, **do not full-build** (they already exist).
