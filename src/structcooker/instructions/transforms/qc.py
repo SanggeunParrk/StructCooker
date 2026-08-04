@@ -104,7 +104,7 @@ def _grouped_cartesian(
     return ai, bi
 
 
-def grid_pairs(  # noqa: PLR0915
+def grid_pairs(
     xyz: np.ndarray,
     d_thr: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -281,7 +281,7 @@ def af3_chain_clash(
     return out
 
 
-def analyze_assembly_qc(  # noqa: PLR0913, PLR0915
+def analyze_assembly_qc(
     biomol: dict,
     *,
     clash_dist: float = 2.0,
@@ -398,7 +398,7 @@ def _is_glycan_res(comp: np.ndarray, chain_et_lower: np.ndarray, res_chain: np.n
     return branched | np.isin(comp, tuple(_SUGAR_COMPS))
 
 
-def _classify_linkage(  # noqa: PLR0913
+def _classify_linkage(
     ai: str, aj: str, ei: str, ej: str, *, poly_i: bool, poly_j: bool,
     nuc_i: bool, nuc_j: bool, gly_i: bool, gly_j: bool,
 ) -> str:
@@ -417,7 +417,7 @@ def _classify_linkage(  # noqa: PLR0913
     return "other"
 
 
-def connectivity_consistency(biomol: dict, *, max_examples: int = 6) -> dict:  # noqa: PLR0912, PLR0915
+def connectivity_consistency(biomol: dict, *, max_examples: int = 6) -> dict:
     """Audit inter-residue connectivity against chemistry + geometry.
 
     Classifies recorded inter-residue bonds by linkage type (peptide / nucleic

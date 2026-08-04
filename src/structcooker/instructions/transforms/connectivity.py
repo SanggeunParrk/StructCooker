@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import functools
 import re
+from typing import cast
 
 import lmdb
 import numpy as np
@@ -174,7 +175,7 @@ def _regime(d: float, ideal: float, *, recorded: bool) -> str | None:
     return "CLOSE" if recorded else None
 
 
-def _action(cell: int, *, cross_op: bool, same_chain: bool, backbone_adj: bool) -> str:  # noqa: PLR0911
+def _action(cell: int, *, cross_op: bool, same_chain: bool, backbone_adj: bool) -> str:
     """Downstream handling for a classified pair."""
     if cell in (2, 6):  # should-be bond, not recorded
         if cross_op:
@@ -193,7 +194,7 @@ def _action(cell: int, *, cross_op: bool, same_chain: bool, backbone_adj: bool) 
     return "review"
 
 
-def connectivity_qc(assembly: dict, ccd_linker_db_path: str) -> dict:  # noqa: PLR0912, PLR0915
+def connectivity_qc(assembly: dict, ccd_linker_db_path: str) -> dict:
     """Classify one assembly's inter-residue pairs into the 12-cell scheme.
 
     Returns ``{"cells": {cell: count}, "actions": {action: count},
@@ -363,23 +364,23 @@ import json as _json  # noqa: E402
 _HETERO = frozenset({"N", "O", "S", "P", "SE"})
 
 
-@functools.lru_cache(maxsize=None)
-def _valence_env(path: str) -> "lmdb.Environment":
+@functools.cache
+def _valence_env(path: str) -> lmdb.Environment:
     return lmdb.open(path, readonly=True, lock=False, subdir=True, max_dbs=0)
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _valence_comp(path: str, comp: str) -> tuple:
     with _valence_env(path).begin() as txn:
         raw = txn.get(comp.encode())
     if raw is None:
         return ()
-    return tuple((a, v[0], float(v[1]), int(v[2])) for a, v in _json.loads(raw).items())
+    return tuple((a, v[0], float(v[1]), int(v[2])) for a, v in _json.loads(cast("bytes", raw)).items())
 
 
-def connectivity_qc_3tier(assembly: dict, ccd_valence_db_path: str,  # noqa: PLR0912,PLR0915
+def connectivity_qc_3tier(assembly: dict, ccd_valence_db_path: str,
                           ccd_linker_db_path: str = "/data/psk6950/CCD/ccd_linker.lmdb") -> dict:
-    """Connectivity QC with 3-tier bondability (결합 불가능 / 가능성 / 필요).
+    """Run connectivity QC with 3-tier bondability (결합 불가능 / 가능성 / 필요).
 
     Per atom, from the deposited heavy bonds + CCD ideal valence:
       slack = V_ideal - sum(bond_order of present heavy bonds)
@@ -426,14 +427,16 @@ def connectivity_qc_3tier(assembly: dict, ccd_valence_db_path: str,  # noqa: PLR
     bonded = np.zeros(n_at)
     recorded: dict = {}
     for (si, di), o in bond_order.items():
-        bonded[si] += o; bonded[di] += o
+        bonded[si] += o
+        bonded[di] += o
         if a2r[si] != a2r[di]:
             recorded[(si, di)] = o
 
     # used = recorded inter-residue bonds per atom
     used = np.zeros(n_at)
     for (si, di) in recorded:
-        used[si] += 1; used[di] += 1
+        used[si] += 1
+        used[di] += 1
     # req capacity: leaving-flag linker (CCD), like the binary scheme -> lfree = cap - used.
     #   captures backbone/link atoms (C via OXT, N via H2, O3'/P, glycosidic C1) that CAN
     #   form an inter-residue bond even while their leaving group is still modelled.
@@ -460,13 +463,13 @@ def connectivity_qc_3tier(assembly: dict, ccd_valence_db_path: str,  # noqa: PLR
     tiers: dict = {}
     examples: dict = {}
 
-    def loc(i):
+    def loc(i: int) -> str:
         r = a2r[i]
         return f"{comp[r]}{rauth[r]}.{aid[i]}({clab[r2c[r]]})"
 
     cells: dict = {}
 
-    def emit(cell, act, tier, i, j, d):
+    def emit(cell: str, act: str, tier: str, i: int, j: int, d: float) -> None:
         cells[cell] = cells.get(cell, 0) + 1
         actions[act] = actions.get(act, 0) + 1
         tiers[tier] = tiers.get(tier, 0) + 1
@@ -474,11 +477,11 @@ def connectivity_qc_3tier(assembly: dict, ccd_valence_db_path: str,  # noqa: PLR
         if len(ex) < _MAX_EX:
             ex.append(f"{loc(i)} -- {loc(j)} d={d:.2f} [{act}]")
 
-    def cross_op(i, j):
+    def cross_op(i: int, j: int) -> bool:
         ci, cj = str(clab[r2c[a2r[i]]]), str(clab[r2c[a2r[j]]])
         return ci != cj and ci.split("_")[0] == cj.split("_")[0]
 
-    def chain_action(i, j):
+    def chain_action(i: int, j: int) -> str:
         if cross_op(i, j):
             return "ignore"
         ci, cj = str(clab[r2c[a2r[i]]]), str(clab[r2c[a2r[j]]])
@@ -490,7 +493,7 @@ def connectivity_qc_3tier(assembly: dict, ccd_valence_db_path: str,  # noqa: PLR
         is_bb = names == _BB_PEP or ((names & _BB_NUC_P) and (names & _BB_NUC_O))
         return "merge" if (is_bb and adj) else "keep"
 
-    def classify(i, j, d, rec):
+    def classify(i: int, j: int, d: float, rec: bool) -> None:
         # cell = {tier}_{O|X}_{regime}. req = leaving-flag linker (backbone/link, incl bb-break),
         # opt = displaceable heteroatom-H (disulfide/glycan), imp = neither.
         ei, ej = str(elem[i]), str(elem[j])
@@ -528,13 +531,14 @@ def connectivity_qc_3tier(assembly: dict, ccd_valence_db_path: str,  # noqa: PLR
         else:
             emit("imp_X_CLOSE", "dedup" if cross_op(i, j) else "review", "imp", i, j, d)
 
-    for (s, d0), _o in recorded.items():
+    for s, d0 in recorded:
         if a2r[s] == a2r[d0] or not (np.isfinite(xyz[s]).all() and np.isfinite(xyz[d0]).all()):
             continue
         classify(s, d0, float(np.linalg.norm(xyz[s] - xyz[d0])), True)
     nbr: dict = {}
     for s, d0 in recorded:
-        nbr.setdefault(s, set()).add(d0); nbr.setdefault(d0, set()).add(s)
+        nbr.setdefault(s, set()).add(d0)
+        nbr.setdefault(d0, set()).add(s)
     gi, gj, dist = grid_pairs(xyz, _QUERY_R)
     for i, j, d in zip(gi.tolist(), gj.tolist(), dist.tolist(), strict=True):
         if a2r[i] == a2r[j] or (i, j) in recorded:
@@ -549,7 +553,16 @@ def connectivity_qc_3tier(assembly: dict, ccd_valence_db_path: str,  # noqa: PLR
             "examples": {c: v for c, v in examples.items() if v}}
 
 
-def _slack_plus(vcache, comp, a2r, aid, bonded, i, o):
+def _slack_plus(
+    vcache: dict,
+    comp: np.ndarray,
+    a2r: np.ndarray,
+    aid: np.ndarray,
+    bonded: np.ndarray,
+    i: int,
+    o: float,
+) -> float:
+    """Return the CCD ideal-valence slack for atom ``i`` if bond order ``o`` were absent."""
     vc = vcache.get(str(comp[a2r[i]]), {})
     info = vc.get(str(aid[i]))
     if info is None:
@@ -557,5 +570,5 @@ def _slack_plus(vcache, comp, a2r, aid, bonded, i, o):
     return info[1] - (bonded[i] - o)
 
 
-def _valV(*a):  # placeholder (unused legit path)
+def _valV(*a: object) -> float:  # noqa: N802, ARG001 -- placeholder (unused legit path)
     return 0.0

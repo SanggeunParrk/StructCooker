@@ -420,9 +420,9 @@ def build_template_metadata_map(
 
 
 def load_chain_templates(path: Path) -> dict[str, list[str]]:
-    """chain -> [template ids] from Phase 2's chain_to_templates.tsv.
+    r"""Chain -> [template ids] from Phase 2's chain_to_templates.tsv.
 
-    Lines for chains with no templates ('chain\\t') are skipped, so a chain is
+    Lines for chains with no templates ('chain\t') are skipped, so a chain is
     present only if it has >=1 template.
     """
     out: dict[str, list[str]] = {}
@@ -436,7 +436,7 @@ def load_chain_templates(path: Path) -> dict[str, list[str]]:
 
 
 def invert_seqid_to_chains(path: Path) -> dict[str, str]:
-    """chain -> seq_id, inverted from Phase 1's seqid_to_chains.tsv."""
+    """Chain -> seq_id, inverted from Phase 1's seqid_to_chains.tsv."""
     out: dict[str, str] = {}
     with Path(path).open() as f:
         for line in f:
@@ -449,7 +449,7 @@ def invert_seqid_to_chains(path: Path) -> dict[str, str]:
 
 
 def load_seq_tsv(path: Path) -> dict[str, str]:
-    """Load a two-column '<key>\\t<sequence>' TSV into a dict (single value)."""
+    r"""Load a two-column '<key>\t<sequence>' TSV into a dict (single value)."""
     out: dict[str, str] = {}
     with Path(path).open() as f:
         for line in f:

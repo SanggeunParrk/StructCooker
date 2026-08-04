@@ -35,7 +35,7 @@ def _as_cell_keys(cells_int64x3: np.ndarray) -> np.ndarray:
     return np.ascontiguousarray(cells_int64x3).view(_CELL_DTYPE).ravel()
 
 
-def chain_contacts_grid(  # noqa: PLR0915
+def chain_contacts_grid(
     xyz: np.ndarray,
     chain_idx: np.ndarray,
     d_thr: float,

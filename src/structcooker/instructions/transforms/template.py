@@ -29,7 +29,7 @@ def _run_command(
     *,
     env: dict[str, str] | None = None,
 ) -> None:
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603 (fixed internal tool argv)
         command,
         capture_output=True,
         text=True,
@@ -176,11 +176,12 @@ def run_hhsearch(
         ),
         env=hhsuite_env,
     )
-    print(f"HHsearch completed for {msa_path}, output saved to {hhr_path}")
+    print(f"HHsearch completed for {msa_path}, output saved to {hhr_path}")  # noqa: T201 (CLI progress)
     return f"Done {hhr_path.name}"
 
 
 def run_hmmbuild(input_a3m_path: Path, hmm_path: Path | None) -> str:
+    """Run hmmbuild to convert an a3m MSA to an HMM; return a status string."""
     # run hmmbuild to convert a3m to hmm
     if hmm_path is None:
         hmm_path = input_a3m_path.with_suffix(".hmm")
@@ -190,7 +191,7 @@ def run_hmmbuild(input_a3m_path: Path, hmm_path: Path | None) -> str:
         str(input_a3m_path),
     ]
     if hmm_path.exists() and hmm_path.stat().st_size > 0:
-        print(
+        print(  # noqa: T201 (CLI progress)
             f"HMM file {hmm_path} already exists and is non-empty. Skipping hmmbuild for {input_a3m_path}.",
         )
         return f"Skip {hmm_path.name} (already exists and is non-empty)"
@@ -207,6 +208,7 @@ def run_hmmsearch(
     hmm_path: Path,
     fasta_path: Path,
 ) -> str:
+    """Run hmmsearch of an HMM against a FASTA; return a status string."""
     if not _is_nonempty(hmm_path):
         msg = f"HMM file does not exist or is empty: {hmm_path}"
         raise FileNotFoundError(msg)
@@ -220,7 +222,7 @@ def run_hmmsearch(
     output_parent.mkdir(parents=True, exist_ok=True)
     output_path = output_parent / f"{hmm_path.stem}.out"
     if output_path.exists() and output_path.stat().st_size > 0:
-        print(
+        print(  # noqa: T201 (CLI progress)
             f"Output file {output_path} already exists and is non-empty. Skipping hmmsearch for {hmm_path}.",
         )
         return f"Skip {output_path.name} (already exists and is non-empty)"
@@ -248,13 +250,14 @@ def run_hmmsearch(
     ]
     try:
         _run_command(command)
-        return f"hmmsearch completed for {hmm_path} against {fasta_path}"
+        return f"hmmsearch completed for {hmm_path} against {fasta_path}"  # noqa: TRY300 (return kept in try for clarity)
     except Exception as e:
         msg = f"Error running hmmsearch for {hmm_path}: {e}"
         raise RuntimeError(msg) from e
 
 
 def remove_lower_from_a3m(input_a3m_path: Path, output_path: Path | None) -> str:
+    """Strip lowercase (insertion) columns from an a3m; return a status string."""
     if output_path is None:
         output_path = input_a3m_path.with_suffix(".no_lower.a3m")
     try:
@@ -264,9 +267,9 @@ def remove_lower_from_a3m(input_a3m_path: Path, output_path: Path | None) -> str
                     outfile.write(line)
                 else:
                     # remove all lowercase letters from the sequence lines
-                    line = "".join(c for c in line if not c.islower())
+                    line = "".join(c for c in line if not c.islower())  # noqa: PLW2901 (intentional in-loop rewrite)
                     outfile.write(line)
-        return (
+        return (  # noqa: TRY300 (return kept in try for clarity)
             f"Lowercase letters removed from {input_a3m_path}, saved to {output_path}"
         )
     except Exception as e:
@@ -275,8 +278,9 @@ def remove_lower_from_a3m(input_a3m_path: Path, output_path: Path | None) -> str
 
 
 def parse_hmm_query_mapping(hmm_path: Path) -> tuple[dict[int, int], dict[int, int]]:
-    """
-    Parse an HMMER3 .hmm file with 'MAP yes' and build:
+    """Parse an HMMER3 .hmm file with 'MAP yes' into query<->HMM index maps.
+
+    Build:
       1) query_to_hmm: query/MSA column index -> HMM index
       2) hmm_to_query: HMM index -> query/MSA column index
 
@@ -731,17 +735,16 @@ def to_template_mol(
     )
     metadata = cifmol.metadata
 
-    new_dict = {
+    return {
         "atoms": atom_dict,
         "residues": residue_dict,
         "chains": chain_dict,
         "index_table": index_table.to_dict(),
         "metadata": metadata,
     }
-    return new_dict
 
 
-def build_chain_template(  # noqa: PLR0913
+def build_chain_template(
     file_path: Path,
     template_metadata_map: dict[str, dict],
     chain2seqid: dict[str, str],
@@ -807,7 +810,7 @@ def _parse_hmm_hits(text: str) -> list[str]:
     return hits
 
 
-def build_seqid_template_mols(  # noqa: PLR0913
+def build_seqid_template_mols(
     file_path: Path,
     query_seqs: dict[str, str],
     template_seqs: dict[str, str],
@@ -876,7 +879,7 @@ def build_chain_from_seqid_db(
     tids = chain2templates.get(chain)
     if seq_id is None or not tids:
         return {}
-    raw = load_raw_data(seq_id, str(seqid_template_db_path))
+    raw = load_raw_data(seq_id, cast("Path", str(seqid_template_db_path)))
     if raw is None:
         return {}
     union = load_bytes(raw).get("template_mols", {})
@@ -905,7 +908,7 @@ def load_templates(
             chain_id = find_first(f"{chain_id}_", cifmol.chains.chain_id.value)
             cifmol = cifmol.chains[cifmol.chains.chain_id == chain_id].extract()
             template_mols[full_id] = to_template_mol(cifmol, align_result)
-        except Exception:  # noqa: BLE001 - skip templates missing from the CIF DB
+        except Exception:  # noqa: BLE001,S112 - skip templates missing from the CIF DB
             continue
     return template_mols
 
@@ -962,7 +965,7 @@ def load_templates_from_chain_db(
         try:
             cifmol = CIFMol.from_dict(cast("BioMolDict", load_bytes(raw)))
             template_mols[full_id] = to_template_mol(cifmol, align_result)
-        except Exception:  # noqa: BLE001 - skip chains whose idx_map overruns our extraction
+        except Exception:  # noqa: BLE001,S112 - skip chains whose idx_map overruns our extraction
             continue
         if max_keep is not None and len(template_mols) >= max_keep:
             break

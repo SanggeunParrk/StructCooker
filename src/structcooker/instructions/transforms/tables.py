@@ -7,7 +7,7 @@ stays here because it depends on numpy.
 """
 
 from collections.abc import Callable
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
@@ -54,7 +54,7 @@ def get_smaller_dict(
             else cols - {tied_to[0], tied_to[1]},
         )
 
-        result: dict[str, dict[str, NDArray]] = {}
+        result: dict[Any, dict[str, Any]] = {}
 
         for i in range(n):
             row = {col: cif_raw_dict[col][i] for col in cols}

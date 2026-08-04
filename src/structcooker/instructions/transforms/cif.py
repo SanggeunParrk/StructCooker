@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import TypeVar
+from typing import TypeVar, cast
 
 import numpy as np
 from biomol.core.container import FeatureContainer
@@ -15,8 +15,8 @@ InputType = TypeVar("InputType", str, int, float)
 
 
 def _parse_each_chem_comp(
-    chem_comp_dict: dict[str, NDArray] | None,
-    chem_comp_atom_dict: dict[str, NDArray] | None,
+    chem_comp_dict: dict[str, NDArray],
+    chem_comp_atom_dict: dict[str, NDArray],
     chem_comp_bond_dict: dict[str, NDArray] | None,
     remove_hydrogen: bool = True,
 ) -> dict[str, FeatureContainer]:
@@ -38,17 +38,17 @@ def _parse_each_chem_comp(
     atom_aromatic = chem_comp_atom_dict["pdbx_aromatic_flag"][atom_mask].astype(str)
     atom_stereo = chem_comp_atom_dict["pdbx_stereo_config"][atom_mask].astype(str)
 
-    charge = chem_comp_atom_dict.get("charge", None)
-    model_x = chem_comp_atom_dict.get("model_Cartn_x", None)
-    model_y = chem_comp_atom_dict.get("model_Cartn_y", None)
-    model_z = chem_comp_atom_dict.get("model_Cartn_z", None)
+    charge = chem_comp_atom_dict.get("charge", None)  # noqa: SIM910  # explicit None default, no behavior change
+    model_x = chem_comp_atom_dict.get("model_Cartn_x", None)  # noqa: SIM910
+    model_y = chem_comp_atom_dict.get("model_Cartn_y", None)  # noqa: SIM910
+    model_z = chem_comp_atom_dict.get("model_Cartn_z", None)  # noqa: SIM910
 
     atom_id = NodeFeature(value=atom_id)
     element = NodeFeature(value=element)
     atom_aromatic = NodeFeature(value=atom_aromatic)
     atom_stereo = NodeFeature(value=atom_stereo)
 
-    atom_features = {
+    atom_features: dict[str, NodeFeature | EdgeFeature] = {
         "id": atom_id,
         "element": element,
         "aromatic": atom_aromatic,
@@ -62,8 +62,8 @@ def _parse_each_chem_comp(
         xyz = np.stack(
             [
                 model_x[atom_mask].astype(str),
-                model_y[atom_mask].astype(str),
-                model_z[atom_mask].astype(str),
+                cast("NDArray", model_y)[atom_mask].astype(str),
+                cast("NDArray", model_z)[atom_mask].astype(str),
             ],
             axis=-1,
         )
@@ -121,9 +121,9 @@ def _parse_each_chem_comp(
 
 
 def parse_chem_comp(
-    chem_comp_dict: dict[str, dict[str, NDArray]] | None,
-    chem_comp_atom_dict: dict[str, dict[str, NDArray]] | None,
-    chem_comp_bond_dict: dict[str, dict[str, NDArray]] | None,
+    chem_comp_dict: dict[str, dict[str, NDArray]],
+    chem_comp_atom_dict: dict[str, dict[str, NDArray]],
+    chem_comp_bond_dict: dict[str, dict[str, NDArray]],
     remove_hydrogen: bool = True,
     unwrap: bool = False,
 ) -> dict[str, dict[str, NDArray]]:
@@ -133,7 +133,7 @@ def parse_chem_comp(
     one-entry mapping.
     """
     output = {}
-    for chem_comp_id in chem_comp_dict:
+    for chem_comp_id in chem_comp_dict:  # noqa: PLC0206  # keys only, values fetched conditionally
         if chem_comp_id == "UNL":
             output[chem_comp_id] = None
             continue
@@ -144,7 +144,7 @@ def parse_chem_comp(
         output[chem_comp_id] = _parse_each_chem_comp(
             chem_comp_dict[chem_comp_id],
             chem_comp_atom_dict[chem_comp_id],
-            chem_comp_bond_dict.get(chem_comp_id, None),
+            chem_comp_bond_dict.get(chem_comp_id, None),  # noqa: SIM910  # explicit None default
             remove_hydrogen,
         )
     if unwrap:
@@ -193,12 +193,12 @@ def _compare_each_chem_comp(
 
 
 def compare_chem_comp(
-    chem_comp_dict: dict[str, dict[str, NDArray]] | None,
-    ccd_db_path: Path | None,
+    chem_comp_dict: dict[str, dict[str, NDArray]],
+    ccd_db_path: Path,
 ) -> dict[str, dict[str, NDArray]]:
     """Merge each cif-parsed chem_comp with the ideal component read from the CCD LMDB at ``ccd_db_path``."""
     output = {}
-    for chem_comp_id in chem_comp_dict:
+    for chem_comp_id in chem_comp_dict:  # noqa: PLC0206  # keys only
         if chem_comp_id == "UNL":
             output[chem_comp_id] = None
             continue
@@ -211,13 +211,16 @@ def compare_chem_comp(
         if cif_chem_comp is None:
             output[chem_comp_id] = ideal_chem_comp
             continue
-        parsed = _compare_each_chem_comp(cif_chem_comp, ideal_chem_comp)
+        parsed = _compare_each_chem_comp(
+            cast("dict[str, FeatureContainer]", cif_chem_comp),
+            ideal_chem_comp,
+        )
         output[chem_comp_id] = parsed
     return output
 
 
 def _parse_each_asym_id(
-    scheme_dict: dict[str, dict[str, NDArray]] | None,
+    scheme_dict: dict[str, NDArray],
 ) -> dict[str, NDArray] | None:
     entity_id = scheme_dict["entity_id"]
     if "seq_id" in scheme_dict:  # polymer
@@ -228,8 +231,8 @@ def _parse_each_asym_id(
         cif_idx = None
     chem_comp = scheme_dict["mon_id"]
     auth_idx = scheme_dict["pdb_seq_num"]
-    ins_code = scheme_dict.get("pdb_ins_code", None)
-    hetero = scheme_dict.get("hetero", None)
+    ins_code = scheme_dict.get("pdb_ins_code", None)  # noqa: SIM910  # explicit None default
+    hetero = scheme_dict.get("hetero", None)  # noqa: SIM910  # explicit None default
 
     if cif_idx is not None:
         cif_idx = cif_idx.astype(int)
@@ -297,7 +300,7 @@ def parse_scheme_dict(
 
 
 def _parse_each_entity(
-    entity_dict: dict[str, dict[str, NDArray]] | None,
+    entity_dict: dict[str, NDArray],
 ) -> dict[str, NDArray] | None:
     entity_type = None
     if "mon_id" in entity_dict:
@@ -375,15 +378,15 @@ def _parse_each_entity(
     if entity_type == "branched":
         branch_link = {}
 
-        comp_id_1 = entity_dict.get("comp_id_1", None)
-        comp_id_2 = entity_dict.get("comp_id_2", None)
-        atom_id_1 = entity_dict.get("atom_id_1", None)
-        atom_id_2 = entity_dict.get("atom_id_2", None)
-        leaving_atom_id_1 = entity_dict.get("leaving_atom_id_1", None)
-        leaving_atom_id_2 = entity_dict.get("leaving_atom_id_2", None)
-        bond_list = entity_dict.get("value_order", None)
-        num_1_list = entity_dict.get("entity_branch_list_num_1", None)
-        num_2_list = entity_dict.get("entity_branch_list_num_2", None)
+        comp_id_1 = cast("NDArray", entity_dict.get("comp_id_1", None))  # noqa: SIM910
+        comp_id_2 = cast("NDArray", entity_dict.get("comp_id_2", None))  # noqa: SIM910
+        atom_id_1 = cast("NDArray", entity_dict.get("atom_id_1", None))  # noqa: SIM910
+        atom_id_2 = cast("NDArray", entity_dict.get("atom_id_2", None))  # noqa: SIM910
+        leaving_atom_id_1 = cast("NDArray", entity_dict.get("leaving_atom_id_1", None))  # noqa: SIM910
+        leaving_atom_id_2 = cast("NDArray", entity_dict.get("leaving_atom_id_2", None))  # noqa: SIM910
+        bond_list = cast("NDArray", entity_dict.get("value_order", None))  # noqa: SIM910
+        num_1_list = cast("NDArray", entity_dict.get("entity_branch_list_num_1", None))  # noqa: SIM910
+        num_2_list = cast("NDArray", entity_dict.get("entity_branch_list_num_2", None))  # noqa: SIM910
 
         if type(comp_id_1) is str:
             comp_id_1 = [comp_id_1]
@@ -410,7 +413,7 @@ def _parse_each_entity(
 
     if entity_type == "branched":
         descriptor = (
-            entity_dict["descriptor"] if "descriptor" in entity_dict else ""
+            entity_dict["descriptor"] if "descriptor" in entity_dict else ""  # noqa: SIM401  # preserve original branching, no behavior change
         )
     elif entity_type == "polymer":
         descriptor = entity_dict["type"]
@@ -420,20 +423,23 @@ def _parse_each_entity(
         descriptor = chem_comp_list[0]  # len 1.
     entity_type = np.array([entity_type])
 
-    return {
-        "seq_num": seq_num_list.astype(int),
-        "chem_comp_id": chem_comp_list,
-        "hetero": hetero_list.astype(bool),
-        "one_letter_code_can": one_letter_code_can,
-        "one_letter_code": one_letter_code,
-        "entity_type": entity_type,
-        "descriptor": descriptor,
-        "branch_link": branch_link,
-    }
+    return cast(
+        "dict[str, NDArray]",
+        {
+            "seq_num": seq_num_list.astype(int),
+            "chem_comp_id": chem_comp_list,
+            "hetero": hetero_list.astype(bool),
+            "one_letter_code_can": one_letter_code_can,
+            "one_letter_code": one_letter_code,
+            "entity_type": entity_type,
+            "descriptor": descriptor,
+            "branch_link": branch_link,
+        },
+    )
 
 
 def parse_entity_dict(
-    entity_dict: dict[str, dict[str, NDArray]] | None,  # {asym_id : scheme_dict}
+    entity_dict: dict[str, dict[str, NDArray]],  # {asym_id : scheme_dict}
 ) -> dict[str, NDArray] | None:
     """Parse the entity tables into per-entity descriptor records."""
     output = {}
@@ -444,11 +450,11 @@ def parse_entity_dict(
 
 
 def remove_unknown_atom_site(
-    atom_site_dict: dict[str, dict[str, NDArray]] | None,
+    atom_site_dict: dict[str, dict[str, NDArray]],
 ) -> dict[str, dict[str, NDArray]] | None:
     """Drop atom_site rows for unknown / placeholder atoms."""
     new_dict = {}
-    for asym_id in atom_site_dict:
+    for asym_id in atom_site_dict:  # noqa: PLC0206  # dict mutated in place by key
         label_comp_id_list = atom_site_dict[asym_id]["label_comp_id"]
         unknown_mask = [cc in ("UNL", "UNK") for cc in label_comp_id_list]
         if all(unknown_mask):
@@ -544,8 +550,8 @@ def _attach_entity(
 
 
 def attach_entity(
-    asym_dict: dict[str, dict[str, NDArray]] | None,
-    entity_dict: dict[str, dict[str, NDArray]] | None,
+    asym_dict: dict[str, dict[str, NDArray]],
+    entity_dict: dict[str, dict[str, NDArray]],
 ) -> dict[str, dict[str, NDArray]] | None:
     """Attach entity metadata onto the per-asym scheme records."""
     output = {}
@@ -558,12 +564,12 @@ def attach_entity(
 
 
 def _remove_hydrogen(
-    atom_site_dict: dict[str, dict[str, NDArray]] | None,
-) -> dict[str, dict[str, NDArray]] | None:
+    atom_site_dict: dict[str, NDArray],
+) -> dict[str, NDArray]:
     element = atom_site_dict["type_symbol"]
     hydrogen_mask = ~np.isin(element, ["H", "D"])
 
-    for key in atom_site_dict:
+    for key in atom_site_dict:  # noqa: PLC0206  # dict mutated in place by key
         values = atom_site_dict[key]
         values = np.array(values)[hydrogen_mask]
         atom_site_dict[key] = values
@@ -575,7 +581,7 @@ def _rearrange_each_asym_id(
     remove_hydrogen: bool = True,
 ) -> dict[str, dict[str, NDArray]] | None:
     if remove_hydrogen:
-        atom_site_dict = _remove_hydrogen(atom_site_dict)
+        atom_site_dict = _remove_hydrogen(cast("dict[str, NDArray]", atom_site_dict))
     if atom_site_dict is None:
         return None
 
@@ -657,7 +663,7 @@ def _rearrange_each_asym_id(
 
 
 def rearrange_atom_site_dict(
-    atom_site_dict: dict[str, dict[str, NDArray]] | None,
+    atom_site_dict: dict[str, dict[str, NDArray]],
     remove_hydrogen: bool = True,
 ) -> dict[str, dict[str, NDArray]] | None:
     """Reshape the atom_site dict per model and alt-conf into asym records."""
@@ -670,8 +676,8 @@ def rearrange_atom_site_dict(
 
 def _resolve_residue_chem_comp_ids(
     asym_dict: dict[str, NDArray],
-    atom_site_dict: dict[str, dict[str, NDArray]],
-    chem_comp_dict: dict[str, dict[str, NDArray]],
+    atom_site_dict: dict[str, NDArray],
+    chem_comp_dict: dict[str, dict[str, FeatureContainer]],
 ) -> tuple[NDArray, list[int], dict, int]:
     """Resolve the chem_comp id chosen for each residue and the residue/atom index maps."""
     auth_idx_list = asym_dict["auth_idx"]
@@ -709,7 +715,7 @@ def _resolve_residue_chem_comp_ids(
                 msg = f"Chem_comp {atom_cc} not in entity definition {_chem_comp_list} for residue {auth_idx}."
                 raise ValueError(msg)
         chem_comp_list.append(chem_comp)
-        atom_num = len(chem_comp_dict[chem_comp]["atom"]["id"])
+        atom_num = len(chem_comp_dict[cast("str", chem_comp)]["atom"]["id"])
         atom_to_residue_idx.extend([residue_count] * atom_num)
         auth_idx_to_atom_idx[auth_idx] = atom_count
 
@@ -724,9 +730,9 @@ def _resolve_residue_chem_comp_ids(
 
 
 def _scatter_atom_site_coords(
-    chem_comp_list: NDArray,
-    atom_site_dict: dict[str, dict[str, NDArray]],
-    chem_comp_dict: dict[str, dict[str, NDArray]],
+    chem_comp_list: NDArray | list,
+    atom_site_dict: dict[str, NDArray],
+    chem_comp_dict: dict[str, dict[str, FeatureContainer]],
     auth_idx_to_atom_idx: dict,
 ) -> tuple[dict, FeatureContainer, list]:
     """Concatenate per-residue chem_comp features and scatter atom_site coords into them."""
@@ -778,7 +784,7 @@ def _scatter_atom_site_coords(
     full_b_factor = NodeFeature(value=full_b_factor)
     full_occupancy = NodeFeature(value=full_occupancy)
 
-    atom_features = chem_comp_atom_container._features
+    atom_features = chem_comp_atom_container._features  # noqa: SLF001  # reuse container's feature dict
     atom_features.update(
         {
             "xyz": full_xyz.copy(),
@@ -799,7 +805,7 @@ def _build_residue_and_atom_bonds(
     """Add inter-residue (canonical/branch) bonds at atom and residue level."""
     auth_idx_list = asym_dict["auth_idx"]
     cif_idx_list = asym_dict["cif_idx"]
-    def find_atom_index(residue_idx, atom_id):
+    def find_atom_index(residue_idx: int, atom_id: str) -> int | None:
         chem_comp = chem_comp_list[residue_idx]
         chem_comp_atom_id = chem_comp["atom"]["id"]
         if atom_id not in chem_comp_atom_id:
@@ -944,10 +950,10 @@ def _build_residue_and_atom_bonds(
 
 
 def _parse_atom_site_dict(
-    asym_dict: dict[str, NDArray] | None,
-    atom_site_dict: dict[str, dict[str, NDArray]] | None,
-    chem_comp_dict: dict[str, dict[str, NDArray]] | None,
-) -> dict[str, dict[str, NDArray]] | None:
+    asym_dict: dict[str, NDArray],
+    atom_site_dict: dict[str, NDArray],
+    chem_comp_dict: dict[str, dict[str, FeatureContainer]],
+) -> dict[str, FeatureContainer | NDArray] | None:
     """Build atom/residue/chain containers for one asym unit from its atom_site rows."""
     (
         chem_comp_id_list,
@@ -962,7 +968,7 @@ def _parse_atom_site_dict(
         asym_dict, atom_features, chem_comp_list, auth_idx_to_atom_idx, residue_count,
     )
     atom_container = FeatureContainer(features=atom_features)
-    residue_features = chem_comp_residue_container._features
+    residue_features = chem_comp_residue_container._features  # noqa: SLF001  # reuse container's feature dict
     residue_features.update(
         {
             "cif_idx": NodeFeature(value=asym_dict["cif_idx"]).copy(),
@@ -1012,11 +1018,11 @@ def _parse_atom_site_dict(
 
 
 def _function(
-    _asym_dict: dict[str, NDArray] | None,
-    chem_comp_dict: dict[str, dict[str, NDArray]] | None,
+    _asym_dict: dict[str, NDArray],
+    chem_comp_dict: dict[str, dict[str, FeatureContainer]],
 ) -> dict[str, dict[str, NDArray]] | None:
     output = {}
-    for model_id, alt_id_dict in _asym_dict["atom_site"].items():
+    for model_id, alt_id_dict in cast("dict", _asym_dict["atom_site"]).items():
         for alt_id, atom_site_dict in alt_id_dict.items():
             output[(model_id, alt_id)] = _parse_atom_site_dict(
                 _asym_dict,
@@ -1027,8 +1033,8 @@ def _function(
 
 
 def build_full_length_asym_dict(
-    asym_dict: dict[str, dict[str, NDArray]] | None,
-    chem_comp_dict: dict[str, dict[str, NDArray]] | None,
+    asym_dict: dict[str, dict[str, NDArray]],
+    chem_comp_dict: dict[str, dict[str, FeatureContainer]],
 ) -> dict[str, dict[str, NDArray]] | None:
     """Build full-length per-asym records, filling sequence gaps from chem_comp."""
     output = {}
@@ -1158,7 +1164,7 @@ def parse_expression(expr: str) -> list[str] | None:
 
 
 def parse_assembly_dict(
-    struct_assembly_gen_dict: dict[str, dict[str, NDArray]] | None,
+    struct_assembly_gen_dict: dict[str, dict[str, NDArray]],
 ) -> dict[str, dict[str, NDArray]] | None:
     """Parse the struct_assembly_gen table into assembly-generation records."""
     output_dict = {}
@@ -1184,11 +1190,11 @@ def parse_assembly_dict(
 
 
 def get_struct_oper(
-    struct_oper_dict: dict[str, dict[str, NDArray]] | None,
+    struct_oper_dict: dict[str, dict[str, NDArray]],
 ) -> dict[str, dict[str, NDArray]] | None:
     """Parse the struct_oper_list table into symmetry operation matrices."""
     output_dict = {}
-    for struct_oper_id in struct_oper_dict:
+    for struct_oper_id in struct_oper_dict:  # noqa: PLC0206  # keys only, nested values built below
         raw_dict = struct_oper_dict[struct_oper_id]
         output_dict[struct_oper_id] = {}
         matrix = []
@@ -1203,7 +1209,7 @@ def get_struct_oper(
     return output_dict
 
 
-def _apply_RT(
+def _apply_RT(  # noqa: N802  # name referenced by dotted-path in db/*.yaml configs
     atom_container: FeatureContainer,
     matrix: NDArray,
     vector: NDArray,
@@ -1325,7 +1331,7 @@ def _build_assembly_model(
         res_to_chain=residue_to_chain_idx,
         n_chain=len(chain_id_list),
     )
-    quest_to_dot = lambda x: "." if x == "?" else f"{x}"
+    quest_to_dot = lambda x: "." if x == "?" else f"{x}"  # noqa: E731  # keep inline mapping helper
 
     oper_to_chains = {}
     for cid in chain_id_list:
@@ -1335,14 +1341,14 @@ def _build_assembly_model(
         oper_to_chains[assembly].append(chain)
 
     auth_idx_in_container = residue_container["auth_idx"]
-    atom_id_in_container = atom_container["id"]
+    atom_id_in_container = cast("NodeFeature", atom_container["id"])
 
     residue_src = []
     residue_dst = []
     atom_src = []
     atom_dst = []
     atom_value = []
-    for c1, c2 in struct_conn_dict:
+    for c1, c2 in struct_conn_dict:  # noqa: PLC0206  # keys are (chain, chain) tuples
         chain_id_with_oper = [
             (f"{c1}_{oper_id}", f"{c2}_{oper_id}")
             for oper_id, chains in oper_to_chains.items()
@@ -1390,8 +1396,12 @@ def _build_assembly_model(
         for chain1, chain2 in chain_id_with_oper:
             chain_idx1 = chain_id_list.index(chain1)
             chain_idx2 = chain_id_list.index(chain2)
-            residue_indices1 = index_table.chains_to_residues([chain_idx1])
-            residue_indices2 = index_table.chains_to_residues([chain_idx2])
+            residue_indices1 = index_table.chains_to_residues(
+                cast("NDArray", [chain_idx1]),
+            )
+            residue_indices2 = index_table.chains_to_residues(
+                cast("NDArray", [chain_idx2]),
+            )
 
             auth_indices1 = auth_idx_in_container[residue_indices1]
             auth_indices2 = auth_idx_in_container[residue_indices2]
@@ -1465,17 +1475,20 @@ def _build_assembly_model(
 
 
 def build_assembly_dict(
-    asym_dict: dict[str, dict[str, FeatureContainer]] | None,
-    struct_assembly_dict: dict[str, dict[str, NDArray]] | None,
-    struct_oper_dict: dict[str, dict[str, NDArray]] | None,
-    struct_conn_dict: dict[str, dict[str, NDArray]] | None,
+    asym_dict: dict[str, dict[str, FeatureContainer]],
+    struct_assembly_dict: dict[str, dict[str, NDArray]],
+    struct_oper_dict: dict[str, dict[str, NDArray]],
+    struct_conn_dict: dict[str, dict[str, NDArray]],
 ) -> dict[str, dict[str, NDArray]] | None:
     """Build biological assemblies from asym records, operators, and connectivity."""
     if len(struct_assembly_dict) == 0 or struct_assembly_dict is None:
         # simply concatenate all chains without applying any symmetry operation, and assign them to a dummy assembly "1_1_."
-        struct_assembly_dict = {
-            "1": {asym_id: ["1"] for asym_id in asym_dict},
-        }
+        struct_assembly_dict = cast(
+            "dict[str, dict[str, NDArray]]",
+            {
+                "1": {asym_id: ["1"] for asym_id in asym_dict},
+            },
+        )
         struct_oper_dict = {
             "1": {
                 "matrix": np.eye(3, dtype=float),
@@ -1522,7 +1535,7 @@ def extract_release_date(
     revision_date: list | str | None,
     deposition_date: str | None = None,
 ) -> str | None:
-    """Initial *coordinate-model* PDB release date for the AF3/OpenFold3 cutoff.
+    """Extract the initial coordinate-model PDB release date for the AF3/OpenFold3 cutoff.
 
     ``_pdbx_audit_revision_history`` can interleave separate ``data_content_type``
     tracks (notably 'EM metadata', which releases on its own timeline). The value

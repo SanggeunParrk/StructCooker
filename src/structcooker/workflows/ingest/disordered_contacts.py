@@ -11,6 +11,8 @@ layout, so a subsequent ``edge_node`` extract recovers the interfaces.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from biomol.core.feature import EdgeFeature
 from biomol.enums import StructureLevel
@@ -19,10 +21,13 @@ from datacooker import RecipeBook
 from structcooker.instructions.transforms.geometry import chain_contacts_grid
 from structcooker.mols import CIFMolAttached
 
+if TYPE_CHECKING:
+    from biomol.core.types import BioMolDict
+
 _D_THR = 6.0
 
 
-def attach_chain_contacts(cifmol: CIFMolAttached) -> dict:
+def attach_chain_contacts(cifmol: CIFMolAttached) -> BioMolDict:
     """Recompute the chain contact graph for one attached CIFMol.
 
     Mirrors ``geometry.extract_contact_graph`` (6 A threshold) but operates on an

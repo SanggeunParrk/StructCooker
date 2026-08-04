@@ -39,13 +39,20 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["ALL"]
+# Principled ignores for a CLI + data-pipeline library (kept in sync with
+# libs/datacooker/pyproject.toml). Everything else is fixed, not suppressed.
 ignore = [
-    "F722", # Incompatible with jaxtyping
-    "D100", # Missing docstring in public module
-    "D104", # Missing docstring in public package
-    "C901",
-    "N806",
-    "E501",
+    "F722",  # Incompatible with jaxtyping
+    "D100",  # Missing docstring in public module
+    "D104",  # Missing docstring in public package
+    "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",  # complexity: pipelines are wide
+    "PLR2004",  # magic values read fine in numeric/scientific code
+    "N806",  # scientific names (N, L, ...) are conventional here
+    "E501",  # long lines (formatter-owned)
+    "ANN401",  # workflow payloads are intentionally Any
+    "FBT001", "FBT002", "FBT003",  # click exposes flags as boolean params
+    "TC001", "TC002", "TC003",  # postponed-eval annotations make runtime imports fine
+    "COM812",  # formatter-compatible trailing commas
 ]
 
 [tool.ruff.lint.per-file-ignores]

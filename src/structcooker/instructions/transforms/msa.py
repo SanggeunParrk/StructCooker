@@ -61,7 +61,7 @@ def _run_command(
     *,
     env: dict[str, str] | None = None,
 ) -> None:
-    result = subprocess.run(command, capture_output=True, text=True, env=env, check=False)
+    result = subprocess.run(command, capture_output=True, text=True, env=env, check=False)  # noqa: S603 (fixed internal tool argv)
     if result.returncode != 0:
         cmd = " ".join(command)
         msg = (
@@ -136,6 +136,7 @@ def make_input_fasta(
     sequence: str,
     output_dir: Path,
 ) -> tuple[Path, Path]:
+    """Write ``sequence`` to a per-seqid FASTA; return (fasta_path, out_dir)."""
     out_dir = seq_id_shard_path(output_dir, seqid) / seqid
     out_dir.mkdir(parents=True, exist_ok=True)
     fasta_path = out_dir / f"{seqid}.fasta"
@@ -144,7 +145,7 @@ def make_input_fasta(
         f.write(f">{seqid}\n{sequence}\n")
     return fasta_path, out_dir
 
-def run_signalp(  # noqa: PLR0913
+def run_signalp(
     input_fasta: Path,
     out_dir: Path,
     *,
@@ -174,7 +175,7 @@ def run_signalp(  # noqa: PLR0913
     trim_fasta = signalp_dir / "processed_entries.fasta"
     return trim_fasta if _is_nonempty(trim_fasta) else input_fasta
 
-def run_msa_search(  # noqa: PLR0913
+def run_msa_search(
     input_fasta: Path,
     out_dir: Path,
     *,
@@ -184,7 +185,7 @@ def run_msa_search(  # noqa: PLR0913
     db_bfd: Path,
     hhsuite_bin_dir: Path,
 ) -> str:
-
+    """Run the HHblits MSA search pipeline for one FASTA; return a status string."""
     hhsuite_env = os.environ.copy()
     hhsuite_env["HHLIB"] = str(hhsuite_bin_dir)
     hhsuite_env["PATH"] = f"{hhsuite_bin_dir}:{hhsuite_env.get('PATH', '')}"
@@ -233,11 +234,11 @@ def run_msa_search(  # noqa: PLR0913
             n75 = _count_header_lines(id90cov75_file)
             n50 = _count_header_lines(id90cov50_file)
 
-            if n75 > 2000:  # noqa: PLR2004
+            if n75 > 2000:
                 if not _is_nonempty(msa0_file):
                     shutil.copyfile(id90cov75_file, msa0_file)
                     break
-            elif n50 > 4000:  # noqa: PLR2004
+            elif n50 > 4000:  # noqa: SIM102 (branch selection differs if collapsed)
                 if not _is_nonempty(msa0_file):
                     shutil.copyfile(id90cov50_file, msa0_file)
                     break
@@ -280,10 +281,10 @@ def run_msa_search(  # noqa: PLR0913
 
             n75 = _count_header_lines(bfd_id90cov75_file)
             n50 = _count_header_lines(bfd_id90cov50_file)
-            if n75 > 2000:  # noqa: PLR2004
+            if n75 > 2000:
                 if not _is_nonempty(msa0_file):
                     shutil.copyfile(bfd_id90cov75_file, msa0_file)
-            elif n50 > 4000:  # noqa: PLR2004
+            elif n50 > 4000:  # noqa: SIM102 (branch selection differs if collapsed)
                 if not _is_nonempty(msa0_file):
                     shutil.copyfile(bfd_id90cov50_file, msa0_file)
 
@@ -343,7 +344,7 @@ def _read_top_tblout(tbl_path: Path, limit: int) -> list[tuple[float, str, str, 
             if raw_line.startswith("#"):
                 continue
             cols = raw_line.split()
-            if len(cols) < 13:  # noqa: PLR2004
+            if len(cols) < 13:
                 continue
             target, alifrom, alito, evalue = cols[0], cols[6], cols[7], cols[12]
             try:
@@ -380,7 +381,7 @@ def _parse_fasta_alignment(path: Path) -> dict[str, str]:
     return aligned
 
 
-def _nhmmer_top_hits(  # noqa: PLR0913
+def _nhmmer_top_hits(
     input_fasta: Path,
     work: Path,
     dbs: tuple[tuple[str, Path], ...],
@@ -446,7 +447,7 @@ def _read_fasta(path: Path) -> dict[str, str]:
     return seqs
 
 
-def _search_and_fetch(  # noqa: PLR0913
+def _search_and_fetch(
     input_fasta: Path,
     work: Path,
     dbs: tuple[tuple[str, Path], ...],
@@ -507,7 +508,7 @@ def _sanitize_rna_query_sequence(seq: str) -> str:
     return "".join(nt if nt in _RNA_MSA_ALLOWED_CHARS else "X" for nt in seq.upper())
 
 
-def run_rna_msa_search(  # noqa: PLR0913
+def run_rna_msa_search(
     input_fasta: Path,
     out_dir: Path,
     *,

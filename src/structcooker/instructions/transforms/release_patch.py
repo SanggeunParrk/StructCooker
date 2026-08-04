@@ -1,5 +1,6 @@
-"""Lightweight metadata patch: inject the initial PDB *release* date into an
-already-built cif LMDB's stored metadata, WITHOUT reconstructing any CIFMol.
+"""Inject the initial PDB *release* date into an already-built cif LMDB's metadata.
+
+Lightweight metadata patch that does NOT reconstruct any CIFMol.
 
 Used by ``datacooker lmdb rebuild`` to turn the deposition-date-only metadata of
 ``cif_pdb.lmdb`` / ``cif_pdb_attached.lmdb`` into release-date-aware metadata.
@@ -53,18 +54,22 @@ def adapt_cif_raw(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def adapt_cif_attached(data: dict[str, Any]) -> dict[str, Any]:
-    """cif_pdb_attached.lmdb value {akey: {cifmol_attached_dict: X}} ->
-    {akey: {_cad: X}} so split_entries feeds each inner as ``_cad``."""
+    """Map cif_pdb_attached.lmdb value to ``{akey: {_cad: X}}`` for split_entries.
+
+    Turns ``{akey: {cifmol_attached_dict: X}}`` into ``{akey: {_cad: X}}`` so
+    split_entries feeds each inner as ``_cad``.
+    """
     return {akey: {"_cad": inner["cifmol_attached_dict"]} for akey, inner in data.items()}
 
 
 # ------------------------------ instructions ---------------------------------
 def passthrough(value: Any) -> Any:
+    """Return ``value`` unchanged (identity recipe step)."""
     return value
 
 
 def inject_release_metadata_dict(
-    metadata_dict: dict[str, Any], release_map: dict[str, str]
+    metadata_dict: dict[str, Any], release_map: dict[str, str],
 ) -> dict[str, Any]:
     """cif_pdb.lmdb: add release_date to the top-level metadata_dict."""
     md = dict(metadata_dict)
@@ -73,7 +78,7 @@ def inject_release_metadata_dict(
 
 
 def inject_release_cad(
-    cad: dict[str, Any], release_map: dict[str, str]
+    cad: dict[str, Any], release_map: dict[str, str],
 ) -> dict[str, Any]:
     """cif_pdb_attached.lmdb: add release_date to one assembly's metadata."""
     out = dict(cad)
@@ -88,10 +93,11 @@ def keep_cad_if_release_in_range(
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> dict[str, Any] | None:
-    """Cheap date pre-filter (NO CIFMol reconstruction): keep one assembly only
-    if its stored release_date is in [start, end). Used to build a date-scoped
-    subset so the expensive train filter never reconstructs out-of-range giants.
-    Falls back to deposition_date if release_date is missing.
+    """Cheap date pre-filter that keeps one assembly, without CIFMol reconstruction.
+
+    Keep the assembly only if its stored release_date is in [start, end). Used to
+    build a date-scoped subset so the expensive train filter never reconstructs
+    out-of-range giants. Falls back to deposition_date if release_date is missing.
     """
     from datetime import date
 

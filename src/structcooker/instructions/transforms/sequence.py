@@ -26,7 +26,7 @@ def filter_water(cifmol: CIFMol | None) -> CIFMol | None:
     return cifmol
 
 
-def graph_to_canonical_sequence(  # noqa: PLR0912, PLR0915
+def graph_to_canonical_sequence(
     seq_list: Iterable[str],
     src_indices: Iterable[int],
     dst_indices: Iterable[int],
@@ -341,7 +341,7 @@ FeatureType = TypeVar("FeatureType")
 NumericType = TypeVar("NumericType", int, float)
 
 
-def run_mmseqs2(  # noqa: PLR0913
+def run_mmseqs2(
     fasta_path: Path,
     tmp_dir: Path,
     mmseqs2_seq_id: float = 0.3,
@@ -350,12 +350,12 @@ def run_mmseqs2(  # noqa: PLR0913
     mmseqs2_clustermode: str = "1",
 ) -> None:
     """Run MMSeqs2 to cluster sequences."""
-    print(f"Running MMSeqs2 clustering for {fasta_path}...")
+    print(f"Running MMSeqs2 clustering for {fasta_path}...")  # noqa: T201 (CLI progress)
     os.system(  # noqa: S605
         f"mmseqs easy-cluster {fasta_path} {tmp_dir} {tmp_dir}/tmp/ "  # noqa: S108
         f"--min-seq-id {mmseqs2_seq_id} -c {mmseqs2_cov} --cov-mode {mmseqs2_covmode} --cluster-mode {mmseqs2_clustermode}",
     )
-    print(f"MMSeqs2 clustering finished for {fasta_path}")
+    print(f"MMSeqs2 clustering finished for {fasta_path}")  # noqa: T201 (CLI progress)
 
 
 def load_fasta(fasta_path: Path) -> dict[str, str]:
@@ -454,7 +454,7 @@ def separate_sequences(
                     etype = "ligand"
                 case _:
                     etype = "ligand"
-            if etype in ("protein", "protein_D") and len(sequence) < 10:  # noqa: PLR2004
+            if etype in ("protein", "protein_D") and len(sequence) < 10:
                 etype = "peptide"
         entity_dict[etype].append(seq_id)
     fasta_tmp_dir = tmp_dir / "fasta"
@@ -480,7 +480,7 @@ chotia_map = {
 }
 
 
-def _extract_H3L3_sequence(cdr_type: str, sequence: str) -> str:
+def _extract_H3L3_sequence(cdr_type: str, sequence: str) -> str:  # noqa: N802 (referenced by dotted-path)
     """Return H3 or L3 sequence from full antibody sequence using ANARCI."""
     chotia_idx = chotia_map[cdr_type]
     result = run_anarci(sequence, scheme="chothia", ncpu=16)
@@ -494,11 +494,10 @@ def _extract_H3L3_sequence(cdr_type: str, sequence: str) -> str:
         if idx in chotia_idx:
             output += seq
     # remove gaps
-    output = output.replace("-", "")
-    return output
+    return output.replace("-", "")
 
 
-def extract_H3L3_sequence(
+def extract_H3L3_sequence(  # noqa: N802 (referenced by dotted-path)
     full_fasta: Path,
     output_fasta: Path,
     cdr_type: str,
@@ -534,7 +533,7 @@ def extract_H3L3_sequence(
     return failed_seq_ids
 
 
-def run_CDHIT(
+def run_CDHIT(  # noqa: N802 (referenced by dotted-path)
     input_fasta: Path,
     output_path: Path,
     seq_id: float = 0.9,

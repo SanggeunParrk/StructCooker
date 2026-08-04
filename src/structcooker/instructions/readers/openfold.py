@@ -50,7 +50,7 @@ def _disordered_seqid_map() -> dict[str, str]:
         with map_path.open() as handle:
             for line in handle:
                 parts = line.rstrip("\n").split("\t")
-                if len(parts) == 2:  # noqa: PLR2004 - stem, seq_id
+                if len(parts) == 2:
                     mapping[parts[0]] = parts[1]
         _DISORDERED_SEQID = mapping
     return _DISORDERED_SEQID

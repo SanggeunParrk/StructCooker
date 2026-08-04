@@ -24,9 +24,10 @@ Structures below are the ones observed across ``/data/shared/cssb_data/BioMol``:
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 
 class Codec(str, Enum):
@@ -42,7 +43,7 @@ def _is_dict(v: Any) -> bool:
     return isinstance(v, dict)
 
 
-def _v_A(v: Any) -> list[str]:
+def _v_A(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(v):
         return [f"not a dict: {type(v).__name__}"]
     issues = []
@@ -56,7 +57,7 @@ def _v_A(v: Any) -> list[str]:
     return issues
 
 
-def _v_B(v: Any) -> list[str]:
+def _v_B(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(v) or not v:
         return ["not a non-empty assembly map"]
     first = next(iter(v.values()))
@@ -67,19 +68,19 @@ def _v_B(v: Any) -> list[str]:
         ["cifmol_attached_dict missing atoms/metadata"]
 
 
-def _v_C(v: Any) -> list[str]:
+def _v_C(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(v):
         return [f"not a dict: {type(v).__name__}"]
     return [f"missing {k}" for k in ("atoms", "residues", "chains", "index_table") if k not in v]
 
 
-def _v_D(v: Any) -> list[str]:
+def _v_D(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(v) or "template_mols" not in v:
         return ["missing template_mols"]
     return [] if _is_dict(v["template_mols"]) else ["template_mols not a dict"]
 
 
-def _v_E(v: Any) -> list[str]:
+def _v_E(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(v) or "msa_dict" not in v:
         return ["missing msa_dict"]
     md = v["msa_dict"]
@@ -87,12 +88,12 @@ def _v_E(v: Any) -> list[str]:
         ["msa_dict missing sequences"]
 
 
-def _v_F(v: Any) -> list[str]:
+def _v_F(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     return [] if isinstance(v, (str, bytes, bytearray)) else \
         [f"raw scalar expected, got {type(v).__name__}"]
 
 
-def _v_G(v: Any) -> list[str]:
+def _v_G(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(v) or "chem_comp_dict" not in v:
         return ["missing chem_comp_dict"]
     return [] if _is_dict(v["chem_comp_dict"]) else ["chem_comp_dict not a dict"]
@@ -100,6 +101,8 @@ def _v_G(v: Any) -> list[str]:
 
 @dataclass(frozen=True)
 class Schema:
+    """Place-of-truth record for one BioMol LMDB value schema."""
+
     name: str                 # "A".."F"
     title: str
     key_convention: str       # pdbid | pdbid_chain | seqid | mgyp | mgyp_topn | mixed
@@ -147,6 +150,7 @@ SCHEMAS: dict[str, Schema] = {
 
 
 def get(name: str) -> Schema:
+    """Return the schema registered under ``name`` (case-insensitive)."""
     try:
         return SCHEMAS[name.upper()]
     except KeyError as exc:
@@ -155,5 +159,6 @@ def get(name: str) -> Schema:
 
 
 def expansion(name: str, default: float = 100.0) -> float:
+    """Return the schema's memory-expansion factor, or ``default`` if unmeasured."""
     e = get(name).expansion
     return default if e is None else e

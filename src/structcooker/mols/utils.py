@@ -1,11 +1,13 @@
+from collections.abc import Iterable
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 
 from structcooker.mols import CIFMol, CIFMolAttached
 
 
-def to_cif(cifmol: CIFMol|CIFMolAttached, output_path: Path) -> None:  # noqa: PLR0915
+def to_cif(cifmol: CIFMol|CIFMolAttached, output_path: Path) -> None:
     """
     Write a CIFMol object to a CIF file.
 
@@ -16,7 +18,7 @@ def to_cif(cifmol: CIFMol|CIFMolAttached, output_path: Path) -> None:  # noqa: P
     5. ~_entity (TODO)
     """
 
-    def _to_mmcif_format(array: np.ndarray) -> list:
+    def _to_mmcif_format(array: Iterable) -> list:
         _list = [str(item) for item in array]
         max_length = max([len(item) for item in _list])
         return [item.ljust(max_length) for item in _list]
@@ -51,16 +53,15 @@ def to_cif(cifmol: CIFMol|CIFMolAttached, output_path: Path) -> None:  # noqa: P
     output += "\n".join(header) + "\n"
 
     xyz = cifmol.atoms.xyz
-    mask = ~np.isnan(xyz).value.any(axis=1)
+    mask = ~cast("Any", np.isnan(xyz)).value.any(axis=1)
     length = mask.sum()
     atom_to_res = np.array(cifmol.index_table.atom_to_res)
     res_to_chain = np.array(cifmol.index_table.res_to_chain)
     atom_to_chain = res_to_chain[atom_to_res]
 
-    group_PDB_list = cifmol.residues.hetero[atom_to_res][mask].value  # noqa: N806
+    group_PDB_list = cifmol.residues.hetero[atom_to_res][mask].value
     id_list = 1 + np.arange(length)
     type_symbol_list = cifmol.atoms.element[mask].value
-    # label_atom_id_list = cifmol.atoms.id[mask].value
     label_atom_id_list = cifmol.atoms.id[mask].value
     label_alt_id_list = [cifmol.alt_id] * length
     label_comp_id_list = cifmol.residues.chem_comp_id[atom_to_res][mask].value
@@ -82,10 +83,10 @@ def to_cif(cifmol: CIFMol|CIFMolAttached, output_path: Path) -> None:  # noqa: P
     occupancy_list = cifmol.atoms.occupancy[mask].value
     b_iso_or_equiv_list = cifmol.atoms.b_factor[mask].value
     pdbx_formal_charge_list = cifmol.atoms.charge[mask].value
-    pdbx_PDB_model_num_list = [cifmol.model_id] * length  # noqa: N806
+    pdbx_PDB_model_num_list = [cifmol.model_id] * length
 
     # to mmcif format
-    group_PDB_list = _to_mmcif_format(group_PDB_list)  # noqa: N806
+    group_PDB_list = _to_mmcif_format(group_PDB_list)
     type_symbol_list = _to_mmcif_format(type_symbol_list)
     label_atom_id_list = _to_mmcif_format(label_atom_id_list)
     label_comp_id_list = _to_mmcif_format(label_comp_id_list)
@@ -107,7 +108,7 @@ def to_cif(cifmol: CIFMol|CIFMolAttached, output_path: Path) -> None:  # noqa: P
     occupancy_list = _to_mmcif_format(occupancy_list)
     b_iso_or_equiv_list = _to_mmcif_format(b_iso_or_equiv_list)
     pdbx_formal_charge_list = _to_mmcif_format(pdbx_formal_charge_list)
-    pdbx_PDB_model_num_list = _to_mmcif_format(pdbx_PDB_model_num_list)  # noqa: N806
+    pdbx_PDB_model_num_list = _to_mmcif_format(pdbx_PDB_model_num_list)
 
     for idx in range(length):
         fields = [

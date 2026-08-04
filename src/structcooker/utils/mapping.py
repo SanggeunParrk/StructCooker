@@ -357,7 +357,7 @@ class ResidueMapping:
         self.dna = DNAView(self)
         self.ligand = LigandView(self)
 
-    def get_view(self, polymer_type: MoleculeType) -> BaseResidueView:  # noqa: PLR0911
+    def get_view(self, polymer_type: MoleculeType) -> BaseResidueView:
         """Return the corresponding mapping view for the given polymer type."""
         match polymer_type:
             case MoleculeType.ANTIBODY:

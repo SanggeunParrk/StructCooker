@@ -63,7 +63,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 from biomol.core.container import FeatureContainer
@@ -102,7 +102,7 @@ def identity_instruction(
         value = np.array(formatted_data, dtype=dtype)
         data_feature = NodeFeature(value=value)
 
-        return (data_feature, mask_feature) if on_missing else data_feature
+        return (data_feature, mask_feature) if on_missing else data_feature  # pyright: ignore[reportPossiblyUnboundVariable]  # mask_feature is always bound when on_missing is truthy
 
     return _worker
 
@@ -157,7 +157,7 @@ def bond_instruction(*, dtype: type[FeatureType]) -> Callable[..., EdgeFeature]:
         src_indices = order[np.searchsorted(atom_id.value, np.array(src), sorter=order)]
         dst_indices = order[np.searchsorted(atom_id.value, np.array(dst), sorter=order)]
 
-        values = [np.array([dtype(x) for x in data]) for data in args]
+        values = [np.array([cast("type[Any]", dtype)(x) for x in data]) for data in args]
         if not values:
             msg = "At least one feature field (*args) must be provided."
             raise ValueError(msg)
@@ -263,7 +263,7 @@ def check_missing_xyz(atom: FeatureContainer) -> list[dict[str, Any]]:
 def _bond_endpoints(atom: FeatureContainer) -> tuple[np.ndarray, np.ndarray] | None:
     if "bond_type" not in atom:
         return None
-    bond = atom["bond_type"]
+    bond = cast("EdgeFeature", atom["bond_type"])
     return np.asarray(bond.src_indices), np.asarray(bond.dst_indices)
 
 

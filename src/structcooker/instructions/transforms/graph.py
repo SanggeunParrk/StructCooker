@@ -2,7 +2,7 @@ import itertools
 from collections import Counter, OrderedDict, defaultdict
 from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import TypeVar
+from typing import Any, TypeVar, cast
 
 import networkx as nx
 import numpy as np
@@ -10,14 +10,14 @@ from biomol.core.container import FeatureContainer
 from biomol.core.feature import EdgeFeature, NodeFeature
 from joblib import Parallel, delayed
 
-from structcooker.mols import CIFMol, CIFMolAttached
-from structcooker.utils.mapping import mol_type_map
+from structcooker.instructions.transforms.codecs import to_bytes
 from structcooker.instructions.transforms.sequence import (
     extract_sequence_from_cifmol,
     filter_water,
     graph_to_canonical_sequence,
 )
-from structcooker.instructions.transforms.codecs import to_bytes
+from structcooker.mols import CIFMol, CIFMolAttached
+from structcooker.utils.mapping import mol_type_map
 
 InputType = TypeVar("InputType", str, int, float)
 FeatureType = TypeVar("FeatureType")
@@ -28,7 +28,7 @@ def extract_graph_per_cifmol(
     cifmol: CIFMol,
     seq_to_seq_hash_list: dict[str, list[str]],
     seq_hash_to_cluster: dict[str, str],
-) -> type[InputType]:
+) -> bytes:
     """Read CIFMol and extract chain-level contact graphs with cluster labels."""
     chain_id_to_cluster = {}
     chain_ids = cifmol.chains.chain_id.value
@@ -122,13 +122,13 @@ def extract_graph_per_cifmol_attached(cifmol: CIFMolAttached) -> bytes:
     return to_bytes({"cluster_graph": container})
 
 
-def extract_graphs(n_jobs: int = -1) -> Callable[..., type[InputType]]:
+def extract_graphs(n_jobs: int = -1) -> Callable[..., dict[str, nx.Graph]]:
     """Read CIFMol and extract chain-level contact graphs with cluster labels."""
 
     def _single_function(
         cifmol: CIFMol,
         seq_to_cluster: dict[str, str],
-    ) -> type[InputType]:
+    ) -> nx.Graph:
         chain_id_to_cluster = {}
         chain_ids = cifmol.chains.chain_id.value
         for full_chain_id in chain_ids:
@@ -176,12 +176,12 @@ def extract_graphs(n_jobs: int = -1) -> Callable[..., type[InputType]]:
         seq_hash_map: Path,  # seq to seq hash
         seq_cluster_map: Path,  # seq hash to cluster
     ) -> dict[str, nx.Graph]:
-        seq_to_hash: dict[str, int] = {}
+        seq_to_hash: dict[str, str] = {}
         with seq_hash_map.open("r") as f:
             for line in f:
                 seq_hash, seq = line.strip().split("\t")
                 seq_to_hash[seq] = seq_hash
-        seq_hash_to_cluster: dict[int, str] = {}
+        seq_hash_to_cluster: dict[str, str] = {}
         with seq_cluster_map.open("r") as f:
             for line in f:
                 rep, members = line.strip().split("\t")
@@ -197,7 +197,7 @@ def extract_graphs(n_jobs: int = -1) -> Callable[..., type[InputType]]:
             delayed(_single_function)(cifmol, seq_to_cluster)
             for cifmol in cifmol_dict.values()
         )
-        return dict(zip(cifmol_dict.keys(), results, strict=True))
+        return cast("dict[str, nx.Graph]", dict(zip(cifmol_dict.keys(), results, strict=True)))
 
     return _worker
 
@@ -215,7 +215,7 @@ def get_edge_labels(graph: nx.Graph) -> set[tuple[str, str]]:
     for u, v in graph.edges():
         label_u = graph.nodes[u].get("label")
         label_v = graph.nodes[v].get("label")
-        edge_labels.add(tuple(sorted((label_u, label_v))))
+        edge_labels.add(tuple(sorted(cast("tuple[Any, Any]", (label_u, label_v)))))
     return edge_labels
 
 
@@ -236,12 +236,14 @@ def graph_isomorphism(graph1: nx.Graph, graph2: nx.Graph) -> bool:
     return gm.is_isomorphic()
 
 
-def build_graph_hash(n_jobs: int = -1) -> Callable[..., type[InputType]]:
+def build_graph_hash(
+    n_jobs: int = -1,
+) -> Callable[..., tuple[dict[int, nx.Graph], dict[str | int, int]]]:
     """Deduplicate graphs up to isomorphism using node 'label' attribute."""
 
     def _worker(
         graph_map: dict[str, nx.Graph],
-    ) -> dict[str, dict[str, str]]:
+    ) -> tuple[dict[int, nx.Graph], dict[str | int, int]]:
         """
         Deduplicate graphs up to isomorphism using node 'label' attribute.
 
@@ -285,7 +287,9 @@ def build_graph_hash(n_jobs: int = -1) -> Callable[..., type[InputType]]:
         inv_list = Parallel(n_jobs=n_jobs, verbose=5)(
             delayed(_invariants)(it) for it in items
         )
-        inv_map: dict[str | int, tuple] = dict(inv_list)
+        inv_map: dict[str | int, tuple] = dict(
+            cast("list[tuple[str | int, tuple]]", inv_list),
+        )
 
         # ---------- 2) Bucket by invariants ----------
         buckets: dict[tuple, list[str | int]] = defaultdict(list)
@@ -312,7 +316,7 @@ def build_graph_hash(n_jobs: int = -1) -> Callable[..., type[InputType]]:
             clusters: list[list[str | int]] = []
 
             for gid in gids:
-                G = graph_map[gid]
+                G = graph_map[cast("str", gid)]
                 placed = False
                 # Try match against existing representatives
                 for c_idx, (_, repG) in enumerate(reps):
@@ -334,7 +338,9 @@ def build_graph_hash(n_jobs: int = -1) -> Callable[..., type[InputType]]:
 
         # Flatten list of clusters
         clusters_all: list[tuple[list[str | int], str | int]] = list(
-            itertools.chain.from_iterable(bucket_results),
+            itertools.chain.from_iterable(
+                cast("list[list[tuple[list[str | int], str | int]]]", bucket_results),
+            ),
         )
 
         # ---------- 4) Assign global cluster IDs and build outputs ----------
@@ -342,7 +348,7 @@ def build_graph_hash(n_jobs: int = -1) -> Callable[..., type[InputType]]:
         gid_to_id: dict[str | int, int] = {}
 
         for cur, (members, rep_gid) in enumerate(clusters_all):
-            unique_map[cur] = graph_map[rep_gid]
+            unique_map[cur] = graph_map[cast("str", rep_gid)]
             for gid in members:
                 gid_to_id[gid] = cur
         return unique_map, gid_to_id
@@ -394,7 +400,9 @@ class _UnionFind:
         return comps
 
 
-def graph_edge_cluster(n_jobs: int = -1) -> Callable[..., type[InputType]]:
+def graph_edge_cluster(
+    n_jobs: int = -1,
+) -> Callable[..., tuple[list[set[int]], dict[int, int]]]:
     """Cluster graphs that share at least one edge defined by node label pairs."""
 
     def _worker(
@@ -444,10 +452,13 @@ def graph_edge_cluster(n_jobs: int = -1) -> Callable[..., type[InputType]]:
                 keys.add(key)
             return gid, sorted(keys)
 
-        edge_key_lists: list[tuple[int, list[tuple[object, object]]]] = Parallel(
-            n_jobs=n_jobs,
-            verbose=5,
-        )(delayed(_extract_edge_keys)(gid) for gid in graph_ids)
+        edge_key_lists: list[tuple[int, list[tuple[object, object]]]] = cast(
+            "list[tuple[int, list[tuple[object, object]]]]",
+            Parallel(
+                n_jobs=n_jobs,
+                verbose=5,
+            )(delayed(_extract_edge_keys)(gid) for gid in graph_ids),
+        )
 
         # --- 2) Build edge_key -> [graph_id, ...] inverted index ------------------
         edge_to_graphs: dict[tuple[object, object], list[int]] = defaultdict(list)
@@ -476,7 +487,7 @@ def graph_edge_cluster(n_jobs: int = -1) -> Callable[..., type[InputType]]:
     return _worker
 
 
-def convert_graph_to_bytes(n_jobs: int = -1) -> Callable[..., bytes]:
+def convert_graph_to_bytes(n_jobs: int = -1) -> Callable[..., dict[str, bytes]]:
     """Convert a NetworkX graph to a FeatureContainer."""
 
     def _function(
@@ -509,7 +520,7 @@ def convert_graph_to_bytes(n_jobs: int = -1) -> Callable[..., bytes]:
         results = Parallel(n_jobs=n_jobs, verbose=10)(
             delayed(_function)(graph) for graph in graph_map.values()
         )
-        return dict(zip(graph_map.keys(), results, strict=True))
+        return cast("dict[str, bytes]", dict(zip(graph_map.keys(), results, strict=True)))
 
     return _worker
 
@@ -559,7 +570,7 @@ def build_category() -> tuple[dict[str, int], dict[str, str], dict[str, int]]:
 
 def count_category_count(
     edge_list: list[tuple[str, str]],
-) -> list[str]:
+) -> "OrderedDict[str, int]":
     """Summarize split results into edge list strings."""
     counts, special_map, priority_map = build_category()
 
@@ -611,7 +622,7 @@ def split_graph_by_components(
 
 def split_train_valid(
     whole_graph: nx.Graph,
-    edge_wo_ligand_counts: int,
+    edge_wo_ligand_counts: dict[str, int],
     subgraphs: list[nx.Graph],
     train_ratio: float = 0.9,  # fraction of train set
     min_valid_size: int = 100,  # min #edges in valid set
@@ -704,7 +715,7 @@ def extract_edges(
 ) -> list[str]:
     """Extract edges from edge TSV file."""
     extracted_edges = []
-    to_be_extracted = set(to_be_extracted)
+    to_be_extracted = cast("list[tuple[str, str]]", set(to_be_extracted))
     with edge_tsv_path.open("r", encoding="utf-8") as f:
         for line in f:
             src, dst = line.strip().split("\t")[:2]

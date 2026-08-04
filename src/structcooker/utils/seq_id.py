@@ -3,11 +3,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-
 SEQ_ID_RE = re.compile(r"^([A-Za-z])(\d{20})(?:\..*)?$")
 
 
 def seq_id_from_name(name: str) -> str | None:
+    """Return the type-prefixed 20-digit sequence id parsed from ``name``, else None."""
     match = SEQ_ID_RE.match(name)
     if match is None:
         return None
@@ -15,6 +15,7 @@ def seq_id_from_name(name: str) -> str | None:
 
 
 def seq_id_shard_path(base_dir: Path, seq_id: str) -> Path:
+    """Return the sharded on-disk path for ``seq_id`` under ``base_dir``."""
     if not re.match(r"^[A-Za-z]\d{20}$", seq_id):
         msg = f"Expected type-prefixed 20-digit sequence id, got {seq_id!r}"
         raise ValueError(msg)

@@ -270,7 +270,7 @@ def derive_chain_features(
     }
 
 
-def assemble_cifmol(  # noqa: PLR0913
+def assemble_cifmol(
     atom_arrays: dict[str, np.ndarray],
     atom_to_res: np.ndarray,
     res_to_chain: np.ndarray,
@@ -319,7 +319,7 @@ def assemble_cifmol(  # noqa: PLR0913
     ).to_dict()
 
 
-def _build_one_cifmol(atom_arrays: dict, ccd_db_path: Path) -> dict:
+def _build_one_cifmol(atom_arrays: dict, ccd_db_path: Path) -> "BioMolDict":
     """Run the full structure pipeline on one atom table -> CIFMol dict."""
     (atom_to_res, res_to_chain, n_chain, res_names, res_ids,
      res_hetero, chain_ids, entity_ids, chain_mol_types) = build_hierarchy(atom_arrays)

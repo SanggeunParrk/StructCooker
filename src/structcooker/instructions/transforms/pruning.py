@@ -49,7 +49,7 @@ _CSR_FIELDS = (
 )
 
 
-def select_features(  # noqa: PLR0913
+def select_features(
     cifmol: CIFMol | CIFMolAttached | None,
     atom_features: Sequence[str],
     residue_features: Sequence[str],
@@ -155,7 +155,7 @@ def convert_to_pruned_cifmol(value: dict) -> dict[str, CIFMolAttached]:
     return {"cifmol": load_pruned_cifmol(value)}
 
 
-def _collect(  # noqa: PLR0913
+def _collect(
     container: FeatureContainer,
     level: str,
     kind: str,

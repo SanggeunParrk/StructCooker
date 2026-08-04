@@ -104,7 +104,7 @@ def validate_msa_record(record: dict[str, Any]) -> list[dict[str, Any]]:
         issues.append(_issue("shape_mismatch", f"aligned width {aligned.shape[1]} != query length {length}"))
     if aligned is not None and deletions is not None and aligned.shape != deletions.shape:
         issues.append(_issue("shape_mismatch", f"deletions {deletions.shape} != aligned {aligned.shape}"))
-    if profile is not None and profile.shape[-1] != 32:  # noqa: PLR2004 - profile is (L, 32)
+    if profile is not None and profile.shape[-1] != 32:
         issues.append(_issue("shape_mismatch", f"profile last dim {profile.shape[-1]} != 32"))
     if depth is not None and depth < 1:
         issues.append(_issue("empty", "alignment has no rows"))
@@ -116,7 +116,7 @@ def validate_msa_record(record: dict[str, Any]) -> list[dict[str, Any]]:
     return issues
 
 
-def _validate_biomol(  # noqa: PLR0913 - per-level schemas passed explicitly
+def _validate_biomol(
     bm: dict[str, Any],
     issues: list[dict[str, Any]],
     *,
@@ -167,7 +167,7 @@ def _validate_biomol(  # noqa: PLR0913 - per-level schemas passed explicitly
 
     if xyz is not None and n_atoms is not None and getattr(xyz, "shape", (0,))[0] != n_atoms:
         issues.append(_issue("shape_mismatch", f"{prefix}xyz rows {xyz.shape[0]} != n_atoms {n_atoms}"))
-    if xyz is not None and (xyz.ndim != 2 or xyz.shape[1] != 3):  # noqa: PLR2004 - xyz is (n, 3)
+    if xyz is not None and (xyz.ndim != 2 or xyz.shape[1] != 3):
         issues.append(_issue("shape_mismatch", f"{prefix}xyz shape {xyz.shape} != (n, 3)"))
 
     a2r = index_table.get("atom_to_res")

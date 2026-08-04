@@ -1,8 +1,8 @@
 """Utility helpers for StructCooker."""
 
 from .mapping import (
-    AtomMapping,
     CANONICAL_CHEMCOMPS,
+    AtomMapping,
     EntityMapping,
     MoleculeType,
     ResidueMapping,
@@ -13,8 +13,8 @@ from .mapping import (
 )
 
 __all__ = [
-    "AtomMapping",
     "CANONICAL_CHEMCOMPS",
+    "AtomMapping",
     "EntityMapping",
     "MoleculeType",
     "ResidueMapping",
