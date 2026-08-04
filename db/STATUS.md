@@ -125,14 +125,22 @@ The full template pipeline is now on the clean surface, wired in MANIFEST order
 
 `msa/msa_rna`, `valid/valid1`, `valid/valid1_attach`, `valid/valid2` are also ported.
 
-## 🔴 Small remaining derivations (minor)
+### Minor derivations — DONE
+The small list/fasta projections feeding the hmm pipeline are ported as materialize/
+parallel ops: `metadata/pdb_polypeptide_L` (L-chain fasta = hmmsearch template DB),
+`metadata/template_chain_filelist` (protein-chain work list), `metadata/seqid_template_filelist`
+(Phase 3 keyed-build item list), `template/msa_wo_lower` (a3m insertion-strip). The full
+**31-node MANIFEST** topo-sorts end to end.
 
-| item | what | note |
-|---|---|---|
-| key filelists | `template_chain_filelist.txt` (protein chains), `seqid_template_filelist.txt` (= `cut -f1 seqid_to_chains`) | tiny list projections feeding the Phase 3/4 keyed builds |
-| hmmsearch inputs | `pdb_polypeptide_L.fasta` (L-chain filter of cif fasta), `msa_wo_lower` (a3m insertion-strip) | small extract/filter derivations |
-| `template/pdb` (lower) | `rekey_seq_id_db.py` | optional case/width rekey — absorb as a `rekey` op once the exact transform is confirmed |
-| external inputs (provided) | SabDab, signalp, raw RNA a3m | downloaded/tool outputs, like mmCIF/CCD — not reproduced here |
+## ✅ PDB reproduction — complete on the clean surface
+
+Every step from raw mmCIF to the training/validation DBs is a `db/**` config; nothing
+runs off a legacy script. What is *not* reproduced here (by design, provided like the
+raw mmCIF/CCD downloads): the external-tool / raw inputs — **SabDab** (antibody summary),
+**SignalP** outputs, and the raw per-chain **a3m** MSAs. The legacy `rekey_seq_id_db.py`
+is a one-off width migration (`P0000007` → `P…020d`) for *pre-existing* DBs; a
+from-scratch build already emits 20-width ids (`_SEQ_ID_WIDTH`), so it is not a
+reproduction step.
 
 ## ⏸️ Distillation — code/config only, validate small, never full-build (per user)
 
