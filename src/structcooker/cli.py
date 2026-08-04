@@ -78,6 +78,25 @@ def _write_engine_yaml(db_path: Path, workdir: Path) -> Path:
     return engine
 
 
+def _op_of(cfg: dict) -> str:
+    """Infer the op from a db config's shape.
+
+    ``old_env_path`` -> rebuild; ``output_data_path`` -> a projection op
+    (``extract`` when it reads a source DB, else ``materialize``); ``env_path``
+    -> build. Projection ops produce a file (TSV/fasta), not an LMDB, so they run
+    through ``datacooker.cli.workflow`` instead of the planning-first pipeline.
+    """
+    if cfg.get("old_env_path"):
+        return "rebuild"
+    if cfg.get("output_data_path"):
+        reads_db = any(cfg.get(k) for k in ("db_path", "extract_recipe", "extract_recipe_path"))
+        return "extract" if reads_db else "materialize"
+    if cfg.get("env_path"):
+        return "build"
+    msg = "config needs old_env_path (rebuild) / env_path (build) / output_data_path (project)"
+    raise click.ClickException(msg)
+
+
 @click.group()
 def cli() -> None:
     """Build BioMol DBs declaratively (planning-first)."""
@@ -95,8 +114,11 @@ def list_dbs() -> None:
         except Exception as exc:                       # noqa: BLE001
             rows.append((str(f.relative_to(DB_ROOT)), "ERR", str(exc)[:32], ""))
             continue
-        op = "rebuild" if cfg.get("old_env_path") else "build"
-        target = cfg.get("new_env_path") or cfg.get("env_path") or "?"
+        try:
+            op = _op_of(cfg)
+        except click.ClickException:
+            op = "?"
+        target = cfg.get("new_env_path") or cfg.get("env_path") or cfg.get("output_data_path") or "?"
         rows.append((str(f.relative_to(DB_ROOT)), op, str(cfg.get("schema", "-")), str(target)))
     if not rows:
         click.echo(f"(no db configs under {DB_ROOT})")
@@ -147,6 +169,39 @@ def _submit_pipeline(
     return proc.returncode, job_id
 
 
+_WORKFLOW_CMD = {"materialize": "run", "extract": "extract-lmdb"}
+WORKFLOW_CLI = [sys.executable, "-u", "-m", "datacooker.cli.workflow"]
+
+
+def _submit_workflow(
+    name: str,
+    workdir: Path | None,
+    *,
+    op: str,
+    dry_run: bool,
+    depends_on: tuple[str, ...] = (),
+) -> tuple[int, str | None]:
+    """Submit a projection op (materialize / extract) as a single SLURM job.
+
+    These configs produce a file (a TSV/fasta projection), not an LMDB, so they run
+    through ``datacooker.cli.workflow`` (single-process ``run`` / ``extract-lmdb``),
+    not the planning-first tier pipeline. One ``run_once`` job, afterok-chainable, so
+    build-all can thread these metadata nodes into the DAG like any other.
+    """
+    from datacooker.executors.slurm import SlurmExecutor
+
+    db_path = _resolve_db(name)
+    target = load_config(db_path).get("output_data_path")
+    wd = Path(workdir) if workdir else REPO / "logs" / "workflow" / Path(name).name
+    click.echo(f"[structcooker] {db_path.relative_to(REPO)}  op={op}  -> {target}"
+               + (f"  afterok={','.join(depends_on)}" if depends_on else ""))
+    argv = [*WORKFLOW_CLI, _WORKFLOW_CMD[op], str(db_path)]
+    execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
+    handle = execu.run_once(name=Path(name).name, argv=argv,
+                            mem_gb=490, cores=112, depends_on=depends_on)
+    return 0, handle.job_id
+
+
 @cli.command("build")
 @click.argument("name")
 @click.option("--workdir", type=click.Path(path_type=Path), default=None,
@@ -159,7 +214,20 @@ def _submit_pipeline(
               help="Print the resolved schema/E + datacooker invocation and exit.")
 def build(name: str, workdir: Path | None, dry_run: bool,
           depends_on: str, show: bool) -> None:
-    """Plan + build (or rebuild) the DB named by its db/*.yaml (op auto-inferred)."""
+    """Plan + build the DB named by its db/*.yaml (op auto-inferred).
+
+    build / rebuild run the planning-first LMDB pipeline; materialize / extract
+    (projection ops that write a TSV/fasta, not an LMDB) run through
+    ``datacooker.cli.workflow`` as a single job.
+    """
+    op = _op_of(load_config(_resolve_db(name)))
+    deps = tuple(d for d in depends_on.split(",") if d.strip())
+    if op in _WORKFLOW_CMD:
+        if show:
+            click.echo(f"  op={op} -> {' '.join([*WORKFLOW_CLI, _WORKFLOW_CMD[op], str(_resolve_db(name))])}")
+            return
+        rc, _ = _submit_workflow(name, workdir, op=op, dry_run=dry_run, depends_on=deps)
+        raise SystemExit(rc)
     if show:
         db_path = _resolve_db(name)
         cfg = load_config(db_path)
@@ -170,7 +238,6 @@ def build(name: str, workdir: Path | None, dry_run: bool,
                 "--repo", str(REPO)]
         click.echo("  (engine.yaml materialized on real build)\n  " + " ".join(argv))
         return
-    deps = tuple(d for d in depends_on.split(",") if d.strip())
     rc, _ = _submit_pipeline(name, workdir, dry_run=dry_run, depends_on=deps)
     raise SystemExit(rc)
 

@@ -1,0 +1,28 @@
+# seq_id_map — sequence -> assigned seq_id. The identity key that threads the whole
+# BioMol DB set (a3m / templates / attach / clusters are all keyed by seq_id).
+# MATERIALIZE op: run the recipe over the merged fasta, project the map to a TSV.
+#
+# ┌─ EXCEPTION: reproducing the production id space ─────────────────────────────┐
+# │ seq_id is an ASSIGNED running counter (mol-type prefix + ordinal), NOT a hash │
+# │ of the sequence, so a from-scratch build yields a self-consistent but         │
+# │ DIFFERENT id space. Two modes:                                                │
+# │   • fresh set   -> leave SEQID_SEED unset (mints new ids; internally coherent) │
+# │   • MATCH prod  -> seed with the published map (ids then match production):    │
+# │       from huggingface_hub import hf_hub_download                              │
+# │       hf_hub_download("biomol/seq-id-map", "seq_id_map.tsv.gz",                │
+# │                       repo_type="dataset", local_dir="$DATA_ROOT/metadata")    │
+# │       gunzip $DATA_ROOT/metadata/seq_id_map.tsv.gz                             │
+# │       export SEQID_SEED=$DATA_ROOT/metadata/seq_id_map.tsv                     │
+# │ (repo id is a placeholder; renameable on HF with redirects kept.)              │
+# └──────────────────────────────────────────────────────────────────────────────┘
+recipe_path: ${p:src/structcooker/workflows/metadata/seq_id_map.py}
+
+inputs:
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
+  # optional seed: unset -> fresh ids; set to the published map -> match production
+  old_seq_id_map_path: ${oc.env:SEQID_SEED,/nonexistent/seq_id_map.tsv}
+
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_seq_id_map
