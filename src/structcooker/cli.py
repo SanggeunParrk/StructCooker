@@ -266,11 +266,21 @@ def _meta_book(deps_map: dict[str, list[str]], *,
 
     def make_submit(name: str) -> Callable[..., str | None]:
         def submit(*upstream: str | None) -> str | None:
-            if not force and not output_absent(load_config(_resolve_db(name))):
+            cfg = load_config(_resolve_db(name))
+            if not force and not output_absent(cfg):
                 click.echo(f"[build-all] {name}: output present -> skip")
                 return None
             depends_on = tuple(j for j in upstream if j)
             wd = (Path(workdir) / name) if workdir else None
+            # dispatch by op: projection ops (materialize/extract) go through the
+            # workflow runner, build/rebuild through the planning-first pipeline.
+            if _op_of(cfg) in _WORKFLOW_CMD:
+                rc, job_id = _submit_workflow(name, wd, op=_op_of(cfg),
+                                              dry_run=dry_run, depends_on=depends_on)
+                if rc != 0:
+                    msg = f"{name} workflow submit failed (rc={rc})."
+                    raise click.ClickException(msg)
+                return job_id
             rc, job_id = _submit_pipeline(name, wd, dry_run=dry_run, depends_on=depends_on)
             if rc != 0:
                 msg = f"{name} pipeline submit failed (rc={rc})."

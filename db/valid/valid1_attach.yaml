@@ -1,0 +1,17 @@
+# valid stage 1 attach — attach sequence metadata onto cif_valid_1 (schema A -> B),
+# so valid stage 2 can dedup on the attached fields. Rebuild; same attach recipe as
+# pdb/cif_attached, source = the valid-1 filtered DB.
+schema: B
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/valid/cif_valid_1.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/valid/cif_attached_valid_1.lmdb}
+recipe: ${p:src/structcooker/workflows/metadata/attach.py}
+metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.py}
+metadata_input:
+  raw_fasta_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
+  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+  seqcluster_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30.tsv}
+reader:
+  adapter: structcooker.instructions.transforms.cifmol.convert_to_cifmol_transformed
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

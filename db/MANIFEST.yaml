@@ -1,23 +1,52 @@
 # The BioMol db set as a dependency DAG.
 #
-# `structcooker build-all` topologically sorts these and submits each config's
-# pipeline with `--depends-on` the terminal (index) job of its upstream configs,
-# so the whole set reproduces from one command with SLURM enforcing the order.
+# `structcooker build-all` turns this into a datacooker meta-recipe: it topologically
+# sorts the nodes, threads each config's terminal job id into its dependents as
+# `--depends-on`, and skips any output already present. build/rebuild nodes run the
+# planning-first pipeline; materialize/extract (metadata projection) nodes run the
+# workflow runner -- both afterok-chainable, dispatched by op.
 #
-# Each entry: <db name> : [<upstream db name>, ...]. Only the ✅ (clean-config)
-# databases from db/STATUS.md are listed; 🔴/⏸️ rows are added as they are ported.
+# Each entry: <db name> : [<upstream db name>, ...]. Only nodes whose full upstream is
+# itself on the clean surface are listed; template Phase 1/2 (hmm pipeline), signalp,
+# and the RNA-a3m / SabDab raw inputs are provided externally (see db/STATUS.md), so
+# nodes needing them are annotated but their external inputs are not DAG nodes.
 
+# ---- roots (raw inputs) ----
 ccd/ccd: []
 msa/a3m: []
+msa/msa_rna: []                                   # RNA a3m is a provided intermediate
 
-pdb/cif: [ccd/ccd]                      # cif build reads the ccd DB for bond graphs
-pdb/cif_attached: [pdb/cif]
-chain/cif_chain: [pdb/cif]
+# ---- PDB cif ----
+pdb/cif: [ccd/ccd]                                # cif build reads the ccd DB for bond graphs
 
+# ---- metadata (projection ops off cif) ----
+metadata/cif_fasta: [pdb/cif]
+metadata/cif_metadata: [pdb/cif]
+metadata/seq_id_map: [metadata/cif_fasta]         # + optional SEQID_SEED to match production
+metadata/seq_cluster40: [metadata/seq_id_map, metadata/cif_fasta]   # + SabDab (external)
+metadata/seq_cluster30: [metadata/seq_id_map, metadata/cif_fasta]
+metadata/interacting_seq_ids: [pdb/cif, metadata/seq_id_map]
+metadata/interacting_seq_clusters: [metadata/interacting_seq_ids, metadata/seq_cluster40]
+
+# ---- attach + chain ----
+pdb/cif_attached: [pdb/cif, metadata/seq_id_map, metadata/seq_cluster40]
+chain/cif_chain: [pdb/cif_attached]
+
+# ---- msa depth caps ----
 msa/a3m_d16k: [msa/a3m]
 msa/a3m_d2k: [msa/a3m]
 msa/a3m_d512: [msa/a3m]
 
+# ---- templates (Phase 3/4; Phase 1/2 hmm pipeline is external) ----
+template/seqid_template_mols: [chain/cif_chain]
+template/chain_template: [template/seqid_template_mols]
+
+# ---- training views ----
 train/train_20210930: [pdb/cif_attached]
 train/train_20260301: [pdb/cif_attached]
 train/train_20210930_mpnn: [train/train_20210930]
+
+# ---- validation (multi-stage; signalp is external) ----
+valid/valid1: [pdb/cif, metadata/seq_id_map]
+valid/valid1_attach: [valid/valid1, metadata/seq_id_map, metadata/seq_cluster30]
+valid/valid2: [valid/valid1_attach, metadata/seq_cluster30, metadata/interacting_seq_clusters]
