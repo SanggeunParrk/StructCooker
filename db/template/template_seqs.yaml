@@ -1,0 +1,10 @@
+# template Phase 3 seq maps — seqid_to_seq + chain_to_seq. MATERIALIZE op.
+# Reads Phase 1 output (seqid_to_chains) + seq_id_map + fasta.
+recipe_path: ${p:src/structcooker/workflows/ingest/template_seqs.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/chain_to_seq.tsv}
+inputs:
+  seqid_chains: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seqid_to_chains.tsv}
+  seq_id_map: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+  cif_fasta: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
+  out_seqid_seq: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seqid_to_seq.tsv}
+  out_chain_seq: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/chain_to_seq.tsv}

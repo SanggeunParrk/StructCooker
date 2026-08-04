@@ -37,9 +37,12 @@ msa/a3m_d16k: [msa/a3m]
 msa/a3m_d2k: [msa/a3m]
 msa/a3m_d512: [msa/a3m]
 
-# ---- templates (Phase 3/4; Phase 1/2 hmm pipeline is external) ----
-template/seqid_template_mols: [chain/cif_chain]
-template/chain_template: [template/seqid_template_mols]
+# ---- templates (full hmm pipeline, now absorbed) ----
+template/hmmsearch: [msa/a3m, metadata/cif_fasta]                       # Phase 0 (parallel)
+template/template_candidates: [template/hmmsearch, metadata/seq_id_map, metadata/cif_fasta, metadata/cif_metadata]  # Phase 1/2
+template/template_seqs: [template/template_candidates, metadata/seq_id_map, metadata/cif_fasta]
+template/seqid_template_mols: [chain/cif_chain, template/template_seqs, template/template_candidates]   # Phase 3
+template/chain_template: [template/seqid_template_mols, template/template_candidates]                   # Phase 4
 
 # ---- training views ----
 train/train_20210930: [pdb/cif_attached]
