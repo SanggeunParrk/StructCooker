@@ -1,0 +1,7 @@
+# pdb_polypeptide_L — the polypeptide(L) subset of the cif fasta (hmmsearch template DB).
+# MATERIALIZE op. Feeds template/hmmsearch.
+recipe_path: ${p:src/structcooker/workflows/exports/pdb_polypeptide_l.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/pdb_polypeptide_L.fasta}
+inputs:
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
+  out_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/pdb_polypeptide_L.fasta}

@@ -27,6 +27,9 @@ metadata/seq_cluster40: [metadata/seq_id_map, metadata/cif_fasta]   # + SabDab (
 metadata/seq_cluster30: [metadata/seq_id_map, metadata/cif_fasta]
 metadata/interacting_seq_ids: [pdb/cif, metadata/seq_id_map]
 metadata/interacting_seq_clusters: [metadata/interacting_seq_ids, metadata/seq_cluster40]
+metadata/pdb_polypeptide_L: [metadata/cif_fasta]                       # hmmsearch template DB
+metadata/template_chain_filelist: [metadata/cif_fasta]                 # protein-chain work list
+metadata/seqid_template_filelist: [template/template_candidates]       # = keys of seqid_to_chains
 
 # ---- attach + chain ----
 pdb/cif_attached: [pdb/cif, metadata/seq_id_map, metadata/seq_cluster40]
@@ -38,11 +41,12 @@ msa/a3m_d2k: [msa/a3m]
 msa/a3m_d512: [msa/a3m]
 
 # ---- templates (full hmm pipeline, now absorbed) ----
-template/hmmsearch: [msa/a3m, metadata/cif_fasta]                       # Phase 0 (parallel)
-template/template_candidates: [template/hmmsearch, metadata/seq_id_map, metadata/cif_fasta, metadata/cif_metadata]  # Phase 1/2
+template/msa_wo_lower: []                                               # a3m insertion-strip (raw a3m files)
+template/hmmsearch: [template/msa_wo_lower, metadata/pdb_polypeptide_L]  # Phase 0 (parallel)
+template/template_candidates: [template/hmmsearch, metadata/template_chain_filelist, metadata/seq_id_map, metadata/cif_fasta, metadata/cif_metadata]  # Phase 1/2
 template/template_seqs: [template/template_candidates, metadata/seq_id_map, metadata/cif_fasta]
-template/seqid_template_mols: [chain/cif_chain, template/template_seqs, template/template_candidates]   # Phase 3
-template/chain_template: [template/seqid_template_mols, template/template_candidates]                   # Phase 4
+template/seqid_template_mols: [chain/cif_chain, template/template_seqs, metadata/seqid_template_filelist]   # Phase 3
+template/chain_template: [template/seqid_template_mols, template/template_candidates]                       # Phase 4
 
 # ---- training views ----
 train/train_20210930: [pdb/cif_attached]

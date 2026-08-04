@@ -1,0 +1,7 @@
+# template_chain_filelist — pdbid_chain ids of polypeptide(L) chains (the protein
+# template work list). MATERIALIZE op. Feeds template_candidates (Phase 1) + chain_template (Phase 4).
+recipe_path: ${p:src/structcooker/workflows/exports/template_chain_list.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/template_chain_filelist.txt}
+inputs:
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
+  out_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/template_chain_filelist.txt}
