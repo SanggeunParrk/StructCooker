@@ -1,0 +1,24 @@
+# distillation_rna cif_attached — attach sequence metadata onto the rna base CIFMol.
+# Schema B. Rebuild. Now unblocked: the base cif_rna already uses the wrapped
+# (assembly_dict/metadata_dict) layout the openfold_structure recipe emits, and the
+# seq_id_map / seq_cluster metadata is on the clean surface. Mirrors
+# configs/metadata/attach_cif_rna_revisit. Code-complete; validate small, do NOT full-build.
+schema: B
+
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_rna/cif/cif_rna.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_rna/cif/cif_rna_attached.lmdb}
+
+recipe: ${p:src/structcooker/workflows/metadata/attach.py}
+metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.py}
+metadata_input:
+  raw_fasta_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/rna.fasta}
+  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+  seqcluster_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40.tsv}
+
+split_entries: true
+
+reader:
+  adapter: structcooker.instructions.transforms.cifmol.convert_to_cifmol_dict
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
