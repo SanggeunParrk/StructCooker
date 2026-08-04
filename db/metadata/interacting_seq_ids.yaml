@@ -1,0 +1,11 @@
+# interacting_seq_ids — seq_ids that co-occur in an interface (from cif). EXTRACT op.
+# Feeds interacting_seq_clusters (valid-2 dedup vs interacting partners).
+db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+extract_recipe_path: ${p:src/structcooker/workflows/exports/interacting_seq_ids.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/interacting_seq_ids.tsv}
+additional_inputs:
+  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+reader:
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+writer:
+  materializer: structcooker.instructions.writers.projections.write_filtered_seq_ids

@@ -94,22 +94,34 @@ watchdog). Full `libs/datacooker/tests` suite **53/53 green** under ray-only.
 |---|---|
 | `valid/valid1` (stage 1) → attach → `valid/valid2` (stage 2) | stage 2 dedups sequences vs **train/valid_1 fasta + seq clusters** — cross-set deps (`validation_stage2*`), needs the orchestration DAG, not a lone rebuild config |
 
-## 🔴 Needs engine work (can't just write YAML)
+## 🟢 Metadata + projection ops (new op class)
 
-| db | current builder | why not clean |
+`structcooker build` now auto-infers **materialize** (recipe → TSV/fasta) and
+**extract** (LMDB → TSV) ops alongside build/rebuild, routed to
+`datacooker.cli.workflow` as a single afterok-chainable job. The PDB metadata chain
+is ported under `db/metadata/`:
+
+| config | op | notes |
 |---|---|---|
-| `chain/cif_chain_seq` | `scripts/maintenance/build_chain_seq.py` | script, not a datacooker config — absorb into a recipe |
-| `template/seqid_mols` (Phase 3) | `ingest/seqid_template_mols` | **items are seqids, not files** → planner st_size sizing N/A; also multi-input (metadata + cif_chain lookup) |
-| `template/chain` (Phase 4) | `ingest/chain_template_from_seqid` | items are chain keys, not files — same sizing gap |
-| `template/pdb` (lower) | `scripts/maintenance/rekey_*` | uppercase→lowercase rekey — absorb as a datacooker `rekey` op |
-| `template/candidates` (Phase 2) | `scripts/maintenance/precompute_template_candidates.py` + `cat` | custom py + shell — the plan's "bypass #1" |
-| `msa/msa_rna*` | (rna msa scripts) | same — port to the cap_msa_depth pattern once RNA MSA is in scope |
+| `cif_fasta` / `cif_metadata` | extract | cif_pdb → fasta / metadata TSV (recipes verified on prod records) |
+| `seq_id_map` | materialize | **optional seed exception** — seq_id is an assigned counter, so from-scratch ≠ production; seed with the published map (HF `biomol/seq-id-map`, `SEQID_SEED`) to match, else fresh ids. Validated. |
+| `seq_cluster40` / `seq_cluster30` | materialize | mmseqs2 (antibodies via cd-hit); deterministic given corpus+params+version. Corpus = `SEQCLUSTER_FASTA` (prod used the pdb+distillation union); SabDab is an external input |
+| `interacting_seq_ids` / `interacting_seq_clusters` | extract / materialize | interface partners for valid-2 dedup |
 
-### Engine gap to close (feeds datacooker step 1)
-Planning-first `build` sizes items by input-file `st_size`. Key-list builds
-(template Phase 3/4) have no input file — their cost is the **output/lookup** size.
-Options: size uniformly (n items × mean), or read the source `cif_chain`/seqid index
-for per-key bytes. Until then these stay on their existing submits.
+### Key-list sizing gap — CLOSED
+A build with `keyed: true` sizes items by **count** (uniform), not input `st_size`,
+so key-list builds (items are seqids/chain-ids, resolved by lookup) plan cleanly.
+Template Phase 3/4 (`template/seqid_template_mols`, `template/chain_template`, schema D)
+and `msa/msa_rna`, `valid/valid1`, `valid/valid2` are now ported and resolve.
+
+## 🔴 Still script-only (absorb into a recipe/op)
+
+| db | current builder | why not clean yet |
+|---|---|---|
+| `chain/cif_chain_seq` | `build_chain_seq.py` | simple fasta → keyed-seq LMDB; absorb as a build recipe |
+| `template/pdb` (lower) | `rekey_seq_id_db.py` | uppercase→lowercase / width rekey — absorb as a datacooker `rekey` op + key_map |
+| `template` Phase 1/2 | `precompute_template_candidates.py` + hmmsearch | the **hmm pipeline** (hmmsearch over all chains → reduced HMMs + seq maps + key filelists) that feeds Phase 3/4 — a large external-tool pipeline, not yet on the clean surface |
+| valid intermediate attach | (attach on valid_1) | `valid1 → attach → cif_attached_valid_1 → valid2`; reuse the pdb/cif_attached pattern |
 
 ## ⏸️ Distillation — code/config only, validate small, never full-build (per user)
 

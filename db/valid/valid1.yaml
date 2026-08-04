@@ -1,0 +1,21 @@
+# valid stage 1 — filter cif_pdb by date window / resolution / size. Schema A. Rebuild.
+# Upstream: signalp_dir (SignalP external-tool output) + seq_id_map.
+schema: A
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/valid/cif_valid_1.lmdb}
+recipe: ${p:src/structcooker/workflows/filters/data.py}
+metadata_recipe: ${p:src/structcooker/workflows/metadata/load_signalp.py}
+metadata_input:
+  signalp_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/materials/intermediate/signalp}
+  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+parameters:
+  resolution_cutoff: 4.5
+  max_token_count: 2560
+  max_polymer_chain_count: 20
+  start_date: 2021-09-30
+  end_date: 2023-09-30
+reader:
+  adapter: structcooker.instructions.transforms.cifmol.convert_to_cifmol_dict
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

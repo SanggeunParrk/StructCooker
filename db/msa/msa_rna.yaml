@@ -1,0 +1,13 @@
+# msa_rna — RNA a3m -> msa_dict. Schema E. Build. Same a3m recipe as the protein a3m,
+# a3m_type=rna. Source RNA alignments are a provided intermediate (DATA_ROOT).
+schema: E
+env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/msa/msa_rna.lmdb}
+data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/materials/intermediate/msa_rna}
+file_pattern: "R*.a3m"
+recipe: ${p:src/structcooker/workflows/ingest/a3m.py}
+inputs:
+  a3m_type: rna
+reader:
+  loader: structcooker.instructions.readers.a3m.get_a3m_data
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
