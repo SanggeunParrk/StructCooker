@@ -32,17 +32,31 @@ python -c "from huggingface_hub import hf_hub_download; \
 gunzip -f $DATA_ROOT/metadata/seq_id_map.tsv.gz
 export SEQID_SEED=$DATA_ROOT/metadata/seq_id_map.tsv
 
-# 5. see what you can build
+# 5. fetch the raw external inputs (seq_id_map is the HF seed above, not here)
+structcooker download ccd            # wwPDB CCD -> OUTPUT_ROOT/materials/raw/ccd
+structcooker download sabdab         # SabDab antibody summary (seq_cluster input)
+structcooker download mmcif --yes    # full wwPDB mmCIF (~90 GB+) -- needs --yes
+structcooker download openfold       # TB-scale: prints portal instructions, no auto-fetch
+
+# 6. preflight: is everything a build needs already in place?
+structcooker inspect                 # per-node READY/BLOCKED + missing external inputs
+
+# 7. see what you can build
 structcooker list
 
-# 6a. build one database (op auto-inferred from the config)
+# 8a. build one database (op auto-inferred from the config)
 structcooker build pdb/cif           # raw mmCIF   -> pdb/cif        (build)
 structcooker build metadata/seq_id_map  # cif fasta -> seq_id map    (materialize)
 structcooker build pdb/cif_attached  # + metadata  -> pdb/cif_attached (rebuild)
 
-# 6b. or reproduce the whole DAG in dependency order, incrementally
+# 8b. or reproduce the whole DAG in dependency order, incrementally
 structcooker build-all               # skips whatever is already built
 ```
+
+Run `structcooker inspect` first: it resolves every build-all node's inputs, checks the
+external tools + the two env roots, and lists exactly which raw inputs are missing (each
+tagged with the `structcooker download` target that fetches it, or "provide" for a
+tool/lab output) — so you know a build-all can actually complete before you launch it.
 
 `structcooker build` auto-infers the op from each config: **build/rebuild** run the
 planning-first SLURM pipeline (tiers → merge → index, afterok-chained); **materialize/
