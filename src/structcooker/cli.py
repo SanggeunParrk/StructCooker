@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
 REPO = Path(__file__).resolve().parents[2]          # StructCooker/
 _DATA_ROOT_DEFAULT = "/data/shared/cssb_data"
+_OUTPUT_ROOT_DEFAULT = "/data/shared/cssb_data/BioMol_clean"
 DB_ROOT = REPO / "db"
 PIPELINE_CLI = [sys.executable, "-u", "-m", "datacooker.cli.lmdb", "pipeline"]
 _SCHEMA_LINE = re.compile(r"^\s*schema\s*:.*$", re.MULTILINE)
@@ -193,6 +194,35 @@ def inspect_cmd(manifest: Path | None, name: str | None) -> None:
         for path, hint in sorted(missing.items()):
             action = f"structcooker download {hint}" if hint else "provide (tool output / lab-supplied)"
             click.echo(f"  {path}\n      -> {action}")
+
+
+@cli.command("download")
+@click.argument("target", type=click.Choice(["ccd", "sabdab", "mmcif", "openfold"]))
+@click.option("--yes", is_flag=True, help="Confirm large downloads (mmcif is ~90 GB+).")
+def download_cmd(target: str, yes: bool) -> None:
+    """Fetch a raw external input into the DATA_ROOT / OUTPUT_ROOT layout.
+
+    ``ccd`` / ``sabdab`` are small and download directly; ``mmcif`` (~90 GB+) needs
+    ``--yes``; ``openfold`` (TB-scale, portal-hosted) only prints instructions. The
+    ``seq_id_map`` seed is NOT here -- it is the Hugging Face dataset ``biomol/seq-id-map``
+    (see the README); omit it for a fresh id space.
+    """
+    from structcooker import downloads
+
+    data_root = Path(os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT))
+    output_root = Path(os.environ.get("OUTPUT_ROOT", _OUTPUT_ROOT_DEFAULT))
+    try:
+        if target == "ccd":
+            dest = downloads.download_ccd(output_root)
+        elif target == "sabdab":
+            dest = downloads.download_sabdab(data_root)
+        elif target == "mmcif":
+            dest = downloads.download_mmcif(data_root, confirmed=yes)
+        else:
+            dest = downloads.download_openfold(data_root, confirmed=yes)
+    except (RuntimeError, subprocess.CalledProcessError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"downloaded {target} -> {dest}")
 
 
 _TERMINAL_RE = re.compile(r"^PIPELINE_TERMINAL_JOB=(.*)$", re.MULTILINE)
