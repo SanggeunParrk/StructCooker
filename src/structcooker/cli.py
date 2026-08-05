@@ -210,10 +210,9 @@ def download_cmd(target: str, yes: bool) -> None:
     from structcooker import downloads
 
     data_root = Path(os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT))
-    output_root = Path(os.environ.get("OUTPUT_ROOT", _OUTPUT_ROOT_DEFAULT))
     try:
         if target == "ccd":
-            dest = downloads.download_ccd(output_root)
+            dest = downloads.download_ccd(data_root)
         elif target == "sabdab":
             dest = downloads.download_sabdab(data_root)
         elif target == "mmcif":

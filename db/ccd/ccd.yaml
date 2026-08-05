@@ -9,7 +9,8 @@
 schema: G
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/ccd/biomol_CCD.lmdb}
-data_dir: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/ccd/components}
+# Raw CCD lives under DATA_ROOT (a downloaded input), NOT in the OUTPUT_ROOT tree.
+data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/materials/raw/ccd/components}
 file_pattern: "*.cif*"
 
 recipe: ${p:src/structcooker/workflows/ingest/ccd.py}

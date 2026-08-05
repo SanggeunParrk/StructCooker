@@ -33,7 +33,7 @@ gunzip -f $DATA_ROOT/metadata/seq_id_map.tsv.gz
 export SEQID_SEED=$DATA_ROOT/metadata/seq_id_map.tsv
 
 # 5. fetch the raw external inputs (seq_id_map is the HF seed above, not here)
-structcooker download ccd            # wwPDB CCD -> OUTPUT_ROOT/materials/raw/ccd
+structcooker download ccd            # wwPDB CCD -> DATA_ROOT/materials/raw/ccd (raw input)
 structcooker download sabdab         # SabDab antibody summary (seq_cluster input)
 structcooker download mmcif --yes    # full wwPDB mmCIF (~90 GB+) -- needs --yes
 structcooker download openfold       # TB-scale: prints portal instructions, no auto-fetch

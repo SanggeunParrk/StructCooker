@@ -30,14 +30,15 @@ def _curl(url: str, dest: Path) -> None:
     )
 
 
-def download_ccd(output_root: Path) -> Path:
+def download_ccd(data_root: Path) -> Path:
     """Fetch the wwPDB CCD and split it into one ``<COMP_ID>.cif`` per component.
 
-    The ccd build is file-per-component (``OUTPUT_ROOT/materials/raw/ccd/components``),
-    so the single concatenated ``components.cif`` is split on its ``data_`` blocks.
-    Returns the components directory.
+    The CCD is a raw input, so it lands under ``DATA_ROOT`` (never the OUTPUT_ROOT tree).
+    The ccd build is file-per-component (``DATA_ROOT/materials/raw/ccd/components``), so
+    the single concatenated ``components.cif`` is split on its ``data_`` blocks. Returns
+    the components directory.
     """
-    raw_dir = output_root / "materials" / "raw" / "ccd"
+    raw_dir = data_root / "materials" / "raw" / "ccd"
     gz_path = raw_dir / "components.cif.gz"
     components = raw_dir / "components"
     _curl(CCD_URL, gz_path)

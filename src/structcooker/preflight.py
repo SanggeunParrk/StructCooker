@@ -50,6 +50,7 @@ _DOWNLOADABLE: tuple[tuple[str, str], ...] = (
     ("mmcif_files_latest", "mmcif"),
     ("openfold_distillation", "openfold"),   # huge -- code-only, warns before fetching
     ("external/SabDab", "sabdab"),
+    ("materials/raw/ccd", "ccd"),
 )
 
 
