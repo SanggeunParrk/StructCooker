@@ -8,6 +8,7 @@ def write_fasta(data: dict[str, dict[str, dict[str, str]]], output_path: Path) -
     merged_fastas = []
     for fasta_dict in data.values():
         merged_fastas.extend(fasta_dict["fasta"].values())
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w") as f:
         for fasta in merged_fastas:
             f.write(fasta)
