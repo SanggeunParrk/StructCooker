@@ -63,11 +63,26 @@ captured here. All entries that fail the current clean build are a subset of thi
 > Run reproduction against a `DATA_ROOT` you own; do not overlay a shared/read-only mmCIF
 > mirror in place.
 
-## If you cannot get the corrected snapshot
+## Current build state (decision: build without the substitution for now)
 
-The 53 entries are `≈0.02%` of the ~233 k structures, mostly NMR ensembles; of the ones
-that currently error, 9 reach the training views. Skipping them yields a set that is
-complete and decode-identical **except** for these entries. The proper fix to build them
-from the current mmCIF would be to make the atom→scheme match model-invariant (union the
-per-model `auth_seq` numbers into the scheme, or match by residue identity rather than raw
-`auth_seq_id`) — tracked as future work, separate from the production-faithful substitution.
+The corrected snapshot (`BioMolDB_2024Oct21`) is **not present on this cluster**, and the
+error-marker copies that are (`…/error_items/manually_fixed/`) are the *broken* files, not
+fixes — a 25/25 isolated rebuild of them fails identically. So the accepted clean build
+(`cif_pdb.lmdb`, **233,579** entries) was produced from the current wwPDB mmCIF **without**
+the substitution:
+
+- **25** of the 53 error out and are absent (of these, 9 would reach the training views).
+- **28** of the 53 build from the *current* mmCIF and are present, but they were **not** run
+  through production's substitution, so those 28 are not guaranteed byte-identical to
+  production. (Everything outside the 53 is decode-identical — verified on shared keys.)
+
+`structcooker fix-cif` is wired and ready: once the corrected snapshot is obtained, apply it
+and rebuild to fold all 53 in production-faithfully.
+
+## Alternative: fix the parser instead of substituting
+
+Rather than substitute files, the entries could be built from the *current* mmCIF by making
+the atom→scheme match **model-invariant** — union the per-model `auth_seq` numbers into the
+scheme, or match by residue identity rather than raw `auth_seq_id`. This is self-contained
+(no external snapshot) but would **not** reproduce production's exact bytes for these entries
+(different mmCIF revision). Tracked as future work.

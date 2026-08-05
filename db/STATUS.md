@@ -154,6 +154,11 @@ it before `build pdb/cif`, and `inspect` reports the state. **Not** a port regre
 cif logic is byte-identical across the whole repo history) and **not** a CCD difference.
 Full write-up: [docs/manual-cif-fixes.md](../docs/manual-cif-fixes.md).
 
+**Current decision:** the corrected snapshot is not on this cluster, so the accepted
+`cif_pdb.lmdb` (233,579 entries) is built **without** the substitution — 25 of the 53 are
+absent (errored), 28 build from the current mmCIF (present but not production-substituted).
+`fix-cif` is ready to fold all 53 in production-faithfully once the snapshot is obtained.
+
 The OpenFold3 distillation sets. **Recipes exist** (`workflows/ingest/openfold_*`);
 configs are ported onto the clean `db/distillation/` surface (env-var paths, schema tag,
 ops knobs dropped — same shape as long_cif). Production stores the *downstream* DBs
