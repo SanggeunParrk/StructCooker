@@ -5,7 +5,8 @@ inputs** — every artifact built by one declarative config, on one engine, with
 legacy scripts or hand-written sbatch.
 
 > The full 31-node build-all DAG and the per-node submit/skip/afterok mechanism are
-> diagrammed in [docs/build-all.md](build-all.md).
+> diagrammed in [docs/build-all.md](build-all.md). Before `pdb/cif`, 53 mmCIFs need a
+> manual substitution — see [docs/manual-cif-fixes.md](manual-cif-fixes.md).
 
 ## Guiding principle
 

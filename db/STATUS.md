@@ -142,7 +142,17 @@ is a one-off width migration (`P0000007` → `P…020d`) for *pre-existing* DBs;
 from-scratch build already emits 20-width ids (`_SEQ_ID_WIDTH`), so it is not a
 reproduction step.
 
-## ⏸️ Distillation — code/config only, validate small, never full-build (per user)
+### Manual mmCIF fixes — a required pre-ingest step (provided input)
+
+53 PDB entries (`db/pdb/manual_cif_fixes.txt`) error out / build wrongly from the current
+wwPDB mmCIF — mostly NMR ensembles whose non-polymer ligand is re-numbered per model,
+breaking the atom→scheme match (verified on `1ai0`: `IPH` at `auth_seq` 22 in some models,
+31 in others, vs a single scheme number). The production build substituted an older
+known-good cif for each before ingest (legacy `scripts/manually_fix_cif.py`, source
+`BioMolDB_2024Oct21`). Ported as `structcooker fix-cif --source <corrected-cif-dir>`; run
+it before `build pdb/cif`, and `inspect` reports the state. **Not** a port regression (the
+cif logic is byte-identical across the whole repo history) and **not** a CCD difference.
+Full write-up: [docs/manual-cif-fixes.md](../docs/manual-cif-fixes.md).
 
 The OpenFold3 distillation sets. **Recipes exist** (`workflows/ingest/openfold_*`);
 configs are ported onto the clean `db/distillation/` surface (env-var paths, schema tag,

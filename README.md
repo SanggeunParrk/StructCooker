@@ -38,8 +38,12 @@ structcooker download sabdab         # SabDab antibody summary (seq_cluster inpu
 structcooker download mmcif --yes    # full wwPDB mmCIF (~90 GB+) -- needs --yes
 structcooker download openfold       # TB-scale: prints portal instructions, no auto-fetch
 
+# 5b. substitute the mmCIFs that need a manual fix (53 known-broken entries -- see
+#     docs/manual-cif-fixes.md). Source is a provided older/corrected cif snapshot.
+structcooker fix-cif --source /path/to/corrected-cif-snapshot
+
 # 6. preflight: is everything a build needs already in place?
-structcooker inspect                 # per-node READY/BLOCKED + missing external inputs
+structcooker inspect                 # per-node READY/BLOCKED + missing inputs + manual-fix state
 
 # 7. see what you can build
 structcooker list
@@ -106,6 +110,7 @@ A config names a `recipe` and its `reader`/`writer` hooks (all in
 
 - [Getting started](docs_src/getting-started.md) — clone, install, smoke test
 - [docs/build-all.md](docs/build-all.md) — the build-all DAG + submit/skip/afterok mechanism, diagrammed
+- [docs/manual-cif-fixes.md](docs/manual-cif-fixes.md) — the 53 mmCIFs that need manual substitution before pdb/cif
 - [docs/roadmap.md](docs/roadmap.md) — the reproduction plan + DAG
 - [db/STATUS.md](db/STATUS.md) — per-database status ledger
 - [DataCooker](https://CSSB-SNU.github.io/DataCooker/) — the engine

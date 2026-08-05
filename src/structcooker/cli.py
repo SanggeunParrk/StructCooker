@@ -185,6 +185,8 @@ def inspect_cmd(manifest: Path | None, name: str | None) -> None:
             detail += f"; upstream {len(set(r.upstream))}"
         click.echo(f"  {'READY  ' if r.ready else 'BLOCKED'}  {r.name:<34} {detail}")
 
+    _report_manual_fixes(data_root)
+
     missing = preflight.missing_externals(reports, data_root)
     ready = sum(1 for r in reports if r.ready)
     click.echo(f"[summary] {ready}/{len(reports)} nodes ready; "
@@ -194,6 +196,60 @@ def inspect_cmd(manifest: Path | None, name: str | None) -> None:
         for path, hint in sorted(missing.items()):
             action = f"structcooker download {hint}" if hint else "provide (tool output / lab-supplied)"
             click.echo(f"  {path}\n      -> {action}")
+
+
+_MANUAL_FIXES_PATH = REPO / "db" / "pdb" / "manual_cif_fixes.txt"
+_MMCIF_SUBPATH = Path("mmcif_files_latest") / "mmcif_files"
+
+
+def _mmcif_dir(data_root: str | Path) -> Path:
+    return Path(data_root) / _MMCIF_SUBPATH
+
+
+def _report_manual_fixes(data_root: str) -> None:
+    """Print how many of the manual mmCIF substitutions are in place (for inspect)."""
+    from structcooker import cif_fixes
+
+    ids = cif_fixes.load_fix_ids(_MANUAL_FIXES_PATH)
+    applied = cif_fixes.applied_ids(_mmcif_dir(data_root))
+    n_applied = len(applied & set(ids))
+    click.echo("[manual cif fixes]")
+    if n_applied == len(ids):
+        click.echo(f"  OK      all {len(ids)} substitutions applied")
+    else:
+        click.echo(f"  PENDING {n_applied}/{len(ids)} applied "
+                   f"-> structcooker fix-cif --source <corrected-cif-dir> "
+                   f"(see docs/manual-cif-fixes.md)")
+
+
+@cli.command("fix-cif")
+@click.option("--source", "source", type=click.Path(exists=True, path_type=Path),
+              required=True, help="Corrected-cif snapshot (divided <id[1:3]>/ or flat; "
+                                  ".cif or .cif.gz). Provided input; see the docs.")
+@click.option("--dry-run", is_flag=True, help="Report what would be substituted, write nothing.")
+def fix_cif_cmd(source: Path, dry_run: bool) -> None:
+    """Overlay the manually-fixed mmCIFs the pdb/cif build needs, from a corrected snapshot.
+
+    A set of PDB entries (``db/pdb/manual_cif_fixes.txt``) error out from the current
+    wwPDB mmCIF -- mostly NMR ensembles with per-model-renumbered ligands -- so the
+    production build substituted an older, known-good cif for each before ingest. This
+    ports that step: it copies each id's corrected cif from ``--source`` into the mmCIF
+    input dir. Run it before ``structcooker build pdb/cif``. See docs/manual-cif-fixes.md.
+    """
+    from structcooker import cif_fixes
+
+    data_root = os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT)
+    mmcif_dir = _mmcif_dir(data_root)
+    if not mmcif_dir.is_dir():
+        msg = f"mmCIF input dir not found: {mmcif_dir} (download mmcif first)."
+        raise click.ClickException(msg)
+    ids = cif_fixes.load_fix_ids(_MANUAL_FIXES_PATH)
+    applied, missing = cif_fixes.apply_fixes(ids, source, mmcif_dir, dry_run=dry_run)
+    verb = "would substitute" if dry_run else "substituted"
+    click.echo(f"{verb} {len(applied)}/{len(ids)} mmCIFs from {source} -> {mmcif_dir}")
+    if missing:
+        click.echo(f"  {len(missing)} not found in source (provide them): "
+                   f"{', '.join(missing)}")
 
 
 @cli.command("download")

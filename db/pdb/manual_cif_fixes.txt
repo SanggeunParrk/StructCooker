@@ -1,0 +1,72 @@
+# Manually-fixed mmCIF structures for the pdb/cif build.
+#
+# These PDB entries error out (or build wrongly) from the *current* wwPDB mmCIF
+# snapshot, so the original BioMol build replaced each one's mmCIF with a version
+# from an older, known-good snapshot BEFORE ingest (see scripts/manually_fix_cif.py
+# in the legacy pipeline; source was BioMolDB_2024Oct21/cif/cif_raw). Reproducing
+# production decode-identically requires the same substitution.
+#
+# Root cause (verified on 1ai0): these are mostly NMR ensembles whose non-polymer
+# ligand/ion is re-numbered per model in atom_site (e.g. IPH at auth_seq 22 in some
+# models, 31 in others) while pdbx_nonpoly_scheme records a single number, so the
+# atom->scheme match by auth_seq_id fails for the divergent models. It is NOT a port
+# regression (the scheme/atom logic is byte-identical to the legacy code) and NOT a
+# CCD difference -- the mismatch is entirely in the mmCIF file.
+#
+# Apply with: structcooker fix-cif --source <corrected-cif-dir>
+# See docs/manual-cif-fixes.md.
+#
+# One PDB id per line (53 entries). The corrected cif for each must be provided.
+1ai0
+1aiy
+1jba
+1jtw
+1ko0
+1lcd
+1qlk
+1rru
+1ts6
+1xql
+1zy8
+2bwx
+2e7z
+2g10
+2g32
+2ggp
+2gq4
+2gq5
+2gq6
+2gq7
+2icy
+2k60
+2k9y
+2l65
+2m9a
+2mzh
+2pyp
+2q44
+2q4d
+2q4o
+2q4x
+3b1d
+3c6x
+3cye
+3ok2
+3ok4
+4msw
+4udf
+4xq2
+4yw8
+5dgf
+5m32
+5w8q
+5wc4
+6c8m
+6c8n
+6dop
+6doq
+6hkq
+6n7r
+6ni5
+7mfs
+9gdy
