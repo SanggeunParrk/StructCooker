@@ -4,6 +4,9 @@ Goal: a clean, publishable library that **reproduces the BioMol directory from r
 inputs** — every artifact built by one declarative config, on one engine, with no
 legacy scripts or hand-written sbatch.
 
+> The full 31-node build-all DAG and the per-node submit/skip/afterok mechanism are
+> diagrammed in [docs/build-all.md](build-all.md).
+
 ## Guiding principle
 
 > **One artifact = one `db/*.yaml`, built by `structcooker build <name>` on the

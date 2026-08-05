@@ -105,6 +105,7 @@ A config names a `recipe` and its `reader`/`writer` hooks (all in
 ## Docs
 
 - [Getting started](docs_src/getting-started.md) — clone, install, smoke test
+- [docs/build-all.md](docs/build-all.md) — the build-all DAG + submit/skip/afterok mechanism, diagrammed
 - [docs/roadmap.md](docs/roadmap.md) — the reproduction plan + DAG
 - [db/STATUS.md](db/STATUS.md) — per-database status ledger
 - [DataCooker](https://CSSB-SNU.github.io/DataCooker/) — the engine

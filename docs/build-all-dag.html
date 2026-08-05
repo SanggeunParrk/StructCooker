@@ -1,0 +1,381 @@
+<title>structcooker build-all — the BioMol DAG</title>
+<style>
+  :root {
+    --ground: #f4f6f8;
+    --panel: #ffffff;
+    --panel-2: #eef1f4;
+    --ink: #18222c;
+    --ink-soft: #4b5a68;
+    --ink-faint: #7b8794;
+    --rule: #d9e0e6;
+    --rule-strong: #c2ccd4;
+    --accent: #2f6db3;
+
+    --build: #4f5bd5;
+    --rebuild: #0e8f8f;
+    --materialize: #b8791b;
+    --extract: #8a4fce;
+    --parallel: #c2416b;
+    --external: #8592a0;
+
+    --build-tint: #e9eafb;
+    --rebuild-tint: #e0f2f2;
+    --materialize-tint: #f6ecd8;
+    --extract-tint: #f1e7fb;
+    --parallel-tint: #fbe1ea;
+
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", "Menlo", "Cascadia Code", "Roboto Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --maxw: 68rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0e141a;
+      --panel: #161e26;
+      --panel-2: #1d2831;
+      --ink: #dbe3ea;
+      --ink-soft: #9fadb9;
+      --ink-faint: #6d7a86;
+      --rule: #263039;
+      --rule-strong: #33414c;
+      --accent: #6aa9e6;
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #f4f6f8; --panel: #ffffff; --panel-2: #eef1f4;
+    --ink: #18222c; --ink-soft: #4b5a68; --ink-faint: #7b8794;
+    --rule: #d9e0e6; --rule-strong: #c2ccd4; --accent: #2f6db3;
+  }
+  :root[data-theme="dark"] {
+    --ground: #0e141a; --panel: #161e26; --panel-2: #1d2831;
+    --ink: #dbe3ea; --ink-soft: #9fadb9; --ink-faint: #6d7a86;
+    --rule: #263039; --rule-strong: #33414c; --accent: #6aa9e6;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1rem, 4vw, 2rem) 5rem; }
+
+  /* ---- hero ---- */
+  header { border-bottom: 1px solid var(--rule); padding-bottom: 1.75rem; margin-bottom: 2.25rem; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.75rem;
+  }
+  h1 {
+    font-size: clamp(1.9rem, 4.5vw, 3rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.6rem;
+    text-wrap: balance;
+  }
+  h1 .mono { font-family: var(--mono); font-weight: 600; color: var(--accent); }
+  .lede { font-size: 1.08rem; color: var(--ink-soft); max-width: 46rem; margin: 0; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; margin-top: 1.75rem; }
+  .stat { display: flex; flex-direction: column; gap: 0.15rem; }
+  .stat b { font-family: var(--mono); font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 0.78rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ---- sections ---- */
+  section { margin-top: 3rem; }
+  h2 {
+    font-size: 1.35rem;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.4rem;
+    display: flex; align-items: baseline; gap: 0.7rem;
+  }
+  h2 .idx { font-family: var(--mono); font-size: 0.85rem; color: var(--ink-faint); font-weight: 600; }
+  .section-note { color: var(--ink-soft); margin: 0 0 1.4rem; max-width: 48rem; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+  .diagram { overflow-x: auto; }
+  .mermaid { min-width: 640px; }
+  .mermaid svg { max-width: 100%; height: auto; }
+
+  /* ---- legend ---- */
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.9rem; margin-top: 1.25rem; }
+  .op {
+    border: 1px solid var(--rule);
+    border-left-width: 4px;
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    background: var(--panel);
+  }
+  .op h3 { margin: 0 0 0.15rem; font-family: var(--mono); font-size: 0.9rem; letter-spacing: 0.01em; display: flex; align-items: center; gap: 0.5rem; }
+  .op .count { margin-left: auto; font-size: 0.72rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+  .op p { margin: 0; font-size: 0.83rem; color: var(--ink-soft); }
+  .op p code { font-family: var(--mono); font-size: 0.78rem; color: var(--ink); background: var(--panel-2); padding: 0.05rem 0.3rem; border-radius: 4px; }
+  .op.build { border-left-color: var(--build); }
+  .op.rebuild { border-left-color: var(--rebuild); }
+  .op.materialize { border-left-color: var(--materialize); }
+  .op.extract { border-left-color: var(--extract); }
+  .op.parallel { border-left-color: var(--parallel); }
+  .op.external { border-left-color: var(--external); }
+  .swatch { width: 0.7rem; height: 0.7rem; border-radius: 2px; flex: none; }
+  .build .swatch { background: var(--build); }
+  .rebuild .swatch { background: var(--rebuild); }
+  .materialize .swatch { background: var(--materialize); }
+  .extract .swatch { background: var(--extract); }
+  .parallel .swatch { background: var(--parallel); }
+  .external .swatch { background: var(--external); }
+
+  /* ---- mechanism table ---- */
+  .table-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.86rem; min-width: 34rem; }
+  th, td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--rule); }
+  th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); font-weight: 600; }
+  td code, .imono { font-family: var(--mono); font-size: 0.82rem; }
+  td .tag { font-family: var(--mono); font-size: 0.74rem; padding: 0.1rem 0.45rem; border-radius: 999px; border: 1px solid var(--rule-strong); color: var(--ink-soft); }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* ---- steps ---- */
+  ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 1.25rem 0 0; display: flex; flex-direction: column; gap: 0.9rem; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 2rem 1fr; gap: 0.9rem; align-items: start; }
+  ol.steps li::before {
+    content: counter(s);
+    font-family: var(--mono); font-weight: 600; font-size: 0.85rem;
+    width: 2rem; height: 2rem; display: grid; place-items: center;
+    border: 1px solid var(--rule-strong); border-radius: 50%;
+    color: var(--accent);
+  }
+  ol.steps li p { margin: 0.25rem 0 0; }
+  ol.steps li b { font-weight: 600; }
+  ol.steps code { font-family: var(--mono); font-size: 0.82rem; background: var(--panel-2); padding: 0.05rem 0.32rem; border-radius: 4px; }
+
+  footer { margin-top: 3.5rem; padding-top: 1.25rem; border-top: 1px solid var(--rule); color: var(--ink-faint); font-size: 0.8rem; }
+  footer code { font-family: var(--mono); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">StructCooker · reproduction map</p>
+    <h1><span class="mono">structcooker build-all</span> — the BioMol DAG</h1>
+    <p class="lede">One command turns <code>db/MANIFEST.yaml</code> into a datacooker meta-recipe: 31 database configs, topologically sorted, each dispatched by its inferred op class and SLURM-chained with <span class="imono">afterok</span> so a node only starts once its upstreams succeed. Already-built outputs are skipped.</p>
+    <div class="stats">
+      <div class="stat"><b>31</b><span>db nodes</span></div>
+      <div class="stat"><b>5</b><span>op classes</span></div>
+      <div class="stat"><b>3</b><span>deliverables</span></div>
+      <div class="stat"><b>afterok</b><span>slurm chaining</span></div>
+    </div>
+  </header>
+
+  <section>
+    <h2><span class="idx">01</span> The dependency graph</h2>
+    <p class="section-note">Left to right = build order. Each node is colored by the op <code>structcooker build</code> infers from its config. Dashed grey nodes are external raw inputs — not DAG nodes; they are fetched by <code>structcooker download</code> / provided, and checked by <code>structcooker inspect</code>.</p>
+    <div class="panel diagram">
+      <pre class="mermaid">
+%%{init: {"flowchart": {"curve": "basis", "nodeSpacing": 30, "rankSpacing": 55}} }%%
+graph LR
+  %% external raw inputs
+  ext_mmcif["mmCIF (wwPDB)"]:::external
+  ext_a3m["a3m MSAs"]:::external
+  ext_rna["RNA a3m"]:::external
+  ext_sab["SabDab"]:::external
+  ext_sig["SignalP out"]:::external
+
+  %% roots / builds
+  ccd["ccd/ccd"]:::build
+  a3m["msa/a3m"]:::build
+  rna["msa/msa_rna"]:::build
+  cif["pdb/cif"]:::build
+
+  %% metadata
+  fasta["metadata/cif_fasta"]:::extract
+  meta["metadata/cif_metadata"]:::extract
+  seqid["metadata/seq_id_map"]:::materialize
+  sc40["metadata/seq_cluster40"]:::materialize
+  sc30["metadata/seq_cluster30"]:::materialize
+  isi["metadata/interacting_seq_ids"]:::extract
+  isc["metadata/interacting_seq_clusters"]:::materialize
+  ppl["metadata/pdb_polypeptide_L"]:::materialize
+  tcf["metadata/template_chain_filelist"]:::materialize
+  stf["metadata/seqid_template_filelist"]:::materialize
+
+  %% attach + chain
+  att["pdb/cif_attached"]:::rebuild
+  chain["chain/cif_chain"]:::rebuild
+
+  %% msa depth caps
+  d16k["msa/a3m_d16k"]:::rebuild
+  d2k["msa/a3m_d2k"]:::rebuild
+  d512["msa/a3m_d512"]:::rebuild
+
+  %% templates
+  wol["template/msa_wo_lower"]:::parallel
+  hmm["template/hmmsearch"]:::parallel
+  tcand["template/template_candidates"]:::materialize
+  tseq["template/template_seqs"]:::materialize
+  stm["template/seqid_template_mols"]:::build
+  ctpl["template/chain_template"]:::build
+
+  %% training + valid
+  tr09["train/train_20210930"]:::rebuild
+  tr26["train/train_20260301"]:::rebuild
+  mpnn["train/train_20210930_mpnn"]:::rebuild
+  v1["valid/valid1"]:::rebuild
+  v1a["valid/valid1_attach"]:::rebuild
+  v2["valid/valid2"]:::rebuild
+
+  ext_mmcif -.-> cif
+  ext_a3m -.-> a3m
+  ext_a3m -.-> wol
+  ext_rna -.-> rna
+  ext_sab -.-> sc40
+  ext_sab -.-> sc30
+  ext_sig -.-> v1
+
+  ccd --> cif
+  cif --> fasta
+  cif --> meta
+  fasta --> seqid
+  seqid --> sc40
+  fasta --> sc40
+  seqid --> sc30
+  fasta --> sc30
+  cif --> isi
+  seqid --> isi
+  isi --> isc
+  sc40 --> isc
+  fasta --> ppl
+  fasta --> tcf
+  tcand --> stf
+
+  cif --> att
+  seqid --> att
+  sc40 --> att
+  att --> chain
+
+  a3m --> d16k
+  a3m --> d2k
+  a3m --> d512
+
+  wol --> hmm
+  ppl --> hmm
+  hmm --> tcand
+  tcf --> tcand
+  seqid --> tcand
+  fasta --> tcand
+  meta --> tcand
+  tcand --> tseq
+  seqid --> tseq
+  fasta --> tseq
+  chain --> stm
+  tseq --> stm
+  stf --> stm
+  stm --> ctpl
+  tcand --> ctpl
+
+  att --> tr09
+  att --> tr26
+  tr09 --> mpnn
+
+  cif --> v1
+  seqid --> v1
+  v1 --> v1a
+  seqid --> v1a
+  sc30 --> v1a
+  v1a --> v2
+  sc30 --> v2
+  isc --> v2
+
+  classDef build fill:#e9eafb,stroke:#4f5bd5,stroke-width:2px,color:#161a2e;
+  classDef rebuild fill:#e0f2f2,stroke:#0e8f8f,stroke-width:2px,color:#0b2b2b;
+  classDef materialize fill:#f6ecd8,stroke:#b8791b,stroke-width:2px,color:#2e2408;
+  classDef extract fill:#f1e7fb,stroke:#8a4fce,stroke-width:2px,color:#241533;
+  classDef parallel fill:#fbe1ea,stroke:#c2416b,stroke-width:2px,color:#33121f;
+  classDef external fill:transparent,stroke:#8592a0,stroke-width:1.5px,stroke-dasharray:5 4,color:#6d7a86;
+      </pre>
+    </div>
+
+    <div class="legend">
+      <div class="op build"><h3><span class="swatch"></span>build<span class="count">6 nodes</span></h3><p>Raw source → new LMDB via the planning-first pipeline. <code>env_path</code>. Two template nodes are <code>keyed</code> (sized by key count).</p></div>
+      <div class="op rebuild"><h3><span class="swatch"></span>rebuild<span class="count">11 nodes</span></h3><p>Existing LMDB → transformed LMDB (attach, chain, depth-cap, filter). <code>old_env_path</code> → schema A→B.</p></div>
+      <div class="op materialize"><h3><span class="swatch"></span>materialize<span class="count">9 nodes</span></h3><p>Recipe → TSV / fasta / cluster projection. One workflow job (<code>workflow run</code>). <code>output_data_path</code>, no source LMDB.</p></div>
+      <div class="op extract"><h3><span class="swatch"></span>extract<span class="count">3 nodes</span></h3><p>LMDB → TSV/fasta projection (<code>extract-lmdb</code>). Has both <code>db_path</code> + <code>output_data_path</code>.</p></div>
+      <div class="op parallel"><h3><span class="swatch"></span>parallel<span class="count">2 nodes</span></h3><p>Split → per-shard process → gather (<code>parallel-run</code>). <code>split_recipe_path</code>. The hmm template Phase 0.</p></div>
+      <div class="op external"><h3><span class="swatch"></span>external<span class="count">provided</span></h3><p>Raw inputs, not DAG nodes: mmCIF, a3m/RNA-a3m, SabDab, SignalP. Fetched by <code>download</code>, verified by <code>inspect</code>.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="idx">02</span> What happens to one node</h2>
+    <p class="section-note">build-all is itself a datacooker recipe: every node is a step <code>name &lt;- submit(*upstream_job_ids)</code>. The engine topo-sorts (catching cycles / unknown deps), then threads each node's terminal job id into its dependents. The instruction body for a single node:</p>
+    <div class="panel diagram">
+      <pre class="mermaid">
+%%{init: {"flowchart": {"curve": "basis", "rankSpacing": 45}} }%%
+graph TD
+  A["MANIFEST node<br/>(config + upstream job ids)"]:::step
+  B["load cfg"]:::step
+  C{"output already<br/>on disk?"}:::gate
+  S["return <b>None</b><br/>→ node skipped;<br/>dependents lose one dep"]:::skip
+  D{"_op_of(cfg)"}:::gate
+  P["submit_pipeline<br/>tiers → merge → index<br/>(internally afterok-chained)"]:::pipe
+  W["submit_workflow<br/>single SLURM job"]:::pipe
+  J["terminal job_id"]:::done
+  DEP["dependents submitted with<br/>--depends-on afterok:job_id"]:::done
+
+  A --> B --> C
+  C -->|yes| S
+  C -->|no| D
+  D -->|build / rebuild| P
+  D -->|materialize / extract / parallel| W
+  P --> J
+  W --> J
+  J --> DEP
+
+  classDef step fill:#eef1f4,stroke:#8592a0,stroke-width:1.5px,color:#18222c;
+  classDef gate fill:#fff5e6,stroke:#b8791b,stroke-width:2px,color:#2e2408;
+  classDef skip fill:#f0f2f4,stroke:#8592a0,stroke-width:1.5px,stroke-dasharray:5 4,color:#4b5a68;
+  classDef pipe fill:#e9eafb,stroke:#4f5bd5,stroke-width:2px,color:#161a2e;
+  classDef done fill:#e0f2f2,stroke:#0e8f8f,stroke-width:2px,color:#0b2b2b;
+      </pre>
+    </div>
+
+    <ol class="steps">
+      <li><p><b>Skip is native, not bolted on.</b> The "already built?" gate returns <code>None</code>, and datacooker's None-propagation drops that node from the run — its dependents simply see one fewer upstream job to wait on. No <code>--condition</code> flag, no special-casing.</p></li>
+      <li><p><b>Op decides the executor.</b> <code>build</code>/<code>rebuild</code> go to the planning-first pipeline (Ray owns memory; tiers → merge → index, each afterok-chained). <code>materialize</code>/<code>extract</code>/<code>parallel</code> go to a single workflow job.</p></li>
+      <li><p><b>SLURM enforces order.</b> Every node is submitted up front; <code>--depends-on afterok:&lt;id&gt;</code> makes the scheduler start a node only after its upstreams exit 0. A failing upstream cancels its dependents instead of feeding them garbage.</p></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><span class="idx">03</span> Op → executor → resources</h2>
+    <p class="section-note">The op class also fixes the SLURM footprint for workflow jobs; build/rebuild size themselves from the planning phase.</p>
+    <div class="panel table-scroll">
+      <table>
+        <thead>
+          <tr><th>Op</th><th>Trigger key</th><th>Executor</th><th class="num">Mem (GB)</th><th class="num">Cores</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="tag">build</span></td><td><code>env_path</code></td><td>planning-first pipeline</td><td class="num">self-sized</td><td class="num">self-sized</td></tr>
+          <tr><td><span class="tag">rebuild</span></td><td><code>old_env_path</code></td><td>planning-first pipeline</td><td class="num">self-sized</td><td class="num">self-sized</td></tr>
+          <tr><td><span class="tag">parallel</span></td><td><code>split_recipe_path</code></td><td><code>parallel-run</code></td><td class="num">490</td><td class="num">112</td></tr>
+          <tr><td><span class="tag">extract</span></td><td><code>db_path</code> + <code>output_data_path</code></td><td><code>extract-lmdb</code></td><td class="num">200</td><td class="num">32</td></tr>
+          <tr><td><span class="tag">materialize</span></td><td><code>output_data_path</code></td><td><code>workflow run</code></td><td class="num">128</td><td class="num">8</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Source of truth: <code>db/MANIFEST.yaml</code> (31 nodes) · op inference: <code>src/structcooker/cli.py:_op_of</code> · run <code>structcooker inspect</code> before <code>structcooker build-all</code>.
+  </footer>
+</div>
