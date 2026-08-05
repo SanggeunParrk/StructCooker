@@ -16,6 +16,7 @@ hand *that* to the pipeline, passing the schema + E along as ``--schema/--expans
 """
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -30,12 +31,13 @@ from datacooker.errors import StepExecutionError
 from datacooker.recipe import RecipeBook
 from omegaconf import OmegaConf
 
-from structcooker import schemas
+from structcooker import preflight, schemas
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 REPO = Path(__file__).resolve().parents[2]          # StructCooker/
+_DATA_ROOT_DEFAULT = "/data/shared/cssb_data"
 DB_ROOT = REPO / "db"
 PIPELINE_CLI = [sys.executable, "-u", "-m", "datacooker.cli.lmdb", "pipeline"]
 _SCHEMA_LINE = re.compile(r"^\s*schema\s*:.*$", re.MULTILINE)
@@ -129,6 +131,68 @@ def list_dbs() -> None:
     w = max(len(r[0]) for r in rows)
     for name, op, schema, target in rows:
         click.echo(f"{name:<{w}}  {op:<7}  schema={schema:<3}  {target}")
+
+
+def _manifest_names(manifest: Path | None) -> list[str]:
+    """Return the node names declared in the manifest (default db/MANIFEST.yaml)."""
+    man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST.yaml"
+    if not man_path.exists():
+        msg = f"no manifest at {man_path}"
+        raise click.ClickException(msg)
+    raw = OmegaConf.to_container(OmegaConf.load(man_path))
+    if not isinstance(raw, dict):
+        msg = f"manifest {man_path} must be a mapping of name -> [deps]"
+        raise click.ClickException(msg)
+    return [str(k) for k in raw]
+
+
+@cli.command("inspect")
+@click.option("--manifest", type=click.Path(path_type=Path), default=None,
+              help="DB dependency manifest (default: db/MANIFEST.yaml).")
+@click.argument("name", required=False)
+def inspect_cmd(manifest: Path | None, name: str | None) -> None:
+    """Preflight: check every build-all node's external inputs are already in place.
+
+    Reports the env roots, the external tools the recipes need, and per-node readiness
+    -- which raw inputs (mmCIF, CCD, OpenFold, SabDab, ...) are on disk vs missing, and
+    for the missing ones the ``structcooker download`` target that fetches them. Inputs
+    built by another node (upstream) are noted, not flagged -- build-all builds those.
+    """
+    data_root = os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT)
+    names = [name] if name else _manifest_names(manifest)
+    configs = {n: load_config(_resolve_db(n)) for n in names}
+    reports = preflight.inspect(configs)
+
+    env = preflight.check_env()
+    click.echo("[env]")
+    click.echo(f"  DATA_ROOT   = {env['DATA_ROOT'] or f'(unset -> {data_root})'}")
+    click.echo(f"  OUTPUT_ROOT = {env['OUTPUT_ROOT'] or '(unset -> BioMol_clean default)'}")
+    click.echo(f"  SEQID_SEED  = {env['SEQID_SEED'] or '(unset -> fresh seq_id space; set to match production)'}")
+
+    click.echo("[tools]")
+    for tool, found, optional in preflight.check_tools():
+        mark = "OK     " if found else ("--     " if optional else "MISSING")
+        note = "  (optional, licensed)" if optional and not found else ""
+        click.echo(f"  {mark} {tool}{note}")
+
+    click.echo("[nodes]")
+    for r in sorted(reports, key=lambda r: (r.ready, r.name)):
+        detail = f"ext {len(r.present)} ok"
+        if r.missing:
+            detail += f", {len(r.missing)} MISSING"
+        if r.upstream:
+            detail += f"; upstream {len(set(r.upstream))}"
+        click.echo(f"  {'READY  ' if r.ready else 'BLOCKED'}  {r.name:<34} {detail}")
+
+    missing = preflight.missing_externals(reports, data_root)
+    ready = sum(1 for r in reports if r.ready)
+    click.echo(f"[summary] {ready}/{len(reports)} nodes ready; "
+               f"{len(missing)} distinct external inputs missing")
+    if missing:
+        click.echo("[missing external inputs -- provide before build-all]")
+        for path, hint in sorted(missing.items()):
+            action = f"structcooker download {hint}" if hint else "provide (tool output / lab-supplied)"
+            click.echo(f"  {path}\n      -> {action}")
 
 
 _TERMINAL_RE = re.compile(r"^PIPELINE_TERMINAL_JOB=(.*)$", re.MULTILINE)

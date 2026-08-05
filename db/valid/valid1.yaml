@@ -6,7 +6,7 @@ new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb
 recipe: ${p:src/structcooker/workflows/filters/data.py}
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_signalp.py}
 metadata_input:
-  signalp_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/materials/intermediate/signalp}
+  signalp_dir: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/signalp}
   seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
 parameters:
   resolution_cutoff: 4.5
