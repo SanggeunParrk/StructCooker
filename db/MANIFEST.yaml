@@ -56,4 +56,6 @@ train/train_20210930_mpnn: [train/train_20210930]
 # ---- validation (multi-stage; signalp is external) ----
 valid/valid1: [pdb/cif, metadata/seq_id_map]
 valid/valid1_attach: [valid/valid1, metadata/seq_id_map, metadata/seq_cluster30]
-valid/valid2: [valid/valid1_attach, metadata/seq_cluster30, metadata/interacting_seq_clusters]
+metadata/valid_1_fasta: [valid/valid1]                                 # valid2 dedup fasta (our DB, header-consistent)
+metadata/train_fasta: [train/train_20210930]                           # valid2 dedup fasta (our DB, header-consistent)
+valid/valid2: [valid/valid1_attach, metadata/seq_cluster30, metadata/interacting_seq_clusters, metadata/train_fasta, metadata/valid_1_fasta]
