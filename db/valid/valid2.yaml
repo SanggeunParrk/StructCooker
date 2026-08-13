@@ -2,6 +2,7 @@
 # Rebuild of the ATTACHED valid_1 DB. Upstream (multi-stage DAG): valid_1 -> attach ->
 # cif_attached_valid_1, plus train/valid_1 fasta + seq_cluster30 + interacting_clusters.
 schema: B
+split_entries: true  # reader adapter fans each entry into cif_key sub-records; feed the recipe per sub-record
 old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/valid/cif_attached_valid_1.lmdb}
 new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/valid/cif_attached_valid_2.lmdb}
 recipe: ${p:src/structcooker/workflows/filters/validation_stage2.py}
