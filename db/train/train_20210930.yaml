@@ -16,6 +16,7 @@ metadata_input:
 parameters:
   resolution_cutoff: 9.0
   max_token_count: null
+  min_token_count: 1
   max_polymer_chain_count: 300
   start_date: null
   end_date: 2021-09-30
