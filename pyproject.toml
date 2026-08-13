@@ -73,7 +73,6 @@ structcooker = { path = ".", editable = true }
 mkdocs = ">=1.6,<2"
 mkdocs-material = ">=9.6,<10"
 datacooker = { path = "libs/datacooker", editable = true }
-huggingface_hub = ">=0.20"   # fetch the seq_id_map reproduction seed (biomol/seq-id-map)
 
 
 [tool.pixi.dependencies]

@@ -164,8 +164,8 @@ def check_tools() -> list[tuple[str, bool, bool]]:
 
 
 def check_env() -> dict[str, str | None]:
-    """Return the two roots + the optional seq_id seed from the environment."""
-    return {name: os.environ.get(name) for name in ("DATA_ROOT", "OUTPUT_ROOT", "SEQID_SEED")}
+    """Return the two deployment roots from the environment (the only env inputs)."""
+    return {name: os.environ.get(name) for name in ("DATA_ROOT", "OUTPUT_ROOT")}
 
 
 def missing_externals(reports: Iterable[NodeReport], data_root: str) -> dict[str, str | None]:

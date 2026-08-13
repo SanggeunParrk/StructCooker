@@ -104,8 +104,8 @@ is ported under `db/metadata/`:
 | config | op | notes |
 |---|---|---|
 | `cif_fasta` / `cif_metadata` | extract | cif_pdb → fasta / metadata TSV (recipes verified on prod records) |
-| `seq_id_map` | materialize | **optional seed exception** — seq_id is an assigned counter, so from-scratch ≠ production; seed with the published map (HF `biomol/seq-id-map`, `SEQID_SEED`) to match, else fresh ids. Validated. |
-| `seq_cluster40` / `seq_cluster30` | materialize | mmseqs2 (antibodies via cd-hit); deterministic given corpus+params+version. Corpus = `SEQCLUSTER_FASTA` (prod used the pdb+distillation union); SabDab is an external input |
+| `seq_id_map` | materialize | **optional seed exception** — seq_id is an assigned counter, so from-scratch ≠ production; seed via the provided reference `DATA_ROOT/reference/seq_id_map.tsv` to match, else fresh ids. Validated. |
+| `seq_cluster40` / `seq_cluster30` | materialize | mmseqs2 (antibodies via cd-hit); deterministic given corpus+params+version. Corpus = provided reference `DATA_ROOT/reference/seqcluster_corpus.fasta` (prod used the pdb+distillation union); SabDab is an external input |
 | `interacting_seq_ids` / `interacting_seq_clusters` | extract / materialize | interface partners for valid-2 dedup |
 
 ### Key-list sizing gap — CLOSED

@@ -2,12 +2,10 @@
 # MATERIALIZE op (recipe -> cluster TSV). Feeds attach / valid / template dedup.
 #
 # Inputs it needs (provided/upstream):
-#   • seq_id_map (from db/metadata/seq_id_map) — respects SEQID_SEED for id consistency
-#   • fasta to cluster — SEQCLUSTER_FASTA (default: this build's cif_pdb.fasta).
-#     NOTE: production clustered the UNION corpus (pdb + distillation = all.fasta);
-#     for decode-identical cluster labels set SEQCLUSTER_FASTA to that union fasta.
-#     mmseqs2 is deterministic given the same corpus + params + version, so no seed
-#     artifact is needed (unlike seq_id_map) — only the right corpus + pinned mmseqs2.
+#   • seq_id_map (from db/metadata/seq_id_map) — provides the seq_id space this uses
+#   • fasta to cluster — a PROVIDED reference corpus at
+#     DATA_ROOT/reference/seqcluster_corpus.fasta (the pdb+distillation union, to
+#     match production's cluster labels). Deterministic given corpus+params+version.
 #   • SabDab antibody summary — external download, like CCD/mmCIF (DATA_ROOT/external).
 recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
 output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40.tsv}
@@ -15,7 +13,10 @@ output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/
 inputs:
   tmp_dir: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/tmp/seq_cluster40}
   seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
-  fasta_path: ${p:${oc.env:SEQCLUSTER_FASTA,${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}}
+  # Provided reference corpus: production clustered the pdb+distillation UNION.
+  # It is part of what this DB IS, so it lives here (not an env var); provide the
+  # union fasta at this path. mmseqs2 is deterministic given corpus+params+version.
+  fasta_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/reference/seqcluster_corpus.fasta}
   sabdab_summary_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/external/SabDab/sabdab_summary_all.tsv}
   mmseqs2_seq_id: 0.40
   mmseqs2_cov: 0.8

@@ -24,15 +24,15 @@ pixi install && pixi shell
 export DATA_ROOT=/path/to/raw/downloads   # mmCIF, CCD, OpenFold, … (read)
 export OUTPUT_ROOT=/path/to/reproduced/db # where built LMDBs go   (write)
 
-# 4. (optional) to reproduce the EXISTING BioMol set identically, seed the seq_id map
-#    -- seq_id is an assigned counter, so from scratch you'd get a different (but
-#    self-consistent) id space. Omit this to build a fresh set.
-python -c "from huggingface_hub import hf_hub_download; \
-  hf_hub_download('biomol/seq-id-map','seq_id_map.tsv.gz',repo_type='dataset',local_dir='$DATA_ROOT/metadata')"
-gunzip -f $DATA_ROOT/metadata/seq_id_map.tsv.gz
-export SEQID_SEED=$DATA_ROOT/metadata/seq_id_map.tsv
+# 4. (optional) to reproduce the EXISTING BioMol set identically, provide the two
+#    reference inputs under DATA_ROOT/reference/ (these are part of what the DBs ARE,
+#    so they are config-declared inputs, not env vars):
+#      reference/seq_id_map.tsv          -- the production seq_id map (assigned-counter
+#                                           id space; omit the file to mint a fresh set)
+#      reference/seqcluster_corpus.fasta -- the pdb+distillation union corpus mmseqs
+#                                           clusters (to match production's cluster labels)
 
-# 5. fetch the raw external inputs (seq_id_map is the HF seed above, not here)
+# 5. fetch the raw external inputs
 structcooker download ccd            # wwPDB CCD -> DATA_ROOT/materials/raw/ccd (raw input)
 structcooker download sabdab         # SabDab antibody summary (seq_cluster input)
 structcooker download mmcif --yes    # full wwPDB mmCIF (~90 GB+) -- needs --yes
@@ -71,11 +71,15 @@ and the raw inputs on disk. See [docs/roadmap.md](docs/roadmap.md) for raw input
 
 **Reproducing production identically vs. a fresh set.** Most DBs rebuild decode-level
 identical to production from raw inputs. The exception is `seq_id_map`: seq_id is an
-assigned running counter, not a hash, so an unseeded build mints a *different* (but
-internally coherent) id space, which then threads through everything keyed by seq_id.
-Set `SEQID_SEED` to the published map (above) to match production; leave it unset for a
-fresh set. `seq_cluster` matches production given the same corpus (`SEQCLUSTER_FASTA`)
-+ mmseqs2 version — it is deterministic, so it needs no seed.
+assigned running counter, not a hash, so a build with no reference map mints a
+*different* (but internally coherent) id space, which then threads through everything
+keyed by seq_id. This is a property of *what the DB is*, so it lives in the config as a
+provided reference input (not an env var): drop the production map at
+`DATA_ROOT/reference/seq_id_map.tsv` to match production, omit it for a fresh set.
+`seq_cluster` likewise clusters `DATA_ROOT/reference/seqcluster_corpus.fasta` (the
+pdb+distillation union) — mmseqs2 is deterministic, so the right corpus is all it needs.
+Only `DATA_ROOT` / `OUTPUT_ROOT` (deployment paths) are env vars; build semantics live
+in the configs.
 
 ## What you can build
 

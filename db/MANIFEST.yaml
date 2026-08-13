@@ -22,7 +22,7 @@ pdb/cif: [ccd/ccd]                                # cif build reads the ccd DB f
 # ---- metadata (projection ops off cif) ----
 metadata/cif_fasta: [pdb/cif]
 metadata/cif_metadata: [pdb/cif]
-metadata/seq_id_map: [metadata/cif_fasta]         # + optional SEQID_SEED to match production
+metadata/seq_id_map: [metadata/cif_fasta]         # + optional reference seed (DATA_ROOT/reference/seq_id_map.tsv) to match production
 metadata/seq_cluster40: [metadata/seq_id_map, metadata/cif_fasta]   # + SabDab (external)
 metadata/seq_cluster30: [metadata/seq_id_map, metadata/cif_fasta]
 metadata/interacting_seq_ids: [pdb/cif, metadata/seq_id_map]

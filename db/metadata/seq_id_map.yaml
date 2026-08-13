@@ -5,22 +5,18 @@
 # ┌─ EXCEPTION: reproducing the production id space ─────────────────────────────┐
 # │ seq_id is an ASSIGNED running counter (mol-type prefix + ordinal), NOT a hash │
 # │ of the sequence, so a from-scratch build yields a self-consistent but         │
-# │ DIFFERENT id space. Two modes:                                                │
-# │   • fresh set   -> leave SEQID_SEED unset (mints new ids; internally coherent) │
-# │   • MATCH prod  -> seed with the published map (ids then match production):    │
-# │       from huggingface_hub import hf_hub_download                              │
-# │       hf_hub_download("biomol/seq-id-map", "seq_id_map.tsv.gz",                │
-# │                       repo_type="dataset", local_dir="$DATA_ROOT/metadata")    │
-# │       gunzip $DATA_ROOT/metadata/seq_id_map.tsv.gz                             │
-# │       export SEQID_SEED=$DATA_ROOT/metadata/seq_id_map.tsv                     │
-# │ (repo id is a placeholder; renameable on HF with redirects kept.)              │
+# │ DIFFERENT id space. Which id space this DB uses is part of the DB's DEFINITION,│
+# │ so it lives here in the config, not in an env var: `old_seq_id_map_path` is a  │
+# │ provided reference input under DATA_ROOT/reference/.                           │
+# │   • MATCH prod  -> provide the production map at that path (ids then match).    │
+# │   • fresh set   -> leave the file absent; the recipe mints a new coherent set. │
 # └──────────────────────────────────────────────────────────────────────────────┘
 recipe_path: ${p:src/structcooker/workflows/metadata/seq_id_map.py}
 
 inputs:
   fasta_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
-  # optional seed: unset -> fresh ids; set to the published map -> match production
-  old_seq_id_map_path: ${oc.env:SEQID_SEED,/nonexistent/seq_id_map.tsv}
+  # Provided reference seed: present -> match production's id space; absent -> fresh ids.
+  old_seq_id_map_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/reference/seq_id_map.tsv}
 
 output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
 

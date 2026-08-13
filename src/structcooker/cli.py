@@ -168,7 +168,8 @@ def inspect_cmd(manifest: Path | None, name: str | None) -> None:
     click.echo("[env]")
     click.echo(f"  DATA_ROOT   = {env['DATA_ROOT'] or f'(unset -> {data_root})'}")
     click.echo(f"  OUTPUT_ROOT = {env['OUTPUT_ROOT'] or '(unset -> BioMol_clean default)'}")
-    click.echo(f"  SEQID_SEED  = {env['SEQID_SEED'] or '(unset -> fresh seq_id space; set to match production)'}")
+    seed = Path(data_root) / "reference" / "seq_id_map.tsv"
+    click.echo(f"  seq_id seed = {'present -> match production' if seed.exists() else 'absent -> fresh id space'}  ({seed})")
 
     click.echo("[tools]")
     for tool, found, optional in preflight.check_tools():
