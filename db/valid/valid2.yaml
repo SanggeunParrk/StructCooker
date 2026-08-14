@@ -12,7 +12,7 @@ metadata_input:
   train_fasta_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/train.fasta}
   valid_1_fasta_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/valid_1.fasta}
   seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30.tsv}
+  seqcluster_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/reference/seq_cluster30.tsv}
   interacting_seq_clusters_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/interacting_seq_clusters.tsv}
 reader:
   adapter: structcooker.instructions.transforms.cifmol.convert_to_cifmol_attached_transformed

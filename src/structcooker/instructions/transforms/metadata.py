@@ -73,10 +73,10 @@ def build_seq_metadata_map(
         if seqid is None:
             msg = f"Sequence ID not found for molecule type {mol_identifier} and sequence {sequence}."
             raise KeyError(msg)
-        seqcluster = seqid2seqcluster.get(seqid)
-        if seqcluster is None:
-            msg = f"Sequence cluster not found for sequence ID {seqid}."
-            raise KeyError(msg)
+        # A seq_id absent from the (reference) clustering is a sequence that clustering did
+        # not contain -- e.g. a from-scratch id past the seeded universe -- so it forms its
+        # own singleton cluster (the seq_id is its own representative), rather than erroring.
+        seqcluster = seqid2seqcluster.get(seqid, f"c{seqid}")
         cif_id = header.split("|")[0].strip()  # pdbid_chainid_altid
         seq_metadata_map[cif_id] = (seqid, seqcluster)
     return seq_metadata_map
@@ -203,10 +203,8 @@ def classify_seq_clusters(
         if seqid is None:
             msg = f"Sequence ID not found for molecule type {mol_identifier} and sequence {raw_sequence}."
             raise KeyError(msg)
-        seqcluster = seqid2seqcluster.get(seqid)
-        if seqcluster is None:
-            msg = f"Sequence cluster not found for sequence ID {seqid}."
-            raise KeyError(msg)
+        # Absent from the reference clustering -> its own singleton cluster (see build_seq_metadata_map).
+        seqcluster = seqid2seqcluster.get(seqid, f"c{seqid}")
         classified_clusters.add(seqcluster)
     return classified_clusters
 
