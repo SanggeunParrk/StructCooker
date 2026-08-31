@@ -23,8 +23,12 @@ def _entry_of(header: str) -> str:
 def build_monomer_seqid_map(
     fasta_paths: list[str],
     seq_id_map_path: str | Path,
-) -> dict[str, dict[str, str]]:
-    """Return ``{"monomer_seqid": {entry: seq_id}}`` for the given monomer FASTAs."""
+) -> dict[str, str]:
+    """Return the ``{entry: seq_id}`` map for the given monomer FASTAs.
+
+    The datacooker materialize op wraps this under the step's target name, so the
+    instruction returns the raw map (not ``{"monomer_seqid": ...}``).
+    """
     seq_to_id: dict[str, str] = {}
     with Path(seq_id_map_path).open(encoding="utf-8") as handle:
         for line in handle:
@@ -47,4 +51,4 @@ def build_monomer_seqid_map(
                     if seq_id is not None:
                         entry_seqid[_entry_of(header)] = seq_id
                     header = None
-    return {"monomer_seqid": entry_seqid}
+    return entry_seqid
