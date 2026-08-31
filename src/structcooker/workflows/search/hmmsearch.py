@@ -25,6 +25,7 @@ recipe.step(
         "output_dir": ("hmm_output_dir", Path),
         "hmm_path": ("output_path", Path),
         "fasta_path": ("fasta_path", Path),
+        "hmmbuild_results": ("hmmbuild_results", dict),
     },
 )
 

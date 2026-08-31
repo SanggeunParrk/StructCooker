@@ -196,6 +196,7 @@ def run_hmmbuild(input_a3m_path: Path, hmm_path: Path | None) -> str:
         )
         return f"Skip {hmm_path.name} (already exists and is non-empty)"
     try:
+        hmm_path.parent.mkdir(parents=True, exist_ok=True)
         _run_command(command)
         return "hmm file created at: " + str(hmm_path)
     except Exception as e:
@@ -207,8 +208,14 @@ def run_hmmsearch(
     output_dir: Path,
     hmm_path: Path,
     fasta_path: Path,
+    hmmbuild_results: object = None,
 ) -> str:
-    """Run hmmsearch of an HMM against a FASTA; return a status string."""
+    """Run hmmsearch of an HMM against a FASTA; return a status string.
+
+    ``hmmbuild_results`` is unused; it only makes this step depend on run_hmmbuild so the
+    executor builds the HMM (at ``hmm_path``) before searching it.
+    """
+    _ = hmmbuild_results
     if not _is_nonempty(hmm_path):
         msg = f"HMM file does not exist or is empty: {hmm_path}"
         raise FileNotFoundError(msg)
@@ -261,6 +268,7 @@ def remove_lower_from_a3m(input_a3m_path: Path, output_path: Path | None) -> str
     if output_path is None:
         output_path = input_a3m_path.with_suffix(".no_lower.a3m")
     try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         with input_a3m_path.open("r") as infile, output_path.open("w") as outfile:
             for line in infile:
                 if line.startswith(">"):
