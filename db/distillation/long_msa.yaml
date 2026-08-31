@@ -8,7 +8,7 @@ data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/m
 file_pattern: "alignment.npz"
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_msa.py}
-key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
+key_builder: structcooker.instructions.readers.openfold.openfold_seqid_key
 
 inputs:
   a3m_type: protein

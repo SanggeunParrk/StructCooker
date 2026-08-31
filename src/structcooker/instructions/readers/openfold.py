@@ -34,6 +34,38 @@ def openfold_chain_key(path: Path) -> str:
     return path.stem
 
 
+_MONOMER_SEQID: dict[str, str] | None = None
+
+
+def _monomer_seqid_map() -> dict[str, str]:
+    """Load (and cache) the monomer entry -> seq_id map.
+
+    The MSA depends only on the sequence, so the distillation MSA DBs are keyed by
+    seq_id (like the PDB a3m DBs), not by the per-structure entry id. This maps each
+    monomer entry (``path.parent.name``: MGYP id for short/long, accession for rna) to
+    its seq_id via ``$OUTPUT_ROOT/metadata/distillation_monomer_seqid.tsv`` -- a build
+    artifact (distillation fasta sequences resolved through seq_id_map). Structures
+    sharing a sequence collapse onto one seq_id, matching production's dedup.
+    """
+    global _MONOMER_SEQID  # noqa: PLW0603 - process-local cache
+    if _MONOMER_SEQID is None:
+        root = os.environ.get("OUTPUT_ROOT", "/data/shared/cssb_data/BioMol_clean")
+        map_path = Path(root) / "metadata" / "distillation_monomer_seqid.tsv"
+        mapping: dict[str, str] = {}
+        with map_path.open(encoding="utf-8") as handle:
+            for line in handle:
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) == 2:
+                    mapping[parts[0]] = parts[1]
+        _MONOMER_SEQID = mapping
+    return _MONOMER_SEQID
+
+
+def openfold_seqid_key(path: Path) -> str:
+    """Key a monomer (short/long/rna) alignment npz by its sequence's seq_id."""
+    return _monomer_seqid_map()[path.parent.name]
+
+
 _DISORDERED_SEQID: dict[str, str] | None = None
 
 
