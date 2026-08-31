@@ -1,0 +1,20 @@
+# distillation_disordered contacts — recompute the 6A chain-chain contact graph on the
+# attached disordered CIFMol. Schema B. Rebuild. The disordered cif is a pure re-layout of
+# the OpenFold records (no cif.py ingest), so chains.contact is empty and every entry looks
+# monomeric; this step recovers the interfaces, matching production's cif_disordered_attached
+# (which carries contacts). Final disordered attached DB = this step's output.
+# Code-complete; validate small vs production, do NOT full-build (per project rule).
+schema: B
+
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered_attached_precontact.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered_attached.lmdb}
+
+recipe: ${p:src/structcooker/workflows/ingest/disordered_contacts.py}
+
+split_entries: true
+
+reader:
+  adapter: structcooker.instructions.transforms.cifmol.convert_to_cifmol_attached_transformed
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
