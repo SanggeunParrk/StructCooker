@@ -81,15 +81,33 @@ def _ccd_atom_lookup(entry: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
         return {}
     nodes = entry["atom"]["nodes"]
     names = nodes["id"]["value"]
-    return {
-        name: {
+    # Source structures may use a component's legacy PDB atom names (e.g. XMP's
+    # O1P for the canonical OP3); the CCD carries these under alt_atom_id. Key the
+    # lookup by both so alt-named atoms still resolve their model_xyz. Canonical
+    # ids are written last so they win on any alt/canonical collision.
+    name_list = names.tolist()
+    alt = nodes["alt_atom_id"]["value"].tolist() if "alt_atom_id" in nodes else None
+    feats = [
+        {
             "aromatic": str(nodes["aromatic"]["value"][i]),
             "stereo": str(nodes["stereo"]["value"][i]),
             "charge": str(nodes["charge"]["value"][i]),
             "model_xyz": nodes["model_xyz"]["value"][i],
         }
-        for i, name in enumerate(names.tolist())
-    }
+        for i in range(len(name_list))
+    ]
+    lookup: dict[str, dict[str, Any]] = {}
+    # Two passes so a canonical id always wins over an alt alias: one atom's
+    # alt_atom_id can collide with another atom's canonical id (e.g. FAD atom C4X's
+    # alt is "C4A", which is also the canonical id of a different atom). Writing all
+    # alts first, then all canonical ids, guarantees the canonical entry survives.
+    if alt is not None:
+        for i, a in enumerate(alt):
+            if a and a != name_list[i]:
+                lookup[a] = feats[i]
+    for i, name in enumerate(name_list):
+        lookup[name] = feats[i]
+    return lookup
 
 
 def build_hierarchy(
@@ -176,22 +194,45 @@ def derive_bond_edges(
         atom_arrays["res_id"],
         atom_arrays["ins_code"].astype(str),
     )
-    # CCD intra-residue bond chemistry keyed by (res_name, frozenset{atom_a, atom_b})
+    # CCD intra-residue bond chemistry keyed by (res_name, frozenset{atom_a, atom_b}).
+    # Source structures may name a bonded atom by its legacy alt_atom_id (e.g. XMP's O3P
+    # for canonical OP1), so index each bond under every canonical/alt name combination of
+    # its two endpoints -- otherwise the lookup misses and the bond defaults to SING.
     chem: dict[tuple[str, frozenset[str]], tuple[str, str, str]] = {}
     for r, entry in ccd_cache.items():
         if entry is None:
             continue
+        nodes = entry["atom"]["nodes"]
+        names = nodes["id"]["value"]
+        alt = nodes["alt_atom_id"]["value"] if "alt_atom_id" in nodes else None
+
+        def _names(idx: int, _alt: Any = alt, _names_arr: Any = names) -> list[str]:
+            out = [str(_names_arr[idx])]
+            if _alt is not None and str(_alt[idx]) and str(_alt[idx]) != out[0]:
+                out.append(str(_alt[idx]))
+            return out
+
         edges = entry["atom"]["edges"]
-        names = entry["atom"]["nodes"]["id"]["value"]
         bt = edges["bond_type"]
+        alt_combos: list[tuple[tuple[str, frozenset[str]], tuple[str, str, str]]] = []
         for k in range(len(bt["value"])):
-            a = str(names[bt["src_indices"][k]])
-            b = str(names[bt["dst_indices"][k]])
-            chem[(r, frozenset({a, b}))] = (
+            value = (
                 str(bt["value"][k]),
                 str(edges["bond_aromatic"]["value"][k]),
                 str(edges["bond_stereo"]["value"][k]),
             )
+            a_names = _names(bt["src_indices"][k])
+            b_names = _names(bt["dst_indices"][k])
+            chem[(r, frozenset({a_names[0], b_names[0]}))] = value
+            for a in a_names:
+                for b in b_names:
+                    if a == a_names[0] and b == b_names[0]:
+                        continue
+                    alt_combos.append(((r, frozenset({a, b})), value))
+        # Alt-name combinations only fill gaps: a canonical bond must never be
+        # overwritten by an alt alias that collides with a different atom's id.
+        for key, value in alt_combos:
+            chem.setdefault(key, value)
     bonds = atom_arrays["bonds"]
     src = bonds[:, 0].astype(np.int64)
     dst = bonds[:, 1].astype(np.int64)

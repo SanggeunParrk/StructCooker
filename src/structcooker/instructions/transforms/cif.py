@@ -19,6 +19,7 @@ def _parse_each_chem_comp(
     chem_comp_atom_dict: dict[str, NDArray],
     chem_comp_bond_dict: dict[str, NDArray] | None,
     remove_hydrogen: bool = True,
+    include_alt_atom_id: bool = False,
 ) -> dict[str, FeatureContainer]:
     """Parse one chemical component's tables into residue/atom containers."""
     name = NodeFeature(
@@ -54,6 +55,17 @@ def _parse_each_chem_comp(
         "aromatic": atom_aromatic,
         "stereo": atom_stereo,
     }
+
+    # Legacy PDB atom-name aliases (e.g. XMP's O1P for canonical OP3). Stored only in the
+    # CCD build (include_alt_atom_id=True); the PDB-entry chem_comp parse leaves it off so
+    # cif_pdb keeps its original atom-node schema even when an entry's own _chem_comp_atom
+    # table carries alt_atom_id. The openfold ingest reads this CCD node to map alt-named
+    # source atoms to their model_xyz.
+    alt_atom_id = chem_comp_atom_dict.get("alt_atom_id", None)  # noqa: SIM910
+    if include_alt_atom_id and alt_atom_id is not None:
+        atom_features["alt_atom_id"] = NodeFeature(
+            value=alt_atom_id[atom_mask].astype(str),
+        )
 
     if charge is not None:
         charge = NodeFeature(value=charge[atom_mask].astype(str))
@@ -126,6 +138,7 @@ def parse_chem_comp(
     chem_comp_bond_dict: dict[str, dict[str, NDArray]],
     remove_hydrogen: bool = True,
     unwrap: bool = False,
+    include_alt_atom_id: bool = False,
 ) -> dict[str, dict[str, NDArray]]:
     """Parse CCD chem_comp tables into per-component feature containers.
 
@@ -146,6 +159,7 @@ def parse_chem_comp(
             chem_comp_atom_dict[chem_comp_id],
             chem_comp_bond_dict.get(chem_comp_id, None),  # noqa: SIM910  # explicit None default
             remove_hydrogen,
+            include_alt_atom_id=include_alt_atom_id,
         )
     if unwrap:
         if len(output) != 1:
@@ -169,7 +183,11 @@ def _compare_each_chem_comp(
     else:
         output["residue"] = ideal_chem_comp["residue"]
     ideal_atom_dict = ideal_chem_comp["atom"].to_dict()
-    ideal_node_key_list = list(ideal_atom_dict["nodes"].keys())
+    # alt_atom_id lives on the ideal CCD only for the openfold ingest's name lookup;
+    # drop it here so merged cif records keep their original atom-node schema.
+    ideal_node_key_list = [
+        k for k in ideal_atom_dict["nodes"] if k != "alt_atom_id"
+    ]
     ideal_edge_key_list = list(ideal_atom_dict["edges"].keys())
     atom_features = {}
     for key in ideal_node_key_list:
@@ -203,6 +221,10 @@ def compare_chem_comp(
             output[chem_comp_id] = None
             continue
         ideal_chem_comp = read_lmdb(ccd_db_path, chem_comp_id)["chem_comp_dict"]
+        # alt_atom_id lives on the CCD only for the openfold ingest's name lookup; strip it
+        # here so it never reaches cif records -- whether the ideal is merged with an
+        # entry's chem_comp or (when the entry has none) used verbatim below.
+        ideal_chem_comp["atom"]["nodes"].pop("alt_atom_id", None)
         ideal_chem_comp = {
             "atom": FeatureContainer.from_dict(ideal_chem_comp["atom"]),
             "residue": FeatureContainer.from_dict(ideal_chem_comp["residue"]),

@@ -31,6 +31,7 @@ ccd_recipe.step(
         "tied_to": "comp_id",
         "columns": [
             "atom_id",
+            "alt_atom_id",
             "type_symbol",
             "charge",
             "model_Cartn_x",
@@ -66,7 +67,7 @@ ccd_recipe.step(
         "chem_comp_atom_dict": ("_chem_comp_atom_dict", dict | None),
         "chem_comp_bond_dict": ("_chem_comp_bond_dict", dict | None),
     },
-    params={"remove_hydrogen": True, "unwrap": True},
+    params={"remove_hydrogen": True, "unwrap": True, "include_alt_atom_id": True},
 )
 
 
