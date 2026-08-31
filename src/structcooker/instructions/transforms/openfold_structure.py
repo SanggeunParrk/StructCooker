@@ -372,5 +372,7 @@ def wrap_cifmol(cifmol_dict: dict, entry_id: str) -> tuple[dict, dict]:
     post-hoc rewrap, no extra wrapper key). ``id`` is the entry key (mgnify id).
     """
     assembly_dict = {"1_1_.": cifmol_dict}
-    metadata_dict = {"id": [entry_id], "deposition_date": None, "release_date": None, "resolution": None}
+    # No release_date: predicted (openfold) structures aren't PDB depositions, and
+    # production's distillation metadata carries only id / deposition_date / resolution.
+    metadata_dict = {"id": [entry_id], "deposition_date": None, "resolution": None}
     return assembly_dict, metadata_dict
