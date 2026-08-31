@@ -2,7 +2,7 @@
 # a3m_type=rna. Source RNA alignments are a provided intermediate (DATA_ROOT).
 schema: E
 env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/msa/msa_rna.lmdb}
-data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/materials/intermediate/msa_rna}
+data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/msa}
 file_pattern: "R*.a3m"
 recipe: ${p:src/structcooker/workflows/ingest/a3m.py}
 inputs:
