@@ -32,3 +32,15 @@ def load_seq_id_map(seq_id_map_path: str | Path) -> dict[str, str] | None:
             seq_id, sequence = raw_line.strip().split()
             seq_id_map[f"{seq_id[0]}{sequence}"] = seq_id
     return seq_id_map
+
+
+def load_fastas(fasta_paths: list[str | Path]) -> dict[str, str]:
+    """Load and merge several FASTA files into one header-to-sequence mapping.
+
+    Later files win on a duplicate header; distillation and PDB headers do not collide,
+    so the union simply widens the sequence set that seq_id_map assigns ids to.
+    """
+    merged: dict[str, str] = {}
+    for fasta_path in fasta_paths:
+        merged.update(load_fasta(fasta_path))
+    return merged

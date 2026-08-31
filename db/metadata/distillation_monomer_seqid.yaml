@@ -1,0 +1,18 @@
+# distillation_monomer_seqid — entry -> seq_id lookup for the monomer (short/long/rna)
+# distillation MSA builds. MATERIALIZE op: join each monomer FASTA (entry -> sequence)
+# with seq_id_map (sequence -> seq_id). openfold_seqid_key loads the resulting TSV so the
+# MSA DBs key by seq_id like production (one record per unique sequence). Disordered has
+# its own chain-level map (openfold_disordered_seqid_key), so it is not included here.
+recipe_path: ${p:src/structcooker/workflows/metadata/monomer_seqid.py}
+
+inputs:
+  fasta_paths:
+    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/short.fasta}
+    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/long.fasta}
+    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/rna.fasta}
+  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/distillation_monomer_seqid.tsv}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_monomer_seqid_map

@@ -254,3 +254,12 @@ def unittest(
             if result is None:
                 result = "passed"
             f.write(f"{item_id}\t{result}\n")
+
+
+def write_monomer_seqid_map(data: dict, output_path: Path) -> None:
+    """Write the distillation monomer entry -> seq_id map to a TSV (sorted by entry)."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    mapping = dict(sorted(data["monomer_seqid"].items()))
+    with output_path.open("w", encoding="utf-8") as handle:
+        for entry, seq_id in mapping.items():
+            handle.write(f"{entry}\t{seq_id}\n")

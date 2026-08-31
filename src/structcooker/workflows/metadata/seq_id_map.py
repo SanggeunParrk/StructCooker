@@ -2,7 +2,7 @@ from pathlib import Path
 
 from datacooker import RecipeBook
 
-from structcooker.instructions.readers.sequence import load_fasta, load_seq_id_map
+from structcooker.instructions.readers.sequence import load_fastas, load_seq_id_map
 from structcooker.instructions.transforms.sequence import build_seq_id_map
 
 """Build a CIFMol->fasta Cooker."""
@@ -11,9 +11,9 @@ hash_map_recipe = RecipeBook()
 
 hash_map_recipe.step(
     outputs=(("fasta_dict", dict),),
-    instruction=load_fasta,
+    instruction=load_fastas,
     kwargs={
-        "fasta_path": ("fasta_path", str | Path),
+        "fasta_paths": ("fasta_paths", list),
     },
 )
 
