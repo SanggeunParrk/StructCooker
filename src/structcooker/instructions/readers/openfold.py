@@ -108,6 +108,12 @@ def get_openfold_msa_data(alignment_path: Path) -> dict[str, Any]:
     same inner schema (``msa`` / ``deletion_matrix`` / ``metadata``), so all of
     them are returned uniformly keyed by source name.
     """
+    # A few distillation structures ship an empty / truncated alignment.npz; production
+    # excludes them from the MSA DBs, so surface a clean error and let the build's
+    # error_mode="skip" drop them (they never become records).
+    if alignment_path.stat().st_size == 0:
+        msg = f"empty alignment.npz (no MSA): {alignment_path}"
+        raise ValueError(msg)
     with np.load(alignment_path, allow_pickle=True) as handle:
         msa_sources = {source: handle[source].item() for source in handle.files}
     return {"msa_sources": msa_sources}

@@ -19,3 +19,4 @@ reader:
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes
+test_run: false
