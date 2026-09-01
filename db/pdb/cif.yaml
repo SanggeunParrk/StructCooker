@@ -6,7 +6,7 @@
 schema: A
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
-data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/rcsb/cif}
+data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/cif}
 file_pattern: "*.cif.gz"
 
 recipe: ${p:src/structcooker/workflows/ingest/cif.py}
