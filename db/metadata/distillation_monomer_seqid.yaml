@@ -7,9 +7,9 @@ recipe_path: ${p:src/structcooker/workflows/metadata/monomer_seqid.py}
 
 inputs:
   fasta_paths:
-    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/short.fasta}
-    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/long.fasta}
-    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/rna.fasta}
+    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/fasta/short.fasta}
+    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/fasta/long.fasta}
+    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/fasta/rna.fasta}
   seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
 
 output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/distillation_monomer_seqid.tsv}

@@ -18,10 +18,10 @@ inputs:
   # downstream attach / MSA seq_id keying needs (not just cif_pdb).
   fasta_paths:
     - ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
-    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/short.fasta}
-    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/long.fasta}
-    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/rna.fasta}
-    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/fasta/disordered.fasta}
+    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/fasta/short.fasta}
+    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/fasta/long.fasta}
+    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/fasta/rna.fasta}
+    - ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/fasta/disordered.fasta}
   # Provided reference seed: present -> match production's id space; absent -> fresh ids.
   old_seq_id_map_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/reference/seq_id_map.tsv}
 

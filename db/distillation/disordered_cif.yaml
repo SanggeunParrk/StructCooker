@@ -4,7 +4,7 @@
 schema: A
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered.lmdb}
-data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/disordered_set/structure_files}
+data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/disordered_set/structure_files}
 file_pattern: "*.npz"
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_structure.py}

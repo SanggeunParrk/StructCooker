@@ -5,7 +5,7 @@
 schema: E
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/msa/msa_disordered.lmdb}
-file_list: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/openfold_distillation/disordered_set/msa_filelist.txt}
+file_list: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/disordered_set/msa_filelist.txt}
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_msa.py}
 key_builder: structcooker.instructions.readers.openfold.openfold_disordered_seqid_key
