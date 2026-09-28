@@ -1,11 +1,11 @@
 # distillation_rna msa capped to depth 5000. Schema E. Rebuild from rna_msa.
 # Same cap_msa_depth op as the PDB a3m_* caps (only max_depth differs); rebuilding
 # via to_bytes also re-frames the value as standard zstd. Validate small vs
-# production, do NOT full-build (per project rule).
+# production before publication; full builds are authorized.
 schema: E
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_rna/msa/msa_rna.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_rna/msa/msa_rna_d5k.lmdb}
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_rna/msa/msa_rna.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_rna/msa/msa_rna_d5k.lmdb}
 
 recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
 

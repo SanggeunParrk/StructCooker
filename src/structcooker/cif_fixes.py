@@ -1,23 +1,16 @@
-"""Apply the manual mmCIF substitutions the pdb/cif build needs.
+"""Apply the supplied substitutions for a historical BioMol mmCIF snapshot.
 
-A small set of PDB entries error out (or build wrongly) from the *current* wwPDB
-mmCIF snapshot -- mostly NMR ensembles whose non-polymer ligand/ion is re-numbered
-per model, which breaks the atom->scheme match. The original BioMol build worked
-around this by replacing each entry's mmCIF with a version from an older, known-good
-snapshot before ingest (legacy ``scripts/manually_fix_cif.py``). This module ports that
-step: it overlays the corrected cif for each listed id into the mmCIF input directory.
-
-The id list lives in ``db/pdb/manual_cif_fixes.txt``; the corrected cifs are a *provided*
-external input (the old snapshot is not redistributed here). See docs/manual-cif-fixes.md.
+The optional ID list lives in ``db/pdb/manual_cif_fixes.txt``. This is not a
+universal preprocessing requirement for new releases; see docs/manual-cif-fixes.md.
 """
 from __future__ import annotations
 
 import gzip
 import shutil
+import tempfile
 from pathlib import Path
 
-# Written into the mmCIF dir after a successful apply, so ``inspect`` can tell whether
-# the substitutions are in place without re-reading every corrected file.
+# Bookkeeping for historical substitutions; this is not a content checksum.
 APPLIED_MARKER = ".manual_cif_fixes_applied"
 
 
@@ -55,7 +48,8 @@ def apply_fixes(
     """Overlay each id's corrected cif from ``source_dir`` into ``mmcif_dir``.
 
     Returns ``(applied, missing)`` -- ids written, and ids with no corrected cif in the
-    source. Gzipped sources are decompressed to ``<id>.cif``. Writes an
+    source. Replaces the existing divided/flat ``<id>.cif.gz`` read by pdb/cif.
+    Each replacement is staged before an atomic rename. Writes an
     :data:`APPLIED_MARKER` listing the applied ids so a later ``inspect`` can see them.
     """
     applied: list[str] = []
@@ -68,16 +62,28 @@ def apply_fixes(
         if dry_run:
             applied.append(pdb_id)
             continue
-        dst = mmcif_dir / f"{pdb_id}.cif"
-        if src.suffix == ".gz":
-            with gzip.open(src, "rb") as fh_in, dst.open("wb") as fh_out:
+        candidates = [p for p in (
+            mmcif_dir / pdb_id[1:3] / f"{pdb_id}.cif.gz",
+            mmcif_dir / f"{pdb_id}.cif.gz",
+        ) if p.exists()]
+        if len(candidates) > 1:
+            msg = f"Duplicate input files for {pdb_id}: {candidates}"
+            raise ValueError(msg)
+        dst = candidates[0] if candidates else mmcif_dir / f"{pdb_id}.cif.gz"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=dst.parent, delete=False) as staged:
+            stage_path = Path(staged.name)
+        try:
+            opener = gzip.open if src.suffix == ".gz" else Path.open
+            with opener(src, "rb") as fh_in, gzip.open(stage_path, "wb") as fh_out:
                 shutil.copyfileobj(fh_in, fh_out)
-        else:
-            shutil.copyfile(src, dst)
+            stage_path.replace(dst)
+        finally:
+            stage_path.unlink(missing_ok=True)
         applied.append(pdb_id)
     if applied and not dry_run:
         (mmcif_dir / APPLIED_MARKER).write_text(
-            "\n".join(sorted(applied)) + "\n", encoding="utf-8",
+            "\n".join(sorted(applied_ids(mmcif_dir) | set(applied))) + "\n", encoding="utf-8",
         )
     return applied, missing
 

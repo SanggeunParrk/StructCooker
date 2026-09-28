@@ -4,7 +4,7 @@ One BioMol DB = one ``db/**/<name>.yaml`` = a datacooker *engine config*
 (recipe / reader / writer + source + target) plus a single ``schema:`` tag.
 
 ``structcooker build <name>`` hands the config to ``datacooker pipeline``, which
-sizes the items, snake-balances them across nodes, and submits tier-arrays → merge →
+sizes the items, snake-balances them across nodes, and submits shard arrays → merge →
 index, all afterok-chained. Within-node memory is **Ray's** admission control (the
 engine's only fan-out backend), not a predicted budget, so no human tunes n_jobs /
 mem / chunk / shards. The ``schema:`` tag records each DB's value type and its (now
@@ -24,21 +24,19 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
-from datacooker.api import execute
 from datacooker.conditions import output_absent
 from datacooker.config import load_config
-from datacooker.errors import StepExecutionError
 from datacooker.recipe import RecipeBook
 from omegaconf import OmegaConf
 
 from structcooker import preflight, schemas
+from structcooker.paths import mmcif_root
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 REPO = Path(__file__).resolve().parents[2]          # StructCooker/
 _DATA_ROOT_DEFAULT = "/data/shared/cssb_data"
-_OUTPUT_ROOT_DEFAULT = "/data/shared/cssb_data/BioMol_clean"
 DB_ROOT = REPO / "db"
 PIPELINE_CLI = [sys.executable, "-u", "-m", "datacooker.cli.lmdb", "pipeline"]
 _SCHEMA_LINE = re.compile(r"^\s*schema\s*:.*$", re.MULTILINE)
@@ -150,8 +148,10 @@ def _manifest_names(manifest: Path | None) -> list[str]:
 @cli.command("inspect")
 @click.option("--manifest", type=click.Path(path_type=Path), default=None,
               help="DB dependency manifest (default: db/MANIFEST.yaml).")
+@click.option("--strict", is_flag=True,
+              help="Exit nonzero for missing inputs or invalid manifest dependencies.")
 @click.argument("name", required=False)
-def inspect_cmd(manifest: Path | None, name: str | None) -> None:
+def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
     """Preflight: check every build-all node's external inputs are already in place.
 
     Reports the env roots, the external tools the recipes need, and per-node readiness
@@ -163,15 +163,23 @@ def inspect_cmd(manifest: Path | None, name: str | None) -> None:
     names = [name] if name else _manifest_names(manifest)
     configs = {n: load_config(_resolve_db(n)) for n in names}
     reports = preflight.inspect(configs)
+    dependencies = {} if name else OmegaConf.to_container(
+        OmegaConf.load(manifest or DB_ROOT / "MANIFEST.yaml"), resolve=True,
+    )
+    deps_map = {str(k): [str(d) for d in (v or [])] for k, v in dependencies.items()} if isinstance(dependencies, dict) else {}
+    errors = preflight.dependency_errors(configs, deps_map)
 
     env = preflight.check_env()
     click.echo("[env]")
     click.echo(f"  DATA_ROOT   = {env['DATA_ROOT'] or f'(unset -> {data_root})'}")
     click.echo(f"  OUTPUT_ROOT = {env['OUTPUT_ROOT'] or '(unset -> BioMol_clean default)'}")
+    for key in ("MMCIF_ROOT", "DISTILLATION_ROOT", "MSA_ROOT", "SEQ_CLUSTER30_PATH", "SEQ_CLUSTER40_PATH"):
+        if env[key]:
+            click.echo(f"  {key} = {env[key]}")
     seed = Path(data_root) / "reference" / "seq_id_map.tsv"
     click.echo(f"  seq_id seed = {'present -> match production' if seed.exists() else 'absent -> fresh id space'}  ({seed})")
 
-    click.echo("[tools]")
+    click.echo("[tools available for optional workflows; not all are needed by every node]")
     for tool, found, optional in preflight.check_tools():
         mark = "OK     " if found else ("--     " if optional else "MISSING")
         note = "  (optional, licensed)" if optional and not found else ""
@@ -186,8 +194,6 @@ def inspect_cmd(manifest: Path | None, name: str | None) -> None:
             detail += f"; upstream {len(set(r.upstream))}"
         click.echo(f"  {'READY  ' if r.ready else 'BLOCKED'}  {r.name:<34} {detail}")
 
-    _report_manual_fixes(data_root)
-
     missing = preflight.missing_externals(reports, data_root)
     ready = sum(1 for r in reports if r.ready)
     click.echo(f"[summary] {ready}/{len(reports)} nodes ready; "
@@ -197,30 +203,18 @@ def inspect_cmd(manifest: Path | None, name: str | None) -> None:
         for path, hint in sorted(missing.items()):
             action = f"structcooker download {hint}" if hint else "provide (tool output / lab-supplied)"
             click.echo(f"  {path}\n      -> {action}")
+    for error in errors:
+        click.echo(f"[invalid dependency] {error}")
+    if strict and (missing or errors):
+        msg = "Preflight failed; resolve the inputs/dependencies listed above."
+        raise click.ClickException(msg)
 
 
 _MANUAL_FIXES_PATH = REPO / "db" / "pdb" / "manual_cif_fixes.txt"
-_MMCIF_SUBPATH = Path("mmcif_files_latest") / "mmcif_files"
 
 
 def _mmcif_dir(data_root: str | Path) -> Path:
-    return Path(data_root) / _MMCIF_SUBPATH
-
-
-def _report_manual_fixes(data_root: str) -> None:
-    """Print how many of the manual mmCIF substitutions are in place (for inspect)."""
-    from structcooker import cif_fixes
-
-    ids = cif_fixes.load_fix_ids(_MANUAL_FIXES_PATH)
-    applied = cif_fixes.applied_ids(_mmcif_dir(data_root))
-    n_applied = len(applied & set(ids))
-    click.echo("[manual cif fixes]")
-    if n_applied == len(ids):
-        click.echo(f"  OK      all {len(ids)} substitutions applied")
-    else:
-        click.echo(f"  PENDING {n_applied}/{len(ids)} applied "
-                   f"-> structcooker fix-cif --source <corrected-cif-dir> "
-                   f"(see docs/manual-cif-fixes.md)")
+    return mmcif_root(data_root)
 
 
 @cli.command("fix-cif")
@@ -382,7 +376,7 @@ def _submit_workflow(
 @cli.command("build")
 @click.argument("name")
 @click.option("--workdir", type=click.Path(path_type=Path), default=None,
-              help="Scratch for tier item-lists + sbatch scripts "
+              help="Scratch for shard item-lists + sbatch scripts "
                    "(default: logs/pipeline/<name>).")
 @click.option("--dry-run", is_flag=True, help="Plan + write scripts, do not sbatch.")
 @click.option("--depends-on", "depends_on", default="",
@@ -439,14 +433,21 @@ def _meta_book(deps_map: dict[str, list[str]], *,
     type check.
     """
     book = RecipeBook()
+    completed_jobs: set[str] = set()
 
     def make_submit(name: str) -> Callable[..., str | None]:
         def submit(*upstream: str | None) -> str | None:
             cfg = load_config(_resolve_db(name))
-            if not force and not output_absent(cfg):
+            if not force and not any(upstream) and not output_absent(cfg):
                 click.echo(f"[build-all] {name}: output present -> skip")
                 return None
-            depends_on = tuple(j for j in upstream if j)
+            depends_on = tuple(j for j in upstream if j and j not in completed_jobs)
+            if depends_on and not dry_run:
+                from datacooker.executors.slurm import wait_for_jobs
+
+                wait_for_jobs(depends_on)
+                completed_jobs.update(depends_on)
+                depends_on = ()
             wd = (Path(workdir) / name) if workdir else None
             # dispatch by op: projection ops (materialize/extract/parallel) go through
             # the workflow runner, build/rebuild through the planning-first pipeline.
@@ -479,41 +480,83 @@ def _meta_book(deps_map: dict[str, list[str]], *,
               help="Rebuild every node, even ones already built (drops the skip).")
 def build_all(manifest: Path | None, workdir: Path | None,
               dry_run: bool, force: bool) -> None:
-    """Reproduce the whole DB set incrementally — a DAG of pipelines (each itself a DAG).
+    """Submit or resume verified release stages through finite native SLURM jobs."""
+    from structcooker.release import start
 
-    ``db/MANIFEST.yaml`` (``name: [upstream, ...]``) becomes a datacooker ``RecipeBook``
-    (one step per DB), which the engine cooks in-process: it topologically orders the
-    nodes, threads each DB's terminal job id into its dependents as ``--depends-on`` (so
-    SLURM enforces the order), and skips any DB already built — a step whose instruction
-    returns ``None``. Re-running therefore fills in only what's missing. ``--force``
-    rebuilds every node. No hand-rolled toposort/afterok/condition: it's all data-flow.
-    """
     man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST.yaml"
-    if not man_path.exists():
-        msg = f"no manifest at {man_path}"
+    if dry_run:
+        raw = OmegaConf.to_container(OmegaConf.load(man_path))
+        if not isinstance(raw, dict):
+            msg = "Manifest must be a mapping"
+            raise click.ClickException(msg)
+        dependencies = {str(n): [str(p) for p in parents] for n, parents in raw.items()}
+        configs = {name: load_config(_resolve_db(name)) for name in dependencies}
+        errors = preflight.dependency_errors(configs, dependencies)
+        if errors:
+            raise click.ClickException("\n".join(errors))
+        click.echo(f"Validated {len(raw)} release stages; no jobs submitted")
+        return
+    if force:
+        msg = "Use a fresh OUTPUT_ROOT and run directory for a new release; --force cannot bypass ownership"
         raise click.ClickException(msg)
-    raw_manifest = OmegaConf.to_container(OmegaConf.load(man_path))
-    if not isinstance(raw_manifest, dict):
-        msg = f"manifest {man_path} must be a mapping of name -> [deps]"
+    if workdir is None:
+        msg = "--workdir is required for persistent, verified release state"
         raise click.ClickException(msg)
-    deps_map = {str(k): [str(d) for d in (v or [])] for k, v in raw_manifest.items()}
-    book = _meta_book(deps_map, workdir=workdir, dry_run=dry_run, force=force)
-    order = [r.target_names[0] for r in book.execution_order()]
-    click.echo(f"[build-all] {len(order)} DBs in dependency order:\n  "
-               + " -> ".join(order))
     try:
-        results = execute(book, {})            # cook the meta-graph (engine orders + runs)
-    except StepExecutionError as exc:
-        raise click.ClickException(str(exc.original_exception or exc)) from exc
-    built = [n for n, job_id in results.items() if job_id]
-    skipped = [n for n in results if n not in built]
-    click.echo(f"[build-all] submitted {len(built)}, skipped {len(skipped)} "
-               f"(already built) ({len(order)} total).")
+        start(REPO, man_path, workdir.resolve(), DB_ROOT / "pdb-exceptions.json")
+    except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Release jobs submitted/resumed; inspect {workdir / 'summary.json'} for verified completion")
 
 
 def main() -> None:
     """Entry point for ``python -m structcooker`` / the ``structcooker`` script."""
     cli()
+
+
+@cli.command("pdb-build")
+@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_pdb.yaml")
+@click.option("--run-dir", type=click.Path(path_type=Path), required=True)
+@click.option("--policy", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "pdb-exceptions.json")
+@click.option("--rebuild-untracked", is_flag=True, help="Explicitly allow rebuilding existing outputs without receipts.")
+def pdb_build(manifest: Path, run_dir: Path, policy: Path, rebuild_untracked: bool) -> None:
+    """Build PDB outputs with content identities, verified receipts, and safe restart."""
+    from structcooker.production import execute_manifest
+
+    try:
+        results = execute_manifest(REPO, manifest, run_dir.resolve(), policy,
+                                   rebuild_untracked=rebuild_untracked)
+    except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Verified {len(results)} nodes: {results}")
+
+
+@cli.command("pdb-status")
+@click.option("--run-dir", type=click.Path(exists=True, path_type=Path), required=True)
+def pdb_status(run_dir: Path) -> None:
+    """Read durable node states without scanning datasets or submitting any jobs."""
+    import json
+
+    for path in sorted((run_dir / "nodes").rglob("state.json")):
+        state = json.loads(path.read_text())
+        name = path.parent.relative_to(run_dir / "nodes")
+        click.echo(f"{name}: {state.get('phase', 'unknown')} job={state.get('job', '-')} "
+                   f"error={state.get('error') or '-'}")
+
+
+@cli.command("release-build")
+@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_distillation.yaml")
+@click.option("--run-dir", type=click.Path(path_type=Path), required=True)
+@click.option("--policy", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "distillation-exceptions.json")
+def release_build(manifest: Path, run_dir: Path, policy: Path) -> None:
+    """Submit or resume a release DAG without a resident scheduler controller."""
+    from structcooker.release import start
+
+    try:
+        start(REPO, manifest, run_dir.resolve(), policy)
+    except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"Submitted/resumed release; status: {run_dir / 'summary.json'}")
 
 
 if __name__ == "__main__":

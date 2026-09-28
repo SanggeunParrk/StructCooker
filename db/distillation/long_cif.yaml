@@ -4,22 +4,25 @@
 # reads each preprocessed structure.npz, rebuilds the residue/chain hierarchy and
 # derives chemistry from the CCD (openfold_structure recipe). Feeds long_cif_attached.
 #
-# Reproduction is code-complete but NOT run: the production distillation DBs already
-# exist; validate on a small sample vs production, do not full-build (per project rule).
+# The production distillation DBs already
+# exist; full builds must be audited against the supplied inputs.
 schema: A
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_long/cif/cif_long.lmdb}
-data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/monomer_distillation_sets_v2/long_monomers/preprocessed}
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_long/cif/cif_long.lmdb}
+data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/monomer_distillation_sets_v2/long_monomers/preprocessed}
 file_pattern: "structure.npz"
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_structure.py}
 key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
 
 inputs:
-  ccd_db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/ccd/biomol_CCD.lmdb}
+  ccd_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/ccd/biomol_CCD.lmdb}
 
 reader:
   loader: structcooker.instructions.readers.openfold.get_openfold_structure_data
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes
+
+runtime_environment:
+  OPENFOLD_STRUCTURE_OVERRIDES: ${oc.env:OPENFOLD_STRUCTURE_OVERRIDES,""}

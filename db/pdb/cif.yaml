@@ -1,16 +1,24 @@
 # cif_pdb — raw mmCIF → CIFMol {assembly_dict, metadata_dict}. Schema A. Build.
 #
-# Replaces the 10 hand-tuned size variants (cif_pdb_{light,medium,large,xlarge,
-# huge,monster,smoke,...}.yaml): the planner sizes each file by st_size×E and
-# tiers them automatically, so there is no file_list / n_jobs / chunk_size here.
+# Replaces the hand-tuned size variants. The planner distributes file sizes
+# across shards; each node's Ray driver admits work using measured memory.
 schema: A
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
-data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/cif}
+# A real RCSB mirror can contain a truncated/0-byte .cif.gz (a failed download); the
+# parallel build already catches per-file parse errors and skips them (failed++), but the
+# serial smoke test re-raises, so one bad file in the sample would abort a whole shard.
+# Disable the smoke test: bad individual inputs are skipped, not fatal.
+test_run: false
+
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+data_dir: ${p:${oc.env:MMCIF_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/cif}}
 file_pattern: "*.cif.gz"
 
 recipe: ${p:src/structcooker/workflows/ingest/cif.py}
-ccd_db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/ccd/biomol_CCD.lmdb}
+ccd_db_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/ccd/biomol_CCD.lmdb}
+# Exact historical definitions for CIF atom sets removed from the current CCD.
+# Required only for affected components; absence must never silently drop atoms.
+ccd_reference_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/reference_ccd.lmdb}
 
 reader:
   loader: structcooker.instructions.readers.cif.get_cif_data

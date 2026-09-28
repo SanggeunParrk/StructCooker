@@ -1,0 +1,32 @@
+# Verified PDB CIF and supplied-MSA build; provided shared sequence references remain prerequisites.
+# CIF-core subset plus supplied-MSA ingestion below. Excludes template search and
+# metadata/seqid_template_filelist (which depend on the template pipeline).
+ccd/ccd: []
+pdb/cif: [ccd/ccd]
+metadata/cif_fasta: [pdb/cif]
+metadata/cif_metadata: [pdb/cif]
+metadata/seq_id_map: [metadata/cif_fasta]
+metadata/pdb_seq_cluster30: [metadata/seq_id_map, metadata/cif_fasta]  # + SabDab (external)
+metadata/interacting_seq_ids: [pdb/cif_attached]
+metadata/interacting_seq_clusters: [metadata/interacting_seq_ids, metadata/pdb_seq_cluster30]
+metadata/pdb_polypeptide_L: [metadata/cif_fasta]
+metadata/template_chain_filelist: [metadata/cif_fasta]
+pdb/cif_attached: [pdb/cif, metadata/seq_id_map, metadata/pdb_seq_cluster30]
+chain/cif_chain: [pdb/cif]
+train/train_20210930: [pdb/cif_attached]
+train/train_20260301: [pdb/cif_attached]
+train/train_20210930_mpnn: [train/train_20210930]
+valid/valid1: [pdb/cif, metadata/seq_id_map]
+valid/valid1_attach: [valid/valid1, metadata/seq_id_map, metadata/pdb_seq_cluster30]
+metadata/valid_1_fasta: [valid/valid1]
+metadata/train_fasta: [train/train_20210930]
+valid/valid2: [valid/valid1_attach, metadata/pdb_seq_cluster30, metadata/interacting_seq_clusters, metadata/train_fasta, metadata/valid_1_fasta]
+
+# PDB MSA ingestion and depth caps. Raw alignments are supplied inputs.
+msa/a3m: []
+msa/msa_rna: []
+msa/a3m_d16k: [msa/a3m]
+msa/a3m_d2k: [msa/a3m]
+msa/a3m_d512: [msa/a3m]
+msa/msa_rna_d2k: [msa/msa_rna]
+msa/msa_rna_d512: [msa/msa_rna]

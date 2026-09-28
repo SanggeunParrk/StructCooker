@@ -4,7 +4,7 @@ One function per ``structcooker download`` target. Small public inputs (CCD, Sab
 download and unpack directly; the huge ones (mmCIF, OpenFold distillation) require an
 explicit ``confirmed=True`` and print a size warning first, so nobody kicks off a
 multi-hundred-GB / multi-TB transfer by accident. The ``seq_id_map`` seed is NOT here --
-it is a Hugging Face dataset (``biomol/seq-id-map``), fetched per the README.
+it is a provided reproduction input described in docs/data-provenance.md.
 
 Destinations follow the same ``DATA_ROOT`` / ``OUTPUT_ROOT`` layout the db configs read.
 """
@@ -13,6 +13,8 @@ from __future__ import annotations
 import gzip
 import subprocess
 from pathlib import Path
+
+from structcooker.paths import distillation_root, mmcif_root
 
 CCD_URL = "https://files.wwpdb.org/pub/pdb/data/monomers/components.cif.gz"
 SABDAB_URL = "https://opig.stats.ox.ac.uk/webapps/newsabdab/sabdab/summary/all/"
@@ -71,17 +73,19 @@ def download_sabdab(data_root: Path) -> Path:
 def download_mmcif(data_root: Path, *, confirmed: bool) -> Path:
     """Rsync the full wwPDB mmCIF mirror (~90 GB+). Requires ``confirmed=True``.
 
-    Mirrors the divided (2-char subdir) layout; the pdb/cif build reads
-    ``DATA_ROOT/mmcif_files_latest/mmcif_files``.
+    Mirrors the divided (2-char subdir) layout of ``*.cif.gz`` files, which is exactly
+    what pdb/cif reads: ``MMCIF_ROOT`` or ``DATA_ROOT/BioMol/materials/raw/cif``.
+    Divided subdirectories are scanned recursively. Existing local files absent
+    from the mirror are retained; a download does not recreate a historical snapshot.
     """
-    dest = data_root / "mmcif_files_latest" / "mmcif_files"
+    dest = mmcif_root(data_root)
     if not confirmed:
         msg = (f"mmCIF is a ~90 GB+ rsync from {MMCIF_RSYNC}. "
                f"Re-run with --yes to start it (target: {dest}).")
         raise RuntimeError(msg)
     dest.mkdir(parents=True, exist_ok=True)
     subprocess.run(  # noqa: S603
-        ["rsync", "-rlptz", "--delete", MMCIF_RSYNC, str(dest)],  # noqa: S607
+        ["rsync", "-rlptz", MMCIF_RSYNC, str(dest)],  # noqa: S607
         check=True,
     )
     return dest
@@ -95,10 +99,11 @@ def download_openfold(data_root: Path, *, confirmed: bool) -> Path:  # noqa: ARG
     them and the destination layout the db/distillation configs expect. Even with
     ``confirmed=True`` it only prints instructions.
     """
-    dest = data_root / "openfold_distillation"
+    dest = distillation_root(data_root)
     msg = (
         f"OpenFold3 distillation sets are TB-scale and served from an interactive "
-        f"portal, so they are not auto-downloaded.\n"
+        f"portal, so they are not auto-downloaded. Unlike the PDB mmCIFs, these are used "
+        f"exactly as released -- a straight download, no per-entry processing on top.\n"
         f"  1. Get the monomer (long/short), RNA, and disordered sets from:\n"
         f"       {OPENFOLD_PORTAL}\n"
         f"  2. Place them under: {dest}\n"

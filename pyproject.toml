@@ -96,4 +96,8 @@ packages = [
 
 
 [tool.pyright]
+include = ["src", "libs/datacooker/src"]
+extraPaths = ["src", "libs/datacooker/src"]
+venvPath = ".pixi/envs"
+venv = "default"
 enableReachabilityAnalysis = false

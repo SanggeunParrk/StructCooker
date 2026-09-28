@@ -10,29 +10,29 @@ Extract all sequences from the CIF LMDB into a single FASTA (the input to the
 sequence id map, clustering, and MSA search).
 
 - Recipe: `structcooker.workflows.exports.fasta` (`fasta`)
-- Config: `configs/exports/extract_fasta_whole.yaml`
+- Config: `configs/legacy/exports/extract_fasta_whole.yaml`
   (`reader.deserializer: ...codecs.from_bytes`, `writer.materializer: ...write_fasta`)
 
 ```bash
-sbatch submits/exports/extract_fasta.sh
+sbatch submits/legacy/exports/extract_fasta.sh
 # directly:
-pixi run python -m datacooker.cli.workflow extract-lmdb configs/exports/extract_fasta_whole.yaml
+pixi run python -m datacooker.cli.workflow extract-lmdb configs/legacy/exports/extract_fasta_whole.yaml
 ```
 
 Train/valid-specific variants: `exports.tv_fasta` (`fasta`) /
-`configs/exports/extract_fasta_train.yaml`, `extract_fasta_valid_1.yaml`.
+`configs/legacy/exports/extract_fasta_train.yaml`, `extract_fasta_valid_1.yaml`.
 
 ## Interacting sequences
 
 - `exports.interacting_seq_ids` (`filtered_seq_ids`) /
-  `configs/exports/extract_interacting_seq_ids.yaml` — sequence ids found in
+  `configs/legacy/exports/extract_interacting_seq_ids.yaml` — sequence ids found in
   interfaces.
 - `exports.interacting_seq_clusters` (`interacting_seq_clusters`) /
-  `configs/exports/extract_interacting_seq_clusters.yaml` — maps those ids to
+  `configs/legacy/exports/extract_interacting_seq_clusters.yaml` — maps those ids to
   their clusters.
 
 ```bash
-pixi run python -m datacooker.cli.workflow run configs/exports/extract_interacting_seq_clusters.yaml
+pixi run python -m datacooker.cli.workflow run configs/legacy/exports/extract_interacting_seq_clusters.yaml
 ```
 
 ## Edge / node tables

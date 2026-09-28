@@ -1,0 +1,8 @@
+# PDB MSA ingestion and depth caps. Raw alignments are supplied inputs.
+msa/a3m: []
+msa/msa_rna: []
+msa/a3m_d16k: [msa/a3m]
+msa/a3m_d2k: [msa/a3m]
+msa/a3m_d512: [msa/a3m]
+msa/msa_rna_d2k: [msa/msa_rna]
+msa/msa_rna_d512: [msa/msa_rna]

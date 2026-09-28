@@ -1,7 +1,7 @@
 """Schema catalogue for BioMol LMDB value types.
 
 Every BioMol DB stores one of a small set of value schemas. This module names
-them (A-F) and, for each, records the one place-of-truth for:
+them (A-I) and, for each, records the one place-of-truth for:
 
 * the value STRUCTURE  -- a ``validate()`` that returns issues (empty == valid),
 * the KEY convention   -- pdbid / pdbid_chain / seqid / mgyp / ...,
@@ -21,6 +21,7 @@ Structures below are the ones observed across ``/data/shared/cssb_data/BioMol``:
   E  {msa_dict:{sequences:{...}, headers:{...}}}
   F  raw scalar bytes/str (e.g. a sequence or a seqid)
   H  {atoms,residues,chains,index_table,metadata}   (one assembly-model-altloc/key)
+  I  {<assm>: {cifmol_dict:{atoms,residues,chains,index_table,metadata}}}
 """
 from __future__ import annotations
 
@@ -77,7 +78,23 @@ def _v_C(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
 def _v_D(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(v) or "template_mols" not in v:
         return ["missing template_mols"]
-    return [] if _is_dict(v["template_mols"]) else ["template_mols not a dict"]
+    if not _is_dict(v["template_mols"]):
+        return ["template_mols not a dict"]
+    report = v.get("template_report")
+    if report is not None:
+        if not isinstance(report, dict):
+            return ["template_report not a dict"]
+        lists: list[list[str]] = []
+        for key in ("loaded_hits", "missing_chain_hits", "not_selected_hits"):
+            items = report.get(key)
+            if not isinstance(items, list) or any(not isinstance(x, str) for x in items):
+                return ["invalid template hit ledger"]
+            lists.append(items)
+        hits = [hit for items in lists for hit in items]
+        if (len(set(hits)) != len(hits) or len(hits) != report.get("candidate_count")
+                or set(lists[0]) != set(v["template_mols"])):
+            return ["inconsistent template hit ledger"]
+    return []
 
 
 def _v_E(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
@@ -99,11 +116,27 @@ def _v_G(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     return [] if _is_dict(v["chem_comp_dict"]) else ["chem_comp_dict not a dict"]
 
 
+def _v_I(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
+    """Validate filtered, unattached CIF records with per-assembly metadata."""
+    if not isinstance(v, dict) or not v:
+        return ["not a non-empty assembly map"]
+    issues = []
+    for assembly, wrapped in v.items():
+        if not isinstance(wrapped, dict) or not isinstance(wrapped.get("cifmol_dict"), dict):
+            issues.append(f"{assembly}: missing cifmol_dict")
+            continue
+        record = wrapped["cifmol_dict"]
+        issues.extend(f"{assembly}: {issue}" for issue in _v_C(record))
+        if not isinstance(record.get("metadata"), dict) or "id" not in record["metadata"]:
+            issues.append(f"{assembly}: metadata has no id")
+    return issues
+
+
 @dataclass(frozen=True)
 class Schema:
     """Place-of-truth record for one BioMol LMDB value schema."""
 
-    name: str                 # "A".."F"
+    name: str                 # "A".."I"
     title: str
     key_convention: str       # pdbid | pdbid_chain | seqid | mgyp | mgyp_topn | mixed
     codec: Codec
@@ -146,6 +179,8 @@ SCHEMAS: dict[str, Schema] = {
     # reads, and pruning happens after the source entry is already live.
     "H": Schema("H", "pruned CIFMol (per assembly-model-altloc)",
                 "pdbid_assembly_model_altloc", Codec.biomol_zstd, 100.0, _v_C),
+    "I": Schema("I", "filtered CIFMol (per assembly)", "pdbid",
+                Codec.biomol_zstd, 100.0, _v_I),
 }
 
 

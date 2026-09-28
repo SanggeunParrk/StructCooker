@@ -1,0 +1,24 @@
+{
+  "pdb/cif": {
+    "2g10": {
+      "reason": "Current parser cannot map CMO auth residue 157 to the scheme.",
+      "sha256": "8bea142aaab0587bcd76a71fe55a9e1c9ff6f3383cf652e79b6b5537ca2f74ed"
+    },
+    "2icy": {
+      "reason": "Current parser cannot map U5P auth residue 903 to the scheme.",
+      "sha256": "a269ddbea77a6090f4c893861b7589024fb225eb9eaa0a020af41e7b90e60b3a"
+    },
+    "2q44": {
+      "reason": "Residue 200: coordinates HOH versus entity definition BR.",
+      "sha256": "d612968e0ccd41d5c990401000342f6d0a8a3ecf401c467809a839e741822309"
+    },
+    "4xq2": {
+      "reason": "Residue 405: coordinates GOL versus entity definition CL.",
+      "sha256": "4a64c6b08f8c61a37541ef9abe0c925b915d7d8a42ff18c9f2fcae83502cfb6a"
+    },
+    "9gdy": {
+      "reason": "Residue 668: coordinates VAL versus entity definition ALA.",
+      "sha256": "ec08bea4b812495d8de7e177499fbaf077dab784276537bc479747c741d6444e"
+    }
+  }
+}

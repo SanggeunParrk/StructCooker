@@ -8,7 +8,7 @@
 # under data_dir/ (the build is file-per-component: one .cif -> one LMDB key).
 schema: G
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/ccd/biomol_CCD.lmdb}
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/ccd/biomol_CCD.lmdb}
 # Raw CCD lives under DATA_ROOT (a downloaded input), NOT in the OUTPUT_ROOT tree.
 data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/materials/raw/ccd/components}
 file_pattern: "*.cif*"

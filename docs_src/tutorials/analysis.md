@@ -8,10 +8,10 @@ Analysis workflows validate and profile the databases produced by the pipeline.
 (`monomer_clusters`, `interface_clusters`) summarises cluster composition of a
 built database.
 
-- Configs: `configs/analysis/analyze_train.yaml`, `analyze_valid1.yaml`, …
+- Configs: `configs/legacy/analysis/analyze_train.yaml`, `analyze_valid1.yaml`, …
 
 ```bash
-sbatch submits/analysis/analyze_db.sh
+sbatch submits/legacy/analysis/analyze_db.sh
 ```
 
 ## Template database check
@@ -19,10 +19,10 @@ sbatch submits/analysis/analyze_db.sh
 `structcooker.workflows.analysis.template_check` (`results`) reads the template
 LMDB and reports per-entry sanity (resolved chains, alignment coverage).
 
-- Config: `configs/analysis/check_template_db.yaml`
+- Config: `configs/legacy/analysis/check_template_db.yaml`
 
 ```bash
-pixi run python -m datacooker.cli.workflow extract-lmdb configs/analysis/check_template_db.yaml
+pixi run python -m datacooker.cli.workflow extract-lmdb configs/legacy/analysis/check_template_db.yaml
 ```
 
 ## CCD validation

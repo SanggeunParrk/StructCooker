@@ -1,0 +1,18 @@
+# RNA MSA capped to 512 rows, preserving the query and recomputing statistics.
+schema: E
+
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/msa/msa_rna.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/msa/msa_rna_d512.lmdb}
+
+recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
+
+parameters:
+  max_depth: 512
+
+
+reader:
+  adapter: structcooker.instructions.transforms.openfold.adapt_msa_for_cap
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

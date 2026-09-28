@@ -3,11 +3,11 @@
 # the OpenFold records (no cif.py ingest), so chains.contact is empty and every entry looks
 # monomeric; this step recovers the interfaces, matching production's cif_disordered_attached
 # (which carries contacts). Final disordered attached DB = this step's output.
-# Code-complete; validate small vs production, do NOT full-build (per project rule).
+# Full builds include this step before final disordered CIF validation.
 schema: B
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered_attached_precontact.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered_attached.lmdb}
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered_attached_precontact.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered_attached.lmdb}
 
 recipe: ${p:src/structcooker/workflows/ingest/disordered_contacts.py}
 

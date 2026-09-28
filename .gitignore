@@ -2,7 +2,7 @@ logs/
 checkpoints/
 *.pt
 *.cif
-pixi.lock
+!tests/fixtures/*.cif
 *.mmcif
 output/
 outputs/
@@ -30,3 +30,5 @@ pipelines/
 /pdb_msa_depth_summary.tsv
 scripts/
 configs/
+/scratchpad/
+/dev/

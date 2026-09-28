@@ -5,21 +5,27 @@
 # and the recipe passes each chain's biomoldict through, so explode writes one record
 # per chain. Replaces scripts/maintenance/build_cif_chain.py.
 #
-# Test output → BioMol_clean; source is the read-only production base cif.
+# Source and destination both resolve under OUTPUT_ROOT.
 schema: C
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/chain/cif/cif_chain.lmdb}
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/chain/cif/cif_chain.lmdb}
 
 recipe: ${p:src/structcooker/workflows/exports/cif_chain.py}
 
 split_entries: true
 explode_entries: true
 explode_value_key: biomoldict
+# Large-record 1:N rebuild; Ray admits work gradually and reduces concurrency
+# under measured memory pressure. Prepared models are reused within each record.
 
 reader:
-  adapter: structcooker.instructions.transforms.template.adapt_cif_record_to_chains
+  adapter: structcooker.instructions.transforms.template.adapt_cif_record_to_chain_inputs
   deserializer: structcooker.instructions.transforms.codecs.from_bytes
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes
+
+# Optional reference choices preserve legacy ties; absent -> numeric model order.
+parameters:
+  reference_selection_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/reference_chain_selection.lmdb}

@@ -1,17 +1,17 @@
 # distillation_long template (top-N) — OpenFold3 long templates, coverage>=0.1, keep<=20.
 # Mirror of openfold_template_topn_long. Schema D. Build. Joins cif_chain for chain mols.
-# Code-complete; validate small vs production, do NOT full-build (per project rule).
+# Full distillation builds authorized; require coverage and validation receipts.
 schema: D
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_long/template/template_topn_long.lmdb}
-data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/monomer_distillation_sets_v2/long_monomers/preprocessed}
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_long/template/template_topn_long.lmdb}
+data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/monomer_distillation_sets_v2/long_monomers/preprocessed}
 file_pattern: "template.npz"
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_template_topn.py}
 key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
 
 inputs:
-  cif_chain_db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/chain/cif/cif_chain.lmdb}
+  cif_chain_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/lmdb/chain/cif/cif_chain.lmdb}
   min_coverage: 0.1
   max_keep: 20
 
@@ -20,3 +20,7 @@ reader:
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes
+
+runtime_environment:
+  OPENFOLD_STRUCTURE_OVERRIDES: ${oc.env:OPENFOLD_STRUCTURE_OVERRIDES,""}
+input_patterns: [template.npz, structure.npz]

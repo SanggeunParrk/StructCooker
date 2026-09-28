@@ -6,7 +6,7 @@ sequence id.
 
 - Recipe: `structcooker.workflows.ingest.template_lmdb` (`template_mols`)
 - Metadata recipe: `structcooker.workflows.metadata.load_template_metadata`
-- Config: `configs/ingest/template_lmdb.yaml`
+- Config: `configs/legacy/ingest/template_lmdb.yaml`
 
 Unlike the other ingests, this one needs **two extra wirings** from the config:
 
@@ -30,9 +30,9 @@ flowchart LR
 ## Run
 
 ```bash
-sbatch submits/ingest/template_lmdb.sh
+sbatch submits/legacy/ingest/template_lmdb.sh
 # directly:
-pixi run python -m datacooker.cli.lmdb build configs/ingest/template_lmdb.yaml --map-size 2000000000000
+pixi run python -m datacooker.cli.lmdb build configs/legacy/ingest/template_lmdb.yaml --map-size 2000000000000
 ```
 
 !!! note "OpenFold distillation templates are different"

@@ -4,8 +4,8 @@
 # chain->templates maps + the chain filelist.
 schema: D
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/chain/template/template.lmdb}
-file_list: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/template_chain_filelist.txt}
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/chain/template/template.lmdb}
+file_list: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/template_chain_filelist.txt}
 keyed: true
 
 recipe: ${p:src/structcooker/workflows/ingest/chain_template_from_seqid.py}
@@ -13,11 +13,11 @@ key_builder: structcooker.instructions.readers.openfold.openfold_chain_key
 
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_phase4_maps.py}
 metadata_input:
-  seqid_chains_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seqid_to_chains.tsv}
-  chain_templates_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/chain_to_templates.tsv}
+  seqid_chains_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seqid_to_chains.tsv}
+  chain_templates_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/chain_to_templates.tsv}
 
 inputs:
-  seqid_template_db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/chain/template/seqid_template_mols.lmdb}
+  seqid_template_db_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/chain/template/seqid_template_mols.lmdb}
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes

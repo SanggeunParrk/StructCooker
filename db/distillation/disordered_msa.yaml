@@ -1,11 +1,11 @@
 # distillation_disordered msa — PDB-derived disordered MSAs, keyed by chain seq_id
 # (DISORDERED_SEQID_MAP joins {id}_{chain} stem -> seq_id, like the PDB a3m DB).
 # Mirror of openfold_msa_disordered. Schema E. Build (file_list of resolvable stems).
-# Code-complete; validate small vs production, do NOT full-build (per project rule).
+# Full distillation builds authorized; require coverage and validation receipts.
 schema: E
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/msa/msa_disordered.lmdb}
-file_list: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/disordered_set/msa_filelist.txt}
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/msa/msa_disordered.lmdb}
+file_list: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/disordered_set/msa_filelist.txt}
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_msa.py}
 key_builder: structcooker.instructions.readers.openfold.openfold_disordered_seqid_key
@@ -19,3 +19,8 @@ reader:
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes
+
+# Explicit, fingerprinted reader inputs.
+runtime_environment:
+  DISORDERED_SEQID_MAP: ${oc.env:DISORDERED_SEQID_MAP,${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/disordered_set/msa_stem_seqid.tsv}
+duplicate_input_policy: first_path

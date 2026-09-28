@@ -1,0 +1,22 @@
+# cif-core rebuild subset (from the corrected 249k cif source). Excludes template/*,
+# msa/*, and metadata/seqid_template_filelist (which depend on the template pipeline).
+ccd/ccd: []
+pdb/cif: [ccd/ccd]
+metadata/cif_fasta: [pdb/cif]
+metadata/cif_metadata: [pdb/cif]
+metadata/seq_id_map: [metadata/cif_fasta]
+metadata/pdb_seq_cluster30: [metadata/seq_id_map, metadata/cif_fasta]  # + SabDab (external)
+metadata/interacting_seq_ids: [pdb/cif_attached]
+metadata/interacting_seq_clusters: [metadata/interacting_seq_ids, metadata/pdb_seq_cluster30]
+metadata/pdb_polypeptide_L: [metadata/cif_fasta]
+metadata/template_chain_filelist: [metadata/cif_fasta]
+pdb/cif_attached: [pdb/cif, metadata/seq_id_map, metadata/pdb_seq_cluster30]
+chain/cif_chain: [pdb/cif]
+train/train_20210930: [pdb/cif_attached]
+train/train_20260301: [pdb/cif_attached]
+train/train_20210930_mpnn: [train/train_20210930]
+valid/valid1: [pdb/cif, metadata/seq_id_map]
+valid/valid1_attach: [valid/valid1, metadata/seq_id_map, metadata/pdb_seq_cluster30]
+metadata/valid_1_fasta: [valid/valid1]
+metadata/train_fasta: [train/train_20210930]
+valid/valid2: [valid/valid1_attach, metadata/pdb_seq_cluster30, metadata/interacting_seq_clusters, metadata/train_fasta, metadata/valid_1_fasta]

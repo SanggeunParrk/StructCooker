@@ -1,9 +1,9 @@
 # train_fasta — chain sequences from train/train_20210930 -> fasta (valid2 dedup input).
 # EXTRACT op. Source is an ATTACHED (schema B) DB, so it uses the attached fasta recipe;
 # extracted from OUR train DB for header consistency with cif_pdb.fasta.
-db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb_attached_train_20210930_res9_chain300.lmdb}
+db_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/cif/cif_pdb_attached_train_20210930_res9_chain300.lmdb}
 extract_recipe_path: ${p:src/structcooker/workflows/exports/fasta_attached.py}
-output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/train.fasta}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/train.fasta}
 
 reader:
   deserializer: structcooker.instructions.transforms.codecs.from_bytes

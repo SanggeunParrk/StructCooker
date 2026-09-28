@@ -1,14 +1,14 @@
-# valid stage 1 — filter cif_pdb by date window / resolution / size. Schema A. Rebuild.
+# valid stage 1 — filter cif_pdb by date window / resolution / size. Schema I. Rebuild.
 # Upstream: signalp_dir (SignalP external-tool output) + seq_id_map.
-schema: A
+schema: I
 split_entries: true  # reader adapter fans each entry into cif_key sub-records; feed the recipe per sub-record
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/valid/cif_valid_1.lmdb}
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/valid/cif_valid_1.lmdb}
 recipe: ${p:src/structcooker/workflows/filters/data.py}
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_signalp.py}
 metadata_input:
-  signalp_dir: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/signalp}
-  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+  signalp_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/signalp}
+  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
 parameters:
   resolution_cutoff: 4.5
   max_token_count: 2560

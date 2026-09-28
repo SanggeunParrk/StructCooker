@@ -1,7 +1,7 @@
 # seqid_template_filelist — seq_ids to build templates for (= keys of seqid_to_chains).
 # MATERIALIZE op. Feeds template/seqid_template_mols (Phase 3 keyed build).
 recipe_path: ${p:src/structcooker/workflows/exports/seqid_template_list.py}
-output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seqid_template_filelist.txt}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seqid_template_filelist.txt}
 inputs:
-  tsv_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seqid_to_chains.tsv}
-  out_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seqid_template_filelist.txt}
+  tsv_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seqid_to_chains.tsv}
+  out_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seqid_template_filelist.txt}

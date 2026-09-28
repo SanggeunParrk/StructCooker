@@ -1,9 +1,9 @@
 # cif_metadata — per-chain metadata (resolution, dates, chain/residue/atom counts,
 # NA/D-form flags) from pdb/cif_pdb -> TSV. EXTRACT op. Feeds valid/template filters.
 # No schema (produces a .tsv, not an LMDB).
-db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+db_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
 extract_recipe_path: ${p:src/structcooker/workflows/metadata/extract.py}
-output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/cif_metadata.tsv}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/cif_metadata.tsv}
 
 reader:
   deserializer: structcooker.instructions.transforms.codecs.from_bytes

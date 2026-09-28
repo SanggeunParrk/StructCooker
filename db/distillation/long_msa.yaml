@@ -1,10 +1,10 @@
 # distillation_long msa — OpenFold3 long alignments -> msa_dict. Schema E. Build.
 # Mirror of openfold_msa_long. Base (depth 65536) msa; feeds long_msa_d2k / _d512 caps.
-# Code-complete; validate small vs production, do NOT full-build (per project rule).
+# Full distillation builds authorized; require coverage and validation receipts.
 schema: E
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_long/msa/msa_long.lmdb}
-data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/monomer_distillation_sets_v2/long_monomers/preprocessed}
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_long/msa/msa_long.lmdb}
+data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/monomer_distillation_sets_v2/long_monomers/preprocessed}
 file_pattern: "alignment.npz"
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_msa.py}
@@ -20,3 +20,8 @@ reader:
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes
 test_run: false
+
+# Explicit, fingerprinted reader inputs.
+runtime_environment:
+  MONOMER_SEQID_MAP: ${oc.env:MONOMER_SEQID_MAP,${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/distillation_monomer_seqid.tsv}
+duplicate_input_policy: first_path

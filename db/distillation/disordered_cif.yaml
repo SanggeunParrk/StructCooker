@@ -1,17 +1,17 @@
 # distillation_disordered cif — CIFMol from OpenFold3 disordered distillation. Schema A. Build.
 # Mirror of long_cif.yaml for the disordered set. Base structure build (feeds disordered_cif_attached).
-# Code-complete; validate small vs production, do NOT full-build (per project rule).
+# Full builds are authorized; audit source coverage and resulting structures.
 schema: A
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered.lmdb}
-data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/disordered_set/structure_files}
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered.lmdb}
+data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/disordered_set/structure_files}
 file_pattern: "*.npz"
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_structure.py}
 key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
 
 inputs:
-  ccd_db_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/ccd/biomol_CCD.lmdb}
+  ccd_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/ccd/biomol_CCD.lmdb}
 
 reader:
   loader: structcooker.instructions.readers.openfold.get_openfold_structure_data

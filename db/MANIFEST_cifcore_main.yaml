@@ -1,0 +1,20 @@
+# Partial CIF-core manifest, excluding interaction projections and valid2.
+# Use MANIFEST_cifcore.yaml for the complete CIF-core graph. This subset is useful
+# when deliberately deferring validation deduplication.
+ccd/ccd: []
+pdb/cif: [ccd/ccd]
+metadata/cif_fasta: [pdb/cif]
+metadata/cif_metadata: [pdb/cif]
+metadata/seq_id_map: [metadata/cif_fasta]
+metadata/pdb_seq_cluster30: [metadata/seq_id_map, metadata/cif_fasta]  # + SabDab (external)
+metadata/pdb_polypeptide_L: [metadata/cif_fasta]
+metadata/template_chain_filelist: [metadata/cif_fasta]
+pdb/cif_attached: [pdb/cif, metadata/seq_id_map, metadata/pdb_seq_cluster30]
+chain/cif_chain: [pdb/cif]
+train/train_20210930: [pdb/cif_attached]
+train/train_20260301: [pdb/cif_attached]
+train/train_20210930_mpnn: [train/train_20210930]
+valid/valid1: [pdb/cif, metadata/seq_id_map]
+valid/valid1_attach: [valid/valid1, metadata/seq_id_map, metadata/pdb_seq_cluster30]
+metadata/valid_1_fasta: [valid/valid1]
+metadata/train_fasta: [train/train_20210930]
