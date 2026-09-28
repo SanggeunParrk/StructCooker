@@ -32,6 +32,7 @@ ccd_recipe.step(
         "columns": [
             "atom_id",
             "alt_atom_id",
+            "pdbx_component_atom_id",
             "type_symbol",
             "charge",
             "model_Cartn_x",

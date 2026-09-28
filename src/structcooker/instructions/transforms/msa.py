@@ -646,53 +646,64 @@ def parse_sequence(
             msg = f"Unsupported a3m_type: {a3m_type}"
             raise ValueError(msg)
 
+    if not raw_sequences:
+        msg = "MSA must contain a query sequence."
+        raise ValueError(msg)
     query_sequence = raw_sequences[0]
-    length = len(query_sequence)
-
-    sequences = []
-    deletions = []
-
-    for raw_sequence in raw_sequences:
-        lower_case = np.array(
-            [0 if c.isupper() or c == "-" else 1 for c in raw_sequence],
-        )
-        deletion = np.zeros(length, np.uint8)
-
-        if np.sum(lower_case) > 0:
-            # positions of deletions
-            pos = np.where(lower_case == 1)[0]
-
-            # shift by occurrence
-            lower_case = pos - np.arange(pos.shape[0])
-
-            # position of deletions in cleaned sequence
-            # and their length
-            pos, num = np.unique(lower_case, return_counts=True)
-
-            # append to the matrix of insetions
-            deletion[pos] = np.clip(num, 0, 255).astype(np.uint8)  # to save memory
-
+    length = len(query_sequence.translate(table))
+    if not length:
+        msg = "MSA query has no aligned columns."
+        raise ValueError(msg)
+    sequences = np.empty((len(raw_sequences), length), dtype=np.uint8)
+    deletions = np.zeros((len(raw_sequences), length), dtype=np.int32)
+    for row, raw_sequence in enumerate(raw_sequences):
         sequence = raw_sequence.translate(table)
-        sequence = mapping_view.map(np.array(list(sequence)))
-        sequences.append(sequence)
-        deletions.append(deletion)
-    query_sequence = np.array(list(query_sequence))
-    sequences = np.stack(sequences).astype(np.uint8)
-    deletions = np.stack(deletions).astype(np.int32)
-    deletion_mean = 2 * np.arctan(deletions.astype(np.float32) / 3) / np.pi
-    deletion_mean = deletion_mean.mean(axis=0).astype(np.float32)
-    profile = np.eye(max_idx + 1, dtype=np.int32)[
-        sequences
-    ]  # for now, protein only
-    profile = np.mean(profile, axis=0).astype(np.float32)
-
+        if len(sequence) != length:
+            msg = f"MSA row {row} has {len(sequence)} aligned columns; expected {length}."
+            raise ValueError(msg)
+        if any(not ("A" <= c <= "Z" or c == "-") for c in sequence):
+            msg = f"MSA row {row} contains an invalid aligned character."
+            raise ValueError(msg)
+        sequences[row] = mapping_view.map(np.array(list(sequence)))
+        positions = np.fromiter(
+            (i for i, c in enumerate(raw_sequence) if "a" <= c <= "z"),
+            dtype=np.int64,
+        )
+        if positions.size:
+            columns, counts = np.unique(positions - np.arange(positions.size), return_counts=True)
+            # A3M insertions belong to the following aligned column. Trailing
+            # insertions have no following column and do not enter the matrix.
+            keep = columns < length
+            deletions[row, columns[keep]] = np.minimum(counts[keep], 255)
+    deletion_mean, profile = msa_statistics(sequences, deletions, max_idx + 1)
     return {
-        "query_sequence": query_sequence,
+        "query_sequence": np.array(list(query_sequence)),
         "aligned_sequences": sequences,
         "deletions": deletions,
         "deletion_mean": deletion_mean,
         "profile": profile,
     }
+
+
+def msa_statistics(
+    sequences: np.ndarray,
+    deletions: np.ndarray,
+    n_classes: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute MSA statistics without a depth x length x alphabet temporary."""
+    n_rows, length = sequences.shape
+    if not n_rows or not length or deletions.shape != sequences.shape:
+        msg = "MSA and deletion matrices must have matching, nonempty dimensions."
+        raise ValueError(msg)
+    deletion_mean = (2 * np.arctan(deletions.astype(np.float32) / 3) / np.pi).mean(axis=0).astype(np.float32)
+    counts = np.zeros(length * n_classes, dtype=np.int64)
+    offsets = np.arange(length) * n_classes
+    rows_per_chunk = max(1, 1_000_000 // length)
+    for start in range(0, n_rows, rows_per_chunk):
+        indices = sequences[start:start + rows_per_chunk].astype(np.int64) + offsets
+        counts += np.bincount(indices.ravel(), minlength=counts.size)
+    profile = (counts.reshape(length, n_classes) / n_rows).astype(np.float32)
+    return deletion_mean, profile
 
 
 def parse_headers(headers: list[str]) -> dict[str, np.ndarray]:
@@ -751,12 +762,16 @@ def parse_headers(headers: list[str]) -> dict[str, np.ndarray]:
         re.IGNORECASE,
     )
 
-    result = None
     database_list = []
     database_id = []
     species_list = []
     rep_id_list = []
-    for ii, header in enumerate(headers):
+    for ii, raw_header in enumerate(headers):
+        result = None
+        header = raw_header.removeprefix(">").strip()
+        if not header:
+            msg = f"Empty MSA header at row {ii}."
+            raise ValueError(msg)
         if ii == 0:
             database_list.append("query")
             database_id.append("query")
@@ -783,7 +798,7 @@ def parse_headers(headers: list[str]) -> dict[str, np.ndarray]:
             # Pattern 3: BFD output header (default values).
             # Species information is not extracted from the BFD database.
             database = "bfd"
-            db_id = header[1:].split()[0]  # Remove '>' and take first part
+            db_id = header.split()[0]
             species = "N/A"
             rep_id = db_id
         database_list.append(database)

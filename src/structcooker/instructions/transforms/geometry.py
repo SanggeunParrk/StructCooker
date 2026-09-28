@@ -39,6 +39,8 @@ def chain_contacts_grid(
     xyz: np.ndarray,
     chain_idx: np.ndarray,
     d_thr: float,
+    *,
+    count_atom_pairs_once: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Count inter-chain atom contacts per chain-pair via a streaming grid scan.
 
@@ -50,13 +52,16 @@ def chain_contacts_grid(
         Chain index of each atom.
     d_thr : float
         L2 distance threshold defining an atom-atom contact.
+    count_atom_pairs_once : bool
+        Count each unordered atom pair once. False preserves the historical PDB
+        directed-pair multiplicity (both a->b and b->a contribute).
 
     Returns
     -------
     src, dst : (n_edge,) int64
         Undirected chain-pair endpoints with ``src < dst``.
     counts : (n_edge,) int64
-        Number of contacting atom pairs accumulated for each chain pair.
+        Number of contacting atom pairs, with the selected directional convention.
     """
     empty = (
         np.empty(0, dtype=np.int64),
@@ -124,7 +129,7 @@ def chain_contacts_grid(
         cd = chain_valid[di]
 
         # Keep inter-chain pairs first (drops self-pairs and intra-chain bulk).
-        inter = cs != cd
+        inter = cs < cd if count_atom_pairs_once else cs != cd
         if not np.any(inter):
             continue
         si, di, cs, cd = si[inter], di[inter], cs[inter], cd[inter]

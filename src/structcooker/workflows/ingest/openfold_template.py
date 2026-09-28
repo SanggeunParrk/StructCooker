@@ -5,7 +5,7 @@ from datacooker import RecipeBook
 from structcooker.instructions.transforms.openfold import (
     reconstruct_template_alignments,
 )
-from structcooker.instructions.transforms.template import load_templates_from_chain_db
+from structcooker.instructions.transforms.template import load_templates_with_report
 
 """Build an OpenFold3 distillation template Cooker.
 
@@ -30,8 +30,8 @@ template_recipe.add(
 )
 
 template_recipe.add(
-    targets=(("template_mols", dict),),
-    instruction=load_templates_from_chain_db,
+    targets=(("template_mols", dict), ("template_report", dict)),
+    instruction=load_templates_with_report,
     inputs={
         "kwargs": {
             "cif_chain_db_path": ("cif_chain_db_path", Path),
@@ -41,4 +41,4 @@ template_recipe.add(
 )
 
 RECIPE = template_recipe
-TARGETS = ["template_mols"]
+TARGETS = ["template_mols", "template_report"]

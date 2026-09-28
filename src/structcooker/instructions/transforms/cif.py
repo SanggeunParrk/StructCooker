@@ -66,6 +66,11 @@ def _parse_each_chem_comp(
         atom_features["alt_atom_id"] = NodeFeature(
             value=alt_atom_id[atom_mask].astype(str),
         )
+    component_atom_id = chem_comp_atom_dict.get("pdbx_component_atom_id")
+    if include_alt_atom_id and component_atom_id is not None:
+        atom_features["component_atom_id"] = NodeFeature(
+            value=component_atom_id[atom_mask].astype(str),
+        )
 
     if charge is not None:
         charge = NodeFeature(value=charge[atom_mask].astype(str))
@@ -175,18 +180,26 @@ def parse_chem_comp(
 def _compare_each_chem_comp(
     cif_chem_comp: dict[str, FeatureContainer],
     ideal_chem_comp: dict[str, FeatureContainer],
-) -> dict[str, NDArray]:
+) -> dict[str, FeatureContainer]:
     output = {}
     # for residue, just follow cif_chem_comp if exists
     if len(cif_chem_comp["residue"]) != 0:
         output["residue"] = cif_chem_comp["residue"]
     else:
         output["residue"] = ideal_chem_comp["residue"]
-    ideal_atom_dict = ideal_chem_comp["atom"].to_dict()
+    cif_ids = cif_chem_comp["atom"]["id"].value
+    ideal_atom = ideal_chem_comp["atom"]
+    ideal_ids = ideal_atom["id"].value
+    if not np.array_equal(cif_ids, ideal_ids) and set(cif_ids) == set(ideal_ids):
+        # CIF and CCD tables may list the same atoms in different orders. Align
+        # inherited node features and bond endpoints by ID, never by row number.
+        positions = {atom_id: i for i, atom_id in enumerate(ideal_ids)}
+        ideal_atom = ideal_atom.crop(np.array([positions[atom_id] for atom_id in cif_ids]))
+    ideal_atom_dict = ideal_atom.to_dict()
     # alt_atom_id lives on the ideal CCD only for the openfold ingest's name lookup;
     # drop it here so merged cif records keep their original atom-node schema.
     ideal_node_key_list = [
-        k for k in ideal_atom_dict["nodes"] if k != "alt_atom_id"
+        k for k in ideal_atom_dict["nodes"] if k not in {"alt_atom_id", "component_atom_id"}
     ]
     ideal_edge_key_list = list(ideal_atom_dict["edges"].keys())
     atom_features = {}
@@ -195,12 +208,12 @@ def _compare_each_chem_comp(
             # follow cif_chem_comp if exists
             atom_features[key] = cif_chem_comp["atom"][key]
         else:
-            atom_features[key] = ideal_chem_comp["atom"][key]
+            atom_features[key] = ideal_atom[key]
     for key in ideal_edge_key_list:
         if key in cif_chem_comp["atom"]:
             atom_features[key] = cif_chem_comp["atom"][key]
         else:
-            atom_features[key] = ideal_chem_comp["atom"][key]
+            atom_features[key] = ideal_atom[key]
     try:
         output["atom"] = FeatureContainer(
             features=atom_features,
@@ -210,10 +223,30 @@ def _compare_each_chem_comp(
     return output
 
 
+def _match_ccd_atom_aliases(component: dict, cif_ids: set[str]) -> None:
+    """Use an exact, unique CCD alias set when the CIF uses legacy atom names."""
+    nodes = component["atom"]["nodes"]
+    if set(nodes["id"]["value"]) == cif_ids:
+        return
+    matches = []
+    for field in ("alt_atom_id", "component_atom_id"):
+        aliases = nodes.get(field)
+        if aliases is not None:
+            values = aliases["value"]
+            if len(values) == len(cif_ids) and set(values) == cif_ids:
+                matches.append(aliases)
+    if matches:
+        if any(not np.array_equal(matches[0]["value"], m["value"]) for m in matches[1:]):
+            msg = "CCD atom alias tables disagree on the CIF atom mapping."
+            raise ValueError(msg)
+        nodes["id"] = matches[0]
+
+
 def compare_chem_comp(
-    chem_comp_dict: dict[str, dict[str, NDArray]],
+    chem_comp_dict: dict[str, dict[str, FeatureContainer] | None],
     ccd_db_path: Path,
-) -> dict[str, dict[str, NDArray]]:
+    ccd_reference_path: Path | None = None,
+) -> dict[str, dict[str, FeatureContainer] | None]:
     """Merge each cif-parsed chem_comp with the ideal component read from the CCD LMDB at ``ccd_db_path``."""
     output = {}
     for chem_comp_id in chem_comp_dict:  # noqa: PLC0206  # keys only
@@ -221,18 +254,45 @@ def compare_chem_comp(
             output[chem_comp_id] = None
             continue
         ideal_chem_comp = read_lmdb(ccd_db_path, chem_comp_id)["chem_comp_dict"]
+        cif_chem_comp = chem_comp_dict[chem_comp_id]
+        if cif_chem_comp is not None:
+            _match_ccd_atom_aliases(ideal_chem_comp, set(cif_chem_comp["atom"]["id"].value))
         # alt_atom_id lives on the CCD only for the openfold ingest's name lookup; strip it
         # here so it never reaches cif records -- whether the ideal is merged with an
         # entry's chem_comp or (when the entry has none) used verbatim below.
         ideal_chem_comp["atom"]["nodes"].pop("alt_atom_id", None)
+        ideal_chem_comp["atom"]["nodes"].pop("component_atom_id", None)
         ideal_chem_comp = {
             "atom": FeatureContainer.from_dict(ideal_chem_comp["atom"]),
             "residue": FeatureContainer.from_dict(ideal_chem_comp["residue"]),
         }
-        cif_chem_comp = chem_comp_dict[chem_comp_id]
         if cif_chem_comp is None:
             output[chem_comp_id] = ideal_chem_comp
             continue
+        cif_ids = set(cif_chem_comp["atom"]["id"].value)
+        missing = cif_ids - set(ideal_chem_comp["atom"]["id"].value)
+        if missing:
+            # A newer CCD can remove atoms that still occur in an older CIF.
+            # Never silently discard those observed atoms or invent their chemistry.
+            reference = None
+            if ccd_reference_path is not None:
+                candidate = read_lmdb(ccd_reference_path, chem_comp_id)["chem_comp_dict"]
+                if candidate:
+                    _match_ccd_atom_aliases(candidate, cif_ids)
+                if candidate and set(candidate["atom"]["nodes"]["id"]["value"]) == cif_ids:
+                    candidate["atom"]["nodes"].pop("alt_atom_id", None)
+                    candidate["atom"]["nodes"].pop("component_atom_id", None)
+                    reference = {
+                        "atom": FeatureContainer.from_dict(candidate["atom"]),
+                        "residue": FeatureContainer.from_dict(candidate["residue"]),
+                    }
+            if reference is None:
+                msg = (
+                    f"CCD {chem_comp_id} lacks CIF atoms {sorted(missing)}; "
+                    "provide ccd_reference_path with a matching component definition."
+                )
+                raise ValueError(msg)
+            ideal_chem_comp = reference
         parsed = _compare_each_chem_comp(
             cast("dict[str, FeatureContainer]", cif_chem_comp),
             ideal_chem_comp,
@@ -647,6 +707,13 @@ def _rearrange_each_asym_id(
     # which is wildcard in general.
 
     output = {}
+    determinants = np.asarray([
+        f"{atom}.{auth_idx}"
+        for atom, auth_idx in zip(rearranged_dict["atom"], rearranged_dict["auth_idx"], strict=True)
+    ])
+    groups, inverse = np.unique(determinants, return_inverse=True)
+    alt_id_array = rearranged_dict["alt_id"]
+    alt_masks = {}
     model_ids = np.unique(rearranged_dict["model_id"])
     for _model_id in model_ids:
         model_id = str(_model_id)
@@ -654,27 +721,14 @@ def _rearrange_each_asym_id(
         alt_ids = np.unique(rearranged_dict["alt_id"][model_mask])
         output[model_id] = {}
         for _alt_id in alt_ids:
-            atom_array = np.asarray(rearranged_dict["atom"])
-            auth_idx_array = np.asarray(rearranged_dict["auth_idx"])
-            determinant_array = np.asarray(
-                [
-                    f"{a}.{b}"
-                    for a, b in zip(atom_array, auth_idx_array, strict=False)
-                ],
-            )
-            alt_id_array = np.asarray(rearranged_dict["alt_id"])
-            mask = np.zeros_like(alt_id_array, dtype=bool)
-            for determinant in np.unique(determinant_array):
-                group_mask = determinant_array == determinant
-                group_alt = alt_id_array[group_mask]
-                has_target = np.any(group_alt == _alt_id)
-
-                if has_target:
-                    # Mark True only where alt_id equals the reference alt_id
-                    mask[group_mask & (alt_id_array == _alt_id)] = True
-                else:
-                    # If no reference alt_id exists, mark True where alt_id == '.'
-                    mask[group_mask & (alt_id_array == ".")] = True
+            if _alt_id not in alt_masks:
+                target = alt_id_array == _alt_id
+                has_target = np.zeros(len(groups), dtype=bool)
+                has_target[inverse[target]] = True
+                # Preserve the existing cross-model altloc grouping convention.
+                # Group membership replaces one full atom-array scan per atom ID.
+                alt_masks[_alt_id] = target | ((alt_id_array == ".") & ~has_target[inverse])
+            mask = alt_masks[_alt_id]
             combined_mask = model_mask & mask
             output[model_id][str(_alt_id)] = {}
             for key in key_list:
@@ -1599,5 +1653,3 @@ def extract_release_date(
         return min(good)
     dep = _aslist(deposition_date)
     return dep[0] if dep else None
-
-

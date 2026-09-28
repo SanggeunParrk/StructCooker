@@ -13,7 +13,9 @@ recipe.step(
     instruction=attach_metadata,
     kwargs={
         "cifmol": ("cifmol", CIFMol),
-        "seq_metadata_map": ("seq_metadata_map", dict),
+        # object, not dict: seq_metadata_map is an LmdbDict (mmap-backed) so workers
+        # share one node-local copy instead of each holding a multi-GB dict.
+        "seq_metadata_map": ("seq_metadata_map", object),
     },
 )
 

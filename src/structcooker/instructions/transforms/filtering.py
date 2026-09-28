@@ -81,6 +81,32 @@ def filter_signalp(
     )
 
 
+def filter_signalp_by_sequence(
+    cifmol: CIFMol | CIFMolAttached | None,
+    signalp_by_sequence: dict[tuple[str, str], tuple[int, int]],
+) -> dict | None:
+    """Trim signal peptides using a compact index of full sequences with predictions.
+
+    Preserve the residue ordering and cleavage convention of ``filter_signalp``.
+    Chains without a prediction retain every residue.
+    """
+    if cifmol is None:
+        return None
+    sequences, entity_types = extract_sequence_from_cifmol(cifmol)
+    indices: list[int] = []
+    cursor = 0
+    for chain_id, sequence in sequences.items():
+        identifier = mol_type_map.get(entity_types[chain_id], "X")
+        prediction = signalp_by_sequence.get((identifier, sequence))
+        chain = cifmol.chains[cifmol.chains.chain_id == chain_id].extract()
+        length = len(chain.residues)
+        start = prediction[1] + 1 if prediction is not None else 0
+        indices.extend(range(cursor + start, cursor + length))
+        cursor += length
+    filtered = cifmol.residues[indices].extract()
+    return cast("dict", filtered.to_dict()) if len(filtered.residues) else None
+
+
 def filter_a3m(
     max_msa_depth: int = 16_384,
     gap_character: int = 31,
@@ -188,11 +214,10 @@ def filter_valid_2_clusters(
     }
 
     interacting_seq_clusters_set: set[tuple[str, str]] = set()
-    for key, value in interacting_seq_clusters.items():
-        c1, c2 = key, value[0]
-        if c1[1] in polymer_identifiers and c2[1] in polymer_identifiers:
-            interacting_seq_clusters_set.add((c1, c2))
-            interacting_seq_clusters_set.add((c2, c1))
+    for c1, partners in interacting_seq_clusters.items():
+        for c2 in partners:
+            if c1[1] in polymer_identifiers and c2[1] in polymer_identifiers:
+                interacting_seq_clusters_set.add((c1, c2))
 
     interacting_graph = nx.Graph()
     interacting_graph.add_nodes_from(train_polymer_clusters)
@@ -200,9 +225,9 @@ def filter_valid_2_clusters(
     interacting_graph.add_edges_from(interacting_seq_clusters_set)
 
     connected_to_train: set[str] = set()
-    for t in train_polymer_clusters:
-        if t in interacting_graph:
-            connected_to_train |= nx.node_connected_component(interacting_graph, t)
+    for component in nx.connected_components(interacting_graph):
+        if not train_polymer_clusters.isdisjoint(component):
+            connected_to_train.update(component)
     return set(valid_1_clusters) - connected_to_train
 
 

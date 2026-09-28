@@ -15,10 +15,10 @@ with a3m parsing recipes and instructions.
 a3m_recipe = RecipeBook()
 
 a3m_recipe.step(
-    outputs=(("parsed_sequences", str),),
+    outputs=(("parsed_sequences", dict),),
     instruction=parse_sequence,
     kwargs={
-        "raw_sequences": ("raw_sequences", str | None),
+        "raw_sequences": ("raw_sequences", list[str]),
         "a3m_type": ("a3m_type", str | None),
     },
 )

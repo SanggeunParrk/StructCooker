@@ -6,7 +6,7 @@ from structcooker.instructions.transforms.openfold import (
     reconstruct_template_alignments,
 )
 from structcooker.instructions.transforms.template import (
-    load_templates_from_chain_db,
+    load_templates_with_report,
     rank_template_hits_by_coverage,
 )
 
@@ -44,8 +44,8 @@ template_topn_recipe.add(
 )
 
 template_topn_recipe.add(
-    targets=(("template_mols", dict),),
-    instruction=load_templates_from_chain_db,
+    targets=(("template_mols", dict), ("template_report", dict)),
+    instruction=load_templates_with_report,
     inputs={
         "kwargs": {
             "cif_chain_db_path": ("cif_chain_db_path", Path),
@@ -56,4 +56,4 @@ template_topn_recipe.add(
 )
 
 RECIPE = template_topn_recipe
-TARGETS = ["template_mols"]
+TARGETS = ["template_mols", "template_report"]

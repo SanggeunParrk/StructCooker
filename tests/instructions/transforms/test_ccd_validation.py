@@ -76,8 +76,7 @@ def test_missing_xyz_is_flagged() -> None:
 
 
 def test_unparsed_entry_reports_issue() -> None:
-    instruction = validate_chem_comp()
-    issues = instruction(None)
+    issues = validate_chem_comp(None)
     assert [i["code"] for i in issues] == ["unparsed"]
 
 

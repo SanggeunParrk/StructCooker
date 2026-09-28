@@ -25,6 +25,7 @@ from typing import cast
 
 import lmdb
 import numpy as np
+from datacooker.lmdb.sharded import open_env
 
 from structcooker.instructions.readers.io import load_bytes as _load_bytes
 from structcooker.instructions.transforms.qc import (
@@ -112,7 +113,7 @@ _METALS = frozenset({
 
 @functools.lru_cache(maxsize=1)
 def _linker_env(path: str) -> lmdb.Environment:
-    return lmdb.open(path, readonly=True, lock=False, subdir=True, max_dbs=0)
+    return open_env(path, readonly=True, lock=False, subdir=True, max_dbs=0)
 
 
 @functools.lru_cache(maxsize=200_000)
@@ -366,7 +367,7 @@ _HETERO = frozenset({"N", "O", "S", "P", "SE"})
 
 @functools.cache
 def _valence_env(path: str) -> lmdb.Environment:
-    return lmdb.open(path, readonly=True, lock=False, subdir=True, max_dbs=0)
+    return open_env(path, readonly=True, lock=False, subdir=True, max_dbs=0)
 
 
 @functools.cache

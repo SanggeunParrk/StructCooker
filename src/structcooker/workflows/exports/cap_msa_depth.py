@@ -2,8 +2,7 @@
 
 Planning-first replacement for the legacy ``scripts/maintenance/lightweight_msa.py``:
 run via ``structcooker build`` → ``datacooker pipeline`` (rebuild op) so it inherits
-the gc-safe forked workers (no circular-ref RSS creep) and size-tier planning instead
-of a hand-tuned sbatch.
+bounded Ray execution and input-size balancing.
 
 The reader adapter ``adapt_msa_for_cap`` renames the deserialized ``msa_dict`` to
 ``msa_src`` so the step can write its result back as ``msa_dict`` (matching the source

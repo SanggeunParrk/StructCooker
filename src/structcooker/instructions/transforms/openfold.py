@@ -12,6 +12,7 @@ import re
 
 import numpy as np
 
+from structcooker.instructions.transforms.msa import msa_statistics
 from structcooker.utils.mapping import ResidueMapping
 
 _UNIREF = re.compile(r"^(?P<db>UniRef\d+)_(?P<id>\S+)")
@@ -60,6 +61,9 @@ def cap_msa_depth(
     memory; this keeps the query (row 0) plus the first ``max_depth - 1`` hits.
     A ``None`` cap or an already-shallow alignment is returned unchanged.
     """
+    if max_depth is not None and max_depth < 1:
+        msg = "max_depth must retain at least the query row (>= 1)."
+        raise ValueError(msg)
     if max_depth is None or len(msa) <= max_depth:
         return msa, deletion_matrix, metadata
     return msa[:max_depth], deletion_matrix[:max_depth], metadata[:max_depth]
@@ -89,16 +93,8 @@ def build_msa_features(
     codes = np.ascontiguousarray(msa.astype("<U1")).view(np.uint32)
     aligned_sequences = lut[codes].astype(np.uint8)
 
-    n_rows, length = aligned_sequences.shape
     deletions = np.clip(deletion_matrix, 0, _DELETION_CLIP).astype(np.int32)
-    deletion_mean = (2 * np.arctan(deletions.astype(np.float32) / 3) / np.pi).mean(
-        axis=0,
-    ).astype(np.float32)
-    # profile[l, k] = fraction of rows with residue k at column l (== one-hot mean),
-    # via a single bincount instead of an (N, L, K) one-hot intermediate.
-    flat = aligned_sequences.astype(np.int64) + np.arange(length) * n_classes
-    counts = np.bincount(flat.ravel(), minlength=length * n_classes)
-    profile = (counts.reshape(length, n_classes) / n_rows).astype(np.float32)
+    deletion_mean, profile = msa_statistics(aligned_sequences, deletions, n_classes)
 
     # Query keeps the row-0 a3m string (upper columns + lowercase insertions).
     q_upper, q_del = np.char.upper(msa[0].astype("<U1")), deletion_matrix[0].astype(np.int64)
@@ -137,18 +133,17 @@ def cap_msa_dict(msa_dict: dict, max_depth: int) -> dict:
     ``profile`` over the capped rows (same formulas as :func:`build_msa_features`,
     operating on the stored residue indices). A no-op for shallow MSAs.
     """
+    if max_depth < 1:
+        msg = "max_depth must retain at least the query row (>= 1)."
+        raise ValueError(msg)
     seqs = msa_dict["sequences"]
     aligned = np.asarray(seqs["aligned_sequences"])
     if aligned.shape[0] <= max_depth:
         return msa_dict
     aligned = aligned[:max_depth]
     deletions = np.asarray(seqs["deletions"])[:max_depth]
-    n_rows, length = aligned.shape
     n_classes = np.asarray(seqs["profile"]).shape[1]
-    deletion_mean = (2 * np.arctan(deletions.astype(np.float32) / 3) / np.pi).mean(axis=0).astype(np.float32)
-    flat = aligned.astype(np.int64) + np.arange(length) * n_classes
-    counts = np.bincount(flat.ravel(), minlength=length * n_classes)
-    profile = (counts.reshape(length, n_classes) / n_rows).astype(np.float32)
+    deletion_mean, profile = msa_statistics(aligned, deletions, n_classes)
     capped_sequences = {
         "query_sequence": seqs["query_sequence"],
         "aligned_sequences": aligned,

@@ -6,7 +6,7 @@ from typing import cast
 import numpy as np
 from biomol.core.container import FeatureContainer
 from biomol.core.index import IndexTable
-from zstandard import ZstdCompressor, ZstdDecompressor
+from zstandard import ZstdCompressor, ZstdDecompressor, frame_content_size
 
 
 def flatten_data(data: dict) -> tuple[dict, dict]:
@@ -78,10 +78,26 @@ def reconstruct_data(template: dict, flatten: dict) -> dict:
 
 def from_bytes(byte_data: bytes) -> dict:
     """Deserialize the container from zstd-compressed bytes."""
-    raw = ZstdDecompressor().decompress(byte_data)
+    if frame_content_size(byte_data) == -1:
+        decoder = ZstdDecompressor().decompressobj()
+        raw = decoder.decompress(byte_data)
+        if not decoder.eof:
+            msg = "Truncated Zstandard frame."
+            raise ValueError(msg)
+    else:
+        raw = ZstdDecompressor().decompress(byte_data)
+    if len(raw) < 8:
+        msg = "Truncated BioMol header length."
+        raise ValueError(msg)
     hlen = int.from_bytes(raw[:8], "little")
+    if hlen > len(raw) - 8:
+        msg = "Truncated BioMol header."
+        raise ValueError(msg)
     header = json.loads(raw[8 : 8 + hlen].decode("utf-8"))
     payload = raw[8 + hlen :]
+    if sum(header["arrays"].values()) != len(payload):
+        msg = "BioMol array payload length does not match its header."
+        raise ValueError(msg)
 
     offset = 0
     flatten_data = {}
@@ -92,6 +108,21 @@ def from_bytes(byte_data: bytes) -> dict:
 
     template_dict = header["template"]
     return reconstruct_data(template_dict, flatten_data)
+
+
+def read_header(byte_data: bytes) -> dict:
+    """Read scalar metadata without allocating or decoding the array payload."""
+    with ZstdDecompressor().stream_reader(BytesIO(byte_data)) as source:
+        size = source.read(8)
+        if len(size) != 8:
+            msg = "Truncated BioMol header length."
+            raise ValueError(msg)
+        length = int.from_bytes(size, "little")
+        header = source.read(length)
+        if len(header) != length:
+            msg = "Truncated BioMol header."
+            raise ValueError(msg)
+    return json.loads(header)
 
 
 def indextable_to_dict(index_table: IndexTable) -> dict:

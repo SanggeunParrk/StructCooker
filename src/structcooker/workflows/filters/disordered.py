@@ -7,7 +7,7 @@ from structcooker.instructions.transforms.filtering import (
     filter_cifmol_by_polymer_chain_count,
     filter_cifmol_by_token_count,
     filter_min_unresolved_residues,
-    filter_signalp,
+    filter_signalp_by_sequence,
 )
 from structcooker.instructions.transforms.sequence import filter_water
 from structcooker.mols import CIFMol
@@ -71,11 +71,10 @@ recipe.step(
 
 recipe.step(
     outputs=(("cifmol_dict", dict),),
-    instruction=filter_signalp,
+    instruction=filter_signalp_by_sequence,
     kwargs={
         "cifmol": ("cifmol_wo_water", CIFMol),
-        "seqid_map": ("seqid_map", dict),
-        "signalp_dict": ("signalp_dict", dict),
+        "signalp_by_sequence": ("signalp_by_sequence", dict),
     },
 )
 

@@ -11,9 +11,8 @@ from structcooker.instructions.transforms.openfold import (
 
 """Build an OpenFold3 distillation MSA Cooker.
 
-Adapts the distillation ``alignment.npz`` (aligned matrix + deletion counts,
-one source for proteins / several for RNA) back into raw a3m strings so the
-canonical ``parse_sequence`` / ``build_dict`` instructions can be reused. The
+Converts distillation ``alignment.npz`` arrays (one source for proteins / several
+for RNA) directly into canonical features, without reconstructing every A3M row. The
 resulting ``msa_dict`` matches the schema of the existing a3m LMDB
 (``query_sequence`` / ``aligned_sequences`` / ``deletions`` / ``deletion_mean``
 / ``profile`` + parsed headers).

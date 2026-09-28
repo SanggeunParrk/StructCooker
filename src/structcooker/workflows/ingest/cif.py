@@ -343,6 +343,7 @@ cif_recipe.add(
         "kwargs": {
             "chem_comp_dict": ("chem_comp_dict", dict | None),
             "ccd_db_path": ("ccd_db_path", Path | None),
+            "ccd_reference_path": ("ccd_reference_path", Path | None),
         },
     },
 )
