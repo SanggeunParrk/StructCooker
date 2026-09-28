@@ -1,3 +1,6 @@
+import logging
+import os
+import tempfile
 import time
 from pathlib import Path
 from typing import cast
@@ -7,7 +10,79 @@ from biomol.core import NodeFeature
 
 from structcooker.instructions.transforms.sequence import filter_water
 from structcooker.mols import CIFMol, CIFMolAttached
-from structcooker.utils.mapping import mol_type_map
+from structcooker.utils.mapping import cluster_id, mol_type_map
+
+_SEQMETA_SEP = "\t"  # separates seq_id and cluster in an LmdbDict value
+logger = logging.getLogger(__name__)
+
+
+class LmdbDict:
+    """Read-only ``cif_id -> (seq_id, seq_cluster)`` map backed by an on-disk LMDB.
+
+    The seq metadata map over ALL PDB chains is multi-GB as a Python dict. Shipping it
+    inside every Ray worker's state made each of the ~112 workers on a node deserialize
+    its own multi-GB copy -> hundreds of GB -> OOM (even on tiny structures, since the
+    footprint was per-worker metadata, not per-item). This wraps the map as an LMDB
+    instead: the shard driver writes it once, and every worker on the node mmaps the
+    SAME file (shared OS page cache), so per-worker resident metadata is ~0. It pickles
+    to just its path, so shipping it through Ray costs nothing. Behaves like the dict it
+    replaces for the two operations attach_metadata needs: ``in`` and ``[]``.
+    """
+
+    def __init__(self, path: str | Path) -> None:
+        self._path = str(path)
+        self._env = None  # opened lazily per worker process, never pickled
+
+    def __getstate__(self) -> dict:
+        """Pickle only the path -- the env handle is per-process, reopened lazily."""
+        return {"_path": self._path}
+
+    def __setstate__(self, state: dict) -> None:
+        """Restore from a pickle: keep the path, defer opening the env."""
+        self._path = state["_path"]
+        self._env = None
+
+    def _get_env(self):  # noqa: ANN202
+        if self._env is None:
+            from datacooker.lmdb.sharded import open_env
+
+            self._env = open_env(
+                self._path, readonly=True, lock=False, subdir=True, max_readers=4096,
+            )
+        return self._env
+
+    def __contains__(self, key: str) -> bool:
+        """Return True if ``key`` (a cif_id) has metadata in the LMDB."""
+        with self._get_env().begin() as txn:
+            return txn.get(key.encode()) is not None
+
+    def __getitem__(self, key: str) -> tuple[str, str]:
+        """Return ``(seq_id, seq_cluster)`` for ``key``; raise KeyError if absent."""
+        with self._get_env().begin() as txn:
+            raw = txn.get(key.encode())
+        if raw is None:
+            raise KeyError(key)
+        seqid, cluster = raw.decode().split(_SEQMETA_SEP)
+        return seqid, cluster
+
+
+def seq_metadata_map_to_lmdb(seq_metadata_map: dict[str, tuple[str, str]]) -> LmdbDict:
+    """Write the seq-metadata dict to a node-local LMDB and return an ``LmdbDict``.
+
+    Runs once on the shard driver (where the dict is built); every Ray worker on the
+    node then mmaps this file instead of holding its own copy. The file lands under
+    ``TMPDIR`` (node-local scratch) so each shard's workers share it via page cache.
+    """
+    import lmdb
+
+    scratch = tempfile.mkdtemp(prefix="seqmeta_", dir=os.environ.get("TMPDIR", "/tmp"))  # noqa: S108
+    path = os.path.join(scratch, "seq_metadata.lmdb")  # noqa: PTH118
+    env = lmdb.open(path, map_size=32 * (1 << 30), subdir=True)
+    with env.begin(write=True) as txn:
+        for cif_id, (seqid, cluster) in seq_metadata_map.items():
+            txn.put(cif_id.encode(), f"{seqid}{_SEQMETA_SEP}{cluster}".encode())
+    env.close()
+    return LmdbDict(path)
 
 
 def load_tsv(
@@ -39,6 +114,16 @@ def reverse_dict(
     return output_dict
 
 
+def load_pairs(tsv_file_path: Path) -> dict[str, list[str]]:
+    """Read a two-column relation without dropping repeated left-hand keys."""
+    pairs: dict[str, list[str]] = {}
+    with tsv_file_path.open(encoding="utf-8") as source:
+        for line in source:
+            left, right = line.rstrip("\r\n").split("\t")
+            pairs.setdefault(left, []).append(right)
+    return pairs
+
+
 def build_seqid_map(
     seqid2seq: dict[str, list[str]],
 ) -> dict[str, dict[str, str]]:
@@ -60,6 +145,7 @@ def build_seq_metadata_map(
     raw_fasta_dict: dict[str, str],
     seqid2seq: dict[str, list[str]],
     seqclusters2seqids: dict[str, list[str]],
+    db_code: str,
 ) -> dict[str, tuple[str, str]]:
     """Build a metadata map from sequence cluster ID to sequence ID."""
     seq_metadata_map: dict[str, tuple[str, str]] = {}  # cif_id -> (seq id, seq cluster)
@@ -73,10 +159,10 @@ def build_seq_metadata_map(
         if seqid is None:
             msg = f"Sequence ID not found for molecule type {mol_identifier} and sequence {sequence}."
             raise KeyError(msg)
-        # A seq_id absent from the (reference) clustering is a sequence that clustering did
-        # not contain -- e.g. a from-scratch id past the seeded universe -- so it forms its
-        # own singleton cluster (the seq_id is its own representative), rather than erroring.
-        seqcluster = seqid2seqcluster.get(seqid, f"c{seqid}")
+        # A seq_id absent from this DB's clustering is a sequence that clustering did not
+        # contain -- e.g. a from-scratch id past the seeded universe -- so it forms its own
+        # singleton cluster (the seq_id is its own representative), rather than erroring.
+        seqcluster = seqid2seqcluster.get(seqid, cluster_id(db_code, seqid))
         cif_id = header.split("|")[0].strip()  # pdbid_chainid_altid
         seq_metadata_map[cif_id] = (seqid, seqcluster)
     return seq_metadata_map
@@ -108,9 +194,48 @@ def load_signalp(
     return signalp_data
 
 
+def index_signalp_sequences(
+    seqid2seq_path: Path,
+    signalp_dict: dict[str, tuple[int, int]],
+) -> dict[tuple[str, str], tuple[int, int]]:
+    """Stream the sequence table once, retaining only signal-peptide predictions."""
+    indexed: dict[tuple[str, str], tuple[int, int]] = {}
+    if not signalp_dict:
+        return indexed
+    predictions: dict[str, tuple[int, int]] = {}
+    for seqid, prediction in signalp_dict.items():
+        key = _sequence_counter_key(seqid)
+        if key in predictions and predictions[key] != prediction:
+            msg = f"Conflicting SignalP predictions for sequence counter {key}."
+            raise ValueError(msg)
+        predictions[key] = prediction
+    with seqid2seq_path.open(encoding="utf-8") as source:
+        for line in source:
+            seqid, sequence = line.rstrip("\r\n").split("\t")
+            prediction = predictions.get(_sequence_counter_key(seqid))
+            if prediction is not None:
+                indexed[seqid[0], sequence] = prediction
+            else:
+                # Match build_seqid_map: the final ID for a sequence wins.
+                indexed.pop((seqid[0], sequence), None)
+    if not indexed:
+        logger.warning(
+            "No SignalP prediction IDs matched %s; check prediction provenance and ID format.",
+            seqid2seq_path,
+        )
+    return indexed
+
+
+def _sequence_counter_key(seqid: str) -> str:
+    """Keep molecule identity while ignoring zero padding on assigned counters."""
+    if len(seqid) > 1 and seqid[1:].isdecimal():
+        return seqid[0] + str(int(seqid[1:]))
+    return seqid
+
+
 def attach_metadata(
     cifmol: CIFMol,
-    seq_metadata_map: dict[str, tuple[str, str]],
+    seq_metadata_map: "dict[str, tuple[str, str]] | LmdbDict",
 ) -> dict | None:
     """Attach metadata to a CIFMol object.
 
@@ -191,6 +316,7 @@ def classify_seq_clusters(
     fasta_dict: dict[str, str],
     seqid_map: dict[str, dict[str, str]],
     seqclusters2seqids: dict[str, list[str]],
+    db_code: str,
 ) -> set[str]:
     """Classify sequence clusters based on the provided fasta dictionary and sequence ID map."""
     seqid2seqcluster: dict[str, str] = reverse_dict(seqclusters2seqids)
@@ -203,8 +329,8 @@ def classify_seq_clusters(
         if seqid is None:
             msg = f"Sequence ID not found for molecule type {mol_identifier} and sequence {raw_sequence}."
             raise KeyError(msg)
-        # Absent from the reference clustering -> its own singleton cluster (see build_seq_metadata_map).
-        seqcluster = seqid2seqcluster.get(seqid, f"c{seqid}")
+        # Absent from this DB's clustering -> its own singleton (see build_seq_metadata_map).
+        seqcluster = seqid2seqcluster.get(seqid, cluster_id(db_code, seqid))
         classified_clusters.add(seqcluster)
     return classified_clusters
 
@@ -228,6 +354,29 @@ def load_fasta(
                 msg = "FASTA format error: sequence data found before any header."
                 raise ValueError(msg)
     return fasta_dict
+
+
+def chunk_protein_seqs(
+    seqid2seq: dict[str, list[str]],
+    chunk_size: int = 5000,
+) -> list[dict]:
+    """Group protein sequences into chunks that share one MMseqs2 search.
+
+    MMseqs2 pays its cost per search (loading the target DB), not per query, so a
+    per-sequence work item would be slower than HHblits rather than faster. Chunking is
+    what makes the batched search worth using -- see transforms/msa_mmseqs.py.
+    """
+    flat = extract_protein_seqs(seqid2seq)
+    chunks: list[dict] = []
+    for start in range(0, len(flat), chunk_size):
+        piece = flat[start : start + chunk_size]
+        chunks.append(
+            {
+                "chunk": [(item["seqid"], item["sequence"]) for item in piece],
+                "chunk_index": len(chunks),
+            },
+        )
+    return chunks
 
 
 def extract_protein_seqs(

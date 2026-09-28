@@ -17,7 +17,7 @@ from structcooker.instructions.transforms.sequence import (
     graph_to_canonical_sequence,
 )
 from structcooker.mols import CIFMol, CIFMolAttached
-from structcooker.utils.mapping import mol_type_map
+from structcooker.utils.mapping import cluster_id, mol_type_map
 
 InputType = TypeVar("InputType", str, int, float)
 FeatureType = TypeVar("FeatureType")
@@ -204,15 +204,15 @@ def extract_graphs(n_jobs: int = -1) -> Callable[..., dict[str, nx.Graph]]:
 
 def has_common_node(g1: nx.Graph, g2: nx.Graph) -> bool:
     """Check if two graphs have common node labels."""
-    labels_g1 = {data.get("label") for node, data in g1.nodes(data=True)}
-    labels_g2 = {data.get("label") for node, data in g2.nodes(data=True)}
+    labels_g1 = {data.get("label") for node, data in g1.nodes.items()}
+    labels_g2 = {data.get("label") for node, data in g2.nodes.items()}
     return bool(labels_g1.intersection(labels_g2))
 
 
 def get_edge_labels(graph: nx.Graph) -> set[tuple[str, str]]:
     """Get edge labels from a graph."""
     edge_labels = set()
-    for u, v in graph.edges():
+    for u, v in graph.edges:
         label_u = graph.nodes[u].get("label")
         label_v = graph.nodes[v].get("label")
         edge_labels.add(tuple(sorted(cast("tuple[Any, Any]", (label_u, label_v)))))
@@ -278,9 +278,9 @@ def build_graph_hash(
             # WL hash aware of node label
             wl = nx.weisfeiler_lehman_graph_hash(G, node_attr="label")
             # degree multiset
-            degs = tuple(sorted(d for _, d in G.degree()))
+            degs = tuple(sorted(d for _, d in G.degree))
             # node-label multiset
-            lbls = tuple(sorted(Counter(nx.get_node_attributes(G, "label")).items()))
+            lbls = tuple(sorted(Counter(nx.get_node_attributes(G, "label").values()).items()))
             return gid, (wl, degs, lbls)
 
         items = list(graph_map.items())
@@ -442,7 +442,7 @@ def graph_edge_cluster(
             # Build a set to avoid duplicates within the same graph
             keys: set[tuple[object, object]] = set()
             # If directed graphs appear, treat as undirected by sorting endpoints
-            for u, v in G.edges():
+            for u, v in G.edges:
                 lu = labels.get(u, None)
                 lv = labels.get(v, None)
                 # Require both endpoints to have 'label'
@@ -495,10 +495,10 @@ def convert_graph_to_bytes(n_jobs: int = -1) -> Callable[..., dict[str, bytes]]:
     ) -> bytes:
         label_list = []
         src_list, dst_list = [], []
-        for _, data in graph.nodes(data=True):
+        for data in graph.nodes.values():
             label = data.get("label")
             label_list.append(label)
-        for u, v in graph.edges():
+        for u, v in graph.edges:
             src_list.append(u)
             dst_list.append(v)
 
@@ -606,7 +606,7 @@ def split_graph_by_components(
     for comp in components:
         subgraph = whole_graph.subgraph(comp).copy()
 
-        subgraph_edge_list = list(subgraph.edges())
+        subgraph_edge_list = list(subgraph.edges)
         if not subgraph_edge_list:
             continue  # skip empty subgraphs
         _counts = count_category_count(subgraph_edge_list)
@@ -653,7 +653,7 @@ def split_train_valid(
     train_indices = set()
     train_edge_count = dict.fromkeys(remaining_edges, 0)
     for ii, subg in enumerate(subgraphs):
-        comp_edges = count_category_count(list(subg.edges()))
+        comp_edges = count_category_count(list(subg.edges))
         must_have = {
             k: comp_edges[k] > min_edge_counts[k] for k in edge_wo_ligand_counts
         }
@@ -670,7 +670,7 @@ def split_train_valid(
     remaining_indices.sort(key=lambda i: subgraphs[i].number_of_edges())
 
     for idx in remaining_indices:
-        comp_edges = count_category_count(list(subgraphs[idx].edges()))
+        comp_edges = count_category_count(list(subgraphs[idx].edges))
         _remaining_edges = {
             k: remaining_edges[k] - comp_edges[k] for k in remaining_edges
         }
@@ -692,7 +692,7 @@ def split_train_valid(
     # get train & valid edges from whole graph (at least one node in train/valid)
     train_edges = []
     valid_edges = []
-    for u, v in whole_graph.edges():
+    for u, v in whole_graph.edges:
         if u in train_nodes or v in train_nodes:
             train_edges.append((u, v))
         if u in valid_nodes or v in valid_nodes:
@@ -759,6 +759,23 @@ def interacting_seq_ids(
     return interacting_seq_ids
 
 
+def interacting_seq_ids_from_attached(record: dict) -> set[tuple[str, str]]:
+    """Read interacting sequence pairs from attached chain IDs and contact edges.
+
+    The attach stage has already removed water and assigned sequence IDs on the
+    full sequences. No coordinate reconstruction or global sequence lookup is needed.
+    """
+    pairs: set[tuple[str, str]] = set()
+    for wrapped in record.values():
+        chains = wrapped["cifmol_attached_dict"]["chains"]
+        seqids = chains["nodes"]["seq_id"]["value"]
+        contact = chains["edges"]["contact"]
+        for src, dst in zip(contact["src_indices"], contact["dst_indices"], strict=True):
+            left, right = sorted((str(seqids[src]), str(seqids[dst])))
+            pairs.add((left, right))
+    return pairs
+
+
 def filter_seq_ids(
     interacting_seq_ids: set[tuple[str, str]],
     *,
@@ -777,19 +794,24 @@ def filter_seq_ids(
 def build_interacting_seq_clusters(
     interacting_seq_ids: dict[str, list[str]],
     seqclusters2seqids: dict,
+    db_code: str,
 ) -> set[tuple[str, str]]:
     """Build interacting sequence clusters from interacting sequence IDs."""
     interacting_seq_clusters: set = set()
-    interacting_seq_ids_pair = set(
-        {(key, value[0]) for key, value in interacting_seq_ids.items()},
-    )
+    interacting_seq_ids_pair = {
+        (key, partner) for key, partners in interacting_seq_ids.items()
+        for partner in partners
+    }
     seqid2cluster = {}
     for cluster, seqids in seqclusters2seqids.items():
         for seqid in seqids:
             seqid2cluster[seqid] = cluster
     for seq_id1, seq_id2 in interacting_seq_ids_pair:
-        cluster1 = seqid2cluster[seq_id1]
-        cluster2 = seqid2cluster[seq_id2]
+        # Match attachment and validation classification: a sequence absent from
+        # the supplied clustering keeps its own singleton cluster. Keep its edges
+        # so a contact with training data still excludes it from validation.
+        cluster1 = seqid2cluster.get(seq_id1, cluster_id(db_code, seq_id1))
+        cluster2 = seqid2cluster.get(seq_id2, cluster_id(db_code, seq_id2))
         pair_key = sorted((cluster1, cluster2))
         interacting_seq_clusters.add((pair_key[0], pair_key[1]))
     return interacting_seq_clusters

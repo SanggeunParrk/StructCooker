@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from structcooker.utils.mapping import cluster_maps
+from structcooker.utils.mapping import cluster_id, cluster_maps
 
 
 def write_fasta(data: dict[str, dict[str, dict[str, str]]], output_path: Path) -> None:
@@ -33,7 +33,7 @@ def write_seq_cluster_dict(data: dict, output_path: Path) -> None:
     with output_path.open("w") as f:
         for rep_seq_hash, member_list in data["cluster_dict"].items():
             members = ",".join(member_list)
-            f.write(f"c{rep_seq_hash}\t{members}\n")
+            f.write(f"{cluster_id(data['db_code'], rep_seq_hash)}\t{members}\n")
 
 
 def write_metadata(
@@ -74,12 +74,12 @@ def write_clusters(
     data: dict[str, dict[str, list[str]]],
     output_path: Path,
 ) -> None:
-    """Write cluster dictionaries to pickle files."""
+    """Write one DB's cluster TSV: ``c{DB}_{rep seq_id}<TAB>member,member,...``."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w") as f:
         for rep_seq_hash, member_list in data["cluster_dict"].items():
             members = ",".join(member_list)
-            f.write(f"c{rep_seq_hash}\t{members}\n")
+            f.write(f"{cluster_id(data['db_code'], rep_seq_hash)}\t{members}\n")
 
 
 def write_filtered_seq_ids(
@@ -263,3 +263,19 @@ def write_monomer_seqid_map(data: dict, output_path: Path) -> None:
     with output_path.open("w", encoding="utf-8") as handle:
         for entry, seq_id in mapping.items():
             handle.write(f"{entry}\t{seq_id}\n")
+
+
+def write_fasta_dict(data: dict, output_path: Path) -> None:
+    """Write a ``{header: sequence}`` map (e.g. concatenated FASTAs) as one FASTA."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as handle:
+        for header, sequence in data["fasta_dict"].items():
+            handle.write(f">{header}\n{sequence}\n")
+
+
+def write_afm_msa_seqid_map(data: dict, output_path: Path) -> None:
+    """Write the AFM MSA entity -> seq_id map to a TSV (sorted by entity)."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as handle:
+        for entity, seq_id in sorted(data["afm_msa_seqid"].items()):
+            handle.write(f"{entity}\t{seq_id}\n")

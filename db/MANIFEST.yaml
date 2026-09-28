@@ -23,17 +23,19 @@ pdb/cif: [ccd/ccd]                                # cif build reads the ccd DB f
 metadata/cif_fasta: [pdb/cif]
 metadata/cif_metadata: [pdb/cif]
 metadata/seq_id_map: [metadata/cif_fasta]         # + optional reference seed (DATA_ROOT/reference/seq_id_map.tsv) to match production
-metadata/seq_cluster40: [metadata/seq_id_map, metadata/cif_fasta]   # + SabDab (external)
-metadata/seq_cluster30: [metadata/seq_id_map, metadata/cif_fasta]
-metadata/interacting_seq_ids: [pdb/cif, metadata/seq_id_map]
-metadata/interacting_seq_clusters: [metadata/interacting_seq_ids, metadata/seq_cluster40]
+# seq_id_map is SHARED across DBs (docs/seq-id-and-cluster-scheme.md): its config also reads the
+# OFD fastas (supplied), metadata/teddymer_fasta, metadata/afm_fasta and ofd_long_recovered.fasta,
+# in that order. Those producers live in MANIFEST_teddymer / MANIFEST_afdb_multimer.
+metadata/pdb_seq_cluster30: [metadata/seq_id_map, metadata/cif_fasta]  # + SabDab (external)
+metadata/interacting_seq_ids: [pdb/cif_attached]
+metadata/interacting_seq_clusters: [metadata/interacting_seq_ids, metadata/pdb_seq_cluster30]
 metadata/pdb_polypeptide_L: [metadata/cif_fasta]                       # hmmsearch template DB
 metadata/template_chain_filelist: [metadata/cif_fasta]                 # protein-chain work list
 metadata/seqid_template_filelist: [template/template_candidates]       # = keys of seqid_to_chains
 
 # ---- attach + chain ----
-pdb/cif_attached: [pdb/cif, metadata/seq_id_map, metadata/seq_cluster40]
-chain/cif_chain: [pdb/cif_attached]
+pdb/cif_attached: [pdb/cif, metadata/seq_id_map, metadata/pdb_seq_cluster30]
+chain/cif_chain: [pdb/cif]
 
 # ---- msa depth caps ----
 msa/a3m_d16k: [msa/a3m]
@@ -55,7 +57,7 @@ train/train_20210930_mpnn: [train/train_20210930]
 
 # ---- validation (multi-stage; signalp is external) ----
 valid/valid1: [pdb/cif, metadata/seq_id_map]
-valid/valid1_attach: [valid/valid1, metadata/seq_id_map, metadata/seq_cluster30]
+valid/valid1_attach: [valid/valid1, metadata/seq_id_map, metadata/pdb_seq_cluster30]
 metadata/valid_1_fasta: [valid/valid1]                                 # valid2 dedup fasta (our DB, header-consistent)
 metadata/train_fasta: [train/train_20210930]                           # valid2 dedup fasta (our DB, header-consistent)
-valid/valid2: [valid/valid1_attach, metadata/seq_cluster30, metadata/interacting_seq_clusters, metadata/train_fasta, metadata/valid_1_fasta]
+valid/valid2: [valid/valid1_attach, metadata/pdb_seq_cluster30, metadata/interacting_seq_clusters, metadata/train_fasta, metadata/valid_1_fasta]

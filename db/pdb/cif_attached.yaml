@@ -2,16 +2,21 @@
 # Source = cif_pdb (schema A). split_entries fans an entry into its assemblies.
 schema: B
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb_attached.lmdb}
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/cif/cif_pdb_attached.lmdb}
 
 recipe: ${p:src/structcooker/workflows/metadata/attach.py}
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.py}
 
+# split_entries fans one entry into ALL its bioassemblies (full-coordinate copies), so a
+# rare giant (multi-assembly capsid/ribosome) is tens of GB while a peptide is ~KB.
+# The planner distributes input sizes across shards. Ray controls concurrency
+# using measured memory pressure within the requested CPU allocation.
 metadata_input:
-  raw_fasta_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
-  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/reference/seq_cluster40.tsv}
+  raw_fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
+  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
+  seqcluster_path: ${p:${oc.env:SEQ_CLUSTER30_PATH,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_cluster30_PDB.tsv}}
+  db_code: PDB
 
 split_entries: true
 

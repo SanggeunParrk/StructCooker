@@ -2,18 +2,19 @@
 # Schema B. Rebuild. Now unblocked: the base cif_disordered already uses the wrapped
 # (assembly_dict/metadata_dict) layout the openfold_structure recipe emits, and the
 # seq_id_map / seq_cluster metadata is on the clean surface. Mirrors
-# configs/metadata/attach_cif_disordered_revisit. Code-complete; validate small, do NOT full-build.
+# configs/metadata/attach_cif_disordered_revisit. Full builds must include metadata and coverage audits.
 schema: B
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered_attached_precontact.lmdb}
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered_attached_precontact.lmdb}
 
 recipe: ${p:src/structcooker/workflows/metadata/attach.py}
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.py}
 metadata_input:
-  raw_fasta_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/fasta/disordered.fasta}
-  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40.tsv}
+  raw_fasta_path: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/fasta/disordered.fasta}
+  seqid2seq_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_id_map.tsv}
+  seqcluster_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_cluster30_OFD.tsv}
+  db_code: OFD
 
 split_entries: true
 

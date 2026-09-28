@@ -374,23 +374,52 @@ def load_fasta(fasta_path: Path) -> dict[str, str]:
     return fasta_dict
 
 
+def subset_seq_id_map(fasta_path: Path, seq_id_map_path: Path) -> dict[str, str]:
+    """Return the rows of the shared seq_id_map whose sequence occurs in one DB's fasta.
+
+    seq_id is one space across DBs, so a DB's own work list (e.g. which sequences need an
+    MSA) is this subset, not a separately numbered map.
+    """
+    wanted = set(load_fasta(Path(fasta_path)).values())
+    subset: dict[str, str] = {}
+    with Path(seq_id_map_path).open() as handle:
+        for line in handle:
+            seq_id, _, sequence = line.rstrip("\n").partition("\t")
+            if sequence in wanted:
+                subset[seq_id] = sequence
+    missing = len(wanted) - len(set(subset.values()))
+    if missing:
+        msg = f"{missing} sequences of {fasta_path} have no seq_id in {seq_id_map_path}"
+        raise ValueError(msg)
+    return subset
+
+
 def separate_sequences(
     tmp_dir: Path,
     seq_id_map_path: Path,
     fasta_path: Path,
     sabdab_summary_path: Path,
 ) -> dict[str, Path]:
-    """Separate sequences into different types and write to different fasta files."""
-    # 1. load seq_id_map and fasta
+    """Separate this DB's sequences into types and write one fasta per type.
+
+    ``fasta_path`` defines WHICH sequences are clustered; ``seq_id_map_path`` only
+    supplies their ids. Clustering runs once per DB (docs/seq-id-and-cluster-scheme.md),
+    and a DB's fasta is what says what that DB contains -- the id map is shared by every
+    DB, so using it as the sequence universe would cluster all of them together and give
+    each DB the same clusters under a different prefix.
+    """
+    # 1. load seq_id_map, restricted to the sequences this DB's fasta actually holds
+    fasta_dict = load_fasta(fasta_path)
+    db_sequences = set(fasta_dict.values())
     seq_id_dict = {}
     with seq_id_map_path.open("r") as f:
         for _line in f:
             line = _line.strip()
             seq_id, sequence = line.split("\t")
-            seq_id_dict[seq_id] = sequence
+            if sequence in db_sequences:
+                seq_id_dict[seq_id] = sequence
 
     # 2. Parse SabDab summary to get antibody sequences
-    fasta_dict = load_fasta(fasta_path)
     chain_id_to_seq = {}
     auth_id_to_seq = {}  # protein only (this is for sabdab)
     for header in fasta_dict:

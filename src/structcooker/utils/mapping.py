@@ -179,6 +179,28 @@ mol_type_map: dict[str, str] = {
     "unknown": "X",
 }
 
+# Sequence clustering runs once per DB, so a cluster id names the DB it was computed in:
+#   c{DB}_{seq_id}      e.g. cPDB_P00000000000000512758
+# seq_id stays one shared space across every DB -- it names a sequence, and two DBs holding
+# the same sequence must agree on its id or nothing joins across them. A cluster names a
+# neighbourhood, and what counts as a neighbourhood depends on what the DB contains.
+# See docs/seq-id-and-cluster-scheme.md.
+DB_CODES: dict[str, str] = {
+    "PDB": "PDB",
+    "OFD": "OpenFold distillation",
+    "TDM": "Teddymer",
+    "AFM": "AFDB multimer",
+}
+
+
+def cluster_id(db_code: str, rep_seq_id: str) -> str:
+    """Cluster id for a representative sequence: ``c{DB}_{seq_id}``."""
+    if db_code not in DB_CODES:
+        msg = f"unknown db_code {db_code!r}; known: {sorted(DB_CODES)}"
+        raise ValueError(msg)
+    return f"c{db_code}_{rep_seq_id}"
+
+
 cluster_types: set[str] = {"P", "Q", "D", "R", "N", "A", "B", "L", "X"}
 cluster_maps: dict[str, str] = {
     "P": "Protein(L)",

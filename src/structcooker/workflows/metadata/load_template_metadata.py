@@ -62,6 +62,7 @@ recipe.step(
         "raw_fasta_dict": ("raw_fasta_dict", dict),
         "seqid2seq": ("seqid2seq", dict),
         "seqclusters2seqids": ("seqclusters2seqids", dict),
+        "db_code": ("db_code", str),
     },
 )
 

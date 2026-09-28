@@ -9,7 +9,11 @@ from structcooker.instructions.transforms.sequence import (
     separate_sequences,
 )
 
-"""Build a sequence clustering Cooker."""
+"""Build a sequence clustering Cooker.
+
+Clustering runs once per DB (docs/seq-id-and-cluster-scheme.md), so the DB code travels
+through to the writer, which stamps it into every cluster id: ``c{DB}_{rep seq_id}``.
+"""
 
 seq_cluster_recipe = RecipeBook()
 
@@ -56,6 +60,12 @@ seq_cluster_recipe.step(
 )
 
 seq_cluster_recipe.step(
+    outputs=(("db_code", str),),
+    instruction=lambda db_code: db_code,
+    kwargs={"db_code": ("db_code", str)},
+)
+
+seq_cluster_recipe.step(
     outputs=(("cluster_dict", dict),),
     instruction=merge_cluster,
     kwargs={
@@ -67,4 +77,4 @@ seq_cluster_recipe.step(
 )
 
 RECIPE = seq_cluster_recipe
-TARGETS = ["cluster_dict"]
+TARGETS = ["cluster_dict", "db_code"]

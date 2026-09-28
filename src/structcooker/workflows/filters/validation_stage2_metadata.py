@@ -9,6 +9,7 @@ from structcooker.instructions.transforms.filtering import (
 from structcooker.instructions.transforms.metadata import (
     build_seqid_map,
     classify_seq_clusters,
+    load_pairs,
     load_tsv,
 )
 
@@ -65,12 +66,9 @@ recipe.step(
 
 recipe.step(
     outputs=(("interacting_seq_clusters", dict),),
-    instruction=load_tsv,
+    instruction=load_pairs,
     kwargs={
         "tsv_file_path": ("interacting_seq_clusters_path", Path),
-    },
-    params={
-        "split_by_comma": False,
     },
 )
 
@@ -90,6 +88,7 @@ recipe.step(
         "fasta_dict": ("train_fasta_dict", dict),
         "seqid_map": ("seqid_map", dict),
         "seqclusters2seqids": ("seqclusters2seqids", dict),
+        "db_code": ("db_code", str),
     },
 )
 
@@ -101,6 +100,7 @@ recipe.step(
         "fasta_dict": ("valid_1_fasta_dict", dict),
         "seqid_map": ("seqid_map", dict),
         "seqclusters2seqids": ("seqclusters2seqids", dict),
+        "db_code": ("db_code", str),
     },
 )
 

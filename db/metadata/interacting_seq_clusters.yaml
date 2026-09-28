@@ -1,9 +1,10 @@
 # interacting_seq_clusters — map interacting seq_ids to their seq clusters. MATERIALIZE.
-# Uses seq_cluster40 (see seq_cluster scope note). Feeds valid-2.
+# Uses the same seq_cluster30 space as valid1_attach and valid2. Feeds valid-2.
 recipe_path: ${p:src/structcooker/workflows/exports/interacting_seq_clusters.py}
-output_data_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/interacting_seq_clusters.tsv}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/interacting_seq_clusters.tsv}
 inputs:
-  interacting_seq_ids_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/interacting_seq_ids.tsv}
-  seqcluster_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/reference/seq_cluster40.tsv}
+  interacting_seq_ids_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/interacting_seq_ids.tsv}
+  seqcluster_path: ${p:${oc.env:SEQ_CLUSTER30_PATH,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_cluster30_PDB.tsv}}
+  db_code: PDB
 writer:
   materializer: structcooker.instructions.writers.projections.write_filtered_seq_clusters

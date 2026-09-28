@@ -2,18 +2,19 @@
 # Schema B. Rebuild. Now unblocked: the base cif_short already uses the wrapped
 # (assembly_dict/metadata_dict) layout the openfold_structure recipe emits, and the
 # seq_id_map / seq_cluster metadata is on the clean surface. Mirrors
-# configs/metadata/attach_cif_short_revisit. Code-complete; validate small, do NOT full-build.
+# configs/metadata/attach_cif_short_revisit. Full builds must include metadata and coverage audits.
 schema: B
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_short/cif/cif_short.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_short/cif/cif_short_attached.lmdb}
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_short/cif/cif_short.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_short/cif/cif_short_attached.lmdb}
 
 recipe: ${p:src/structcooker/workflows/metadata/attach.py}
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.py}
 metadata_input:
-  raw_fasta_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation/fasta/short.fasta}
-  seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:${oc.env:OUTPUT_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40.tsv}
+  raw_fasta_path: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/fasta/short.fasta}
+  seqid2seq_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_id_map.tsv}
+  seqcluster_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_cluster30_OFD.tsv}
+  db_code: OFD
 
 split_entries: true
 

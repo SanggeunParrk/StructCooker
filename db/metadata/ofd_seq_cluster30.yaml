@@ -1,0 +1,26 @@
+# ofd seq_cluster30 — mmseqs2 clusters at 0.30 identity, over OFD ONLY.
+# MATERIALIZE op (recipe -> cluster TSV).
+#
+# Clustering is per-DB (docs/seq-id-and-cluster-scheme.md): every id written here is
+# cOFD_<rep seq_id>, so a cluster from this DB can never be confused with another's.
+# seq_id stays the one shared space, which is what still allows cross-DB comparison.
+#
+# OpenFold distillation is MGnify metagenomic sequence predicted by OpenFold3 -- short/long/rna/disordered consolidated into one fasta by scripts/maintenance/build_ofd_fasta.py.
+recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_cluster30_OFD.tsv}
+
+inputs:
+  db_code: OFD
+  tmp_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/tmp/seq_cluster30_OFD}
+  # Shared id space: this DB's sequences must be in the map before clustering runs.
+  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
+  # This DB's own consolidated fasta -- not a union corpus.
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/ofd.fasta}
+  sabdab_summary_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/external/SabDab/sabdab_summary_all.tsv}
+  mmseqs2_seq_id: 0.30
+  mmseqs2_cov: 0.8
+  mmseqs2_covmode: "0"
+  mmseqs2_clustermode: "1"
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_clusters

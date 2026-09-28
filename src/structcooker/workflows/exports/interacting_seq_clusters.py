@@ -6,6 +6,7 @@ from structcooker.instructions.transforms.graph import (
     build_interacting_seq_clusters,
 )
 from structcooker.instructions.transforms.metadata import (
+    load_pairs,
     load_tsv,
 )
 
@@ -15,12 +16,9 @@ recipe = RecipeBook()
 
 recipe.step(
     outputs=(("interacting_seq_ids", dict),),
-    instruction=load_tsv,
+    instruction=load_pairs,
     kwargs={
         "tsv_file_path": ("interacting_seq_ids_path", Path),
-    },
-    params={
-        "split_by_comma": False,
     },
 )
 
@@ -42,6 +40,7 @@ recipe.step(
     kwargs={
         "interacting_seq_ids": ("interacting_seq_ids", dict),
         "seqclusters2seqids": ("seqclusters2seqids", dict),
+        "db_code": ("db_code", str),
     },
 )
 
