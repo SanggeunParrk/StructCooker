@@ -339,3 +339,110 @@ def precompute_seqs(
             out.write(f"{cur}\t{''.join(buf)}\n")
             m += 1
     return f"seqs: seqid_to_seq={n}, chain_to_seq={m}"
+
+
+def _select_seqid(
+    seq_id: str,
+    hmm_dir: str | Path,
+    reduced_dir: str | Path,
+    pdb_dates: dict[str, dt.date],
+    date_cutoff: dt.date,
+    max_candidates: int,
+) -> tuple[str, list[str]]:
+    """Date-filter one seq_id's hits (template release <= cutoff) and write its reduced hmm."""
+    hmm_path = _hmm_path(hmm_dir, seq_id)
+    if not hmm_path.exists():
+        return seq_id, []
+    text = hmm_path.read_text(encoding="utf-8")
+    kept: list[str] = []
+    for tid in _ordered_hits(text):
+        t_date = pdb_dates.get(tid.split("_")[0].lower())
+        if t_date is None or t_date > date_cutoff:
+            continue
+        kept.append(tid)
+        if len(kept) >= max_candidates:
+            break
+    if kept:
+        out_path = Path(reduced_dir) / seq_id[0] / seq_id[-3:] / f"{seq_id}.reduced.out"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(_reduce_hmm_text(text, set(kept)), encoding="utf-8")
+    return seq_id, kept
+
+
+def precompute_seqid_candidates(
+    seq_ids_path: str | Path,
+    pdb_dates: str | Path,
+    hmm_dir: str | Path,
+    cif_fasta: str | Path,
+    out_seqid_templates: str | Path,
+    out_seqid_list: str | Path,
+    out_chain_seq: str | Path,
+    out_reduced_hmm_dir: str | Path,
+    date_cutoff: str = "2021-09-30",
+    max_candidates: int = 60,
+    n_jobs: int = 112,
+) -> str:
+    """Phase 1/2 for a set whose queries carry no release date (predicted structures).
+
+    The PDB path keys candidates by chain because each query chain has its own release
+    date (templates must be >= 60 days older). A predicted query has none, so the only
+    rule is the global template cutoff (release <= ``date_cutoff``), every chain of a
+    sequence gets the same candidates, and selection is per seq_id. Up to
+    ``max_candidates`` date-passing hits are kept in e-value order -- more than the 20
+    finally used, so Phase 3 can backfill hits its coverage filter drops.
+
+    ``seq_ids_path`` is a TSV whose first column is the query seq_id (e.g. the set's
+    seq_id_map subset). Writes, as side effects: ``out_seqid_templates`` (seq_id ->
+    candidates), ``out_seqid_list`` (seq_ids with >= 1 candidate: Phase 3's work list),
+    ``out_chain_seq`` (template chain -> sequence, polypeptide(L)), and the reduced hmm
+    per seq_id.
+    """
+    cutoff = dt.date.fromisoformat(date_cutoff)
+    with Path(seq_ids_path).open(encoding="utf-8") as f:
+        seq_ids = sorted({line.split("\t", 1)[0].strip() for line in f if line.strip()})
+    dates = _load_pdb_dates(pdb_dates)
+    results = cast(
+        "list[tuple[str, list[str]]]",
+        Parallel(n_jobs=n_jobs, verbose=10)(
+            delayed(_select_seqid)(sid, hmm_dir, out_reduced_hmm_dir, dates, cutoff, max_candidates)
+            for sid in seq_ids
+        ),
+    )
+    Path(out_seqid_templates).parent.mkdir(parents=True, exist_ok=True)
+    n_with = 0
+    with Path(out_seqid_templates).open("w", encoding="utf-8") as out, \
+            Path(out_seqid_list).open("w", encoding="utf-8") as lst:
+        for sid, tids in results:
+            out.write(f"{sid}\t{','.join(tids)}\n")
+            if tids:
+                n_with += 1
+                lst.write(f"{sid}\n")
+    m = _write_chain_seqs(cif_fasta, out_chain_seq)
+    return (f"candidates: {len(results)} seq_ids, {n_with} with >=1 template; "
+            f"chain_to_seq={m} -> {out_seqid_templates}")
+
+
+def _write_chain_seqs(cif_fasta: str | Path, out_chain_seq: str | Path) -> int:
+    """Write ``{pdbid}_{chain} -> sequence`` for polypeptide(L) chains (as precompute_seqs)."""
+    m = 0
+    cur: str | None = None
+    is_prot = False
+    buf: list[str] = []
+    Path(out_chain_seq).parent.mkdir(parents=True, exist_ok=True)
+    with Path(cif_fasta).open(encoding="utf-8") as f, Path(out_chain_seq).open("w", encoding="utf-8") as out:
+        for line in f:
+            if line.startswith(">"):
+                if cur is not None and is_prot:
+                    out.write(f"{cur}\t{''.join(buf)}\n")
+                    m += 1
+                header = line[1:]
+                cur = "_".join(header.split("|", 1)[0].strip().split("_")[:2])
+                is_prot = "polypeptide(L)" in header
+                buf = []
+            else:
+                buf.append(line.strip())
+        if cur is not None and is_prot:
+            out.write(f"{cur}\t{''.join(buf)}\n")
+            m += 1
+    return m
+

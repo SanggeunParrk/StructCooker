@@ -1,0 +1,28 @@
+# teddymer template — seq_id -> up to 20 template mols. Schema D. KEYED build.
+#
+# The final template DB for teddymer, keyed by seq_id: every chain of a sequence gets the
+# same templates (no query date, see template_candidates.yaml), so the chain looks its
+# templates up through the seq_id in cif_attached. Per seq_id: kalign each candidate in
+# e-value order, keep those covering 10-95% of the query, stop at 20, and build them from
+# the per-chain PDB LMDB -- PDB's Phase 3, with Phase 4's top-20 folded in (max_keep).
+schema: D
+
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/teddymer/template/template_teddymer.lmdb}
+file_list: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/template_TDM/seqid_template_filelist.txt}
+keyed: true
+
+recipe: ${p:src/structcooker/workflows/ingest/seqid_template_mols_topk.py}
+key_builder: structcooker.instructions.readers.openfold.openfold_chain_key
+
+metadata_recipe: ${p:src/structcooker/workflows/metadata/load_template_seqs.py}
+metadata_input:
+  seqid_seq_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map_TDM.tsv}
+  chain_seq_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/template_TDM/chain_to_seq.tsv}
+
+inputs:
+  reduced_hmm_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/hmm_reduced_TDM}
+  cif_chain_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/lmdb/chain/cif/cif_chain.lmdb}
+  max_keep: 20
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

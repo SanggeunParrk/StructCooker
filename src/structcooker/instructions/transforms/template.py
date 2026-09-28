@@ -915,6 +915,7 @@ def build_seqid_template_mols(
     min_seq_len: int = 10,
     min_query_coverage: float = 0.1,
     max_query_coverage: float = 0.95,
+    max_keep: int | None = None,
 ) -> tuple[dict, list[str]]:
     """Phase 3: build the union template mols for one seq_id.
 
@@ -928,6 +929,10 @@ def build_seqid_template_mols(
     Only SEQUENCES are needed (not dates, not the full 16.9 M seq_id map):
     ``query_seqs`` (seq_id -> seq) and ``template_seqs`` (chain -> seq) are the
     lean maps that replace load_template_metadata's ~8 GB of state.
+    With ``max_keep``, hits are aligned in e-value order only until ``max_keep`` pass
+    the coverage filter, and only those are built: the final top-k after filtering, for
+    a set with no per-chain step after this one (teddymer). Unset (PDB), every hit is
+    built and Phase 4 selects per chain.
     Returns ``(template_mols, template_ids)``.
     """
     seq_id = Path(file_path).name
@@ -950,6 +955,8 @@ def build_seqid_template_mols(
         )
         if min_query_coverage <= coverage <= max_query_coverage:
             align_results[tid] = (aligned_query, aligned_template)
+            if max_keep is not None and len(align_results) >= max_keep:
+                break
     mols = load_templates_from_chain_db(Path(cif_chain_db_path), align_results)
     return mols, list(mols.keys())
 

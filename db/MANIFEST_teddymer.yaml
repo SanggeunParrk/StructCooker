@@ -31,16 +31,21 @@
 # multi-node with submits/search/msa_search_mmseqs_teddymer.sh (the CLI runs a parallel op on
 # one node). teddymer/msa and teddymer/msa_wo_lower read that tree.
 
+metadata/cif_fasta: []                                  # PDB fasta (template chain seqs); built in MANIFEST.yaml
+metadata/cif_metadata: []                               # PDB release dates; built in MANIFEST.yaml
+chain/cif_chain: []                                     # per-chain PDB LMDB (template mols); built in MANIFEST.yaml
 ccd/ccd: []                                  # root: the CCD LMDB every cif build reads
 teddymer/cif: [ccd/ccd]                       # + the staged selection (see above)
 metadata/teddymer_fasta: [teddymer/cif]
-metadata/seq_id_map: [metadata/teddymer_fasta]          # shared id space; teddymer joins it
+metadata/seq_id_map: [metadata/teddymer_fasta, metadata/cif_fasta]          # shared id space; teddymer joins it
 metadata/teddymer_seq_id_map: [metadata/teddymer_fasta, metadata/seq_id_map]   # MSA search work list
 metadata/teddymer_seq_cluster30: [metadata/teddymer_fasta, metadata/seq_id_map]
 teddymer/cif_attached: [teddymer/cif, metadata/teddymer_fasta, metadata/seq_id_map, metadata/teddymer_seq_cluster30]
-metadata/pdb_polypeptide_L: []                          # template target; built in MANIFEST.yaml
+metadata/pdb_polypeptide_L: [metadata/cif_fasta]        # template target; built in MANIFEST.yaml
 teddymer/msa_search: [metadata/teddymer_seq_id_map]
 teddymer/msa: [teddymer/msa_search]
 teddymer/msa_d2k: [teddymer/msa]
 teddymer/msa_wo_lower: [teddymer/msa_search]
 teddymer/hmmsearch: [teddymer/msa_wo_lower, metadata/pdb_polypeptide_L]   # template Phase 0 (submits/search/hmmsearch_teddymer.sh)
+teddymer/template_candidates: [teddymer/hmmsearch, metadata/teddymer_seq_id_map, metadata/cif_metadata, metadata/cif_fasta]   # Phase 1/2 per seq_id
+teddymer/template: [teddymer/template_candidates, chain/cif_chain]                  # Phase 3 + top-20 -> final DB
