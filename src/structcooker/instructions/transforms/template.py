@@ -5,6 +5,7 @@ import re
 import subprocess
 import time
 from collections.abc import Callable
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -51,8 +52,16 @@ def load_a3m_list(
     output_dir: Path,
     pattern: str = "P*.a3m",
     output_pattern: str = ".hhm",
+    done_dir: Path | None = None,
+    done_suffix: str = ".out",
 ) -> list[dict[str, Path]]:
-    """Scan a directory recursively for A3M files matching a pattern and return a list of input/output path pairs."""
+    """Scan a directory recursively for A3M files matching a pattern and return a list of input/output path pairs.
+
+    With ``done_dir``, an a3m whose final product (``<done_dir>/<shard>/<stem><done_suffix>``)
+    already exists is left out of the list. Downstream steps skip finished items anyway, but
+    work is striped over nodes by list position, so on a resume the unfinished items would
+    stay on whichever nodes held them; dropping finished ones first spreads the rest evenly.
+    """
     result = []
 
     def _scan(dir_path: Path) -> None:
@@ -62,6 +71,11 @@ def load_a3m_list(
                     _scan(Path(entry.path))
                 elif fnmatch.fnmatch(entry.name, pattern):
                     seq_id = seq_id_from_name(entry.name)
+                    if done_dir is not None and _is_nonempty(
+                        (seq_id_shard_path(done_dir, seq_id) if seq_id is not None else done_dir)
+                        / f"{Path(entry.name).stem}{done_suffix}",
+                    ):
+                        continue
                     output_parent = (
                         seq_id_shard_path(output_dir, seq_id)
                         if seq_id is not None
@@ -185,9 +199,12 @@ def run_hmmbuild(input_a3m_path: Path, hmm_path: Path | None) -> str:
     # run hmmbuild to convert a3m to hmm
     if hmm_path is None:
         hmm_path = input_a3m_path.with_suffix(".hmm")
+    # Written under a temporary name and renamed when complete: an interrupted run must not
+    # leave a partial file that the non-empty check below would then accept as finished.
+    tmp_path = hmm_path.with_name(hmm_path.name + ".tmp")
     command = [
         "hmmbuild",
-        str(hmm_path),
+        str(tmp_path),
         str(input_a3m_path),
     ]
     if hmm_path.exists() and hmm_path.stat().st_size > 0:
@@ -198,6 +215,7 @@ def run_hmmbuild(input_a3m_path: Path, hmm_path: Path | None) -> str:
     try:
         hmm_path.parent.mkdir(parents=True, exist_ok=True)
         _run_command(command)
+        tmp_path.replace(hmm_path)
         return "hmm file created at: " + str(hmm_path)
     except Exception as e:
         msg = f"Error running hmmbuild for {input_a3m_path}: {e}"
@@ -233,6 +251,8 @@ def run_hmmsearch(
             f"Output file {output_path} already exists and is non-empty. Skipping hmmsearch for {hmm_path}.",
         )
         return f"Skip {output_path.name} (already exists and is non-empty)"
+    # hmmsearch writes -o as it goes; see run_hmmbuild for why it goes to a temporary name.
+    tmp_path = output_path.with_name(output_path.name + ".tmp")
     command = [
         "hmmsearch",
         "--noali",
@@ -251,12 +271,13 @@ def run_hmmsearch(
         "--incdomE",
         "100",
         "-o",
-        str(output_path),
+        str(tmp_path),
         str(hmm_path),
         str(fasta_path),
     ]
     try:
         _run_command(command)
+        tmp_path.replace(output_path)
         return f"hmmsearch completed for {hmm_path} against {fasta_path}"  # noqa: TRY300 (return kept in try for clarity)
     except Exception as e:
         msg = f"Error running hmmsearch for {hmm_path}: {e}"
@@ -945,39 +966,46 @@ def rank_template_hits_by_coverage(
     return {hit: template_hits[hit] for _, hit in scored}
 
 
+def load_templates_with_report(
+    cif_chain_db_path: Path,
+    align_results: dict[str, tuple[str, str]],
+    max_keep: int | None = None,
+) -> tuple[dict, dict]:
+    """Load ranked hits, recording absent chains; corrupt/invalid hits fail the record."""
+    template_mols: dict = {}
+    missing: list[str] = []
+    unselected: list[str] = []
+    for full_id, align_result in align_results.items():
+        if max_keep is not None and len(template_mols) >= max_keep:
+            unselected.append(full_id)
+            continue
+        pdb_id, chain_id = full_id.split("_", 1)
+        raw = load_raw_data(f"{pdb_id.lower()}_{chain_id}", cif_chain_db_path)
+        if raw is None:
+            missing.append(full_id)
+            continue
+        try:
+            cifmol = CIFMol.from_dict(cast("BioMolDict", load_bytes(raw)))
+            template_mols[full_id] = to_template_mol(cifmol, align_result)
+        except Exception as exc:
+            msg = f"Template hit {full_id} failed decoding or conversion"
+            raise ValueError(msg) from exc
+    report = {"candidate_count": len(align_results), "loaded_hits": list(template_mols),
+              "missing_chain_hits": missing, "not_selected_hits": unselected}
+    return template_mols, report
+
+
 def load_templates_from_chain_db(
     cif_chain_db_path: Path,
     align_results: dict[str, tuple[str, str]],
     max_keep: int | None = None,
 ) -> dict:
-    """Build template mols from a prebuilt per-chain cif LMDB (light path).
-
-    Each hit ``<pdbid>_<chain>`` is a direct keyed read of the already-extracted
-    chain (see :mod:`scripts.maintenance.build_cif_chain`), so the expensive
-    decode + per-assembly rebuild + extract is done once at build time instead
-    of per hit. Output matches :func:`load_templates` (same ``to_template_mol``).
-
-    Hits are decoded in ``align_results`` order; with ``max_keep`` set the loop
-    stops once that many templates have been built successfully -- so when the
-    caller pre-orders by coverage, only the best ~``max_keep`` (plus the failures
-    skipped along the way) are ever decoded.
-    """
-    if len(align_results) == 0:
-        return {}
-    template_mols = {}
-    for full_id, align_result in align_results.items():
-        pdb_id, chain_id = full_id.split("_")
-        raw = load_raw_data(f"{pdb_id.lower()}_{chain_id}", cif_chain_db_path)
-        if raw is None:
-            continue
-        try:
-            cifmol = CIFMol.from_dict(cast("BioMolDict", load_bytes(raw)))
-            template_mols[full_id] = to_template_mol(cifmol, align_result)
-        except Exception:  # noqa: BLE001,S112 - skip chains whose idx_map overruns our extraction
-            continue
-        if max_keep is not None and len(template_mols) >= max_keep:
-            break
-    return template_mols
+    """Strict compatibility API; use the reported API to allow absent reference chains."""
+    mols, report = load_templates_with_report(cif_chain_db_path, align_results, max_keep)
+    if report["missing_chain_hits"]:
+        msg = f"Missing reference template chains: {report['missing_chain_hits']}"
+        raise ValueError(msg)
+    return mols
 
 
 # Unittest functions
@@ -998,3 +1026,71 @@ def length_check(
         if len(query_seq) != template_seq_len:
             return f"Length mismatch for {full_id}: query length {len(query_seq)} != template length {template_seq_len}"
     return None
+
+
+def adapt_cif_record_to_chain_inputs(data: dict) -> dict:
+    """Prepare chain inputs once, with deterministic maximum-occupancy candidates."""
+    assemblies = data.get("assembly_dict") or {}
+    if CIFCHAIN_MAX_ATOMS and any(
+        len(item["atoms"]["nodes"]["id"]["value"]) > CIFCHAIN_MAX_ATOMS
+        for item in assemblies.values()
+    ):
+        return {}
+    best: dict[str, tuple[float, str]] = {}
+    # Numeric assembly/model order makes ties independent of dict/hash order.
+    ordered = sorted(assemblies, key=lambda key: tuple(
+        (0, int(part)) if part.isdecimal() else (1, part)
+        for part in key.split("_")
+    ))
+    for key in ordered:
+        item = assemblies[key]
+        score = float(np.nan_to_num(np.asarray(
+            item["atoms"]["nodes"]["occupancy"]["value"], dtype=float,
+        ), nan=0.0).sum())
+        for chain in item["chains"]["nodes"]["chain_id"]["value"]:
+            base = str(chain).split("_")[0]
+            if base not in best or score > best[base][0]:
+                best[base] = score, key
+    model_cache: dict = {}
+    return {chain: {"record": data, "chain_id": chain, "cif_key": key,
+                    "model_cache": model_cache}
+            for chain, (_, key) in best.items()}
+
+
+def extract_selected_chain(
+    record: dict,
+    chain_id: str,
+    cif_key: str,
+    reference_selection_path: Path | None = None,
+    model_cache: dict | None = None,
+) -> dict:
+    """Extract a chain, optionally preserving a reference dataset's model choice."""
+    if reference_selection_path is not None and _selection_reference_exists(reference_selection_path):
+        from datacooker.lmdb import read_lmdb_raw
+
+        pdbid = str(record["metadata_dict"]["id"][0]).lower()
+        selected = read_lmdb_raw(reference_selection_path, f"{pdbid}_{chain_id}")
+        if selected is not None:
+            cif_key = selected.decode()
+    cache_state = model_cache if model_cache is not None else {}
+    if cache_state.get("record") is not record or cache_state.get("cif_key") != cif_key:
+        assembly_id, model_id, alt_id = cif_key.split("_")
+        biomol = copy.deepcopy(record["assembly_dict"][cif_key])
+        biomol["metadata"] = {**record["metadata_dict"], "assembly_id": assembly_id,
+                              "model_id": model_id, "alt_id": alt_id}
+        # This cache belongs to one adapter result, so it dies with the record.
+        # Retain only the most recent model, even when references choose many models.
+        cache_state.clear()
+        cache_state.update(record=record, cif_key=cif_key,
+                           cifmol=CIFMol.from_dict(cast("BioMolDict", biomol)))
+    cifmol = cache_state["cifmol"]
+    full = find_first(f"{chain_id}_", cifmol.chains.chain_id.value)
+    if full is None:
+        msg = f"Selected model {cif_key} does not contain chain {chain_id}."
+        raise ValueError(msg)
+    return cifmol.chains[cifmol.chains.chain_id == full].extract().to_dict()
+
+
+@cache
+def _selection_reference_exists(path: Path) -> bool:
+    return path.exists()
