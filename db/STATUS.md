@@ -1,6 +1,13 @@
 # db/ migration ledger
 
+Historical migration notes below do not establish current output correctness.
+For the September 10 recovery, production comparisons, and final build status,
+see [the recovery report](../docs/recovery-2026-09-10.md).
+
 Every non-distillation BioMol DB and the status of its declarative `db/*.yaml`.
+CIF reproduction also requires the explicit historical CCD reference described in
+[the recovery report](../docs/recovery-2026-09-10.md); a missing or incompatible
+definition raises an error instead of dropping observed atoms.
 `structcooker build <name>` works only for ✅ rows; 🔴 rows need engine work first
 (a build whose items are **keys** can't be sized by input `st_size`, and script-only
 builds must be absorbed into a datacooker recipe/op before they get a config).
@@ -9,7 +16,7 @@ builds must be absorbed into a datacooker recipe/op before they get a config).
 
 | db config | op | schema | source of truth |
 |---|---|---|---|
-| `pdb/cif` | build | A | `mmcif_files_latest` (real .cif files → st_size) |
+| `pdb/cif` | build | A | configured raw CIF tree (real files → st_size) |
 | `pdb/cif_attached` | rebuild | B | cif_pdb `.index.tsv` |
 | `train/train_20210930` | rebuild | B | cif_pdb_attached `.index.tsv` |
 | `train/train_20260301` | rebuild | B | cif_pdb_attached `.index.tsv` |
@@ -17,7 +24,7 @@ builds must be absorbed into a datacooker recipe/op before they get a config).
 | `msa/a3m` | build | E | real `*.a3m` files → st_size |
 | `msa/a3m_d16k` / `a3m_d2k` / `a3m_d512` | rebuild | E | a3m `.index.tsv` (depth cap 16000/2000/512) |
 | `ccd/ccd` | build | G | component `.cif` files → st_size |
-| `chain/cif_chain` | rebuild | C | cif_pdb_attached `.index.tsv` (split→explode per chain; verified 333/333 decode-identical) |
+| `chain/cif_chain` | rebuild | C | cif_pdb `.index.tsv` (explode per chain; optional production model-choice reference) |
 
 Replaces the 10 hand-tuned `cif_pdb_{light,medium,large,xlarge,huge,monster,smoke,…}`
 variants with `pdb/cif.yaml` alone. Schema **G** (CCD chem-component) added for `ccd`.
@@ -37,49 +44,22 @@ a3m_d16k (178,249 keys, key-set complete, deep records capped to 16000, standard
 output). The recipe caps `msa_dict` in place; the adapter renames the input so the
 same-named output does not silently return the *uncapped* record.
 
-### Ray is the build/rebuild fan-out backend — Ray-only (libs/datacooker submodule)
-The **backpressure engine open item is closed**: `build_lmdb`/`rebuild_lmdb` no longer
-predict memory (`n_jobs × E × max_bytes`) and hand-tune per DB — they fan out over **Ray**,
-whose node memory monitor throttles+auto-retries tasks by *measured* memory (admission
-control). There is **no backend choice**: the `parallel_backend` config knob is gone, the
-fork (`multiprocessing`) / loky branches are deleted, and `parallel_backend` /
-`maxtasksperchild` / `task_timeout` are accepted-but-ignored for config back-compat only.
-See `datacooker/_ray.py` and [[datacooker-memory-aware-engine]].
+### Ray build/rebuild execution
 
-* **Measured, not predicted.** Benchmark on the 22,281 deepest a3m records (the slice that
-  forced fork down to `n_jobs=16`): fork **7 rec/s @ 53 G** (memory-capped) vs shipped Ray
-  **74 rec/s @ 225 G** (actor prototype hit 94 rec/s) — **~10× faster**, no tuning, and
-  output **deep-equal identical** (2229/2229 sample + 300/300 no-knob run). Ray never had
-  to throttle: 225 G is 46 % of the 491 G node.
-* **Recipe philosophy intact.** Ray runs the *same* `_rebuild_worker → rebuild_entry →
-  parse_dict`; the recipe is backend-blind (that decoupling is *why* the swap was a
-  one-liner and why output is identical). Only the fan-out layer changed.
-* **State shipped once via plasma** (`ray.put`) → each worker reads zero-copy from
-  `/dev/shm`, replicating the fork path's copy-on-write benefit without predicting memory.
-* **Native Ray runtime policy** — no custom `/dev/shm` scoping or rmtree: Ray isolates each
-  `ray.init()` in its own `session_*` dir (concurrent SLURM shards don't collide) and cleans
-  it on graceful shutdown. A SIGKILL leak is bounded (per-session plasma file) and left to
-  ops (`ray stop` / epilog), not the library.
-* **Scope:** Ray governs the **within-node** fan-out; cross-node tier/shard splitting still
-  applies (planner unchanged, its `n_jobs` now advisory). `iter_parallel_chunks` (joblib)
-  is **kept** — `extract.py` (edge_node, with its SIGALRM per-record watchdog) and
-  `processing/batch.py` still use it; those are separate paths, not the OOM-prone one.
-* Still carry forward (independent of backend): **`--chunk-size` bounded** (parent drain
-  buffer), **MSA schema E 40→100** (dense-cap sizing feeds tier splitting), **extract
-  SIGALRM watchdog**, **executor `cpu-long-q`** (only uncapped cpu QOS).
+Build/rebuild fan-out uses Ray. The driver admits work gradually using measured
+memory pressure and respects `n_jobs`, CPU affinity, and the SLURM allocation.
+Metadata is put once and installed once per worker per run; Python dictionaries
+are deserialized in each worker, not shared as zero-copy dictionaries. Compact
+SignalP metadata avoids distributing the full sequence lookup.
 
-**Dead-code cleanup done (Ray-only is the single path).** Removed everywhere: the fork
-branch (`gc.freeze`/`gc.disable`/`maxtasksperchild`) in `_parallel.py`; `maxtasksperchild`
-+ `task_timeout` from `build_lmdb`/`rebuild_lmdb`/`_parallel_write`; `parallel_backend`
-knob (params + all config lines); the `Tier.maxtasksperchild` field + planner recycle
-logic; `--max-tasks-per-child`/`--task-timeout` on the build/rebuild CLI; `cfg.task_timeout`
-in the pipeline. `task_timeout` survives only on the separate `extract` path (its SIGALRM
-watchdog). Full `libs/datacooker/tests` suite **53/53 green** under ray-only.
+OOM retries are bounded. This is not a guarantee that every record fits in memory.
+Input sizes are distributed once across shards. Result buffering is bounded by
+count, bytes, and time. Each pipeline run uses unique shard paths and an explicit
+merge manifest; dependent planning waits for successful upstream completion.
 
-> **Ops gotcha:** build/rebuild now spin a Ray cluster, so their tests (and any real build)
-> must run on a **compute node** — never the login node. Run the suite with
-> `PYTHONPATH=libs/datacooker` so Ray workers (fresh processes) can import test-module
-> recipes that the fork backend used to inherit via COW.
+Run Ray tests and real builds on compute nodes, never the login node. The frozen
+September 10 release passed 112 tests (SLURM job 266534). Older MSA measurements
+apply to their historical implementation, not this recovery's performance claim.
 
 ### Superseded old configs deleted (git-recoverable)
 `configs/ingest/cif_pdb_{light,medium,large,large_fast,xlarge,xlarge_fast,huge,monster}`,
@@ -105,7 +85,7 @@ is ported under `db/metadata/`:
 |---|---|---|
 | `cif_fasta` / `cif_metadata` | extract | cif_pdb → fasta / metadata TSV (recipes verified on prod records) |
 | `seq_id_map` | materialize | **optional seed exception** — seq_id is an assigned counter, so from-scratch ≠ production; seed via the provided reference `DATA_ROOT/reference/seq_id_map.tsv` to match, else fresh ids. Validated. |
-| `seq_cluster40` / `seq_cluster30` | materialize | mmseqs2 (antibodies via cd-hit); deterministic given corpus+params+version. Corpus = provided reference `DATA_ROOT/reference/seqcluster_corpus.fasta` (prod used the pdb+distillation union); SabDab is an external input |
+| `{pdb,ofd,teddymer,afm}_seq_cluster30` | materialize | mmseqs2 at 30% (antibodies via cd-hit), **per DB** over that DB's own fasta; ids `c<DB>_<rep seq_id>` ([scheme](../docs/seq-id-and-cluster-scheme.md)). Replaced the global `seq_cluster40` / `seq_cluster30` (2026-09-23). SabDab is an external input |
 | `interacting_seq_ids` / `interacting_seq_clusters` | extract / materialize | interface partners for valid-2 dedup |
 
 ### Key-list sizing gap — CLOSED
@@ -130,9 +110,9 @@ The small list/fasta projections feeding the hmm pipeline are ported as material
 parallel ops: `metadata/pdb_polypeptide_L` (L-chain fasta = hmmsearch template DB),
 `metadata/template_chain_filelist` (protein-chain work list), `metadata/seqid_template_filelist`
 (Phase 3 keyed-build item list), `template/msa_wo_lower` (a3m insertion-strip). The full
-**31-node MANIFEST** topo-sorts end to end.
+**33-node MANIFEST** topo-sorts end to end.
 
-## ✅ PDB reproduction — complete on the clean surface
+## PDB reproduction — configuration coverage
 
 Every step from raw mmCIF to the training/validation DBs is a `db/**` config; nothing
 runs off a legacy script. What is *not* reproduced here (by design, provided like the
@@ -142,22 +122,24 @@ is a one-off width migration (`P0000007` → `P…020d`) for *pre-existing* DBs;
 from-scratch build already emits 20-width ids (`_SEQ_ID_WIDTH`), so it is not a
 reproduction step.
 
-### Manual mmCIF fixes — a required pre-ingest step (provided input)
+### Historical manual mmCIF fixes
 
-53 PDB entries (`db/pdb/manual_cif_fixes.txt`) error out / build wrongly from the current
-wwPDB mmCIF — mostly NMR ensembles whose non-polymer ligand is re-numbered per model,
+The source session recorded 53 PDB entries (`db/pdb/manual_cif_fixes.txt`) that failed
+with its wwPDB snapshot — mostly NMR ensembles whose non-polymer ligand is re-numbered per model,
 breaking the atom→scheme match (verified on `1ai0`: `IPH` at `auth_seq` 22 in some models,
 31 in others, vs a single scheme number). The production build substituted an older
 known-good cif for each before ingest (legacy `scripts/manually_fix_cif.py`, source
 `BioMolDB_2024Oct21`). Ported as `structcooker fix-cif --source <corrected-cif-dir>`; run
-it before `build pdb/cif`, and `inspect` reports the state. **Not** a port regression (the
-cif logic is byte-identical across the whole repo history) and **not** a CCD difference.
+it for a snapshot requiring those substitutions, and `inspect` reports the state.
+These historical substitutions are distinct from the CCD compatibility corrections
+verified in the September 10 recovery.
 Full write-up: [docs/manual-cif-fixes.md](../docs/manual-cif-fixes.md).
 
-**Current decision:** the corrected snapshot is not on this cluster, so the accepted
-`cif_pdb.lmdb` (233,579 entries) is built **without** the substitution — 25 of the 53 are
-absent (errored), 28 build from the current mmCIF (present but not production-substituted).
-`fix-cif` is ready to fold all 53 in production-faithfully once the snapshot is obtained.
+**Superseded run:** the 233,579-entry database described above used the old input
+snapshot. The current recovery reads `BioMol/materials/raw/cif` and has 249,676 CIF
+keys, with no missing production keys. It does not wait for the old manual-fix
+snapshot. See the recovery report for the actual comparison scope, CCD compatibility
+references, deliberate source differences, and final build status.
 
 The OpenFold3 distillation sets. **Recipes exist** (`workflows/ingest/openfold_*`);
 configs are ported onto the clean `db/distillation/` surface (env-var paths, schema tag,
@@ -181,9 +163,22 @@ Base-structure pipeline validated in-process (Ray-free): one real `structure.npz
 **✅ `cif_*_attached` (schema B) — ported (25 configs total).** Previously blocked on a
 rewrap step + missing metadata; both resolved. The base `cif_{set}` already emits the
 wrapped `assembly_dict`/`metadata_dict` layout (the openfold_structure recipe), so no
-separate rewrap is needed, and `seq_id_map` / `seq_cluster40` are now on the clean
+separate rewrap is needed, and `seq_id_map` / the per-DB clusterings are now on the clean
 surface (see the metadata section). `cif_{long,short,rna,disordered}_attached` are plain
 A→B rebuilds of the base + the shared attach recipe (proven by pdb/cif_attached).
 
-By project rule these configs are code-complete only: validate on a small sample vs the
-existing production DBs, **do not full-build** (they already exist).
+The earlier sample-only restriction was superseded by the explicit end-to-end
+distillation build request. See [the September 15 follow-up](../docs/distillation-followup-2026-09-15.md)
+for the completed long CIF audit and active native SLURM MSA/template graph.
+Submission is not completion; terminal coverage and validation reports decide status.
+
+## Teddymer and AFDB multimer — built 2026-09-28
+
+| set | cif | cif_attached | msa / msa_d2k | template |
+|---|---|---|---|---|
+| teddymer (`MANIFEST_teddymer`) | ✅ 510,454 | ✅ 510,454 | ✅ 999,853 / 999,853 | 🔄 hmmsearch (Phase 0) running; Phase 1/2 + template LMDB to write |
+| AFDB homodimer (`MANIFEST_afdb_multimer`) | ✅ 1,750,755 | ✅ 1,750,755 | ✅ 1,721,635 / 1,721,635 (shared with heterodimer, keyed by seq_id) | 🔴 not started |
+| AFDB heterodimer | ✅ 80,248 | ✅ 80,248 | (above) | 🔴 not started |
+
+Raw inputs and their selection: [docs/raw-materials.md](../docs/raw-materials.md).
+
