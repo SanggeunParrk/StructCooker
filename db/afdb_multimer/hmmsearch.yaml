@@ -1,0 +1,24 @@
+# afdb_multimer template Phase 0 — hmmbuild(query a3m -> HMM) + hmmsearch(HMM vs PDB L-chains).
+# PARALLEL op, same search as PDB and teddymer, over all 1,721,635 AFM seq_ids.
+#
+# Measured on 336 random queries vs 336 teddymer ones on one node (2026-09-28): 233 s per
+# query under 112-way load vs 99 s for teddymer (HMM length 321 vs 109); hmmbuild < 1 s.
+# That is ~125 h on 8 nodes. The 6,820 seq_ids whose sequence PDB's search already covered
+# (0.4%) are searched again rather than borrowed, so this tree is complete on its own.
+# Lists only queries without a finished .out: nodes take list positions in turn, so a resume
+# over the full list left the remainder on the 2 nodes that had fallen behind (job 272645).
+split_recipe_path: ${p:src/structcooker/workflows/search/load_pending_a3m_list.py}
+recipe_path: ${p:src/structcooker/workflows/search/hmmsearch.py}
+
+inputs:
+  # Template database: PDB polypeptide(L) chains, the same target the PDB path searches.
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/pdb_polypeptide_L.fasta}
+  data_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/msa_wo_lower_AFM}
+  output_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/hmm_AFM}
+  hmm_output_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/hmm_output_AFM}
+  output_pattern: ".hmm"
+  done_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/hmm_output_AFM}
+  done_suffix: ".out"
+
+n_jobs: -1
+test_run: false

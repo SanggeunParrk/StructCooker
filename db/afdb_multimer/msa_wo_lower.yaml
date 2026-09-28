@@ -1,0 +1,19 @@
+# afdb_multimer msa_wo_lower — the release's entity MSAs as lowercase-stripped <seq_id>.a3m,
+# the hmmbuild input of template Phase 0. PARALLEL op.
+#
+# hmmbuild needs every row the same length; a3m writes insertions in lowercase and gives
+# the other rows no gap for them, so the insertion columns are dropped (as for PDB and
+# teddymer). The release files are zstd a3m opening with a "#" line and are named by
+# entity, so this step also decompresses, drops the "#" line, and renames to the seq_id
+# (metadata/afm_msa_seqid), one per seq_id -- the same entity the msa LMDB keeps.
+# Resumable: finished outputs are left out of the list.
+split_recipe_path: ${p:src/structcooker/workflows/search/load_afm_msa_list.py}
+recipe_path: ${p:src/structcooker/workflows/filters/a3m_cleanup.py}
+
+inputs:
+  msa_dir: ${p:${oc.env:AFDB_MULTIMER_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/afdb_multimer}/msa}
+  afm_msa_seqid_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/afm_msa_seqid.tsv}
+  output_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/msa_wo_lower_AFM}
+
+n_jobs: -1
+test_run: false

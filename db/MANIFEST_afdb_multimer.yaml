@@ -22,3 +22,6 @@ afdb_multimer/heterodimer_cif_attached: [afdb_multimer/heterodimer_cif, metadata
 metadata/afm_msa_seqid: [metadata/afm_fasta, metadata/seq_id_map]   # + heterodimer/chain_msa.tsv (staged)
 afdb_multimer/msa: [metadata/afm_msa_seqid]
 afdb_multimer/msa_d2k: [afdb_multimer/msa]
+metadata/pdb_polypeptide_L: []                          # template target; built in MANIFEST.yaml
+afdb_multimer/msa_wo_lower: [metadata/afm_msa_seqid]    # entity MSA -> stripped <seq_id>.a3m
+afdb_multimer/hmmsearch: [afdb_multimer/msa_wo_lower, metadata/pdb_polypeptide_L]   # template Phase 0 (submits/search/hmmsearch_afm.sh)

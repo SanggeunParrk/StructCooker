@@ -1,5 +1,6 @@
 import copy
 import fnmatch
+import io
 import os
 import re
 import subprocess
@@ -11,6 +12,7 @@ from typing import TYPE_CHECKING, cast
 
 import kalign
 import numpy as np
+import zstandard
 from biomol.core.index import IndexTable
 
 from structcooker.instructions.readers.io import load_bytes, load_raw_data
@@ -23,6 +25,26 @@ if TYPE_CHECKING:
 
 def _is_nonempty(path: Path) -> bool:
     return path.exists() and path.stat().st_size > 0
+
+
+def _finished_files(root: Path, suffix: str) -> set[str]:
+    """Names of the non-empty ``*<suffix>`` files anywhere under ``root``.
+
+    One directory walk instead of a stat per expected output: on the shared filesystem,
+    checking ~1.7M mostly-absent paths one by one takes tens of minutes.
+    """
+    found: set[str] = set()
+    if not root.is_dir():
+        return found
+    stack = [root]
+    while stack:
+        with os.scandir(stack.pop()) as it:
+            for entry in it:
+                if entry.is_dir(follow_symlinks=False):
+                    stack.append(Path(entry.path))
+                elif entry.name.endswith(suffix) and entry.stat().st_size > 0:
+                    found.add(entry.name)
+    return found
 
 
 def _run_command(
@@ -63,6 +85,7 @@ def load_a3m_list(
     stay on whichever nodes held them; dropping finished ones first spreads the rest evenly.
     """
     result = []
+    done = _finished_files(Path(done_dir), done_suffix) if done_dir is not None else set()
 
     def _scan(dir_path: Path) -> None:
         with os.scandir(dir_path) as it:
@@ -71,10 +94,7 @@ def load_a3m_list(
                     _scan(Path(entry.path))
                 elif fnmatch.fnmatch(entry.name, pattern):
                     seq_id = seq_id_from_name(entry.name)
-                    if done_dir is not None and _is_nonempty(
-                        (seq_id_shard_path(done_dir, seq_id) if seq_id is not None else done_dir)
-                        / f"{Path(entry.name).stem}{done_suffix}",
-                    ):
+                    if f"{Path(entry.name).stem}{done_suffix}" in done:
                         continue
                     output_parent = (
                         seq_id_shard_path(output_dir, seq_id)
@@ -285,25 +305,72 @@ def run_hmmsearch(
 
 
 def remove_lower_from_a3m(input_a3m_path: Path, output_path: Path | None) -> str:
-    """Strip lowercase (insertion) columns from an a3m; return a status string."""
+    """Strip lowercase (insertion) columns from an a3m; return a status string.
+
+    Reads plain or zstd-compressed (``.zst``) a3m and drops ``#`` metadata lines (the
+    ColabFold format AFDB ships). The output is written under a temporary name and renamed
+    when complete, so an existing non-empty output is a finished one and is kept.
+    """
     if output_path is None:
         output_path = input_a3m_path.with_suffix(".no_lower.a3m")
+    if _is_nonempty(output_path):
+        return f"Skip {output_path.name} (already exists and is non-empty)"
+    tmp_path = output_path.with_name(output_path.name + ".tmp")
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with input_a3m_path.open("r") as infile, output_path.open("w") as outfile:
+        with _open_a3m_text(input_a3m_path) as infile, tmp_path.open("w") as outfile:
             for line in infile:
+                if line.startswith("#"):
+                    continue
                 if line.startswith(">"):
                     outfile.write(line)
                 else:
                     # remove all lowercase letters from the sequence lines
                     line = "".join(c for c in line if not c.islower())  # noqa: PLW2901 (intentional in-loop rewrite)
                     outfile.write(line)
+        tmp_path.replace(output_path)
         return (  # noqa: TRY300 (return kept in try for clarity)
             f"Lowercase letters removed from {input_a3m_path}, saved to {output_path}"
         )
     except Exception as e:
         msg = f"Error processing {input_a3m_path} to remove lowercase letters: {e}"
         raise RuntimeError(msg) from e
+
+
+def _open_a3m_text(path: Path) -> "io.TextIOBase":
+    if path.suffix != ".zst":
+        return path.open("r")
+    raw = path.open("rb")
+    return io.TextIOWrapper(zstandard.ZstdDecompressor().stream_reader(raw, closefd=True))
+
+
+def list_afm_msa_wo_lower(
+    msa_dir: Path,
+    afm_msa_seqid_path: Path,
+    output_dir: Path,
+) -> list[dict[str, Path]]:
+    """List AFDB entity MSAs to strip, one per seq_id, as <output_dir>/<shard>/<seq_id>.a3m.
+
+    Entities sharing a sequence share a seq_id; the one kept is the smallest path, the same
+    choice the msa LMDB makes (duplicate_input_policy first_path), so templates are searched
+    from the MSA the DB holds. Outputs that already exist are left out, so a resume only
+    lists what is left.
+    """
+    chosen: dict[str, Path] = {}
+    with Path(afm_msa_seqid_path).open() as handle:
+        for line in handle:
+            entity, _, seq_id = line.rstrip("\n").partition("\t")
+            number = entity.split("-")[1]
+            path = Path(msa_dir) / number[-3:] / f"{entity}-msa_v1.a3m.zst"
+            if seq_id not in chosen or str(path) < str(chosen[seq_id]):
+                chosen[seq_id] = path
+    done = _finished_files(Path(output_dir), ".a3m")
+    items = []
+    for seq_id, path in sorted(chosen.items()):
+        if f"{seq_id}.a3m" not in done:
+            out = seq_id_shard_path(Path(output_dir), seq_id) / f"{seq_id}.a3m"
+            items.append({"input_a3m_path": path, "output_path": out})
+    return items
 
 
 def parse_hmm_query_mapping(hmm_path: Path) -> tuple[dict[int, int], dict[int, int]]:

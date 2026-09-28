@@ -37,7 +37,8 @@ _SIDE_OUTPUT_KEYS = frozenset({"output_dir", "hmm_output_dir"})   # + any `out_*
 # Keys inside `inputs`/`metadata_input` that are NOT prerequisites to check: this
 # node's own scratch/outputs, or the optional seq_id seed (absent == fresh id space).
 _NON_INPUT_KEYS = frozenset(
-    {"tmp_dir", "output_dir", "hmm_output_dir", "out_path", "old_seq_id_map_path"},
+    # done_dir: the resume marker tree, which is this node's own output (hmm_output_dir).
+    {"tmp_dir", "output_dir", "hmm_output_dir", "done_dir", "out_path", "old_seq_id_map_path"},
 )
 
 # External binaries the recipes shell out to (name -> optional/licensed).
