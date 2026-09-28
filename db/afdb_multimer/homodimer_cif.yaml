@@ -1,0 +1,26 @@
+# afdb_multimer homodimer cif — AFDB complex-release homodimer PDB → CIFMol. Schema A. Build.
+#
+# 1,750,755 high-confidence homodimers (the manuscript set; docs/raw-materials.md). The
+# files are predicted-structure PDBs -- ATOM only, B-factor = pLDDT -- the same shape as
+# Teddymer's, so the Teddymer PDB reader and recipe apply unchanged: the reader builds the
+# flat atom table, attach_bonds derives connectivity from the CCD, and the openfold steps
+# assemble CIFMol. Both chains share one entity (identical sequence).
+# Keyed by entity (AF-<n>), the id the release metadata uses.
+schema: A
+test_run: false
+
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/cif/cif_afm_homodimer.lmdb}
+data_dir: ${p:${oc.env:AFDB_MULTIMER_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/afdb_multimer}/homodimer/pdb}
+file_pattern: "*/AF-*-model_v1.pdb"
+
+recipe: ${p:src/structcooker/workflows/ingest/teddymer_structure.py}
+key_builder: structcooker.instructions.readers.afdb.afdb_entity_key
+
+inputs:
+  ccd_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/ccd/biomol_CCD.lmdb}
+
+reader:
+  loader: structcooker.instructions.readers.teddymer.get_teddymer_structure_data
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

@@ -1,0 +1,24 @@
+# AFM (AFDB multimer) DB set as a dependency DAG.
+#
+# Sources (docs/raw-materials.md): 1,750,755 high-confidence homodimers (PDB) and 80,248
+# heterodimers (mmCIF) from the AFDB complex release, plus the release's own MSAs.
+# Two structure formats -> two cif DBs and two attached DBs, all under one DB code (AFM):
+# one FASTA, one seq_id space contribution, one clustering.
+#
+# Order that matters:
+#   * afm.fasta joins seq_id_map LAST, so teddymer's (already attached) ids do not move.
+#   * the MSA DB is keyed by seq_id, so it waits for seq_id_map and afm_msa_seqid.
+
+ccd/ccd: []                                  # root: the CCD LMDB every cif build reads
+afdb_multimer/homodimer_cif: [ccd/ccd]
+afdb_multimer/heterodimer_cif: [ccd/ccd]
+metadata/afm_homodimer_fasta: [afdb_multimer/homodimer_cif]
+metadata/afm_heterodimer_fasta: [afdb_multimer/heterodimer_cif]
+metadata/afm_fasta: [metadata/afm_homodimer_fasta, metadata/afm_heterodimer_fasta]
+metadata/seq_id_map: [metadata/afm_fasta]                     # shared; AFM appended last
+metadata/afm_seq_cluster30: [metadata/afm_fasta, metadata/seq_id_map]
+afdb_multimer/homodimer_cif_attached: [afdb_multimer/homodimer_cif, metadata/afm_fasta, metadata/seq_id_map, metadata/afm_seq_cluster30]
+afdb_multimer/heterodimer_cif_attached: [afdb_multimer/heterodimer_cif, metadata/afm_fasta, metadata/seq_id_map, metadata/afm_seq_cluster30]
+metadata/afm_msa_seqid: [metadata/afm_fasta, metadata/seq_id_map]   # + heterodimer/chain_msa.tsv (staged)
+afdb_multimer/msa: [metadata/afm_msa_seqid]
+afdb_multimer/msa_d2k: [afdb_multimer/msa]

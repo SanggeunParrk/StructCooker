@@ -1,0 +1,26 @@
+# afdb_multimer heterodimer cif — AFDB complex-release heterodimer mmCIF → CIFMol. Schema A. Build.
+#
+# 80,248 passes_quality_threshold heterodimers. Real mmCIF, so this is the PDB path
+# (workflows/ingest/cif.py) rather than the PDB-file reader the homodimers use. Staged as
+# .cif.gz: the release files are gzip streams, and get_cif_data picks its decoder by
+# extension. Smoke-tested 2026-09-25: two chains, two entities, pLDDT on every modelled atom
+# (the ~11% NaN are CCD-template atoms the model does not place, chiefly OXT).
+# Keyed by entity (AF-<n>).
+schema: A
+test_run: false
+
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/cif/cif_afm_heterodimer.lmdb}
+data_dir: ${p:${oc.env:AFDB_MULTIMER_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/afdb_multimer}/heterodimer/cif}
+file_pattern: "*/AF-*-model_v1.cif.gz"
+
+recipe: ${p:src/structcooker/workflows/ingest/cif.py}
+key_builder: structcooker.instructions.readers.afdb.afdb_entity_key
+ccd_db_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/ccd/biomol_CCD.lmdb}
+ccd_reference_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/reference_ccd.lmdb}
+
+reader:
+  loader: structcooker.instructions.readers.cif.get_cif_data
+  key_transform: structcooker.instructions.readers.cif.dot_transform
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

@@ -1,25 +1,38 @@
+import io
 from pathlib import Path
 from typing import Any
 
+import zstandard as zstd
 from biomol.core import FeatureContainer
 
 
 def get_a3m_data(a3m_path: Path) -> dict[str, Any]:
-    """Parse a a3m file and return its data as a dictionary."""
-    with a3m_path.open("r") as f:
-        raw_lines = f.readlines()
+    r"""Parse an a3m file (plain, or zstd-compressed ``.zst``) into headers and sequences.
+
+    ``#`` lines are skipped: ColabFold-style a3m -- the format the AFDB complex release ships
+    its MSAs in -- opens with ``#<lengths>\t<cardinalities>``, which is metadata, not a
+    record. HHblits and MMseqs2 ``result2msa`` output has no such line, so those parse as
+    before.
+    """
     raw_sequences = []
     headers = []
-    for _line in raw_lines:
-        line = _line.strip()
-        if line.startswith(">"):
-            headers.append(line[1:])
-            raw_sequences.append("")
-        else:
-            if not raw_sequences:
-                msg = f"Invalid a3m format: sequence data found before any header in {a3m_path}"
-                raise ValueError(msg)
-            raw_sequences[-1] += line
+    with a3m_path.open("rb") as raw:
+        stream = (
+            zstd.ZstdDecompressor().stream_reader(raw) if a3m_path.suffix == ".zst" else raw
+        )
+        handle = io.TextIOWrapper(stream, encoding="utf-8")
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith(">"):
+                headers.append(line[1:])
+                raw_sequences.append("")
+            else:
+                if not raw_sequences:
+                    msg = f"Invalid a3m format: sequence data found before any header in {a3m_path}"
+                    raise ValueError(msg)
+                raw_sequences[-1] += line
 
     return {
         "raw_sequences": raw_sequences,

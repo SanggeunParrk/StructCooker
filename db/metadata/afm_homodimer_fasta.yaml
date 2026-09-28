@@ -1,0 +1,13 @@
+# afm_homodimer_fasta — chain sequences from afdb_multimer/homodimer_cif -> fasta.
+# EXTRACT op. One of the two halves concatenated into afm.fasta (metadata/afm_fasta):
+# the extract op reads a single LMDB, and AFM's structures live in two.
+n_jobs: 8
+db_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/cif/cif_afm_homodimer.lmdb}
+extract_recipe_path: ${p:src/structcooker/workflows/exports/fasta.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/afm_homodimer.fasta}
+
+reader:
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta

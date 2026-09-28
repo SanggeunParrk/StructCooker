@@ -1,0 +1,17 @@
+# afm_msa_seqid — AFM MSA entity -> seq_id map. MATERIALIZE op. Feeds afdb_multimer/msa.
+#
+# The release ships MSAs per monomer entity; the MSA DB is keyed by seq_id like every other
+# MSA DB. A homodimer's MSA is its own entity's; a heterodimer chain's is its monomer's, via
+# heterodimer/chain_msa.tsv (content-verified when staged). Each entity resolves to a seq_id
+# through a chain that uses it. Mirrors metadata/distillation_monomer_seqid.
+recipe_path: ${p:src/structcooker/workflows/metadata/afm_msa_seqid.py}
+
+inputs:
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/afm.fasta}
+  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
+  chain_msa_path: ${p:${oc.env:AFDB_MULTIMER_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/afdb_multimer}/heterodimer/chain_msa.tsv}
+
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/afm_msa_seqid.tsv}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_afm_msa_seqid_map

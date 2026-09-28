@@ -1,0 +1,22 @@
+# afdb_multimer heterodimer cif_attached — attach seq_id / cAFM_ clusters onto the base CIFMol.
+# Schema B. Rebuild. Mirrors db/teddymer/cif_attached.yaml; clusters are AFM's own at 30%.
+schema: B
+
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/cif/cif_afm_heterodimer.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/cif/cif_afm_heterodimer_attached.lmdb}
+
+recipe: ${p:src/structcooker/workflows/metadata/attach.py}
+metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.py}
+metadata_input:
+  raw_fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/afm.fasta}
+  seqid2seq_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_id_map.tsv}
+  seqcluster_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_cluster30_AFM.tsv}
+  db_code: AFM
+
+split_entries: true
+
+reader:
+  adapter: structcooker.instructions.transforms.cifmol.convert_to_cifmol_dict
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

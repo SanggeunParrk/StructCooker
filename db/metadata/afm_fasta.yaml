@@ -1,0 +1,14 @@
+# afm_fasta — AFM's one consolidated FASTA (docs/seq-id-and-cluster-scheme.md).
+# MATERIALIZE op: concatenates the homodimer and heterodimer extracts. Feeds seq_id_map,
+# afm_seq_cluster30, both afm cif_attached DBs, and afm_msa_seqid.
+recipe_path: ${p:src/structcooker/workflows/metadata/concat_fasta.py}
+
+inputs:
+  fasta_paths:
+    - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/afm_homodimer.fasta}
+    - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/afm_heterodimer.fasta}
+
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/afm.fasta}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta_dict

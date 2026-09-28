@@ -1,0 +1,24 @@
+# afm seq_cluster30 — mmseqs2 clusters at 0.30 identity, over AFM (AFDB multimer) ONLY.
+# MATERIALIZE op (recipe -> cluster TSV).
+#
+# Clustering is per-DB (docs/seq-id-and-cluster-scheme.md): every id written here is
+# cAFM_<rep seq_id>. seq_id stays the one shared space, which still allows cross-DB comparison.
+#
+# AFM chains are whole AFDB-predicted proteins from 4,777 proteomes (homodimers) and 46
+# (heterodimers) -- a different population from PDB's experimentally solved chains.
+recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_cluster30_AFM.tsv}
+
+inputs:
+  db_code: AFM
+  tmp_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/tmp/seq_cluster30_AFM}
+  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/afm.fasta}
+  sabdab_summary_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/external/SabDab/sabdab_summary_all.tsv}
+  mmseqs2_seq_id: 0.30
+  mmseqs2_cov: 0.8
+  mmseqs2_covmode: "0"
+  mmseqs2_clustermode: "1"
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_clusters

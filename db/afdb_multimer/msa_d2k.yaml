@@ -1,0 +1,21 @@
+# afdb_multimer msa_d2k — AFM MSA capped to depth 2000. Schema E. Rebuild from msa.
+# Same cap_msa_depth op and cap as db/msa/a3m_d2k.yaml.
+# Depth-capped copy of the ~1.09 TB msa DB; teddymer's d2k kept 28% (165 -> 46 GB), which
+# puts this near the 300 GB default map -- so the ceiling is raised ahead of time.
+map_size: 600_000_000_000
+schema: E
+
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/msa/msa_afm.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/msa/msa_afm_d2k.lmdb}
+
+recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
+
+parameters:
+  max_depth: 2000
+
+reader:
+  adapter: structcooker.instructions.transforms.openfold.adapt_msa_for_cap
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
