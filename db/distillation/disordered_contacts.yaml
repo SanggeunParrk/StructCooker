@@ -6,8 +6,8 @@
 # Full builds include this step before final disordered CIF validation.
 schema: B
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered_attached_precontact.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/cif/cif_disordered_attached.lmdb}
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/cif_attached/cif_disordered_attached_precontact.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/cif_attached/cif_disordered_attached.lmdb}
 
 recipe: ${p:src/structcooker/workflows/ingest/disordered_contacts.py}
 
