@@ -12,6 +12,7 @@ name (every entry shares the same ``alignment.npz`` / ``structure.npz`` /
 be wired into a build config via ``key_builder``.
 """
 
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,41 @@ def openfold_chain_key(path: Path) -> str:
 
 
 _MONOMER_SEQID: dict[str, str] | None = None
+_STRUCTURE_OVERRIDES: dict[str, str] | None = None
+_MAP_IDENTITIES: dict[str, tuple] = {}
+
+
+def _map_changed(name: str, path: Path) -> bool:
+    """Invalidate local caches on path/version changes; releases pin immutable copies."""
+    if os.environ.get("STRUCTCOOKER_IMMUTABLE_REFERENCES") == "1":
+        identity = (str(path.absolute()),)
+    else:
+        stat = path.stat()
+        identity = (str(path.resolve()), stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+    changed = _MAP_IDENTITIES.get(name) != identity
+    _MAP_IDENTITIES[name] = identity
+    return changed
+
+
+
+def _structure_path(path: Path) -> Path:
+    """Resolve explicitly recorded, separately recovered structures for this run."""
+    global _STRUCTURE_OVERRIDES  # noqa: PLW0603 - process-local cache
+    manifest = os.environ.get("OPENFOLD_STRUCTURE_OVERRIDES")
+    if not manifest:
+        _STRUCTURE_OVERRIDES = None
+        return path
+    changed = _map_changed("structure", Path(manifest))
+    if _STRUCTURE_OVERRIDES is None or changed:
+        _STRUCTURE_OVERRIDES = None
+        mapping = json.loads(Path(manifest).read_text()) if manifest else {}
+        if not isinstance(mapping, dict) or any(
+            not isinstance(key, str) or not isinstance(value, str) for key, value in mapping.items()
+        ):
+            msg = "Structure overrides must map original paths to recovered paths"
+            raise ValueError(msg)
+        _STRUCTURE_OVERRIDES = mapping
+    return Path(_STRUCTURE_OVERRIDES.get(str(path), str(path)))
 
 
 def _monomer_seqid_map() -> dict[str, str]:
@@ -48,9 +84,13 @@ def _monomer_seqid_map() -> dict[str, str]:
     sharing a sequence collapse onto one seq_id, matching production's dedup.
     """
     global _MONOMER_SEQID  # noqa: PLW0603 - process-local cache
-    if _MONOMER_SEQID is None:
-        root = os.environ.get("OUTPUT_ROOT", "/data/shared/cssb_data/BioMol_clean")
-        map_path = Path(root) / "metadata" / "distillation_monomer_seqid.tsv"
+    root = os.environ.get("OUTPUT_ROOT", "/data/shared/cssb_data/BioMol_clean")
+    map_path = Path(os.environ.get(
+        "MONOMER_SEQID_MAP", str(Path(root) / "metadata" / "distillation_monomer_seqid.tsv"),
+    ))
+    changed = _map_changed("monomer", map_path)
+    if _MONOMER_SEQID is None or changed:
+        _MONOMER_SEQID = None
         mapping: dict[str, str] = {}
         with map_path.open(encoding="utf-8") as handle:
             for line in handle:
@@ -76,8 +116,10 @@ def _disordered_seqid_map() -> dict[str, str]:
     ``scripts/maintenance/precompute_disordered_seqid.py``).
     """
     global _DISORDERED_SEQID  # noqa: PLW0603 - process-local cache
-    if _DISORDERED_SEQID is None:
-        map_path = Path(os.environ["DISORDERED_SEQID_MAP"])
+    map_path = Path(os.environ["DISORDERED_SEQID_MAP"])
+    changed = _map_changed("disordered", map_path)
+    if _DISORDERED_SEQID is None or changed:
+        _DISORDERED_SEQID = None
         mapping: dict[str, str] = {}
         with map_path.open() as handle:
             for line in handle:
@@ -116,6 +158,9 @@ def get_openfold_msa_data(alignment_path: Path) -> dict[str, Any]:
         raise ValueError(msg)
     with np.load(alignment_path, allow_pickle=True) as handle:
         msa_sources = {source: handle[source].item() for source in handle.files}
+    if not msa_sources:
+        msg = f"alignment.npz contains no MSA sources: {alignment_path}"
+        raise ValueError(msg)
     return {"msa_sources": msa_sources}
 
 
@@ -126,9 +171,9 @@ def get_openfold_structure_data(structure_path: Path) -> dict[str, Any]:
     (``coord`` / ``atom_name`` / ``res_id`` / ``chain_id`` / ...) and are
     shared across protein and RNA distillation sets.
     """
-    with np.load(structure_path, allow_pickle=True) as handle:
-        atom_arrays = {field: handle[field] for field in handle.files}
-    return {"atom_arrays": atom_arrays, "entry_id": structure_path.parent.name}
+    with np.load(_structure_path(structure_path), allow_pickle=True) as handle:
+        atom_site_dict = {field: handle[field] for field in handle.files}
+    return {"atom_site_dict": atom_site_dict, "entry_id": structure_path.parent.name}
 
 
 def get_disordered_template_data(npz_path: Path) -> dict[str, Any]:
@@ -159,7 +204,7 @@ def get_disordered_template_group(moltype_path: Path) -> dict[str, Any]:
             continue
         with np.load(npz_path, allow_pickle=True) as handle:
             templates[npz_path.stem] = {field: handle[field] for field in handle.files}
-    return {"templates_atom_arrays": templates}
+    return {"templates_atom_site_dict": templates}
 
 
 def get_disordered_template_chain(npz_path: Path) -> dict[str, Any]:
@@ -172,7 +217,7 @@ def get_disordered_template_chain(npz_path: Path) -> dict[str, Any]:
     """
     with np.load(npz_path, allow_pickle=True) as handle:
         arrays = {field: handle[field] for field in handle.files}
-    return {"templates_atom_arrays": {npz_path.stem: arrays}}
+    return {"templates_atom_site_dict": {npz_path.stem: arrays}}
 
 
 def get_openfold_template_data(template_path: Path) -> dict[str, Any]:
@@ -187,7 +232,7 @@ def get_openfold_template_data(template_path: Path) -> dict[str, Any]:
     with np.load(template_path, allow_pickle=True) as handle:
         template_hits = {hit: handle[hit].item() for hit in handle.files}
     query_len = 0
-    structure_path = template_path.parent / "structure.npz"
+    structure_path = _structure_path(template_path.parent / "structure.npz")
     if structure_path.exists():
         with np.load(structure_path, allow_pickle=True) as handle:
             keys = np.stack(

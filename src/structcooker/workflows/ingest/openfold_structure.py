@@ -37,7 +37,7 @@ structure_recipe.add(
         ("chain_mol_types", np.ndarray),
     ),
     instruction=build_hierarchy,
-    inputs={"kwargs": {"atom_arrays": ("atom_arrays", dict)}},
+    inputs={"kwargs": {"atom_site_dict": ("atom_site_dict", dict)}},
 )
 
 structure_recipe.add(
@@ -45,7 +45,7 @@ structure_recipe.add(
     instruction=load_ccd_entries,
     inputs={
         "kwargs": {
-            "atom_arrays": ("atom_arrays", dict),
+            "atom_site_dict": ("atom_site_dict", dict),
             "ccd_db_path": ("ccd_db_path", Path),
         },
     },
@@ -54,13 +54,13 @@ structure_recipe.add(
 structure_recipe.add(
     targets=(("atom_features", dict),),
     instruction=derive_atom_features,
-    inputs={"kwargs": {"atom_arrays": ("atom_arrays", dict), "ccd_cache": ("ccd_cache", dict)}},
+    inputs={"kwargs": {"atom_site_dict": ("atom_site_dict", dict), "ccd_cache": ("ccd_cache", dict)}},
 )
 
 structure_recipe.add(
     targets=(("bonds", dict),),
     instruction=derive_bond_edges,
-    inputs={"kwargs": {"atom_arrays": ("atom_arrays", dict), "ccd_cache": ("ccd_cache", dict)}},
+    inputs={"kwargs": {"atom_site_dict": ("atom_site_dict", dict), "ccd_cache": ("ccd_cache", dict)}},
 )
 
 structure_recipe.add(
@@ -93,7 +93,7 @@ structure_recipe.add(
     instruction=assemble_cifmol,
     inputs={
         "kwargs": {
-            "atom_arrays": ("atom_arrays", dict),
+            "atom_site_dict": ("atom_site_dict", dict),
             "atom_to_res": ("atom_to_res", np.ndarray),
             "res_to_chain": ("res_to_chain", np.ndarray),
             "n_chain": ("n_chain", int),

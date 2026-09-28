@@ -111,7 +111,7 @@ def _ccd_atom_lookup(entry: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
 
 
 def build_hierarchy(
-    atom_arrays: dict[str, np.ndarray],
+    atom_site_dict: dict[str, np.ndarray],
 ) -> tuple[
     np.ndarray, np.ndarray, int,
     np.ndarray, np.ndarray, np.ndarray,
@@ -125,11 +125,11 @@ def build_hierarchy(
     arrays as distinct outputs, so the residue / chain / assembly steps each
     depend only on the level they consume.
     """
-    chain_id = atom_arrays["chain_id"].astype(str)
-    res_id = atom_arrays["res_id"]
-    ins_code = atom_arrays["ins_code"].astype(str)
-    entity_id = atom_arrays["entity_id"].astype(str)
-    mol_type = atom_arrays["molecule_type_id"]
+    chain_id = atom_site_dict["chain_id"].astype(str)
+    res_id = atom_site_dict["res_id"]
+    ins_code = atom_site_dict["ins_code"].astype(str)
+    entity_id = atom_site_dict["entity_id"].astype(str)
+    mol_type = atom_site_dict["molecule_type_id"]
 
     atom_to_res = _group_ids(chain_id, res_id, ins_code)
     res_chain_id = _first_per_group(atom_to_res, chain_id)
@@ -139,9 +139,9 @@ def build_hierarchy(
         atom_to_res,
         res_to_chain,
         int(res_to_chain[-1] + 1) if len(res_to_chain) else 0,
-        _first_per_group(atom_to_res, atom_arrays["res_name"].astype(str)),
+        _first_per_group(atom_to_res, atom_site_dict["res_name"].astype(str)),
         _first_per_group(atom_to_res, res_id),
-        _first_per_group(atom_to_res, atom_arrays["hetero"]).astype(np.int64),
+        _first_per_group(atom_to_res, atom_site_dict["hetero"]).astype(np.int64),
         _first_per_group(res_to_chain, res_chain_id),
         _first_per_group(res_to_chain, res_entity_id),
         _first_per_group(res_to_chain, _first_per_group(atom_to_res, mol_type)),
@@ -149,22 +149,22 @@ def build_hierarchy(
 
 
 def load_ccd_entries(
-    atom_arrays: dict[str, np.ndarray],
+    atom_site_dict: dict[str, np.ndarray],
     ccd_db_path: Path,
 ) -> dict[str, Any]:
     """Load the CCD component for every residue name present in the structure."""
     path = Path(ccd_db_path)
-    names = np.unique(atom_arrays["res_name"].astype(str)).tolist()
+    names = np.unique(atom_site_dict["res_name"].astype(str)).tolist()
     return {res_name: _read_ccd_entry(path, res_name) for res_name in names}
 
 
 def derive_atom_features(
-    atom_arrays: dict[str, np.ndarray],
+    atom_site_dict: dict[str, np.ndarray],
     ccd_cache: dict[str, Any],
 ) -> dict[str, np.ndarray]:
     """Fill per-atom ``aromatic`` / ``stereo`` / ``charge`` / ``model_xyz`` from the CCD."""
-    res_name = atom_arrays["res_name"].astype(str)
-    atom_name = atom_arrays["atom_name"].astype(str)
+    res_name = atom_site_dict["res_name"].astype(str)
+    atom_name = atom_site_dict["atom_name"].astype(str)
     n = len(atom_name)
     aromatic = np.full(n, "N", dtype="<U1")
     stereo = np.full(n, "N", dtype="<U1")
@@ -183,16 +183,16 @@ def derive_atom_features(
 
 
 def derive_bond_edges(
-    atom_arrays: dict[str, np.ndarray],
+    atom_site_dict: dict[str, np.ndarray],
     ccd_cache: dict[str, Any],
 ) -> dict[str, np.ndarray]:
     """Build atom- and residue-level bond edges from connectivity + CCD chemistry."""
-    res_name = atom_arrays["res_name"].astype(str)
-    atom_name = atom_arrays["atom_name"].astype(str)
+    res_name = atom_site_dict["res_name"].astype(str)
+    atom_name = atom_site_dict["atom_name"].astype(str)
     atom_to_res = _group_ids(
-        atom_arrays["chain_id"].astype(str),
-        atom_arrays["res_id"],
-        atom_arrays["ins_code"].astype(str),
+        atom_site_dict["chain_id"].astype(str),
+        atom_site_dict["res_id"],
+        atom_site_dict["ins_code"].astype(str),
     )
     # CCD intra-residue bond chemistry keyed by (res_name, frozenset{atom_a, atom_b}).
     # Source structures may name a bonded atom by its legacy alt_atom_id (e.g. XMP's O3P
@@ -233,7 +233,7 @@ def derive_bond_edges(
         # overwritten by an alt alias that collides with a different atom's id.
         for key, value in alt_combos:
             chem.setdefault(key, value)
-    bonds = atom_arrays["bonds"]
+    bonds = atom_site_dict["bonds"]
     src = bonds[:, 0].astype(np.int64)
     dst = bonds[:, 1].astype(np.int64)
     m = len(bonds)
@@ -312,7 +312,7 @@ def derive_chain_features(
 
 
 def assemble_cifmol(
-    atom_arrays: dict[str, np.ndarray],
+    atom_site_dict: dict[str, np.ndarray],
     atom_to_res: np.ndarray,
     res_to_chain: np.ndarray,
     n_chain: int,
@@ -322,18 +322,26 @@ def assemble_cifmol(
     chain_features: dict[str, np.ndarray],
 ) -> "BioMolDict":
     """Assemble the derived features into a unified ``CIFMol`` payload."""
-    n_atoms = len(atom_arrays["coord"])
+    n_atoms = len(atom_site_dict["coord"])
     atoms = FeatureContainer(
         {
-            "id": NodeFeature(atom_arrays["atom_name"].astype("<U4")),
-            "element": NodeFeature(atom_arrays["element"].astype("<U2")),
+            "id": NodeFeature(atom_site_dict["atom_name"].astype("<U4")),
+            "element": NodeFeature(atom_site_dict["element"].astype("<U2")),
             "aromatic": NodeFeature(atom_features["aromatic"]),
             "stereo": NodeFeature(atom_features["stereo"]),
             "charge": NodeFeature(atom_features["charge"]),
             "model_xyz": NodeFeature(atom_features["model_xyz"]),
-            "xyz": NodeFeature(atom_arrays["coord"].astype(np.float64)),
-            "b_factor": NodeFeature(np.zeros(n_atoms, dtype=np.float64)),
-            "occupancy": NodeFeature(atom_arrays["occupancy"].astype(np.float64)),
+            "xyz": NodeFeature(atom_site_dict["coord"].astype(np.float64)),
+            # OpenFold's structure.npz carries no B-factor, so this path has always
+            # written zeros. A predicted-structure PDB puts pLDDT in that column and the
+            # reader passes it through, so honour it when present -- dropping it would
+            # discard the only per-atom confidence the source has.
+            "b_factor": NodeFeature(
+                atom_site_dict["b_factor"].astype(np.float64)
+                if "b_factor" in atom_site_dict
+                else np.zeros(n_atoms, dtype=np.float64),
+            ),
+            "occupancy": NodeFeature(atom_site_dict["occupancy"].astype(np.float64)),
             "bond_type": EdgeFeature(bonds["bond_type"], bonds["src"], bonds["dst"]),
             "bond_aromatic": EdgeFeature(bonds["bond_aromatic"], bonds["src"], bonds["dst"]),
             "bond_stereo": EdgeFeature(bonds["bond_stereo"], bonds["src"], bonds["dst"]),
@@ -360,22 +368,22 @@ def assemble_cifmol(
     ).to_dict()
 
 
-def _build_one_cifmol(atom_arrays: dict, ccd_db_path: Path) -> "BioMolDict":
+def _build_one_cifmol(atom_site_dict: dict, ccd_db_path: Path) -> "BioMolDict":
     """Run the full structure pipeline on one atom table -> CIFMol dict."""
     (atom_to_res, res_to_chain, n_chain, res_names, res_ids,
-     res_hetero, chain_ids, entity_ids, chain_mol_types) = build_hierarchy(atom_arrays)
-    ccd_cache = load_ccd_entries(atom_arrays, ccd_db_path)
-    atom_features = derive_atom_features(atom_arrays, ccd_cache)
-    bonds = derive_bond_edges(atom_arrays, ccd_cache)
+     res_hetero, chain_ids, entity_ids, chain_mol_types) = build_hierarchy(atom_site_dict)
+    ccd_cache = load_ccd_entries(atom_site_dict, ccd_db_path)
+    atom_features = derive_atom_features(atom_site_dict, ccd_cache)
+    bonds = derive_bond_edges(atom_site_dict, ccd_cache)
     residue_features = derive_residue_features(res_names, res_ids, res_hetero, ccd_cache)
     chain_features = derive_chain_features(chain_ids, entity_ids, chain_mol_types)
     return assemble_cifmol(
-        atom_arrays, atom_to_res, res_to_chain, n_chain,
+        atom_site_dict, atom_to_res, res_to_chain, n_chain,
         atom_features, bonds, residue_features, chain_features,
     )
 
 
-def build_disordered_template_mols(templates_atom_arrays: dict, ccd_db_path: Path) -> dict:
+def build_disordered_template_mols(templates_atom_site_dict: dict, ccd_db_path: Path) -> dict:
     """Per-query disordered templates -> ``{hit_id: template mol}`` (template_mols).
 
     Each disordered query folder holds one ``<id>_<chain>.npz`` atom table per
@@ -392,10 +400,10 @@ def build_disordered_template_mols(templates_atom_arrays: dict, ccd_db_path: Pat
     from structcooker.instructions.transforms.template import to_template_mol
 
     mols: dict = {}
-    for hit_id, atom_arrays in templates_atom_arrays.items():
+    for hit_id, atom_site_dict in templates_atom_site_dict.items():
         try:
             cifmol = CIFMol.from_dict(
-                cast("BioMolDict", _build_one_cifmol(atom_arrays, ccd_db_path)),
+                cast("BioMolDict", _build_one_cifmol(atom_site_dict, ccd_db_path)),
             )
             seq = "".join(str(c) for c in cifmol.residues.one_letter_code_can.value)
             mols[hit_id] = to_template_mol(cifmol, (seq, seq))

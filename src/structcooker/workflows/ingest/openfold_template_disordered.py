@@ -18,7 +18,7 @@ disordered_template_recipe.step(
     outputs=(("template_mols", dict),),
     instruction=build_disordered_template_mols,
     kwargs={
-        "templates_atom_arrays": ("templates_atom_arrays", dict),
+        "templates_atom_site_dict": ("templates_atom_site_dict", dict),
         "ccd_db_path": ("ccd_db_path", Path),
     },
 )
