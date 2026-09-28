@@ -1,0 +1,19 @@
+# teddymer_fasta — chain sequences from teddymer/cif -> merged fasta.
+# EXTRACT op (reads the LMDB, projects a fasta). Feeds seq_id_map + seq_cluster + attach.
+# No schema (produces a .fasta, not an LMDB).
+#
+# Sequences come from the built CIFMol, not from the source PDBs, so residue numbering is
+# preserved upstream of this projection. That matters here: a TED domain can be
+# sequence-discontinuous (two segments of the original chain), so "the domain's sequence"
+# is a choice the projection makes, not a property of the file.
+# Shard the projection; a single task over 510k entries is needlessly serial.
+n_jobs: 8
+db_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/teddymer/cif/cif_teddymer.lmdb}
+extract_recipe_path: ${p:src/structcooker/workflows/exports/fasta.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/teddymer.fasta}
+
+reader:
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta

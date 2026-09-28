@@ -1,0 +1,26 @@
+# teddymer cif_attached — attach sequence metadata onto the base teddymer CIFMol.
+# Schema B. Rebuild. Mirrors db/distillation/short_cif_attached.yaml.
+#
+# Unlike the distillation sets, the fasta is not a provided input: it is projected from
+# the base LMDB by db/metadata/teddymer_fasta, so this node depends on that extract.
+schema: B
+
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/teddymer/cif/cif_teddymer.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/teddymer/cif/cif_teddymer_attached.lmdb}
+
+recipe: ${p:src/structcooker/workflows/metadata/attach.py}
+metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.py}
+metadata_input:
+  raw_fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/teddymer.fasta}
+  seqid2seq_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_id_map.tsv}
+  # 30%, and teddymer's own clustering (docs/seq-id-and-cluster-scheme.md).
+  seqcluster_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_cluster30_TDM.tsv}
+  db_code: TDM
+
+split_entries: true
+
+reader:
+  adapter: structcooker.instructions.transforms.cifmol.convert_to_cifmol_dict
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

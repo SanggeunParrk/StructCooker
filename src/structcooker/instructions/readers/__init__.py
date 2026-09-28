@@ -12,6 +12,7 @@ from .openfold import (
     openfold_entry_key,
 )
 from .sequence import load_fasta, load_seq_id_map
+from .teddymer import get_teddymer_structure_data, teddymer_entry_key
 
 __all__ = [
     "convert_to_msa_container",
@@ -21,6 +22,7 @@ __all__ = [
     "get_openfold_msa_data",
     "get_openfold_structure_data",
     "get_openfold_template_data",
+    "get_teddymer_structure_data",
     "load_bytes",
     "load_cif",
     "load_fasta",
@@ -29,4 +31,5 @@ __all__ = [
     "openfold_chain_key",
     "openfold_entry_key",
     "read_lmdb",
+    "teddymer_entry_key",
 ]

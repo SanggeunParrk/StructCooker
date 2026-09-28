@@ -1,0 +1,20 @@
+# teddymer msa_d2k — teddymer MSA capped to depth 2000. Schema E. Rebuild from msa.
+# Same cap_msa_depth op and cap as db/msa/a3m_d2k.yaml, so it lines up with PDB's d2k.
+# (OpenDDE trained at 2,048; the repo's d2k convention is 2,000 and consistency within
+# the DB set is what matters here.)
+schema: E
+
+old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/teddymer/msa/msa_teddymer.lmdb}
+new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/teddymer/msa/msa_teddymer_d2k.lmdb}
+
+recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
+
+parameters:
+  max_depth: 2000
+
+reader:
+  adapter: structcooker.instructions.transforms.openfold.adapt_msa_for_cap
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

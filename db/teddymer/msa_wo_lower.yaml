@@ -1,0 +1,15 @@
+# teddymer msa_wo_lower — a3m with lowercase (insertion) columns stripped.
+# PARALLEL op (per a3m file). hmmbuild needs a fixed-width alignment, so this is the
+# input db/teddymer/hmmsearch consumes, not the raw a3m.
+#
+# Scoped to teddymer by directory: BioMol_clean's msa tree holds only teddymer's MSAs
+# (PDB's live under BioMol/materials/intermediate/msa), and the output goes to its own
+# _TDM tree so a later PDB hmmsearch cannot pick teddymer queries up by accident.
+split_recipe_path: ${p:src/structcooker/workflows/search/load_a3m_list.py}
+recipe_path: ${p:src/structcooker/workflows/filters/a3m_cleanup.py}
+inputs:
+  data_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/msa}
+  output_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/msa_wo_lower_TDM}
+  output_pattern: ".a3m"
+n_jobs: -1
+test_run: false

@@ -1,0 +1,23 @@
+# teddymer template Phase 0 — hmmbuild(query a3m -> HMM) + hmmsearch(HMM vs PDB L-chains).
+# PARALLEL op. Produces the per-query hmm .out files Phase 1/2 consumes.
+# Idempotent: an existing HMM / .out is skipped, so an interrupted run resumes.
+#
+# Queries are teddymer's TED domains, so a hit is a PDB chain that matches a DOMAIN, not a
+# whole protein -- Phase 1/2's min_coverage is what decides whether that is usable.
+# Lists only queries without a finished .out: nodes take list positions in turn, so a resume
+# over the full list left the remainder on the 2 nodes that had fallen behind (job 272645).
+split_recipe_path: ${p:src/structcooker/workflows/search/load_pending_a3m_list.py}
+recipe_path: ${p:src/structcooker/workflows/search/hmmsearch.py}
+
+inputs:
+  # Template database: PDB polypeptide(L) chains, the same target the PDB path searches.
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/pdb_polypeptide_L.fasta}
+  data_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/msa_wo_lower_TDM}
+  output_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/hmm_TDM}
+  hmm_output_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/hmm_output_TDM}
+  output_pattern: ".hmm"
+  done_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/hmm_output_TDM}
+  done_suffix: ".out"
+
+n_jobs: -1
+test_run: false

@@ -1,0 +1,37 @@
+# teddymer MSA search — MMseqs2 (CPU), batched per chunk.
+#
+# Replaces the HHblits path for teddymer. Measured on 716 teddymer domains that had gone
+# through the HHblits cascade (2026-09-23): ~7 min/sequence, which is ~21 days for
+# 999,853 -- past the 7-day job limit. The same measurement is why the target is
+# uniref30_2302 alone: uniref30 already cleared the depth threshold for 83.7% of them and
+# the resulting MSAs have a median depth of 9,925, far past the 2,048 cap training uses.
+# BFD only deepens alignments that get truncated anyway.
+#
+# Same target and tool as the AFDB complex set (MMseqs2, UniRef30 2302, no metagenomic
+# db), so teddymer's MSAs match AFDB-multimer's rather than PDB/OFD's HHblits lineage.
+# That difference is deliberate and worth remembering when reading model behaviour.
+#
+# Output is <seq_id>.a3m in the layout db/msa/a3m.yaml ingests, so nothing downstream
+# needs to know which search produced it.
+inputs:
+  db_uniref: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/seq_db/uniref30/2302/msadb/uniref30_2302}
+  mmseqs_bin: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/seq_db/tools/mmseqs/bin/mmseqs}
+  threads: 28
+  # 1,000 rather than 5,000 [changed 2026-09-24]. joblib splits chunks across nodes
+  # statically, so chunk granularity is what balances the tail: with 5,000 the first run
+  # had seven nodes finish their slice in ~3.5 h while one ground through expensive chunks
+  # for 16 more hours (one chunk's scratch reached 53 GB). Smaller chunks spread those
+  # queries out. Search parameters are deliberately unchanged, so alignments produced
+  # before and after this change stay comparable.
+  chunk_size: 1000
+  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map_TDM.tsv}
+  work_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/mmseqs_tmp}
+  output_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/msa/}
+split_recipe_path: ${p:src/structcooker/workflows/metadata/load_protein_sequence_chunks.py}
+recipe_path: ${p:src/structcooker/workflows/search/msa_search_mmseqs.py}
+# 4 chunks x 28 threads = 112 CPUs. Few, fat processes on purpose: --db-load-mode 2
+# mmaps the 226 GB uniref30_2302 index, which the processes share through the page cache,
+# leaving ~275 GB of a 503 GB node for their own working set. Seven concurrent searches
+# would have to fit in that; four each get a wider margin and more threads.
+n_jobs: 4
+test_run: false

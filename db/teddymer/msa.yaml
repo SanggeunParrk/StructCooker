@@ -1,0 +1,25 @@
+# teddymer msa — per-sequence MSA from .a3m files. Schema E. Build.
+# Mirror of db/msa/a3m.yaml; keys are seq_ids (the a3m file stem), the same key space
+# PDB's MSA DB uses, since seq_id is shared across DBs (docs/seq-id-and-cluster-scheme.md).
+#
+# Lineage differs from PDB/OFD: these came from MMseqs2 against uniref30_2302 alone
+# (db/teddymer/msa_search.yaml), not the HHblits uniref30+BFD cascade.
+# Measured on 200 sequences run both ways: median depth 6,456 vs 11,028, and 34.5% vs 11.0%
+# fall under the 2,000 cap. That is the accepted cost of the MMseqs2 path.
+#
+# The pattern picks up only <seq_id>.a3m. The tree also holds t000_msa0.a3m from a
+# cancelled HHblits run (947 sequences); those are a different lineage and must not mix,
+# which is why the pattern is anchored on the P-prefixed stem, not *.a3m.
+schema: E
+
+env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/teddymer/msa/msa_teddymer.lmdb}
+data_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/msa}
+file_pattern: "P/*/P*/P*.a3m"
+
+recipe: ${p:src/structcooker/workflows/ingest/a3m.py}
+
+reader:
+  loader: structcooker.instructions.readers.a3m.get_a3m_data
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

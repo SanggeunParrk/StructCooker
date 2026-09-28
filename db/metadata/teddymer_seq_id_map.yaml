@@ -1,0 +1,16 @@
+# teddymer seq_id_map — the teddymer rows of the shared seq_id_map. MATERIALIZE op.
+#
+# Not a second id space: every id here is the shared map's id for that sequence
+# (docs/seq-id-and-cluster-scheme.md). It exists as teddymer's work list -- the MSA search
+# (db/teddymer/msa_search.yaml) runs over the sequences listed here.
+# Fails if a teddymer sequence has no id, i.e. seq_id_map was not rebuilt after teddymer.
+recipe_path: ${p:src/structcooker/workflows/metadata/subset_seq_id_map.py}
+
+inputs:
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/teddymer.fasta}
+  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
+
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map_TDM.tsv}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_seq_id_map
