@@ -367,6 +367,12 @@ def _submit_workflow(
                + (f"  afterok={','.join(depends_on)}" if depends_on else ""))
     argv = [*WORKFLOW_CLI, _WORKFLOW_CMD[op], str(db_path)]
     mem_gb, cores = _WORKFLOW_RESOURCES[op]
+    # A materialize recipe that fans out itself (joblib) declares it as inputs.n_jobs;
+    # without this it ran n_jobs workers on the 8 default cores (template_candidates:
+    # 112 on 8, ~14x slower).
+    n_jobs = int((cfg.get("inputs") or {}).get("n_jobs") or 0)
+    if op == "materialize" and n_jobs > cores:
+        mem_gb, cores = _WORKFLOW_RESOURCES["parallel"] if n_jobs >= 112 else (mem_gb, n_jobs)
     execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
     handle = execu.run_once(name=Path(name).name, argv=argv,
                             mem_gb=mem_gb, cores=cores, depends_on=depends_on)

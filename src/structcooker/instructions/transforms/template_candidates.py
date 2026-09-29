@@ -369,6 +369,17 @@ def _select_seqid(
     return seq_id, kept
 
 
+def _select_chunk(
+    seq_ids: list[str],
+    hmm_dir: str | Path,
+    reduced_dir: str | Path,
+    pdb_dates: dict[str, dt.date],
+    date_cutoff: dt.date,
+    max_candidates: int,
+) -> list[tuple[str, list[str]]]:
+    return [_select_seqid(s, hmm_dir, reduced_dir, pdb_dates, date_cutoff, max_candidates) for s in seq_ids]
+
+
 def precompute_seqid_candidates(
     seq_ids_path: str | Path,
     pdb_dates: str | Path,
@@ -401,13 +412,19 @@ def precompute_seqid_candidates(
     with Path(seq_ids_path).open(encoding="utf-8") as f:
         seq_ids = sorted({line.split("\t", 1)[0].strip() for line in f if line.strip()})
     dates = _load_pdb_dates(pdb_dates)
-    results = cast(
-        "list[tuple[str, list[str]]]",
+    # One task per chunk, not per seq_id: every task pickles ``dates`` (~250k entries),
+    # and at one task per seq_id that dispatch serialised the whole run at ~200 seq_ids
+    # per minute whatever the core count.
+    chunk = max(1, -(-len(seq_ids) // (n_jobs * 8)))
+    chunks = [seq_ids[i:i + chunk] for i in range(0, len(seq_ids), chunk)]
+    per_chunk = cast(
+        "list[list[tuple[str, list[str]]]]",
         Parallel(n_jobs=n_jobs, verbose=10)(
-            delayed(_select_seqid)(sid, hmm_dir, out_reduced_hmm_dir, dates, cutoff, max_candidates)
-            for sid in seq_ids
+            delayed(_select_chunk)(c, hmm_dir, out_reduced_hmm_dir, dates, cutoff, max_candidates)
+            for c in chunks
         ),
     )
+    results = [r for rs in per_chunk for r in rs]
     Path(out_seqid_templates).parent.mkdir(parents=True, exist_ok=True)
     n_with = 0
     with Path(out_seqid_templates).open("w", encoding="utf-8") as out, \
