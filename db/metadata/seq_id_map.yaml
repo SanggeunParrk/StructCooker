@@ -20,10 +20,10 @@ inputs:
   # DB's fasta, and each DB clusters its own.
   fasta_paths:
     - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
-    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/fasta/short.fasta}
-    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/fasta/long.fasta}
-    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/fasta/rna.fasta}
-    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/fasta/disordered.fasta}
+    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/fasta/short.fasta}
+    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/fasta/long.fasta}
+    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/fasta/rna.fasta}
+    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/fasta/disordered.fasta}
     - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/teddymer.fasta}
     # AFM LAST. seq_id is a counter assigned in order of first appearance, so a DB appended
     # at the end leaves every earlier DB's ids exactly as they were -- teddymer's included,

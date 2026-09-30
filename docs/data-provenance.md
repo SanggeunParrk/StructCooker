@@ -40,13 +40,13 @@ snapshot used in the recovery.
 |---|---|---|
 | `download mmcif` | RCSB divided mmCIF mirror | `BioMol/materials/raw/cif/` (or `MMCIF_ROOT`) |
 | `download ccd` | wwPDB CCD, split into component CIF files | `materials/raw/ccd/components/` |
-| `download openfold` | OpenFold distillation release | `BioMol/materials/openfold_distillation/` (or `DISTILLATION_ROOT`) |
+| `download openfold` | OpenFold distillation release | `BioMol/materials/raw/openfold_distillation/` (or `DISTILLATION_ROOT`) |
 | `download sabdab` | OPIG SabDab summary | `external/SabDab/` |
 
 Download, build, and the optional historical `fix-cif` command now use the same
 `MMCIF_ROOT`, defaulting to `DATA_ROOT/BioMol/materials/raw/cif/`. OpenFold configs and
 download instructions use `DISTILLATION_ROOT`, defaulting to
-`DATA_ROOT/BioMol/materials/openfold_distillation/`. CCD remains under
+`DATA_ROOT/BioMol/materials/raw/openfold_distillation/`. CCD remains under
 `DATA_ROOT/materials/raw/ccd/components/`. With no `OUTPUT_ROOT` override, output
 paths follow `DATA_ROOT/BioMol_clean`.
 

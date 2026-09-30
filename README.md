@@ -28,7 +28,7 @@ export DATA_ROOT=/path/to/inputs
 export OUTPUT_ROOT=/path/to/reproduced/db # defaults to $DATA_ROOT/BioMol_clean
 # Optional input relocation, shared by download helpers and build configs:
 export MMCIF_ROOT=$DATA_ROOT/BioMol/materials/raw/cif
-export DISTILLATION_ROOT=$DATA_ROOT/BioMol/materials/openfold_distillation
+export DISTILLATION_ROOT=$DATA_ROOT/BioMol/materials/raw/openfold_distillation
 
 # 4. provide sequence references, SignalP results, and reproduction references.
 #    See docs/data-provenance.md; downloads alone do not supply all inputs.

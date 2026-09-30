@@ -13,4 +13,4 @@ def mmcif_root(data_root: str | Path) -> Path:
 
 def distillation_root(data_root: str | Path) -> Path:
     """Return the supplied OpenFold input directory, matching db/distillation."""
-    return Path(os.environ.get("DISTILLATION_ROOT", str(Path(data_root) / "BioMol/materials/openfold_distillation")))
+    return Path(os.environ.get("DISTILLATION_ROOT", str(Path(data_root) / "BioMol/materials/raw/openfold_distillation")))

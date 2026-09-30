@@ -4,7 +4,7 @@
 schema: E
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_short/msa/msa_short.lmdb}
-data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/monomer_distillation_sets_v2/short_monomers/preprocessed}
+data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/monomer_distillation_sets_v2/short_monomers/preprocessed}
 file_pattern: "alignment.npz"
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_msa.py}

@@ -29,6 +29,7 @@ recipe.step(
         "reduced_hmm_dir": ("reduced_hmm_dir", Path),
         "cif_chain_db_path": ("cif_chain_db_path", Path),
         "max_keep": ("max_keep", int),
+        "allow_missing_chains": ("allow_missing_chains", bool),
     },
 )
 

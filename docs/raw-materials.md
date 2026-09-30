@@ -20,6 +20,15 @@ raw/
 ├── fasta/                  cif.fasta · cif_pdb.fasta · pdb_polypeptide_L.fasta
 ├── rna_alignment_arrays/   <pdb>_<chain>.npz                     RNA alignment arrays
 │
+├── openfold_distillation/                                        OFD — OpenFold3-preview2 distillation
+│   ├── monomer_distillation_sets_v2/   README.md (OpenFold's) · shared/reference_mols/
+│   │   ├── short_monomers/   preprocessed/ 430,420 · raw/ 430,420 · cache.json · cache_lmdb/
+│   │   └── long_monomers/    preprocessed/ 16,099,486 · raw/ 8,083 · cache.json · cache_lmdb/
+│   ├── rna_distillation_set/            rna_monomer_preprocessed_cache/ 126,780 (no raw)
+│   ├── disordered_set/                  structure_files/ · templates/ 28,569 · alignment_arrays/
+│   ├── fasta/                           short · long · rna · disordered · all .fasta
+│   └── lmdb/ · bin/s5cmd · _archive/    older in-place LMDBs, the S3 client, old logs
+│
 ├── teddymer/                                                     TDM — 510,454 TED domain pairs
 │   ├── README.md
 │   ├── SOURCE.tsv          dimer_index · source path · bytes
@@ -49,6 +58,16 @@ Each file is two TED domains of ONE AFDB v4 model — a domain-domain interface,
 proteins. A domain can be sequence-discontinuous, so a chain's residue numbers may jump; the
 jump is a domain boundary, not missing structure. B-factor holds pLDDT.
 Staged by `scripts/maintenance/stage_teddymer.py` (copy).
+
+### openfold_distillation
+
+The OpenFold3-preview2 distillation release, downloaded from its S3 bucket (`bin/s5cmd`).
+Builds read `preprocessed/` (`structure.npz` / `alignment.npz` / `template.npz` per entry).
+`raw/` is the pipeline's own output (`best_structure_relaxed.pdb`, with pLDDT in the B column
+and hydrogens; MSAs; `hmm_output.sto`), complete for short but only 8,083 entries for long.
+`structure.npz` carries no B-factor or pLDDT, so the OFD cif DBs hold b_factor = 0.
+Moved here 2026-09-30 from `/data/shared/cssb_data/openfold_distillation`, which is now a
+link to this directory so older paths keep resolving.
 
 ### afdb_multimer
 

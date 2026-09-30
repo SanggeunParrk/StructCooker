@@ -4,7 +4,7 @@
 schema: A
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_rna/cif/cif_rna.lmdb}
-data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/rna_distillation_set/rna_monomer_preprocessed_cache}
+data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/rna_distillation_set/rna_monomer_preprocessed_cache}
 file_pattern: "structure.npz"
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_structure.py}

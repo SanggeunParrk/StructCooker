@@ -104,7 +104,7 @@ DAG · ⏸️ deferred (code exists, build later) · ⬜ not started.
 
 ### #2 — Distillation (per set: long, short, rna, disordered)
 
-Inputs live under `/data/shared/cssb_data/openfold_distillation`
+Inputs live under `/data/shared/cssb_data/BioMol/materials/raw/openfold_distillation`
 (`monomer_distillation_sets_v2/{long,short}_monomers`, `rna_distillation_set`,
 `disordered_set`). All ⏸️ deferred today.
 

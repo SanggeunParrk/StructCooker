@@ -23,6 +23,9 @@ inputs:
   reduced_hmm_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/hmm_reduced_TDM}
   cif_chain_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/lmdb/chain/cif/cif_chain.lmdb}
   max_keep: 20
+  # A candidate whose PDB chain is absent from cif_chain (seen: 5WK1, 5A9Q, both in
+  # cif_pdb) is skipped and the next hit takes its place, rather than failing the record.
+  allow_missing_chains: true
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes

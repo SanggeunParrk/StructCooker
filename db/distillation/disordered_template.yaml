@@ -5,7 +5,7 @@
 schema: D
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/template/template_disordered.lmdb}
-file_list: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/openfold_distillation}/disordered_set/protein_tmpl_filelist.txt}
+file_list: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/disordered_set/protein_tmpl_filelist.txt}
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_template_disordered.py}
 key_builder: structcooker.instructions.readers.openfold.openfold_chain_key

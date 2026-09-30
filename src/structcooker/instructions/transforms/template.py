@@ -916,6 +916,7 @@ def build_seqid_template_mols(
     min_query_coverage: float = 0.1,
     max_query_coverage: float = 0.95,
     max_keep: int | None = None,
+    allow_missing_chains: bool = False,
 ) -> tuple[dict, list[str]]:
     """Phase 3: build the union template mols for one seq_id.
 
@@ -933,6 +934,10 @@ def build_seqid_template_mols(
     the coverage filter, and only those are built: the final top-k after filtering, for
     a set with no per-chain step after this one (teddymer). Unset (PDB), every hit is
     built and Phase 4 selects per chain.
+
+    ``allow_missing_chains``: a hit whose chain is absent from the per-chain LMDB is
+    skipped and the next hit takes its place, instead of failing the record (PDB keeps
+    the strict default). With it, hits are built in rounds until ``max_keep`` load.
     Returns ``(template_mols, template_ids)``.
     """
     seq_id = Path(file_path).name
@@ -945,6 +950,7 @@ def build_seqid_template_mols(
     # Parse hits directly (extract_sequences derives the seq_id from the file
     # stem, which is '<seq_id>.reduced' here).
     hits = _parse_hmm_hits(hmm_path.read_text(encoding="utf-8"))
+    mols: dict = {}
     align_results: dict[str, tuple[str, str]] = {}
     for tid in hits:
         tseq = template_seqs.get(tid)
@@ -955,8 +961,19 @@ def build_seqid_template_mols(
         )
         if min_query_coverage <= coverage <= max_query_coverage:
             align_results[tid] = (aligned_query, aligned_template)
-            if max_keep is not None and len(align_results) >= max_keep:
-                break
+            if max_keep is not None and len(mols) + len(align_results) >= max_keep:
+                if not allow_missing_chains:
+                    break
+                loaded, _ = load_templates_with_report(Path(cif_chain_db_path), align_results)
+                mols.update(loaded)
+                align_results = {}
+                if len(mols) >= max_keep:
+                    break
+    if allow_missing_chains:
+        if align_results:
+            loaded, _ = load_templates_with_report(Path(cif_chain_db_path), align_results)
+            mols.update(loaded)
+        return mols, list(mols.keys())
     mols = load_templates_from_chain_db(Path(cif_chain_db_path), align_results)
     return mols, list(mols.keys())
 
