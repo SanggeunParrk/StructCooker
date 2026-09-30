@@ -54,3 +54,20 @@ def test_chain_model_cache_is_shared_only_within_one_record(monkeypatch):
     extract_selected_chain(fresh, "A", "1_2_.", model_cache=cache_state)
     assert len(built) == 3
     assert adapt_cif_record_to_chain_inputs(fresh)["A"]["model_cache"] is not cache_state
+
+
+def test_atom_cap_drops_oversized_assemblies_not_the_entry(monkeypatch):
+    import structcooker.instructions.transforms.template as tmpl
+
+    def assembly(n_atoms, occupancy):
+        return {"atoms": {"nodes": {"id": {"value": np.array(["CA"] * n_atoms)},
+                                    "occupancy": {"value": np.full(n_atoms, occupancy)}}},
+                "chains": {"nodes": {"chain_id": {"value": np.array(["A_1"])}}}}
+
+    monkeypatch.setattr(tmpl, "CIFCHAIN_MAX_ATOMS", 10)
+    # A capsid-like entry: the biological assembly is over the cap, the asymmetric unit is not.
+    # The chain must come from the small assembly even though the big one scores higher.
+    record = {"assembly_dict": {"1_1_.": assembly(50, 1.0), "2_1_.": assembly(5, 1.0)}}
+    assert tmpl.adapt_cif_record_to_chain_inputs(record)["A"]["cif_key"] == "2_1_."
+    # Only when every assembly is over the cap is the entry skipped.
+    assert tmpl.adapt_cif_record_to_chain_inputs({"assembly_dict": {"1_1_.": assembly(50, 1.0)}}) == {}

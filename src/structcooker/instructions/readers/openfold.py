@@ -12,12 +12,16 @@ name (every entry shares the same ``alignment.npz`` / ``structure.npz`` /
 be wired into a build config via ``key_builder``.
 """
 
+import io
 import json
 import os
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+import zstandard
+
+from structcooker.instructions.readers.teddymer import pdb_atom_table
 
 
 def openfold_entry_key(path: Path) -> str:
@@ -246,3 +250,24 @@ def get_openfold_template_data(template_path: Path) -> dict[str, Any]:
             _, first_idx = np.unique(keys, axis=0, return_index=True)
             query_len = len(first_idx)
     return {"template_hits": template_hits, "query_len": query_len}
+
+
+def get_openfold_pdb_structure_data(pdb_path: Path) -> dict[str, Any]:
+    """Load ``raw/<id>/best_structure_relaxed.pdb[.zst]`` -- the model OpenFold released.
+
+    Used instead of ``preprocessed/structure.npz`` where the release ships the raw model
+    (short and long monomers): the PDB carries pLDDT in its B-factor column, which the
+    preprocessed npz drops. Same heavy atoms and coordinates as the npz, plus the
+    C-terminal OXT the npz leaves out; hydrogens (the model is Amber-relaxed) are dropped.
+    No connectivity -- the recipe derives bonds from the CCD, as for teddymer.
+    """
+    path = Path(pdb_path)
+    if path.suffix == ".zst":
+        with path.open("rb") as raw, zstandard.ZstdDecompressor().stream_reader(raw) as reader:
+            lines = io.TextIOWrapper(reader, encoding="utf-8")
+            table = pdb_atom_table(lines, name=path.name, drop_hydrogens=True)
+    else:
+        with path.open() as handle:
+            table = pdb_atom_table(handle, name=path.name, drop_hydrogens=True)
+    return {"raw_atom_site_dict": table, "entry_id": path.parent.name}
+

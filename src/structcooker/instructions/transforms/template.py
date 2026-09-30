@@ -646,10 +646,24 @@ def cif_record_to_chains(record: dict) -> dict[str, object]:
     return chains
 
 
-# Skip records whose largest assembly exceeds this atom count: a handful of giant
-# assemblies would otherwise blow one worker's memory. Matches the legacy
-# build_cif_chain guard (env DC_CIFCHAIN_MAX_ATOMS); 0 disables it.
+# Leave out assemblies above this atom count: a handful of giant assemblies (virus
+# capsids, ribosome polysomes) would otherwise blow one worker's memory. Only the
+# oversized ASSEMBLIES are left out, not the entry: a capsid's asymmetric unit is small,
+# and its chains are what a template needs. (Until 2026-09-30 one oversized assembly
+# dropped the whole entry -- 261 PDB entries, 47,588 chains, were missing from cif_chain.)
+# env DC_CIFCHAIN_MAX_ATOMS; 0 disables it.
 CIFCHAIN_MAX_ATOMS = int(os.environ.get("DC_CIFCHAIN_MAX_ATOMS", "1500000") or "0")
+
+
+def _atom_count(assembly: dict) -> int:
+    return len(assembly["atoms"]["nodes"]["id"]["value"])
+
+
+def _within_atom_cap(assemblies: dict) -> dict:
+    """Return the assemblies small enough to decode (all of them when the cap is off)."""
+    if not CIFCHAIN_MAX_ATOMS:
+        return assemblies
+    return {k: a for k, a in assemblies.items() if _atom_count(a) <= CIFCHAIN_MAX_ATOMS}
 
 
 def adapt_cif_record_to_chains(data: dict) -> dict:
@@ -658,20 +672,15 @@ def adapt_cif_record_to_chains(data: dict) -> dict:
     Splits a decoded cif record (``{assembly_dict, metadata_dict}``) into per-chain
     sub-entries ``{base_chain: {"biomoldict": biomoldict}}`` -- best-occupancy
     assembly per chain, via :func:`cif_record_to_chains` -- so the rebuild writes one
-    record per chain keyed ``<pdbid>_<base_chain>`` (Schema C). Records whose largest
-    assembly exceeds ``CIFCHAIN_MAX_ATOMS`` are skipped (empty mapping), and an
-    unparsable record is skipped too -- the same records the legacy builder dropped.
+    record per chain keyed ``<pdbid>_<base_chain>`` (Schema C). Assemblies above
+    ``CIFCHAIN_MAX_ATOMS`` are left out (the entry only if all of them are), and an
+    unparsable record is skipped too.
     """
-    assemblies = data.get("assembly_dict") or {}
-    if CIFCHAIN_MAX_ATOMS:
-        max_atoms = max(
-            (len(a["atoms"]["nodes"]["id"]["value"]) for a in assemblies.values()),
-            default=0,
-        )
-        if max_atoms > CIFCHAIN_MAX_ATOMS:
-            return {}
+    assemblies = _within_atom_cap(data.get("assembly_dict") or {})
+    if not assemblies:
+        return {}
     try:
-        chains = cif_record_to_chains(data)
+        chains = cif_record_to_chains({**data, "assembly_dict": assemblies})
     except Exception:  # noqa: BLE001 - skip unparsable records (reported as failed)
         return {}
     return {base: {"biomoldict": bd} for base, bd in chains.items()}
@@ -1125,12 +1134,13 @@ def length_check(
 
 
 def adapt_cif_record_to_chain_inputs(data: dict) -> dict:
-    """Prepare chain inputs once, with deterministic maximum-occupancy candidates."""
-    assemblies = data.get("assembly_dict") or {}
-    if CIFCHAIN_MAX_ATOMS and any(
-        len(item["atoms"]["nodes"]["id"]["value"]) > CIFCHAIN_MAX_ATOMS
-        for item in assemblies.values()
-    ):
+    """Prepare chain inputs once, with deterministic maximum-occupancy candidates.
+
+    Candidates come only from assemblies within ``CIFCHAIN_MAX_ATOMS``; an entry is
+    skipped only when every assembly is above it.
+    """
+    assemblies = _within_atom_cap(data.get("assembly_dict") or {})
+    if not assemblies:
         return {}
     best: dict[str, tuple[float, str]] = {}
     # Numeric assembly/model order makes ties independent of dict/hash order.
@@ -1166,7 +1176,9 @@ def extract_selected_chain(
 
         pdbid = str(record["metadata_dict"]["id"][0]).lower()
         selected = read_lmdb_raw(reference_selection_path, f"{pdbid}_{chain_id}")
-        if selected is not None:
+        # A reference choice pointing at an assembly above the atom cap is not honoured:
+        # decoding it is what the cap exists to prevent.
+        if selected is not None and selected.decode() in _within_atom_cap(record["assembly_dict"]):
             cif_key = selected.decode()
     cache_state = model_cache if model_cache is not None else {}
     if cache_state.get("record") is not record or cache_state.get("cif_key") != cif_key:

@@ -13,6 +13,7 @@ CCD (which the recipe already loads) before the openfold steps run. That is why 
 returns ``raw_atom_site_dict`` rather than ``atom_site_dict``.
 """
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +35,19 @@ def teddymer_entry_key(pdb_path: Path) -> str:
 def get_teddymer_structure_data(pdb_path: Path) -> dict[str, Any]:
     """Parse one dimer PDB into per-atom columns (no connectivity)."""
     path = Path(pdb_path)
+    with path.open() as handle:
+        table = pdb_atom_table(handle, name=path.name)
+    return {"raw_atom_site_dict": table, "entry_id": teddymer_entry_key(path)}
+
+
+def pdb_atom_table(lines: Iterable[str], *, name: str, drop_hydrogens: bool = False) -> dict[str, np.ndarray]:
+    """Parse the ATOM/HETATM records of a predicted-model PDB into the flat atom table.
+
+    Shared by the readers of PDB-format predicted models (teddymer, AFDB homodimers, the
+    OpenFold distillation relaxed models). ``drop_hydrogens`` is for relaxed models, which
+    carry explicit hydrogens the heavy-atom CIFMol does not keep. The B-factor column
+    (pLDDT for these models) is kept as ``b_factor``.
+    """
     atom_name: list[str] = []
     res_name: list[str] = []
     chain_id: list[str] = []
@@ -45,37 +59,38 @@ def get_teddymer_structure_data(pdb_path: Path) -> dict[str, Any]:
     b_factor: list[float] = []
     coord: list[tuple[float, float, float]] = []
 
-    with path.open() as handle:
-        for line in handle:
-            record = line[:6]
-            if record not in ("ATOM  ", "HETATM"):
-                continue
-            # Keep one conformer. Teddymer has no altlocs, but a stray one must not
-            # silently double the residue's atoms.
-            alt = line[16]
-            if alt not in (" ", "A"):
-                continue
-            atom_name.append(line[12:16].strip())
-            res_name.append(line[17:20].strip())
-            chain_id.append(line[21])
-            res_id.append(int(line[22:26]))
-            ins_code.append(line[26].strip())
-            coord.append((float(line[30:38]), float(line[38:46]), float(line[46:54])))
-            occupancy.append(float(line[54:60] or 1.0))
-            b_factor.append(float(line[60:66] or 0.0))
-            # Predicted models always write the element column; fall back to the
-            # atom name's leading letter rather than emitting an empty element.
-            el = line[76:78].strip()
-            element.append(el if el else atom_name[-1][:1])
-            hetero.append(record == "HETATM")
+    for line in lines:
+        record = line[:6]
+        if record not in ("ATOM  ", "HETATM"):
+            continue
+        # Keep one conformer. Predicted models have no altlocs, but a stray one must not
+        # silently double the residue's atoms.
+        alt = line[16]
+        if alt not in (" ", "A"):
+            continue
+        # Predicted models always write the element column; fall back to the atom
+        # name's leading letter rather than emitting an empty element.
+        el = line[76:78].strip() or line[12:16].strip()[:1]
+        if drop_hydrogens and el in ("H", "D"):
+            continue
+        atom_name.append(line[12:16].strip())
+        res_name.append(line[17:20].strip())
+        chain_id.append(line[21])
+        res_id.append(int(line[22:26]))
+        ins_code.append(line[26].strip())
+        coord.append((float(line[30:38]), float(line[38:46]), float(line[46:54])))
+        occupancy.append(float(line[54:60] or 1.0))
+        b_factor.append(float(line[60:66] or 0.0))
+        element.append(el)
+        hetero.append(record == "HETATM")
 
     if not atom_name:
-        msg = f"{path.name} has no ATOM records"
+        msg = f"{name} has no ATOM records"
         raise ValueError(msg)
 
     chain_arr = np.array(chain_id, dtype="<U4")
     res_name_arr = np.array(res_name, dtype="<U5")
-    table = {
+    return {
         "atom_name": np.array(atom_name, dtype="<U4"),
         "res_name": res_name_arr,
         "chain_id": chain_arr,
@@ -89,7 +104,6 @@ def get_teddymer_structure_data(pdb_path: Path) -> dict[str, Any]:
         "molecule_type_id": np.full(len(atom_name), _MOL_TYPE_PROTEIN, dtype=np.int64),
         "entity_id": _entity_ids(chain_arr, res_name_arr, np.array(res_id, dtype=np.int64)),
     }
-    return {"raw_atom_site_dict": table, "entry_id": teddymer_entry_key(path)}
 
 
 def _entity_ids(
