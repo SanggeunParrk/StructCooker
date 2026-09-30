@@ -19,8 +19,14 @@ ccd_db_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}
 ccd_reference_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/reference_ccd.lmdb}
 
 reader:
-  loader: structcooker.instructions.readers.cif.get_cif_data
+  loader: structcooker.instructions.readers.afdb.get_afm_cif_data
   key_transform: structcooker.instructions.readers.cif.dot_transform
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes
+
+# raw holds the release files as downloaded. Six whose _entity_poly summary contradicts
+# _entity_poly_seq were repaired (4 crossed entity ids, 2 UniProt 'Z'); the repaired copies
+# live in materials/intermediate and this map substitutes them at read time.
+runtime_environment:
+  AFM_CIF_OVERRIDES: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/afdb_multimer/heterodimer/repaired/overrides.json}

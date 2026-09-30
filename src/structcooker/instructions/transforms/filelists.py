@@ -62,3 +62,22 @@ def tsv_key_list(tsv_path: str | Path, out_path: str | Path) -> str:
                 out.write(key + "\n")
                 n += 1
     return f"key list: {n} keys -> {out_path}"
+
+
+def glob_file_list(sources: list[dict], out_path: str | Path) -> str:
+    """Write every file matching ``{dir, glob[, recursive]}`` across ``sources``, sorted, one per line.
+
+    For a DB whose inputs live in more than one tree -- a release's files under
+    ``materials/raw`` plus files we generated under ``materials/intermediate`` -- so the
+    raw tree never has to hold anything that was not downloaded.
+    """
+    paths: list[str] = []
+    for source in sources:
+        root, pattern = Path(source["dir"]), str(source.get("glob", "*"))
+        found = root.rglob(pattern) if source.get("recursive") else root.glob(pattern)
+        paths.extend(str(p) for p in found if p.is_file())
+    paths.sort()
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(out_path).write_text("".join(f"{p}\n" for p in paths), encoding="utf-8")
+    return f"file list: {len(paths)} files from {len(sources)} sources -> {out_path}"
+

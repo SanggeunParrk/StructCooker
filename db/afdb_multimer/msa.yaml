@@ -6,15 +6,16 @@
 # entities sharing a sequence collapse, keeping the first.
 # Lineage: MMseqs2-GPU / colabfold_search vs uniref30_2302 with a per-taxon filter -- the
 # release's, not the HHblits cascade PDB/OFD MSAs came from. One entity the release does not
-# ship was generated (msa_generated/README.md).
+# ship was generated (materials/intermediate/afdb_multimer/msa_generated/README.md).
 # 1.72M MSAs merge to ~1.09 TB (8 x 136 GB shards) -- past the 300 GB default map, which
 # failed the first merge (job 273638, MDB_MAP_FULL). A map is a ceiling, not an allocation.
 map_size: 1_500_000_000_000
 schema: E
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/msa/msa_afm.lmdb}
-data_dir: ${p:${oc.env:AFDB_MULTIMER_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/afdb_multimer}/msa}
-file_pattern: "*/AF-*-msa_v1.a3m.zst"
+# Inputs: the release's MSAs (materials/raw) plus the one we generated (materials/intermediate),
+# listed by metadata/afm_msa_filelist so the raw tree holds only what was downloaded.
+file_list: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/afm_msa_filelist.txt}
 
 recipe: ${p:src/structcooker/workflows/ingest/a3m.py}
 key_builder: structcooker.instructions.readers.afdb.afm_msa_seqid_key

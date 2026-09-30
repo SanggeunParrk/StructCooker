@@ -5,7 +5,7 @@
 schema: E
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/msa/msa_disordered.lmdb}
-file_list: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/disordered_set/msa_filelist.txt}
+file_list: ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/disordered_set/msa_filelist.txt}
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_msa.py}
 key_builder: structcooker.instructions.readers.openfold.openfold_disordered_seqid_key
@@ -22,5 +22,5 @@ writer:
 
 # Explicit, fingerprinted reader inputs.
 runtime_environment:
-  DISORDERED_SEQID_MAP: ${oc.env:DISORDERED_SEQID_MAP,${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/disordered_set/msa_stem_seqid.tsv}
+  DISORDERED_SEQID_MAP: ${oc.env:DISORDERED_SEQID_MAP,${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/disordered_set/msa_stem_seqid.tsv}
 duplicate_input_policy: first_path

@@ -12,6 +12,7 @@ recipe_path: ${p:src/structcooker/workflows/filters/a3m_cleanup.py}
 
 inputs:
   msa_dir: ${p:${oc.env:AFDB_MULTIMER_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/afdb_multimer}/msa}
+  generated_msa_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/afdb_multimer/msa_generated}
   afm_msa_seqid_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/afm_msa_seqid.tsv}
   output_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/msa_wo_lower_AFM}
 

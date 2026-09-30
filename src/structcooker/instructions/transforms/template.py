@@ -348,20 +348,25 @@ def list_afm_msa_wo_lower(
     msa_dir: Path,
     afm_msa_seqid_path: Path,
     output_dir: Path,
+    generated_msa_dir: Path | None = None,
 ) -> list[dict[str, Path]]:
     """List AFDB entity MSAs to strip, one per seq_id, as <output_dir>/<shard>/<seq_id>.a3m.
 
     Entities sharing a sequence share a seq_id; the one kept is the smallest path, the same
     choice the msa LMDB makes (duplicate_input_policy first_path), so templates are searched
     from the MSA the DB holds. Outputs that already exist are left out, so a resume only
-    lists what is left.
+    lists what is left. An entity the release does not ship is read from
+    ``generated_msa_dir`` (materials/intermediate), where the MSA we generated for it lives.
     """
+    generated = {p.name: p for p in Path(generated_msa_dir).glob("AF-*-msa_v1.a3m.zst")} \
+        if generated_msa_dir is not None else {}
     chosen: dict[str, Path] = {}
     with Path(afm_msa_seqid_path).open() as handle:
         for line in handle:
             entity, _, seq_id = line.rstrip("\n").partition("\t")
             number = entity.split("-")[1]
-            path = Path(msa_dir) / number[-3:] / f"{entity}-msa_v1.a3m.zst"
+            name = f"{entity}-msa_v1.a3m.zst"
+            path = generated.get(name) or Path(msa_dir) / number[-3:] / name
             if seq_id not in chosen or str(path) < str(chosen[seq_id]):
                 chosen[seq_id] = path
     done = _finished_files(Path(output_dir), ".a3m")

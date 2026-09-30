@@ -4,8 +4,9 @@ Two trees hold build inputs, and they are not the same kind of thing:
 
 | tree | holds | written by |
 |---|---|---|
-| `DATA_ROOT/BioMol/materials/raw/` | downloaded or provided **source** data | staging scripts, once |
-| `OUTPUT_ROOT/materials/` (`BioMol_clean`) | **derived** inputs: per-DB FASTAs, search intermediates | the pipeline |
+| `DATA_ROOT/BioMol/materials/raw/` | **exactly what was downloaded** (a selected subset may be copied; contents are never edited) | staging scripts, once |
+| `DATA_ROOT/BioMol/materials/intermediate/` | anything **we made** from those sources: extracted fastas, repaired files, maps, generated MSAs, legacy search outputs | staging / maintenance scripts |
+| `OUTPUT_ROOT/materials/intermediate/` (`BioMol_clean`) | what the pipeline makes: per-DB FASTAs, MSAs, search outputs | the pipeline |
 
 Every staged source directory carries a `README.md` (what it is, why this subset) and a
 `SOURCE.tsv` (where each file came from, its size). The layout below is the contract the
@@ -17,17 +18,14 @@ Every staged source directory carries a `README.md` (what it is, why this subset
 raw/
 ├── ccd/                    components_20260803.cif.gz            wwPDB CCD snapshot
 ├── cif/                    <mid 2 chars>/<pdb id>.cif.gz         RCSB mmCIF mirror, 1,101 shards
-├── fasta/                  cif.fasta · cif_pdb.fasta · pdb_polypeptide_L.fasta
-├── rna_alignment_arrays/   <pdb>_<chain>.npz                     RNA alignment arrays
+├── rna_alignment_arrays/   <pdb>_<chain>.npz · DOWNLOAD.log      from s3://openfold3-data/pdb_training_set
 │
 ├── openfold_distillation/                                        OFD — OpenFold3-preview2 distillation
 │   ├── monomer_distillation_sets_v2/   README.md (OpenFold's) · shared/reference_mols/
 │   │   ├── short_monomers/   preprocessed/ 430,420 · raw/ 430,420 · cache.json · cache_lmdb/
 │   │   └── long_monomers/    preprocessed/ 16,099,486 · raw/ 8,083 · cache.json · cache_lmdb/
 │   ├── rna_distillation_set/            rna_monomer_preprocessed_cache/ 126,780 (no raw)
-│   ├── disordered_set/                  structure_files/ · templates/ 28,569 · alignment_arrays/
-│   ├── fasta/                           short · long · rna · disordered · all .fasta
-│   └── lmdb/ · bin/s5cmd · _archive/    older in-place LMDBs, the S3 client, old logs
+│   └── disordered_set/                  structure_files/ · templates/ 28,569 · alignment_arrays/
 │
 ├── teddymer/                                                     TDM — 510,454 TED domain pairs
 │   ├── README.md
@@ -41,13 +39,11 @@ raw/
     │   └── pdb/<last 3>/AF-<n>-model_v1.pdb
     ├── heterodimer/        80,248  passes_quality_threshold heterodimers
     │   ├── SOURCE.tsv
-    │   ├── chain_msa.tsv   chain -> monomer MSA entity, content-verified
     │   └── cif/<last 3>/AF-<n>-model_v1.cif.gz
-    ├── msa/                1,799,837  monomer MSAs the structures use
+    └── msa/                1,799,836  monomer MSAs the release ships, for the entities used
     │   ├── README.md
     │   ├── SOURCE.tsv      entity · release batch dir / tar member / generated · used by
     │   └── <last 3>/AF-<n>-msa_v1.a3m.zst
-    └── msa_generated/      MSAs the release does not ship (1), with README
 ```
 
 ### teddymer
@@ -86,23 +82,40 @@ link to this directory so older paths keep resolving.
 
 Staged by `scripts/maintenance/stage_afdb_multimer.py` and `stage_afdb_multimer_msa.py`.
 
-## `BioMol_clean/materials/` — derived inputs
+## `BioMol/materials/intermediate/` — made from the sources
 
 ```
-materials/
-├── raw/fasta/              one consolidated FASTA per DB (docs/seq-id-and-cluster-scheme.md)
+intermediate/
+├── fasta/                    cif.fasta · cif_pdb.fasta · pdb_polypeptide_L.fasta (extracted from PDB)
+├── afdb_multimer/            README.md
+│   ├── heterodimer/chain_msa.tsv                 chain -> monomer MSA entity
+│   ├── heterodimer/repaired/                     6 repaired mmCIFs + ENTITY_POLY_REPAIRS.tsv + overrides.json
+│   └── msa_generated/                            the 1 MSA the release does not ship
+├── openfold_distillation/    README.md · fasta/ · disordered_set/ lists · lmdb/ · bin/ · _archive/
+└── msa/ · msa_wo_lower/ · hmm/ · hmm_output/ · hhm/ · hhr/ · signalp/ · …   PDB's legacy search outputs
+```
+
+A build that needs both a release file and our change reads the raw file and applies the
+change from here -- AFM heterodimers through `AFM_CIF_OVERRIDES`, the AFM MSA DB through
+`metadata/afm_msa_filelist` (raw MSAs + the generated one) -- so raw is never edited.
+
+## `BioMol_clean/materials/` — what the pipeline makes
+
+```
+materials/intermediate/
+├── fasta/                  one consolidated FASTA per DB (docs/seq-id-and-cluster-scheme.md)
 │   ├── cif_pdb.fasta           PDB        extracted from pdb/cif
 │   ├── ofd.fasta               OFD        short + long + rna + disordered, concatenated
-│   ├── ofd_long_recovered.fasta OFD       the 14 long entries recovered 2026-09-14 (docs/long-cif-recovery-2026-09-14.md)
+│   ├── ofd_long_recovered.fasta OFD       the 14 long entries recovered 2026-09-14
 │   ├── teddymer.fasta          TDM        extracted from teddymer/cif
-│   ├── afm.fasta               AFM        afm_homodimer.fasta + afm_heterodimer.fasta (each extracted from its cif DB)
+│   ├── afm.fasta               AFM        afm_homodimer.fasta + afm_heterodimer.fasta
 │   ├── pdb_polypeptide_L.fasta            template search target (PDB polypeptide(L) chains)
 │   └── train.fasta · valid_1.fasta        validation-stage-2 dedup inputs
-└── intermediate/
-    ├── msa/P/<last 3>/<seq_id>/<seq_id>.a3m      teddymer MSAs (MMseqs2, uniref30_2302)
-    ├── msa_wo_lower_TDM/                         lowercase-stripped a3m, hmmbuild input
-    ├── hmm_TDM/ · hmm_output_TDM/                template search (Phase 0)
-    └── mmseqs_tmp/                               per-chunk scratch, emptied on success
+├── msa/P/<last 3>/<seq_id>/<seq_id>.a3m   teddymer MSAs (MMseqs2, uniref30_2302)
+├── msa_wo_lower_{TDM,AFM}/                lowercase-stripped a3m, hmmbuild input
+├── hmm_{TDM,AFM}/ · hmm_output_{TDM,AFM}/ template search (Phase 0)
+├── hmm_reduced_TDM/                       Phase 1/2 reduced hits
+└── mmseqs_tmp/                            per-chunk scratch, emptied on success
 ```
 
 `intermediate/msa` holds only teddymer's MSAs; PDB's live in
@@ -121,3 +134,8 @@ apart.
   your own is moved (same filesystem, so a rename). Hard links are fine within `/data`.
 - **Record the selection.** When a tree holds a subset, its README says which and why —
   the source release will not say it for you.
+- **raw is what was downloaded, nothing else.** Extracting a tar, sharding, renaming and
+  choosing a subset are fine; editing contents, adding files we generated, or keeping our
+  maps and lists there is not -- those go to `intermediate/`, and a build that needs a change
+  applies it at read time (overrides, file lists). Exception still to fix: `structcooker
+  fix-cif` writes the manual PDB fixes into the mmCIF tree itself.

@@ -1,0 +1,13 @@
+# afm_msa_filelist — every MSA file the AFM msa LMDB is built from. MATERIALIZE op.
+# The release's MSAs stay in materials/raw as downloaded; the one entity the release does not
+# ship has an MSA we generated, which lives in materials/intermediate. This list joins both.
+recipe_path: ${p:src/structcooker/workflows/exports/glob_file_list.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/afm_msa_filelist.txt}
+inputs:
+  sources:
+    - dir: ${p:${oc.env:AFDB_MULTIMER_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/afdb_multimer}/msa}
+      glob: "AF-*-msa_v1.a3m.zst"
+      recursive: true               # <last 3>/ shards
+    - dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/afdb_multimer/msa_generated}
+      glob: "AF-*-msa_v1.a3m.zst"
+  out_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/afm_msa_filelist.txt}

@@ -20,7 +20,8 @@ metadata/afm_seq_cluster30: [metadata/afm_fasta, metadata/seq_id_map]
 afdb_multimer/homodimer_cif_attached: [afdb_multimer/homodimer_cif, metadata/afm_fasta, metadata/seq_id_map, metadata/afm_seq_cluster30]
 afdb_multimer/heterodimer_cif_attached: [afdb_multimer/heterodimer_cif, metadata/afm_fasta, metadata/seq_id_map, metadata/afm_seq_cluster30]
 metadata/afm_msa_seqid: [metadata/afm_fasta, metadata/seq_id_map]   # + heterodimer/chain_msa.tsv (staged)
-afdb_multimer/msa: [metadata/afm_msa_seqid]
+metadata/afm_msa_filelist: []                           # raw release MSAs + intermediate generated one
+afdb_multimer/msa: [metadata/afm_msa_seqid, metadata/afm_msa_filelist]
 afdb_multimer/msa_d2k: [afdb_multimer/msa]
 metadata/pdb_polypeptide_L: []                          # template target; built in MANIFEST.yaml
 afdb_multimer/msa_wo_lower: [metadata/afm_msa_seqid]    # entity MSA -> stripped <seq_id>.a3m

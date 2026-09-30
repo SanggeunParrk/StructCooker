@@ -13,7 +13,7 @@ metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.
 # The planner distributes input sizes across shards. Ray controls concurrency
 # using measured memory pressure within the requested CPU allocation.
 metadata_input:
-  raw_fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
+  raw_fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/cif_pdb.fasta}
   seqid2seq_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
   seqcluster_path: ${p:${oc.env:SEQ_CLUSTER30_PATH,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_cluster30_PDB.tsv}}
   db_code: PDB

@@ -15,6 +15,7 @@ recipe.step(
         "msa_dir": ("msa_dir", Path),
         "afm_msa_seqid_path": ("afm_msa_seqid_path", Path),
         "output_dir": ("output_dir", Path),
+        "generated_msa_dir": ("generated_msa_dir", Path),
     },
 )
 

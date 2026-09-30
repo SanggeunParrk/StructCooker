@@ -9,9 +9,12 @@ id space shared across DBs (docs/seq-id-and-cluster-scheme.md).
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from pathlib import Path
+
+from structcooker.instructions.readers.cif import get_cif_data
 
 _ENTITY = re.compile(r"^(AF-\d+)-(?:model|msa)_v1\.")
 
@@ -57,3 +60,21 @@ def afm_msa_seqid_key(path: Path) -> str:
     first (``duplicate_input_policy: first_path``), as the distillation MSA DBs do.
     """
     return _afm_msa_seqid_map()[afdb_entity_key(path)]
+
+
+_CIF_OVERRIDES: dict[str, str] | None = None
+
+
+def get_afm_cif_data(cif_path: Path) -> dict:
+    """Read an AFDB heterodimer mmCIF, substituting a repaired copy where one is recorded.
+
+    ``materials/raw`` holds the release files exactly as downloaded. The few we had to
+    repair live under ``materials/intermediate``; ``AFM_CIF_OVERRIDES`` names a JSON map
+    ``{raw path: repaired path}`` (unset or empty: read everything as is).
+    """
+    global _CIF_OVERRIDES  # noqa: PLW0603 - process-local cache
+    manifest = os.environ.get("AFM_CIF_OVERRIDES", "")
+    if _CIF_OVERRIDES is None:
+        _CIF_OVERRIDES = json.loads(Path(manifest).read_text()) if manifest else {}
+    return get_cif_data(Path(_CIF_OVERRIDES.get(str(cif_path), str(cif_path))))
+

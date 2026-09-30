@@ -19,20 +19,20 @@ inputs:
   # per-DB, not identity (docs/seq-id-and-cluster-scheme.md). So the map ingests every
   # DB's fasta, and each DB clusters its own.
   fasta_paths:
-    - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/cif_pdb.fasta}
-    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/fasta/short.fasta}
-    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/fasta/long.fasta}
-    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/fasta/rna.fasta}
-    - ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/fasta/disordered.fasta}
-    - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/teddymer.fasta}
+    - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/cif_pdb.fasta}
+    - ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/short.fasta}
+    - ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/long.fasta}
+    - ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/rna.fasta}
+    - ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/disordered.fasta}
+    - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/teddymer.fasta}
     # AFM LAST. seq_id is a counter assigned in order of first appearance, so a DB appended
     # at the end leaves every earlier DB's ids exactly as they were -- teddymer's included,
     # whose attached DB is already built. Insert a DB anywhere else and later ids shift.
-    - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/afm.fasta}
+    - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/afm.fasta}
     # 14 OFD long entries recovered 2026-09-14 (docs/long-cif-recovery-2026-09-14.md) are in no
     # supplied fasta. Their recovery-version ids (P...16902258-71) were issued in a separate
     # namespace and are now held by other sequences here, so they get fresh ids at the end.
-    - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/raw/fasta/ofd_long_recovered.fasta}
+    - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd_long_recovered.fasta}
   # Provided reference seed: present -> match production's id space; absent -> fresh ids.
   old_seq_id_map_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/reference/seq_id_map.tsv}
 
