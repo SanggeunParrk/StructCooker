@@ -55,6 +55,7 @@ _DOWNLOADABLE: tuple[tuple[str, str], ...] = (
     ("openfold_distillation", "openfold"),   # huge -- code-only, warns before fetching
     ("external/SabDab", "sabdab"),
     ("materials/raw/ccd", "ccd"),
+    ("materials/intermediate/ccd", "ccd"),        # split from the raw download by `download ccd`
 )
 
 

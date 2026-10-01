@@ -16,7 +16,7 @@ Every staged source directory carries a `README.md` (what it is, why this subset
 
 ```
 raw/
-├── ccd/                    components_20260803.cif.gz            wwPDB CCD snapshot
+├── ccd/                    components_<date>.cif.gz              wwPDB CCD snapshot (as downloaded)
 ├── cif/                    <mid 2 chars>/<pdb id>.cif.gz         RCSB mmCIF mirror, 1,101 shards
 ├── rna_alignment_arrays/   <pdb>_<chain>.npz · DOWNLOAD.log      from s3://openfold3-data/pdb_training_set
 │
@@ -87,6 +87,7 @@ Staged by `scripts/maintenance/stage_afdb_multimer.py` and `stage_afdb_multimer_
 ```
 intermediate/
 ├── fasta/                    cif.fasta · cif_pdb.fasta · pdb_polypeptide_L.fasta (extracted from PDB)
+├── ccd/components/           <COMP_ID>.cif × 50,782, split from raw/ccd/components_20260803.cif.gz
 ├── afdb_multimer/            README.md
 │   ├── heterodimer/chain_msa.tsv                 chain -> monomer MSA entity
 │   ├── heterodimer/repaired/                     6 repaired mmCIFs + ENTITY_POLY_REPAIRS.tsv + overrides.json

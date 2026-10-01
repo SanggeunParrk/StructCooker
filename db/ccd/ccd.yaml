@@ -1,16 +1,13 @@
 # ccd — CCD chem-component reference DB from component .cif files. Schema G. Build.
 # Reference/support DB (input to cif ingest via ccd_db_path), not a training DB.
 #
-# Raw input (external): the wwPDB Chemical Component Dictionary. Obtain it with
-#   curl -o components.cif.gz \
-#     https://files.wwpdb.org/pub/pdb/data/monomers/components.cif.gz
-# then split the single concatenated file into one <COMP_ID>.cif per `data_` block
-# under data_dir/ (the build is file-per-component: one .cif -> one LMDB key).
-schema: G
-
+# Input: the wwPDB Chemical Component Dictionary, `structcooker download ccd`, which keeps the
+# download as raw (BioMol/materials/raw/ccd/components_<date>.cif.gz; this build:
+# components_20260803.cif.gz) and splits it into one <COMP_ID>.cif per `data_` block under
+# BioMol/materials/intermediate/ccd/components -- the split files are ours, not the download.
 env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/ccd/biomol_CCD.lmdb}
-# Raw CCD lives under DATA_ROOT (a downloaded input), NOT in the OUTPUT_ROOT tree.
-data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/materials/raw/ccd/components}
+# Split components: an input made from the raw download, under DATA_ROOT (not OUTPUT_ROOT).
+data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/ccd/components}
 file_pattern: "*.cif*"
 
 recipe: ${p:src/structcooker/workflows/ingest/ccd.py}

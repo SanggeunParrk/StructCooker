@@ -10,6 +10,7 @@ Destinations follow the same ``DATA_ROOT`` / ``OUTPUT_ROOT`` layout the db confi
 """
 from __future__ import annotations
 
+import datetime
 import gzip
 import subprocess
 from pathlib import Path
@@ -35,14 +36,14 @@ def _curl(url: str, dest: Path) -> None:
 def download_ccd(data_root: Path) -> Path:
     """Fetch the wwPDB CCD and split it into one ``<COMP_ID>.cif`` per component.
 
-    The CCD is a raw input, so it lands under ``DATA_ROOT`` (never the OUTPUT_ROOT tree).
-    The ccd build is file-per-component (``DATA_ROOT/materials/raw/ccd/components``), so
-    the single concatenated ``components.cif`` is split on its ``data_`` blocks. Returns
-    the components directory.
+    The download is raw input: ``DATA_ROOT/BioMol/materials/raw/ccd/components_<YYYYMMDD>.cif.gz``,
+    dated because the CCD is a moving snapshot. The ccd build is file-per-component, and the
+    split files are ours, so they go to ``DATA_ROOT/BioMol/materials/intermediate/ccd/components``
+    (docs/raw-materials.md: raw holds only what was downloaded). Returns the components directory.
     """
-    raw_dir = data_root / "materials" / "raw" / "ccd"
-    gz_path = raw_dir / "components.cif.gz"
-    components = raw_dir / "components"
+    raw_dir = data_root / "BioMol" / "materials" / "raw" / "ccd"
+    gz_path = raw_dir / f"components_{datetime.datetime.now(datetime.UTC):%Y%m%d}.cif.gz"
+    components = data_root / "BioMol" / "materials" / "intermediate" / "ccd" / "components"
     _curl(CCD_URL, gz_path)
     components.mkdir(parents=True, exist_ok=True)
 

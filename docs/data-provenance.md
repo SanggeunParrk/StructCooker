@@ -39,7 +39,7 @@ snapshot used in the recovery.
 | Helper | Source | Destination under `DATA_ROOT` |
 |---|---|---|
 | `download mmcif` | RCSB divided mmCIF mirror | `BioMol/materials/raw/cif/` (or `MMCIF_ROOT`) |
-| `download ccd` | wwPDB CCD, split into component CIF files | `materials/raw/ccd/components/` |
+| `download ccd` | wwPDB CCD (raw), split into component CIF files | `BioMol/materials/raw/ccd/components_<date>.cif.gz` → `BioMol/materials/intermediate/ccd/components/` |
 | `download openfold` | OpenFold distillation release | `BioMol/materials/raw/openfold_distillation/` (or `DISTILLATION_ROOT`) |
 | `download sabdab` | OPIG SabDab summary | `external/SabDab/` |
 
@@ -47,7 +47,7 @@ Download, build, and the optional historical `fix-cif` command now use the same
 `MMCIF_ROOT`, defaulting to `DATA_ROOT/BioMol/materials/raw/cif/`. OpenFold configs and
 download instructions use `DISTILLATION_ROOT`, defaulting to
 `DATA_ROOT/BioMol/materials/raw/openfold_distillation/`. CCD remains under
-`DATA_ROOT/materials/raw/ccd/components/`. With no `OUTPUT_ROOT` override, output
+`DATA_ROOT/BioMol/materials/intermediate/ccd/components/` (split from the raw download). With no `OUTPUT_ROOT` override, output
 paths follow `DATA_ROOT/BioMol_clean`.
 
 Downloads write inputs, so use a directory you own; the shared production snapshot
