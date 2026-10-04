@@ -1,0 +1,16 @@
+# ofd_short_fasta — chain sequences from distillation/short_cif -> fasta. EXTRACT op.
+# Feeds short_cif_attached, which looks metadata up by the fasta header's <entry>_<chain>.
+#
+# short_cif is built from the released PDB (chain 'A'), not from structure.npz (where OpenFold
+# relabelled it '1'), so the npz-era short.fasta no longer matches its keys. Sequences are the
+# same, so seq_ids and the OFD clustering are unaffected.
+n_jobs: 8
+db_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_short/cif/cif_short.lmdb}
+extract_recipe_path: ${p:src/structcooker/workflows/exports/fasta.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd_short.fasta}
+
+reader:
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta

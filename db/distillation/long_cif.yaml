@@ -6,23 +6,27 @@
 #
 # The production distillation DBs already
 # exist; full builds must be audited against the supplied inputs.
+#
+# Source: raw/<id>/best_structure_relaxed.pdb[.zst] (downloaded 2026-09-30..10-04), not
+# preprocessed/structure.npz: pLDDT in the B column -> b_factor, C-terminal OXT kept, chain 'A'
+# as in the PDB, bonds from the CCD. Same as short_cif. The npz overrides used by the
+# 2026-09-14 recovery (damaged npz) do not apply to this source.
 schema: A
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_long/cif/cif_long.lmdb}
-data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/monomer_distillation_sets_v2/long_monomers/preprocessed}
-file_pattern: "structure.npz"
+data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/monomer_distillation_sets_v2/long_monomers/raw}
+file_pattern: "best_structure_relaxed.pdb*"   # plain or .zst, as released
+duplicate_input_policy: first_path
 
-recipe: ${p:src/structcooker/workflows/ingest/openfold_structure.py}
+recipe: ${p:src/structcooker/workflows/ingest/teddymer_structure.py}   # PDB model -> CCD bonds -> CIFMol
 key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
 
 inputs:
   ccd_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/ccd/biomol_CCD.lmdb}
 
 reader:
-  loader: structcooker.instructions.readers.openfold.get_openfold_structure_data
+  loader: structcooker.instructions.readers.openfold.get_openfold_pdb_structure_data
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes
 
-runtime_environment:
-  OPENFOLD_STRUCTURE_OVERRIDES: ${oc.env:OPENFOLD_STRUCTURE_OVERRIDES,""}

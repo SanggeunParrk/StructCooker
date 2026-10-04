@@ -1,23 +1,27 @@
 # distillation_short cif — CIFMol from OpenFold3 short distillation. Schema A. Build.
 # Mirror of long_cif.yaml for the short set. Base structure build (feeds short_cif_attached).
 # Full builds are authorized; audit source coverage and resulting structures.
+#
+# Source: raw/<id>/best_structure_relaxed.pdb[.zst], the model OpenFold released, not
+# preprocessed/structure.npz: the PDB carries pLDDT in its B column (-> b_factor), which the
+# npz drops (2026-10-01). Same heavy atoms and coordinates as the npz build, plus the
+# C-terminal OXT; chain id 'A' as in the PDB (the npz relabelled it '1'); bonds from the CCD.
 schema: A
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_short/cif/cif_short.lmdb}
-data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/monomer_distillation_sets_v2/short_monomers/preprocessed}
-file_pattern: "structure.npz"
+data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/monomer_distillation_sets_v2/short_monomers/raw}
+file_pattern: "best_structure_relaxed.pdb*"   # plain or .zst, as released
+duplicate_input_policy: first_path
 
-recipe: ${p:src/structcooker/workflows/ingest/openfold_structure.py}
+recipe: ${p:src/structcooker/workflows/ingest/teddymer_structure.py}   # PDB model -> CCD bonds -> CIFMol
 key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
 
 inputs:
   ccd_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/ccd/biomol_CCD.lmdb}
 
 reader:
-  loader: structcooker.instructions.readers.openfold.get_openfold_structure_data
+  loader: structcooker.instructions.readers.openfold.get_openfold_pdb_structure_data
 
 writer:
   serializer: structcooker.instructions.transforms.codecs.to_bytes
 
-runtime_environment:
-  OPENFOLD_STRUCTURE_OVERRIDES: ${oc.env:OPENFOLD_STRUCTURE_OVERRIDES,""}

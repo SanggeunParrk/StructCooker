@@ -11,7 +11,8 @@ new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data
 recipe: ${p:src/structcooker/workflows/metadata/attach.py}
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.py}
 metadata_input:
-  raw_fasta_path: ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/short.fasta}
+  # From the PDB-built short_cif (chain 'A'): metadata/ofd_short_fasta.
+  raw_fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd_short.fasta}
   seqid2seq_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_id_map.tsv}
   seqcluster_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_cluster30_OFD.tsv}
   db_code: OFD

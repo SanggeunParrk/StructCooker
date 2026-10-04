@@ -11,8 +11,8 @@ new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data
 recipe: ${p:src/structcooker/workflows/metadata/attach.py}
 metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.py}
 metadata_input:
-  # Supplied long.fasta + the 14 entries recovered 2026-09-14 (appended; byte-identical prefix).
-  raw_fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/long_recovered_20260914/long.fasta}
+  # From the PDB-built long_cif (chain 'A'): metadata/ofd_long_fasta.
+  raw_fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd_long.fasta}
   seqid2seq_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_id_map.tsv}
   seqcluster_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/seq_cluster30_OFD.tsv}
   db_code: OFD
