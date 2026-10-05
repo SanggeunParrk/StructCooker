@@ -1,0 +1,23 @@
+# AFDB multimer template Phase 1/2 — per seq_id candidates from the Phase 0 hmmsearch output.
+# MATERIALIZE op; the outputs are side effects, output_data_path is the done marker.
+#
+# Differs from PDB's template/template_candidates on purpose: a PDB query chain has a
+# release date and takes only templates >= 60 days older; an AFM query is a
+# predicted model with no date, so the one rule is the global template cutoff
+# (template release <= 2021-09-30, AF3's), candidates are per seq_id, and no per-chain
+# Phase 4 follows. Up to 60 date-passing hits are kept in e-value order (no E-value
+# threshold, as for PDB) so Phase 3 can backfill the ones its coverage filter drops.
+recipe_path: ${p:src/structcooker/workflows/ingest/template_candidates_seqid.py}
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/template_AFM/seqid_to_templates.tsv}
+inputs:
+  seq_ids_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map_AFM.tsv}
+  pdb_dates: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/cif_metadata.tsv}
+  hmm_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/hmm_output_AFM}
+  cif_fasta: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/cif_pdb.fasta}
+  out_seqid_templates: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/template_AFM/seqid_to_templates.tsv}
+  out_seqid_list: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/template_AFM/seqid_template_filelist.txt}
+  out_chain_seq: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/template_AFM/chain_to_seq.tsv}
+  out_reduced_hmm_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/hmm_reduced_AFM}
+  date_cutoff: "2021-09-30"
+  max_candidates: 60
+  n_jobs: 112

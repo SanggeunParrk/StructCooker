@@ -28,7 +28,10 @@ pipelines/
 /DESIGN_datacooker_planning.md
 /PLAN_rewrite.md
 /pdb_msa_depth_summary.tsv
-scripts/
+# scripts/ is ops scratch, except staging/: the steps that lay downloads out as raw/ and
+# derive the intermediates a build needs (docs/e2e-build.md).
+scripts/*
+!scripts/staging/
 configs/
 /scratchpad/
 /dev/

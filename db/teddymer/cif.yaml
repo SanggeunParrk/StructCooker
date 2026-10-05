@@ -14,7 +14,7 @@ test_run: false
 
 env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/teddymer/cif/cif_teddymer.lmdb}
 # The staged selection, not the full 10,089,503-file dump: scanning the raw dirs would
-# enumerate 20x the inputs we build. scripts/maintenance/stage_teddymer.py copies the
+# enumerate 20x the inputs we build. scripts/staging/stage_teddymer.py copies the
 # selected entries here and writes SOURCE.tsv recording where each came from.
 data_dir: ${p:${oc.env:TEDDYMER_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/teddymer}}
 file_pattern: "*.pdb"

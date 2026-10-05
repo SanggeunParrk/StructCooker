@@ -1,32 +1,38 @@
-# Complete distillation release; CCD, chain DB and seq_id_map are supplied inputs.
+# OpenFold distillation sets. CCD, the per-chain PDB DB and seq_id_map are built in other
+# manifests; they are listed here as roots so this set can be built on its own.
+ccd/ccd: []
+chain/cif_chain: []
+metadata/seq_id_map: [metadata/ofd_long_recovered_fasta]   # the 14 recovered long sequences join it last
 # The OFD clustering (cOFD_<rep seq_id>) is built here, over ofd.fasta
-# (scripts/maintenance/build_ofd_fasta.py), and every *_cif_attached reads it.
-metadata/ofd_seq_cluster30: []
-distillation/long_cif: []
+# (metadata/ofd_fasta), and every *_cif_attached reads it.
+metadata/ofd_fasta: []                                   # concat of the four reference OFD fastas
+metadata/ofd_seq_cluster30: [metadata/ofd_fasta, metadata/seq_id_map]
+distillation/long_cif: [ccd/ccd]
 metadata/ofd_long_fasta: [distillation/long_cif]
-distillation/long_cif_attached: [distillation/long_cif, metadata/ofd_long_fasta, metadata/ofd_seq_cluster30]
+distillation/long_cif_attached: [distillation/long_cif, metadata/ofd_long_fasta, metadata/ofd_seq_cluster30, metadata/seq_id_map]
 distillation/long_msa: []
 distillation/long_msa_d2k: [distillation/long_msa]
 distillation/long_msa_d512: [distillation/long_msa]
-distillation/long_template_topn: []
-distillation/short_cif: []
+distillation/long_template_topn: [chain/cif_chain]
+distillation/short_cif: [ccd/ccd]
 metadata/ofd_short_fasta: [distillation/short_cif]
-distillation/short_cif_attached: [distillation/short_cif, metadata/ofd_short_fasta, metadata/ofd_seq_cluster30]
+distillation/short_cif_attached: [distillation/short_cif, metadata/ofd_short_fasta, metadata/ofd_seq_cluster30, metadata/seq_id_map]
 distillation/short_msa: []
 distillation/short_msa_d2k: [distillation/short_msa]
 distillation/short_msa_d512: [distillation/short_msa]
 distillation/short_msa_d5k: [distillation/short_msa]
-distillation/short_template_topn: []
-distillation/rna_cif: []
-distillation/rna_cif_attached: [distillation/rna_cif, metadata/ofd_seq_cluster30]
+distillation/short_template_topn: [chain/cif_chain]
+distillation/rna_cif: [ccd/ccd]
+distillation/rna_cif_attached: [distillation/rna_cif, metadata/ofd_seq_cluster30, metadata/seq_id_map]
 distillation/rna_msa: []
 distillation/rna_msa_d2k: [distillation/rna_msa]
 distillation/rna_msa_d512: [distillation/rna_msa]
 distillation/rna_msa_d5k: [distillation/rna_msa]
-distillation/disordered_cif: []
-distillation/disordered_cif_attached: [distillation/disordered_cif, metadata/ofd_seq_cluster30]
+distillation/disordered_cif: [ccd/ccd]
+distillation/disordered_cif_attached: [distillation/disordered_cif, metadata/ofd_seq_cluster30, metadata/seq_id_map]
 distillation/disordered_contacts: [distillation/disordered_cif_attached]
 distillation/disordered_msa: []
 distillation/disordered_msa_d2k: [distillation/disordered_msa]
 distillation/disordered_msa_d512: [distillation/disordered_msa]
-distillation/disordered_template: []
+distillation/disordered_template: [ccd/ccd]
+metadata/ofd_long_recovered_fasta: [metadata/ofd_long_fasta]   # 14 recovered long sequences; seq_id_map reads it last

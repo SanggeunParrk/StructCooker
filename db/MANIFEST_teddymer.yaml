@@ -8,7 +8,7 @@
 #
 #   Applying the source paper's filter (interface length > 10, interface-pAE < 10,
 #   interface-pLDDT > 70) to those 587,687 leaves 510,454 -- reproduced exactly here
-#   [measured 2026-09-22]. That selection is what scripts/maintenance/stage_teddymer.py
+#   [measured 2026-09-22]. That selection is what scripts/staging/stage_teddymer.py
 #   stages and what teddymer/cif builds.
 #
 # WHY NOT MORE. Two larger sets were measured and rejected:

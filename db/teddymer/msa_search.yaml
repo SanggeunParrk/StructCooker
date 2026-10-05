@@ -34,4 +34,6 @@ recipe_path: ${p:src/structcooker/workflows/search/msa_search_mmseqs.py}
 # leaving ~275 GB of a 503 GB node for their own working set. Seven concurrent searches
 # would have to fit in that; four each get a wider margin and more threads.
 n_jobs: 4
+# Fan out as an 8-task array, one whole node each (structcooker build; items split by key).
+node_count: 8
 test_run: false

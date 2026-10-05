@@ -374,6 +374,15 @@ def _submit_workflow(
     if op == "materialize" and n_jobs > cores:
         mem_gb, cores = _WORKFLOW_RESOURCES["parallel"] if n_jobs >= 112 else (mem_gb, n_jobs)
     execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
+    nodes = int(cfg.get("node_count") or 1)
+    if op == "parallel" and nodes > 1:
+        # A parallel op that declares node_count fans out as an N-task array, one whole node
+        # each; parallel-run splits the items by key, so tasks may start at different times.
+        handle = execu.run_tier_shards(
+            name=Path(name).name, n_shards=nodes, mem_gb=mem_gb, cores=cores, depends_on=depends_on,
+            argv_for_shard=lambda i: [*argv, "--node-rank", str(i), "--node-count", str(nodes)],
+        )
+        return handle.job_id
     handle = execu.run_once(name=Path(name).name, argv=argv,
                             mem_gb=mem_gb, cores=cores, depends_on=depends_on)
     return handle.job_id

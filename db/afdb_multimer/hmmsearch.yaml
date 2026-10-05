@@ -21,4 +21,6 @@ inputs:
   done_suffix: ".out"
 
 n_jobs: -1
+# Fan out as an 8-task array, one whole node each (structcooker build; items split by key).
+node_count: 8
 test_run: false

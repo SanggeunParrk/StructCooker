@@ -53,7 +53,7 @@ source paper's interface filter (length > 10, pAE < 10, pLDDT > 70) out of 10,08
 Each file is two TED domains of ONE AFDB v4 model — a domain-domain interface, not two
 proteins. A domain can be sequence-discontinuous, so a chain's residue numbers may jump; the
 jump is a domain boundary, not missing structure. B-factor holds pLDDT.
-Staged by `scripts/maintenance/stage_teddymer.py` (copy).
+Staged by `scripts/staging/stage_teddymer.py` (copy).
 
 ### openfold_distillation
 
@@ -80,7 +80,7 @@ link to this directory so older paths keep resolving.
   (2,229). Directory-stored files are hard links into the download mirror; tar-only ones were
   extracted. The release's `pandemic_prep/` batch is not staged — nothing here needs it.
 
-Staged by `scripts/maintenance/stage_afdb_multimer.py` and `stage_afdb_multimer_msa.py`.
+Staged by `scripts/staging/stage_afdb_multimer.py` and `stage_afdb_multimer_msa.py`.
 
 ## `BioMol/materials/intermediate/` — made from the sources
 

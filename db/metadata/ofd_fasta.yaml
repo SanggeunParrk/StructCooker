@@ -1,0 +1,18 @@
+# ofd_fasta — the one OFD FASTA that per-DB clustering runs over. MATERIALIZE op.
+# OFD arrives as four FASTAs (short / long / rna / disordered, the reference set under
+# BioMol/materials/intermediate/openfold_distillation/fasta -- the same files seq_id_map reads);
+# clustering is per DB (docs/seq-id-and-cluster-scheme.md), so they are concatenated here.
+# Replaces scripts/maintenance/build_ofd_fasta.py.
+recipe_path: ${p:src/structcooker/workflows/metadata/concat_fasta.py}
+
+inputs:
+  fasta_paths:
+    - ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/short.fasta}
+    - ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/long.fasta}
+    - ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/rna.fasta}
+    - ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/disordered.fasta}
+
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd.fasta}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta_dict

@@ -374,6 +374,23 @@ def load_fasta(fasta_path: Path) -> dict[str, str]:
     return fasta_dict
 
 
+def fasta_new_sequences(fasta_path: Path, base_fasta_path: Path) -> dict[str, str]:
+    """Return the records of ``fasta_path`` whose sequence does not occur in ``base_fasta_path``.
+
+    Used where a rebuilt DB holds entries its reference fasta lacks (the OFD long entries
+    recovered 2026-09-14), so those sequences can join seq_id_map after every other DB and
+    no earlier id moves. Order is ``fasta_path``'s.
+    """
+    base = set(load_fasta(Path(base_fasta_path)).values())
+    out: dict[str, str] = {}
+    seen: set[str] = set()
+    for header, seq in load_fasta(Path(fasta_path)).items():
+        if seq not in base and seq not in seen:
+            seen.add(seq)
+            out[header] = seq
+    return out
+
+
 def subset_seq_id_map(fasta_path: Path, seq_id_map_path: Path) -> dict[str, str]:
     """Return the rows of the shared seq_id_map whose sequence occurs in one DB's fasta.
 

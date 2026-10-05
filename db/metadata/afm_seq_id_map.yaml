@@ -1,0 +1,16 @@
+# afm seq_id_map — the AFDB multimer rows of the shared seq_id_map. MATERIALIZE op.
+#
+# Not a second id space: every id here is the shared map's id for that sequence
+# (docs/seq-id-and-cluster-scheme.md). It exists as AFM's work list -- template Phase 1/2
+# runs over the sequences listed here.
+# Fails if an AFM sequence has no id, i.e. seq_id_map was not rebuilt after AFM.
+recipe_path: ${p:src/structcooker/workflows/metadata/subset_seq_id_map.py}
+
+inputs:
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/afm.fasta}
+  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
+
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map_AFM.tsv}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_seq_id_map

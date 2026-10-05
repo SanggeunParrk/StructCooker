@@ -1,0 +1,18 @@
+# ofd_long_recovered_fasta — long entries whose sequence the reference long.fasta lacks.
+# MATERIALIZE op.
+#
+# The OFD reference fastas (BioMol/materials/intermediate/openfold_distillation/fasta) predate
+# the 2026-09-14 recovery of 14 long entries, so those 14 sequences are in no reference fasta.
+# They are the sequences of ofd_long.fasta (extracted from the rebuilt long_cif) not in the
+# reference long.fasta. seq_id_map reads this file LAST, so no earlier DB's ids move
+# (docs/long-cif-recovery-2026-09-14.md).
+recipe_path: ${p:src/structcooker/workflows/metadata/new_sequences.py}
+
+inputs:
+  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd_long.fasta}
+  base_fasta_path: ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/long.fasta}
+
+output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd_long_recovered.fasta}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta_dict
