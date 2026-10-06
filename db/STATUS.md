@@ -134,6 +134,9 @@ it for a snapshot requiring those substitutions, and `inspect` reports the state
 These historical substitutions are distinct from the CCD compatibility corrections
 verified in the September 10 recovery.
 Full write-up: [docs/manual-cif-fixes.md](../docs/manual-cif-fixes.md).
+**Not needed with the current parser (checked 2026-10-01):** all 53 records were compared with
+production `BioMol/lmdb/pdb/cif/cif_pdb.lmdb` -- the 48 that build are identical in every array,
+and the other 5 (2g10, 2icy, 2q44, 4xq2, 9gdy) are absent from production too.
 
 **Superseded run:** the 233,579-entry database described above used the old input
 snapshot. The current recovery reads `BioMol/materials/raw/cif` and has 249,676 CIF
@@ -172,13 +175,34 @@ distillation build request. See [the September 15 follow-up](../docs/distillatio
 for the completed long CIF audit and active native SLURM MSA/template graph.
 Submission is not completion; terminal coverage and validation reports decide status.
 
-## Teddymer and AFDB multimer — built 2026-09-28
+## Release status — 2026-10-06
+
+End to end: `structcooker build-all --manifest db/MANIFEST_all.yaml` (94 stages; downloads,
+staging and reference inputs in [docs/e2e-build.md](../docs/e2e-build.md)).
+
+| set | cif / cif_attached | msa (+ caps) | template | b_factor |
+|---|---|---|---|---|
+| PDB | ✅ 249,676 / 249,644 (`cPDB_`) | ✅ 178,249 (+d16k/d2k/d512); RNA 6,572 | production DB (inputs unchanged) | experimental |
+| OFD short | ✅ 430,418 / 430,418 (released relaxed PDB) | ✅ 430,245 (+d2k/d512/d5k) | 🔄 rebuilding on the fixed cif_chain | pLDDT |
+| OFD long | ✅ 16,099,404 / 16,099,404 (released relaxed PDB; 80 ids have no model in the release) | ✅ 16,098,794 (+d2k/d512) | ⚠️ checking cif_chain impact | pLDDT |
+| OFD rna | ✅ 126,778 / 126,778 | ✅ 126,751 (+d2k/d512/d5k) | — | 0 (not published) |
+| OFD disordered | ✅ 28,567 / 28,567 (+contacts) | ✅ 19,649 (+d2k/d512) | ✅ 78,176 | 0 (not published) |
+| teddymer | ✅ 510,454 / 510,454 | ✅ 999,853 (+d2k) | ✅ 998,878 | pLDDT |
+| AFDB homodimer | ✅ 1,750,755 / 1,750,755 | ✅ 1,721,635 (+d2k, shared) | ✅ 1,720,477 (shared, by seq_id) | pLDDT |
+| AFDB heterodimer | ✅ 80,248 / 80,248 | (above) | (above) | pLDDT |
+| train / valid | ✅ train_20210930 167,912, train_20260301 233,579, mpnn 484,383; valid1 21,527, valid2 617 | | | |
+
+`chain/cif_chain` gained 293 PDB entries (51,895 chains) on 2026-09-30: an atom cap dropped a
+whole entry when any assembly was over it. Template DBs built before that miss those chains as
+candidates. Partial rebuilds use `structcooker patch NAME --keys|--files`.
+
+## Teddymer and AFDB multimer — built 2026-09-28 (history)
 
 | set | cif | cif_attached | msa / msa_d2k | template |
 |---|---|---|---|---|
-| teddymer (`MANIFEST_teddymer`) | ✅ 510,454 | ✅ 510,454 | ✅ 999,853 / 999,853 | 🔄 hmmsearch (Phase 0) running; Phase 1/2 + template LMDB to write |
-| AFDB homodimer (`MANIFEST_afdb_multimer`) | ✅ 1,750,755 | ✅ 1,750,755 | ✅ 1,721,635 / 1,721,635 (shared with heterodimer, keyed by seq_id) | 🔴 not started |
-| AFDB heterodimer | ✅ 80,248 | ✅ 80,248 | (above) | 🔴 not started |
+| teddymer (`MANIFEST_teddymer`) | ✅ 510,454 | ✅ 510,454 | ✅ 999,853 / 999,853 | ✅ 998,878 |
+| AFDB homodimer (`MANIFEST_afdb_multimer`) | ✅ 1,750,755 | ✅ 1,750,755 | ✅ 1,721,635 / 1,721,635 (shared with heterodimer, keyed by seq_id) | ✅ 1,720,477 |
+| AFDB heterodimer | ✅ 80,248 | ✅ 80,248 | (above) | (above) |
 
 Raw inputs and their selection: [docs/raw-materials.md](../docs/raw-materials.md).
 

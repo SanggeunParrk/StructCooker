@@ -25,3 +25,10 @@ these historical substitutions as pending work for a different snapshot.
 
 Never apply replacements to the shared production snapshot. Without `MMCIF_ROOT`,
 the destination is `DATA_ROOT/BioMol/materials/raw/cif`.
+
+## Not needed with the current parser (2026-10-01)
+
+All 53 listed records were compared with production `BioMol/lmdb/pdb/cif/cif_pdb.lmdb`. The 48
+that build from the current snapshot are identical to production in every array; the other 5
+(2g10, 2icy, 2q44, 4xq2, 9gdy) are absent from production as well. The substitutions are
+therefore not part of the BioMol_clean build; `fix-cif` stays for reproducing the older snapshot.

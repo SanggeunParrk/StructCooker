@@ -16,6 +16,9 @@
 # Apply with: structcooker fix-cif --source <corrected-cif-dir>
 # See docs/manual-cif-fixes.md.
 #
+# Not needed with the current parser (2026-10-01; docs/manual-cif-fixes.md): the 48 that build
+# match production exactly, the other 5 are absent from production too.
+#
 # One PDB id per line (53 entries). The corrected cif for each must be provided.
 1ai0
 1aiy
