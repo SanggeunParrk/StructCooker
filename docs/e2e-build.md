@@ -74,4 +74,5 @@ Sizes and times on this cluster (2026-09/10): OFD long cif ≈ 8 × 3 h; teddyme
 8 nodes) ≈ 2 days; teddymer hmmsearch (8 nodes) ≈ 31 h; AFM hmmsearch (8 nodes) ≈ 6 days.
 Large `parallel` searches declare `node_count: 8` and are submitted as an 8-task array; each
 task refuses to start on a node whose `/dev/shm` cannot hold process semaphores (joblib would
-otherwise run serially there).
+otherwise run serially there); set `DATACOOKER_EXCLUDE_NODES=node04,node07` (any such
+nodes) before `build-all` so the scheduler does not place tasks on them.
