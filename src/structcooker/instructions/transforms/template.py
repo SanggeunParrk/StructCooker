@@ -1076,9 +1076,17 @@ def load_templates_with_report(
     align_results: dict[str, tuple[str, str]],
     max_keep: int | None = None,
 ) -> tuple[dict, dict]:
-    """Load ranked hits, recording absent chains; corrupt/invalid hits fail the record."""
+    """Load ranked hits, recording absent and misaligned chains; corrupt hits fail the record.
+
+    A hit whose alignment points past the end of our copy of the chain (the aligner saw a
+    longer chain than the one in cif_chain, e.g. 8t0v_C: residue index 259 of 259) is
+    skipped and recorded in ``misaligned_hits``, and the next hit takes its place -- one
+    stale hit must not cost the record all its templates. A chain that fails to decode is
+    still an error.
+    """
     template_mols: dict = {}
     missing: list[str] = []
+    misaligned: list[str] = []
     unselected: list[str] = []
     for full_id, align_result in align_results.items():
         if max_keep is not None and len(template_mols) >= max_keep:
@@ -1091,12 +1099,16 @@ def load_templates_with_report(
             continue
         try:
             cifmol = CIFMol.from_dict(cast("BioMolDict", load_bytes(raw)))
-            template_mols[full_id] = to_template_mol(cifmol, align_result)
         except Exception as exc:
-            msg = f"Template hit {full_id} failed decoding or conversion"
+            msg = f"Template hit {full_id} failed decoding"
             raise ValueError(msg) from exc
+        try:
+            template_mols[full_id] = to_template_mol(cifmol, align_result)
+        except IndexError:
+            misaligned.append(full_id)
     report = {"candidate_count": len(align_results), "loaded_hits": list(template_mols),
-              "missing_chain_hits": missing, "not_selected_hits": unselected}
+              "missing_chain_hits": missing, "misaligned_hits": misaligned,
+              "not_selected_hits": unselected}
     return template_mols, report
 
 
