@@ -396,8 +396,11 @@ def _submit_workflow(
               help="Input files to build, one per line (a build op, e.g. *_cif).")
 @click.option("--workdir", type=click.Path(path_type=Path), default=None,
               help="Scratch for the patch scripts (default: logs/patch/<name>/<stamp>).")
+@click.option("--nodes", type=int, default=1, show_default=True,
+              help="Build the patch as an N-task array, one whole node each.")
 @click.option("--dry-run", is_flag=True, help="Write the scripts, do not sbatch.")
-def patch(name: str, keys: Path | None, files: Path | None, workdir: Path | None, dry_run: bool) -> None:
+def patch(name: str, keys: Path | None, files: Path | None, workdir: Path | None,
+          nodes: int, dry_run: bool) -> None:
     """Rebuild only some records of an already published DB and swap them in.
 
     For records that were built wrong or are missing, when rebuilding the whole DB is not
@@ -429,9 +432,19 @@ def patch(name: str, keys: Path | None, files: Path | None, workdir: Path | None
     build = [*lmdb_cli, op, str(engine), "--key-list" if keys else "--file-list", str(keys or files),
              "--output", str(out), "--n-jobs", "112"]
     execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
-    b = execu.run_once(name=f"{target.stem}_patch_build", argv=build, mem_gb=490, cores=112)
-    a = execu.run_once(name=f"{target.stem}_patch_apply", argv=[*lmdb_cli, "patch", "--target", str(target),
-                       "--patch", str(out)], mem_gb=64, cores=8, depends_on=(b.job_id,))
+    if nodes > 1:
+        # Each task builds its key-hash slice into <out stem>_shard<i>; all are applied at once.
+        b = execu.run_tier_shards(name=f"{target.stem}_patch_build", n_shards=nodes, mem_gb=490, cores=112,
+                                  argv_for_shard=lambda i: [*build, "--shard-idx", str(i), "--n-shards", str(nodes)])
+        outs = [out.with_name(f"{out.stem}_shard{i}{out.suffix}") for i in range(nodes)]
+    else:
+        b = execu.run_once(name=f"{target.stem}_patch_build", argv=build, mem_gb=490, cores=112)
+        outs = [out]
+    apply = [*lmdb_cli, "patch", "--target", str(target)]
+    for o in outs:
+        apply += ["--patch", str(o)]
+    a = execu.run_once(name=f"{target.stem}_patch_apply", argv=apply, mem_gb=64, cores=8,
+                       depends_on=(b.job_id,))
     i = execu.run_once(name=f"{target.stem}_patch_index", argv=[*lmdb_cli, "index", str(target), "--schema",
                        _schema_of(cfg, db_path), "--expansion", str(schemas.expansion(_schema_of(cfg, db_path)))],
                        mem_gb=64, cores=8, depends_on=(a.job_id,))
