@@ -175,16 +175,16 @@ distillation build request. See [the September 15 follow-up](../docs/distillatio
 for the completed long CIF audit and active native SLURM MSA/template graph.
 Submission is not completion; terminal coverage and validation reports decide status.
 
-## Release status — 2026-10-06
+## Release status — 2026-10-07
 
 End to end: `structcooker build-all --manifest db/MANIFEST_all.yaml` (94 stages; downloads,
 staging and reference inputs in [docs/e2e-build.md](../docs/e2e-build.md)).
 
-| set | cif / cif_attached | msa (+ caps) | template | b_factor |
+| set | cif / cif_attached (structures) | msa (+ caps) (unique sequences) | template (unique sequences with ≥ 1 candidate) | b_factor |
 |---|---|---|---|---|
 | PDB | ✅ 249,676 / 249,644 (`cPDB_`) | ✅ 178,249 (+d16k/d2k/d512); RNA 6,572 | production DB (inputs unchanged) | experimental |
-| OFD short | ✅ 430,418 / 430,418 (released relaxed PDB) | ✅ 430,245 (+d2k/d512/d5k) | 🔄 rebuilding on the fixed cif_chain | pLDDT |
-| OFD long | ✅ 16,099,404 / 16,099,404 (released relaxed PDB; 80 ids have no model in the release) | ✅ 16,098,794 (+d2k/d512) | ⚠️ checking cif_chain impact | pLDDT |
+| OFD short | ✅ 430,418 / 430,418 (released relaxed PDB) | ✅ 430,245 (+d2k/d512/d5k) | ✅ 430,370 (rebuilt on the fixed cif_chain) | pLDDT |
+| OFD long | ✅ 16,099,404 / 16,099,404 (released relaxed PDB; 80 ids have no model in the release) | ✅ 16,098,794 (+d2k/d512) | ✅ 16,080,773 (1,644,360 with hits on the added chains patched) | pLDDT |
 | OFD rna | ✅ 126,778 / 126,778 | ✅ 126,751 (+d2k/d512/d5k) | — | 0 (not published) |
 | OFD disordered | ✅ 28,567 / 28,567 (+contacts) | ✅ 19,649 (+d2k/d512) | ✅ 78,176 | 0 (not published) |
 | teddymer | ✅ 510,454 / 510,454 | ✅ 999,853 (+d2k) | ✅ 998,878 | pLDDT |
@@ -194,7 +194,14 @@ staging and reference inputs in [docs/e2e-build.md](../docs/e2e-build.md)).
 
 `chain/cif_chain` gained 293 PDB entries (51,895 chains) on 2026-09-30: an atom cap dropped a
 whole entry when any assembly was over it. Template DBs built before that miss those chains as
-candidates. Partial rebuilds use `structcooker patch NAME --keys|--files`.
+candidates; the OFD short and long templates were rebuilt/patched for that on 2026-10-06/07.
+Partial rebuilds use `structcooker patch NAME --keys|--files [--nodes N]`.
+
+MSA and template DBs are keyed by seq_id, so they count unique sequences, not structures: the
+AFM release predicts one model per UniProt entry, and 126,492 homodimers share their sequence
+with another entry (other strains, or proteins conserved across close species), so 1,750,755 +
+80,248 structures hold 1,721,635 sequences. Template DBs hold the sequences with at least one
+candidate released by 2021-09-30 (AFM: 1,159 have none).
 
 ## Teddymer and AFDB multimer — built 2026-09-28 (history)
 

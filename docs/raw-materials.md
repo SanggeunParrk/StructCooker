@@ -65,6 +65,13 @@ and hydrogens; MSAs; `hmm_output.sto`), complete for short but only 8,083 entrie
 Moved here 2026-09-30 from `/data/shared/cssb_data/openfold_distillation`, which is now a
 link to this directory so older paths keep resolving.
 
+`long_monomers/raw/` now holds `best_structure_relaxed.pdb[.zst]` for 16,099,404 of 16,099,484
+long ids (downloaded 2026-09-30..10-05; the other files of a raw entry were not fetched). 80 ids
+have no relaxed model in the release at all; they are not in the long cif DB. Partial files left
+by interrupted downloads (`best_structure_relaxed.pdb<digits>`, 9,924) were moved to
+`intermediate/openfold_distillation/_download_partials_20261005/`; builds match the two exact
+names only.
+
 ### afdb_multimer
 
 - **Homodimers** are the manuscript bundle shared by the paper's first author
