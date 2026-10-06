@@ -388,6 +388,57 @@ def _submit_workflow(
     return handle.job_id
 
 
+@cli.command("patch")
+@click.argument("name")
+@click.option("--keys", "keys", type=click.Path(exists=True, path_type=Path), default=None,
+              help="Keys to rebuild, one per line (a rebuild op, e.g. *_cif_attached).")
+@click.option("--files", "files", type=click.Path(exists=True, path_type=Path), default=None,
+              help="Input files to build, one per line (a build op, e.g. *_cif).")
+@click.option("--workdir", type=click.Path(path_type=Path), default=None,
+              help="Scratch for the patch scripts (default: logs/patch/<name>/<stamp>).")
+@click.option("--dry-run", is_flag=True, help="Write the scripts, do not sbatch.")
+def patch(name: str, keys: Path | None, files: Path | None, workdir: Path | None, dry_run: bool) -> None:
+    """Rebuild only some records of an already published DB and swap them in.
+
+    For records that were built wrong or are missing, when rebuilding the whole DB is not
+    worth it (e.g. 111 of 16M OFD long entries built from partially downloaded models). The
+    records are built into a separate LMDB next to the target, the target's copies are
+    replaced (a shard collection gains it as one more shard), and the index is rewritten.
+    A full `build` resumes only within its own run, and skips keys that already exist --
+    neither fixes a record that exists but is wrong.
+    """
+    from datetime import datetime
+
+    from datacooker.executors.slurm import SlurmExecutor
+
+    if (keys is None) == (files is None):
+        msg = "Give exactly one of --keys (rebuild op) or --files (build op)."
+        raise click.ClickException(msg)
+    db_path = _resolve_db(name)
+    cfg = load_config(db_path)
+    op = "rebuild" if cfg.get("old_env_path") else "build"
+    if (op == "rebuild") != (keys is not None):
+        msg = f"{name} is a {op} op: use {'--keys' if op == 'rebuild' else '--files'}."
+        raise click.ClickException(msg)
+    target = Path(str(cfg.get("new_env_path") or cfg.get("env_path")))
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # noqa: DTZ005
+    wd = Path(workdir) if workdir else REPO / "logs" / "patch" / Path(name).name / stamp
+    engine = _write_engine_yaml(db_path, wd)
+    out = target.parent / f".{target.stem}.build" / f"patch_{stamp}" / f"{target.stem}_patch.lmdb"
+    lmdb_cli = [sys.executable, "-u", "-m", "datacooker.cli.lmdb"]
+    build = [*lmdb_cli, op, str(engine), "--key-list" if keys else "--file-list", str(keys or files),
+             "--output", str(out), "--n-jobs", "112"]
+    execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
+    b = execu.run_once(name=f"{target.stem}_patch_build", argv=build, mem_gb=490, cores=112)
+    a = execu.run_once(name=f"{target.stem}_patch_apply", argv=[*lmdb_cli, "patch", "--target", str(target),
+                       "--patch", str(out)], mem_gb=64, cores=8, depends_on=(b.job_id,))
+    i = execu.run_once(name=f"{target.stem}_patch_index", argv=[*lmdb_cli, "index", str(target), "--schema",
+                       _schema_of(cfg, db_path), "--expansion", str(schemas.expansion(_schema_of(cfg, db_path)))],
+                       mem_gb=64, cores=8, depends_on=(a.job_id,))
+    click.echo(f"[patch] {name}: build {b.job_id} -> apply {a.job_id} -> index {i.job_id}  ({out})")
+    click.echo(f"PIPELINE_TERMINAL_JOB={i.job_id}")
+
+
 @cli.command("build")
 @click.argument("name")
 @click.option("--workdir", type=click.Path(path_type=Path), default=None,
