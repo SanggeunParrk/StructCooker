@@ -233,7 +233,7 @@ def check_tools() -> list[tuple[str, bool, bool]]:
 def check_env() -> dict[str, str | None]:
     """Return deployment roots and supplied-input overrides."""
     return {name: os.environ.get(name) for name in (
-        "DATA_ROOT", "OUTPUT_ROOT", "MMCIF_ROOT", "DISTILLATION_ROOT", "MSA_ROOT", "SEQ_CLUSTER30_PATH", "SEQ_CLUSTER40_PATH",
+        "DATA_ROOT", "OUTPUT_ROOT", "MMCIF_ROOT", "DISTILLATION_ROOT", "MSA_ROOT", "SEQ_CLUSTER30_PATH",
     )}
 
 

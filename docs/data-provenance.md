@@ -67,6 +67,8 @@ export SEQ_CLUSTER40_PATH=$DATA_ROOT/reference/seq_cluster40.tsv
 structcooker inspect --manifest db/MANIFEST_cifcore.yaml --strict
 ```
 
+(Historical: no config reads `SEQ_CLUSTER40_PATH` since the per-DB clustering of 2026-09-23.)
+
 These overrides choose supplied inputs explicitly. They do not disable clustering
 nodes in a manifest; omit those nodes and their dependency edges in a custom manifest
 if rebuilding supplied clusters is unnecessary. Existing output files can be reused

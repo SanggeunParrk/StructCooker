@@ -173,7 +173,7 @@ def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
     click.echo("[env]")
     click.echo(f"  DATA_ROOT   = {env['DATA_ROOT'] or f'(unset -> {data_root})'}")
     click.echo(f"  OUTPUT_ROOT = {env['OUTPUT_ROOT'] or '(unset -> BioMol_clean default)'}")
-    for key in ("MMCIF_ROOT", "DISTILLATION_ROOT", "MSA_ROOT", "SEQ_CLUSTER30_PATH", "SEQ_CLUSTER40_PATH"):
+    for key in ("MMCIF_ROOT", "DISTILLATION_ROOT", "MSA_ROOT", "SEQ_CLUSTER30_PATH"):
         if env[key]:
             click.echo(f"  {key} = {env[key]}")
     seed = Path(data_root) / "reference" / "seq_id_map.tsv"

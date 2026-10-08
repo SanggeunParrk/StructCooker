@@ -13,7 +13,7 @@ flowchart TB
     fasta -->|metadata/seq_id_map| sid[seq_id_map.tsv]
     fasta -->|search/seq_cluster · mmseqs2| clu[seq_cluster30.tsv]
     fasta -->|search/msa_search · hhblits| a3m[a3m files]
-    a3m -->|search/hmmsearch + hhsearch| hmm[template hits]
+    a3m -->|search/hmmsearch| hmm[template hits]
     a3m -->|ingest/a3m| msadb[(MSA LMDB)]
     hmm -->|ingest/template_lmdb + CIF LMDB| tmpldb[(template LMDB)]
 
@@ -36,7 +36,7 @@ flowchart TB
    ([Search](tutorials/search.md)).
 6. **MSA search** — hhblits against UniRef30 + BFD
    ([Search](tutorials/search.md)).
-7. **Template search** — hmmsearch / hhsearch over the MSAs
+7. **Template search** — hmmsearch over the MSAs
    ([Search](tutorials/search.md)).
 8. **MSA LMDB** — pack the alignments, keyed by sequence id
    ([MSA ingest](tutorials/ingest-msa.md)).

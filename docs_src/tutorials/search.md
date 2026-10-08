@@ -36,12 +36,12 @@ Build profiles and search for templates over the MSAs. Several stages:
 
 | Stage | Recipe | Config |
 | --- | --- | --- |
-| hmmbuild + hmmsearch | `search.hmmsearch` (`hmmsearch_results`, `hmmbuild_results`) | `configs/legacy/search/hmmsearch.yaml` |
-| hhmake | `search.hhmake` (`done_result`) | `configs/legacy/search/hhmake.yaml` |
-| hhsearch | `search.hhsearch` (`hhsearch_results`) | `configs/legacy/search/hhsearch.yaml` |
+| hmmbuild + hmmsearch | `search.hmmsearch` (`hmmsearch_results`, `hmmbuild_results`) | `db/template/hmmsearch.yaml` (PDB), `db/teddymer/hmmsearch.yaml`, `db/afdb_multimer/hmmsearch.yaml` |
+
+The earlier HHsuite path (hhmake + hhsearch) was replaced by hmmsearch and removed.
 
 ```bash
-pixi run python -m datacooker.cli.workflow parallel-run configs/legacy/search/hmmsearch.yaml
+pixi run structcooker build teddymer/hmmsearch   # node_count: 8 -> an 8-node array
 ```
 
 The hmmsearch output feeds [Template ingest](ingest-template.md).

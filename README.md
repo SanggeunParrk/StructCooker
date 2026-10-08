@@ -30,17 +30,20 @@ export OUTPUT_ROOT=/path/to/reproduced/db # defaults to $DATA_ROOT/BioMol_clean
 export MMCIF_ROOT=$DATA_ROOT/BioMol/materials/raw/cif
 export DISTILLATION_ROOT=$DATA_ROOT/BioMol/materials/raw/openfold_distillation
 
-# 4. provide sequence references, SignalP results, and reproduction references.
-#    See docs/data-provenance.md; downloads alone do not supply all inputs.
+# 4. provide the reference inputs (seq_id seed, OFD reference fastas, PDB MSAs, SignalP,
+#    historical CCD, chain model choice) -- docs/e2e-build.md §3; downloads alone do not
+#    supply them.
 
 # 5. download into an input directory you own (these commands write raw files)
 structcooker download ccd
 structcooker download sabdab
 structcooker download mmcif --yes
 structcooker download openfold       # prints portal instructions; no auto-fetch
+# teddymer, AFDB multimer and the OpenFold relaxed models: docs/e2e-build.md §1, then the
+# staging scripts in scripts/staging/ (§2) lay them out under BioMol/materials/raw.
 
 # 6. verify input presence and declared dependencies before building
-structcooker inspect --manifest db/MANIFEST_cifcore.yaml --strict
+structcooker inspect --manifest db/MANIFEST_all.yaml --strict
 
 # 7. see what you can build
 structcooker list
@@ -55,8 +58,12 @@ structcooker build pdb/cif_attached  # + metadata  -> pdb/cif_attached (rebuild)
 # See docs/pdb-production.md for the SLURM wrapper and required reference inputs.
 structcooker pdb-build --run-dir /path/to/durable/pdb-run
 
-# Legacy whole-DAG entry (existence-based skipping, without verified receipts)
-structcooker build-all               # skips whatever is already built
+# 8c. end to end: every DB (PDB, OFD, teddymer, AFDB multimer), 94 stages
+export DATACOOKER_EXCLUDE_NODES=...  # nodes whose /dev/shm is full, if any
+structcooker build-all --manifest db/MANIFEST_all.yaml   # skips whatever is already built
+
+# Fix some records of a built DB without rebuilding it
+structcooker patch distillation/long_cif --files bad_inputs.txt [--nodes 8]
 ```
 
 `inspect --strict` checks required input paths and the manifest's producer/dependency
@@ -67,7 +74,8 @@ proof that an external tool will run successfully.
 `structcooker build` auto-infers the op from each config: **build/rebuild** run the
 planning-first SLURM pipeline (shards → merge → index, afterok-chained); **materialize/
 extract** (metadata projections that write a TSV/fasta, not an LMDB) run a single
-workflow job. `build-all` wires every config into one DAG (`db/MANIFEST.yaml`) and
+workflow job. `build-all` wires every config into one DAG (`db/MANIFEST_all.yaml`, the union
+of the per-set manifests) and
 waits for upstream terminal jobs before planning their dependents, skipping already-built
 outputs whose upstream nodes were also skipped. Keep the command running until it exits;
 it waits for final jobs as well as upstream jobs. A failed or unconfirmable job causes a nonzero exit. You need a SLURM cluster
@@ -75,19 +83,19 @@ and the raw inputs on disk. See [docs/roadmap.md](docs/roadmap.md) for raw input
 
 **Reproduction inputs matter.** Sequence IDs are assigned counters. Provide
 `DATA_ROOT/reference/seq_id_map.tsv` to preserve existing IDs; its absence creates
-a fresh ID space. The clustering recipes also require the supplied union corpus
-`DATA_ROOT/reference/seqcluster_corpus.fasta`. Attachment and validation read the
-clusters generated under `OUTPUT_ROOT/metadata/` by default. Set `SEQ_CLUSTER30_PATH`
-and `SEQ_CLUSTER40_PATH` to supplied cluster files when reproducing an existing
-cluster space. Preserve input versions and parameters as well as those files.
+a fresh ID space. Clustering is per DB at 30% (`seq_cluster30_{PDB,OFD,TDM,AFM}.tsv`,
+docs/seq-id-and-cluster-scheme.md); attachment and validation read those under
+`OUTPUT_ROOT/metadata/`. `SEQ_CLUSTER30_PATH` overrides the PDB clustering. Preserve input
+versions and parameters as well as those files.
 
 For PDB operations, use the [verified build and recovery guide](docs/pdb-production.md).
 The completed CIF recovery has full key-set checks and sampled payload comparisons,
 with documented chemistry differences and five rejected source entries. See the
 [CIF verification report](docs/recovery-2026-09-10.md) and
 [MSA reproduction report](docs/msa-reproduction.md) for the bulk-output evidence and
-coverage limitations. A fresh full-scale run through the new verified entry point,
-template bulk reproduction and a fresh installation have not been verified.
+coverage limitations. Every stage of `db/MANIFEST_all.yaml` has been run on this cluster
+(2026-09/10; db/STATUS.md), but not as one uninterrupted `build-all` from empty storage, and
+a fresh installation has not been verified.
 
 ## What you can build
 

@@ -21,9 +21,11 @@ DEFAULT_HHSUITE_BIN = Path("/software/hhsuite/build/bin")
 
 # RNA MSA (AlphaFold3-style): nhmmer over Rfam / RNAcentral / nucleotide
 # collection, hits realigned to the query with hmmalign, cropped to 5000.
-DEFAULT_DB_RFAM = Path("/data/psk6950/rmsa_db/rfam.fasta")
-DEFAULT_DB_RNACENTRAL = Path("/data/psk6950/rmsa_db/rnacentral.fasta")
-DEFAULT_DB_NT = Path("/data/psk6950/rmsa_db/nucleotide_collection.fasta")
+# The three nucleotide databases live together; RMSA_DB_ROOT relocates them.
+_RMSA_DB_ROOT = Path(os.environ.get("RMSA_DB_ROOT", "/data/psk6950/rmsa_db"))
+DEFAULT_DB_RFAM = _RMSA_DB_ROOT / "rfam.fasta"
+DEFAULT_DB_RNACENTRAL = _RMSA_DB_ROOT / "rnacentral.fasta"
+DEFAULT_DB_NT = _RMSA_DB_ROOT / "nucleotide_collection.fasta"
 RNA_MSA_MAX_SEQUENCES = 5000
 _SHORT_RNA_LEN = 50
 # Long rRNA are the pathological case: scan cost scales with query length, and a

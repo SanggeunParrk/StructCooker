@@ -21,8 +21,8 @@ sbatch submits/legacy/filters/valid_filter_1.sh
 pixi run python -m datacooker.cli.lmdb rebuild configs/legacy/filters/valid_filter_1.yaml
 ```
 
-Stage-2 validation (`filters.validation_stage1` / `validation_stage2` /
-`validation_stage2_metadata`) further refines the valid split.
+Stage-2 validation (`filters.validation_stage2` / `validation_stage2_metadata`, `db/valid/valid2.yaml`)
+further refines the valid split.
 
 ## MSA filtering
 
