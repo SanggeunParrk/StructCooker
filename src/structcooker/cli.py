@@ -445,11 +445,10 @@ def patch(name: str, keys: Path | None, files: Path | None, workdir: Path | None
         apply += ["--patch", str(o)]
     a = execu.run_once(name=f"{target.stem}_patch_apply", argv=apply, mem_gb=64, cores=8,
                        depends_on=(b.job_id,))
-    i = execu.run_once(name=f"{target.stem}_patch_index", argv=[*lmdb_cli, "index", str(target), "--schema",
-                       _schema_of(cfg, db_path), "--expansion", str(schemas.expansion(_schema_of(cfg, db_path)))],
-                       mem_gb=64, cores=8, depends_on=(a.job_id,))
-    click.echo(f"[patch] {name}: build {b.job_id} -> apply {a.job_id} -> index {i.job_id}  ({out})")
-    click.echo(f"PIPELINE_TERMINAL_JOB={i.job_id}")
+    # The apply step also rewrites the index from the old rows plus the patch's sizes;
+    # a full re-index of a multi-TB DB reads every value (hours) for no new information.
+    click.echo(f"[patch] {name}: build {b.job_id} -> apply+index {a.job_id}  ({out})")
+    click.echo(f"PIPELINE_TERMINAL_JOB={a.job_id}")
 
 
 @cli.command("build")
