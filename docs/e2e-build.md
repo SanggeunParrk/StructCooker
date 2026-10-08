@@ -41,6 +41,7 @@ Run as batch jobs. Each writes only to `raw/` (selection, layout, names) or to `
 | AFM structures | `python scripts/staging/stage_afdb_multimer.py --out $DATA_ROOT/BioMol/materials/raw/afdb_multimer` | homodimer `pdb/`, heterodimer `cif/` (`.cif.gz`), `AF_`→`AF-` names, `SOURCE.tsv` |
 | AFM MSAs | `stage_afdb_multimer_msa.py plan`, then `stage --task i --ntasks N` (array), then `finalize` (`AFM_MSA_DOWNLOAD`, `AFM_STAGE_WORK`, `AFM_HET_METADATA` point at the download) | release MSAs in `raw/afdb_multimer/msa/`; `intermediate/afdb_multimer/heterodimer/chain_msa.tsv` (content-verified chain → MSA) |
 | AFM missing MSA | `sbatch scripts/staging/generate_afm_missing_msa.sbatch AF-<n>` for each entity the release lacks (`plan` lists them; 1 in 2026-09) | `intermediate/afdb_multimer/msa_generated/AF-<n>-msa_v1.a3m[.zst]`; `finalize` above picks it up |
+| OFD long npz recovery | `python scripts/staging/recover_ofd_long_npz.py` | 14 long `structure.npz` that end in stale bytes (2026-09-14): their valid zip prefix, hash-checked, + `overrides.json` under `intermediate/openfold_distillation/long_recovered/` (raw untouched); read by the long template build |
 | AFM mmCIF repairs | `python scripts/staging/repair_afdb_entity_poly.py` | 6 heterodimers whose `_entity_poly` contradicts `_entity_poly_seq`: repaired copies + `overrides.json` under `intermediate/afdb_multimer/heterodimer/repaired/` (raw untouched) |
 
 ## 3. Reference inputs
@@ -76,3 +77,59 @@ Large `parallel` searches declare `node_count: 8` and are submitted as an 8-task
 task refuses to start on a node whose `/dev/shm` cannot hold process semaphores (joblib would
 otherwise run serially there); set `DATACOOKER_EXCLUDE_NODES=node04,node07` (any such
 nodes) before `build-all` so the scheduler does not place tasks on them.
+
+## 5. Sampled end-to-end check
+
+A full build is days and terabytes. To check that the release DAG still builds end to
+end after a change, run every stage on a sample of a few hundred inputs instead
+(`structcooker.sample_e2e`). All four commands are login-node safe: `prepare` and `verify`
+submit SLURM jobs, and `run` submits stage jobs the way `build-all` does.
+
+```bash
+R=/data/shared/cssb_data/e2e_sample/$(date +%Y%m%d)      # any new, empty directory
+structcooker e2e-sample prepare $R      # job: pick the sample, build $R/data and $R/out
+structcooker e2e-sample run $R          # build-all on the sample, run state in $R/run
+structcooker e2e-sample status $R       # stage phases; rerun `run` to resume after a fix
+structcooker e2e-sample verify $R       # job: compare with the release -> $R/verify.json
+```
+
+**Sample.** By default 30 PDB entries and 20 entries each from OFD short, long, rna and
+disordered, teddymer, and AFM homo- and heterodimers (`--count pdb=50` etc.). The
+selection is a seeded hash order, so the same production data gives the same sample.
+On top of that random selection, the sample also includes these cases on purpose:
+
+- the accepted PDB failures (`db/pdb-exceptions.json`)
+- two manually fixed mmCIFs
+- two entries from each published PDB-derived DB (train, valid1/2, mpnn, chain), so every filter has something to keep
+- the six repaired AFM heterodimers
+- the homodimer whose MSA we generated
+- two recovered OFD long entries
+
+Their files are linked one by one into `$R/data` (DATA_ROOT) in the production layout.
+The reference fastas, disordered work lists, `chain_msa.tsv` and `overrides.json` are
+rewritten for the sample. The following are linked whole:
+
+- the search DBs
+- the CCD
+- the seq_id seed
+- the reference CCD and chain-selection DBs
+
+**Run.** `DATA_ROOT`/`OUTPUT_ROOT` point at the sample, every other root override is
+cleared, and `run` refuses to start if any config still resolves outside `$R`. Parallel
+searches run on one node (`STRUCTCOOKER_MAX_NODES=1`). Nothing in production is written.
+
+**Verify.** For every stage `verify.json` records whether it completed and, per output,
+how it compares with the release at the same key:
+
+- **Must be identical (fails otherwise).** Records that depend only on their own inputs:
+  structures, MSAs and the CCD (schemas A, E and G).
+- **Reported only.** Records that depend on the rest of the build. Examples: attached
+  metadata (clusters are computed over the sample), templates (searched against the
+  sample's PDB chains), and train/valid sets. Their differing fields are counted, so an
+  unexpected one stands out.
+- **Projections.** These are compared line by line.
+
+A run is pinned to the code it started with (the release definition includes a snapshot of
+`src/`). After a fix, `run` on the same root refuses ("Release definition changed"):
+`prepare` a new root (about 5 minutes) and run that. A stage shown as `stalled` lost its
+work job; its attempt logs are under `$R/run/nodes/<stage>/attempts/`.

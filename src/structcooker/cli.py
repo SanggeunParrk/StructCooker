@@ -21,19 +21,13 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import click
-from datacooker.conditions import output_absent
 from datacooker.config import load_config
-from datacooker.recipe import RecipeBook
 from omegaconf import OmegaConf
 
-from structcooker import preflight, schemas
+from structcooker import preflight, schemas, workflow_ops
 from structcooker.paths import mmcif_root
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 REPO = Path(__file__).resolve().parents[2]          # StructCooker/
 _DATA_ROOT_DEFAULT = "/data/shared/cssb_data"
@@ -80,25 +74,11 @@ def _write_engine_yaml(db_path: Path, workdir: Path) -> Path:
 
 
 def _op_of(cfg: dict) -> str:
-    """Infer the op from a db config's shape.
-
-    ``old_env_path`` -> rebuild; ``output_data_path`` -> a projection op
-    (``extract`` when it reads a source DB, else ``materialize``); ``env_path``
-    -> build. Projection ops produce a file (TSV/fasta), not an LMDB, so they run
-    through ``datacooker.cli.workflow`` instead of the planning-first pipeline.
-    """
-    if cfg.get("old_env_path"):
-        return "rebuild"
-    if cfg.get("split_recipe") or cfg.get("split_recipe_path"):
-        return "parallel"                       # split items, process each (e.g. hmmsearch)
-    if cfg.get("output_data_path"):
-        reads_db = any(cfg.get(k) for k in ("db_path", "extract_recipe", "extract_recipe_path"))
-        return "extract" if reads_db else "materialize"
-    if cfg.get("env_path"):
-        return "build"
-    msg = ("config needs old_env_path (rebuild) / env_path (build) / "
-           "output_data_path (project) / split_recipe (parallel)")
-    raise click.ClickException(msg)
+    """:func:`structcooker.workflow_ops.op_of`, as a CLI error."""
+    try:
+        return workflow_ops.op_of(cfg)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 @click.group()
@@ -329,15 +309,6 @@ def _submit_pipeline(
     return job_id
 
 
-_WORKFLOW_CMD = {"materialize": "run", "extract": "extract-lmdb", "parallel": "parallel-run"}
-# Single-node resource sizing per projection op. Config keys can't carry hints (the
-# workflow CLI re-reads the yaml and rejects unknown keys), so size by op: parallel
-# fans out (full node); extract runs joblib over a whole DB; materialize is mostly
-# single-process (a couple stream a multi-GB fasta, hence the mem headroom).
-_WORKFLOW_RESOURCES = {"parallel": (490, 112), "extract": (200, 32), "materialize": (128, 8)}
-WORKFLOW_CLI = [sys.executable, "-u", "-m", "datacooker.cli.workflow"]
-
-
 def _submit_workflow(
     name: str,
     workdir: Path | None,
@@ -347,14 +318,13 @@ def _submit_workflow(
     depends_on: tuple[str, ...] = (),
     cfg: dict | None = None,
 ) -> str | None:
-    """Submit a projection op (materialize / extract / parallel) as a single SLURM job.
+    """Submit a workflow op (materialize / extract / parallel) as SLURM job(s).
 
-    These configs produce a file (a TSV/fasta projection), not an LMDB, so they run
-    through ``datacooker.cli.workflow`` (single-process ``run`` / ``extract-lmdb`` /
-    ``parallel-run``), not the planning-first tier pipeline. Returns the ``run_once`` job
-    id (afterok-chainable, so build-all threads these nodes into the DAG like any other);
-    ``run_once`` raises on submit failure, so a returned id is always real. Pass ``cfg``
-    to reuse an already-loaded config.
+    These configs produce files (a TSV/fasta projection, or a parallel op's output dir),
+    not an LMDB, so they run through ``datacooker.cli.workflow`` (``run`` /
+    ``extract-lmdb`` / ``parallel-run``), not the planning-first tier pipeline. Returns an
+    afterok-chainable job id; submission raises on failure, so a returned id is always
+    real. Pass ``cfg`` to reuse an already-loaded config.
     """
     from datacooker.executors.slurm import SlurmExecutor
 
@@ -365,27 +335,8 @@ def _submit_workflow(
     wd = Path(workdir) if workdir else REPO / "logs" / "workflow" / Path(name).name
     click.echo(f"[structcooker] {db_path.relative_to(REPO)}  op={op}  -> {target}"
                + (f"  afterok={','.join(depends_on)}" if depends_on else ""))
-    argv = [*WORKFLOW_CLI, _WORKFLOW_CMD[op], str(db_path)]
-    mem_gb, cores = _WORKFLOW_RESOURCES[op]
-    # A materialize recipe that fans out itself (joblib) declares it as inputs.n_jobs;
-    # without this it ran n_jobs workers on the 8 default cores (template_candidates:
-    # 112 on 8, ~14x slower).
-    n_jobs = int((cfg.get("inputs") or {}).get("n_jobs") or 0)
-    if op == "materialize" and n_jobs > cores:
-        mem_gb, cores = _WORKFLOW_RESOURCES["parallel"] if n_jobs >= 112 else (mem_gb, n_jobs)
     execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
-    nodes = int(cfg.get("node_count") or 1)
-    if op == "parallel" and nodes > 1:
-        # A parallel op that declares node_count fans out as an N-task array, one whole node
-        # each; parallel-run splits the items by key, so tasks may start at different times.
-        handle = execu.run_tier_shards(
-            name=Path(name).name, n_shards=nodes, mem_gb=mem_gb, cores=cores, depends_on=depends_on,
-            argv_for_shard=lambda i: [*argv, "--node-rank", str(i), "--node-count", str(nodes)],
-        )
-        return handle.job_id
-    handle = execu.run_once(name=Path(name).name, argv=argv,
-                            mem_gb=mem_gb, cores=cores, depends_on=depends_on)
-    return handle.job_id
+    return workflow_ops.submit(execu, Path(name).name, op, db_path, cfg, depends_on)
 
 
 @cli.command("patch")
@@ -473,9 +424,10 @@ def build(name: str, workdir: Path | None, dry_run: bool,
     cfg = load_config(db_path)
     op = _op_of(cfg)
     deps = tuple(d for d in depends_on.split(",") if d.strip())
-    if op in _WORKFLOW_CMD:
+    if op in workflow_ops.WORKFLOW_CMD:
         if show:
-            click.echo(f"  op={op} -> {' '.join([*WORKFLOW_CLI, _WORKFLOW_CMD[op], str(db_path)])}")
+            argv = [*workflow_ops.WORKFLOW_CLI, workflow_ops.WORKFLOW_CMD[op], str(db_path)]
+            click.echo(f"  op={op} -> {' '.join(argv)}")
             return
         _submit_workflow(name, workdir, op=op, dry_run=dry_run, depends_on=deps, cfg=cfg)
         return
@@ -488,64 +440,6 @@ def build(name: str, workdir: Path | None, dry_run: bool,
         click.echo("  (engine.yaml materialized on real build)\n  " + " ".join(argv))
         return
     _submit_pipeline(name, workdir, dry_run=dry_run, depends_on=deps, cfg=cfg)
-
-
-def _meta_book(deps_map: dict[str, list[str]], *,
-               workdir: Path | None, dry_run: bool, force: bool) -> RecipeBook:
-    """Turn the MANIFEST dep-map into a datacooker ``RecipeBook`` — one step per DB.
-
-    Each DB is a step ``<name> <- submit(*upstream_job_ids)``: the instruction submits
-    the DB's SLURM pipeline afterok-chained on whatever upstream ids it receives and
-    returns this DB's terminal job id — or ``None`` when the DB is already built. That
-    ``None`` **is** the "if": datacooker's only conditional is an instruction returning
-    None, and the engine propagates it downstream (a skipped upstream arrives as a None
-    arg, i.e. no afterok). ``--force`` drops the skip. Topological order, cycle detection,
-    the unknown-dependency check, and the afterok data-flow are all the engine's job
-    (``execution_order`` / ``resolve`` / ``validate``), not ours — build-all is just a
-    recipe, cooked in-process by :func:`datacooker.api.execute`.
-
-    Typing: an **input** dep is ``str`` (a real upstream job id is mandatory, so an
-    unknown MANIFEST dep — not a declared target — trips ``MissingDependencyError``),
-    while an **output** is ``str | None`` (this DB's id, or None when skipped). A skipped
-    upstream still flows because ``resolve`` reads it from the context by name before any
-    type check.
-    """
-    book = RecipeBook()
-    completed_jobs: set[str] = set()
-
-    def make_submit(name: str) -> Callable[..., str | None]:
-        def submit(*upstream: str | None) -> str | None:
-            cfg = load_config(_resolve_db(name))
-            if not force and not any(upstream) and not output_absent(cfg):
-                click.echo(f"[build-all] {name}: output present -> skip")
-                return None
-            depends_on = tuple(j for j in upstream if j and j not in completed_jobs)
-            if depends_on and not dry_run:
-                from datacooker.executors.slurm import wait_for_jobs
-
-                wait_for_jobs(depends_on)
-                completed_jobs.update(depends_on)
-                depends_on = ()
-            wd = (Path(workdir) / name) if workdir else None
-            # dispatch by op: projection ops (materialize/extract/parallel) go through
-            # the workflow runner, build/rebuild through the planning-first pipeline.
-            # Both submitters raise on failure, so a returned id is always real.
-            op = _op_of(cfg)
-            if op in _WORKFLOW_CMD:
-                return _submit_workflow(name, wd, op=op, dry_run=dry_run,
-                                        depends_on=depends_on, cfg=cfg)
-            return _submit_pipeline(name, wd, dry_run=dry_run,
-                                    depends_on=depends_on, cfg=cfg)
-        submit.__name__ = f"submit[{name}]"
-        return submit
-
-    for name, deps in deps_map.items():
-        book.step(
-            outputs=(name, str | None),
-            instruction=make_submit(name),
-            args=[(d, str) for d in deps],
-        )
-    return book
 
 
 @cli.command("build-all")
@@ -585,6 +479,119 @@ def build_all(manifest: Path | None, workdir: Path | None,
     except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"Release jobs submitted/resumed; inspect {workdir / 'summary.json'} for verified completion")
+
+
+@cli.group("e2e-sample")
+def e2e_sample() -> None:
+    """Sampled end-to-end check: the release DAG on a few hundred inputs.
+
+    prepare (SLURM job) -> run (build-all on the sample) -> status -> verify (SLURM job).
+    See structcooker.sample_e2e and docs/e2e-build.md.
+    """
+
+
+def _sample_job(root: Path, name: str, argv: list[str], mem_gb: int) -> str:
+    from datacooker.executors.slurm import SlurmExecutor
+
+    execu = SlurmExecutor(workdir=root / "jobs" / name, repo=REPO)
+    return execu.run_once(name=f"e2e_{name}", argv=[sys.executable, "-u", "-m", "structcooker.sample_e2e", *argv],
+                          mem_gb=mem_gb, cores=8).job_id
+
+
+@e2e_sample.command("prepare")
+@click.argument("root", type=click.Path(path_type=Path))
+@click.option("--count", "counts", multiple=True, metavar="SOURCE=N",
+              help="Sample size per source, e.g. --count pdb=50 (sources: see sample_e2e.DEFAULT_COUNTS).")
+def e2e_sample_prepare(root: Path, counts: tuple[str, ...]) -> None:
+    """Pick the sample and build ROOT/data (DATA_ROOT) and ROOT/out (OUTPUT_ROOT)."""
+    import json
+
+    from structcooker.sample_e2e import DEFAULT_COUNTS
+
+    sizes = {}
+    for item in counts:
+        source, _, n = item.partition("=")
+        if source not in DEFAULT_COUNTS or not n.isdigit():
+            msg = f"--count {item}: expected SOURCE=N with SOURCE in {sorted(DEFAULT_COUNTS)}"
+            raise click.ClickException(msg)
+        sizes[source] = int(n)
+    root = root.resolve()
+    if (root / "sample.json").exists():
+        msg = f"{root} already holds a sample; use a new root"
+        raise click.ClickException(msg)
+    root.mkdir(parents=True, exist_ok=True)
+    job = _sample_job(root, "prepare", ["prepare", str(root), json.dumps(sizes)], 128)
+    click.echo(f"prepare job {job}; then: structcooker e2e-sample run {root}")
+
+
+@e2e_sample.command("run")
+@click.argument("root", type=click.Path(exists=True, path_type=Path))
+@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_all.yaml",
+              show_default=True)
+def e2e_sample_run(root: Path, manifest: Path) -> None:
+    """build-all on the sample (ROOT/run), with every path confined to ROOT."""
+    from structcooker.release import start
+    from structcooker.sample_e2e import escaping_paths, sample_environment
+
+    root = root.resolve()
+    if not (root / "sample.json").exists():
+        msg = f"{root} has no sample.json; run `structcooker e2e-sample prepare` first (and let it finish)"
+        raise click.ClickException(msg)
+    env = sample_environment(root)
+    os.environ.clear()
+    os.environ.update(env)
+    names = _manifest_names(manifest)
+    bad = escaping_paths({n: load_config(_resolve_db(n)) for n in names}, root)
+    if bad:
+        raise click.ClickException("paths outside the sample root:\n  " + "\n  ".join(bad))
+    try:
+        start(REPO, manifest, root / "run", DB_ROOT / "pdb-exceptions.json")
+    except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"sample build submitted/resumed; structcooker e2e-sample status {root}")
+
+
+_FAILED_JOB_STATES = {"FAILED", "CANCELLED", "TIMEOUT", "OUT_OF_MEMORY", "NODE_FAIL", "BOOT_FAIL", "DEADLINE"}
+
+
+@e2e_sample.command("status")
+@click.argument("root", type=click.Path(exists=True, path_type=Path))
+def e2e_sample_status(root: Path) -> None:
+    """Stage phases of the sampled build (no scanning, no jobs)."""
+    import json
+    from collections import Counter
+
+    summary_path = root / "run" / "summary.json"
+    if not summary_path.exists():
+        msg = f"no build under {root / 'run'} yet"
+        raise click.ClickException(msg)
+    phases = json.loads(summary_path.read_text())["nodes"]
+    states = {name: json.loads((root / "run" / "nodes" / name / "state.json").read_text())
+              for name, phase in phases.items() if phase not in {"complete", "waiting"}}
+    for name, state in states.items():
+        # A stage whose work job failed keeps a verifier that can never start; the phase
+        # stays "submitted" until `run` reconciles it.
+        if phases[name] == "submitted" and state.get("attempt"):
+            jobs = [p.read_text().strip() for p in Path(state["attempt"]).rglob("*.job-id")]
+            shown = subprocess.run(["sacct", "-n", "-P", "-o", "State", "-j", ",".join(jobs)],  # noqa: S603, S607
+                                   capture_output=True, text=True, check=False).stdout if jobs else ""
+            if any(s.split()[0] in _FAILED_JOB_STATES for s in shown.split("\n") if s):
+                phases[name] = "stalled"
+                state["error"] = "a job failed; see the attempt logs, fix, then rerun `e2e-sample run`"
+    click.echo("  ".join(f"{p}={n}" for p, n in sorted(Counter(phases.values()).items())))
+    for name, state in sorted(states.items()):
+        click.echo(f"  {phases[name]:<20} {name}  {(state.get('error') or '')[:160]}")
+
+
+@e2e_sample.command("verify")
+@click.argument("root", type=click.Path(exists=True, path_type=Path))
+@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_all.yaml",
+              show_default=True)
+def e2e_sample_verify(root: Path, manifest: Path) -> None:
+    """Compare every sampled output with the release (SLURM job; report in ROOT/verify.json)."""
+    root = root.resolve()
+    job = _sample_job(root, "verify", ["verify", str(root), str(root / "run"), str(manifest.resolve())], 128)
+    click.echo(f"verify job {job}; report -> {root / 'verify.json'}")
 
 
 def main() -> None:
