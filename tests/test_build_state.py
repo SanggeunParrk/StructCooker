@@ -262,3 +262,28 @@ def test_engine_yaml_preserves_nested_path_types(tmp_path):
     OmegaConf.save(OmegaConf.create(encode_engine_paths(cfg, frozen)), engine)
     actual = load_config(engine)
     assert actual == cfg
+
+
+def test_exclusive_waits_when_asked(tmp_path):
+    import threading
+    import time
+
+    from structcooker.build_state import exclusive
+
+    lock = tmp_path / "dispatch.lock"
+    entered = []
+
+    def peer():
+        with exclusive(lock, wait=10):
+            entered.append(True)
+
+    with exclusive(lock):
+        thread = threading.Thread(target=peer)
+        thread.start()
+        time.sleep(1)
+        assert not entered
+        with pytest.raises(RuntimeError, match="Another build owns"):
+            with exclusive(lock):
+                pass
+    thread.join()
+    assert entered

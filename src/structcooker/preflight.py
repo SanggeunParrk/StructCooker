@@ -16,7 +16,6 @@ before running build-all.
 from __future__ import annotations
 
 import importlib.util
-import json
 import os
 import shutil
 from dataclasses import dataclass, field
@@ -38,7 +37,8 @@ _SIDE_OUTPUT_KEYS = frozenset({"output_dir", "hmm_output_dir"})   # + any `out_*
 # node's own scratch/outputs, or the optional seq_id seed (absent == fresh id space).
 _NON_INPUT_KEYS = frozenset(
     # done_dir: the resume marker tree, which is this node's own output (hmm_output_dir).
-    {"tmp_dir", "output_dir", "hmm_output_dir", "done_dir", "out_path", "old_seq_id_map_path"},
+    # work_dir: a search's scratch (mmseqs), rewritten while the stage runs.
+    {"tmp_dir", "work_dir", "output_dir", "hmm_output_dir", "done_dir", "out_path", "old_seq_id_map_path"},
 )
 
 # External binaries the recipes shell out to (name -> optional/licensed).
@@ -104,13 +104,11 @@ def input_paths(cfg: Mapping[str, object]) -> list[Path]:
             collect(section)
     runtime = cfg.get("runtime_environment", {})
     if isinstance(runtime, dict) and runtime.get("OPENFOLD_STRUCTURE_OVERRIDES"):
+        from structcooker.instructions.readers.openfold import load_structure_overrides
+
         manifest = Path(str(runtime["OPENFOLD_STRUCTURE_OVERRIDES"]))
         if manifest.is_file():
-            replacements = json.loads(manifest.read_text())
-            if not isinstance(replacements, dict) or any(not isinstance(v, str) for v in replacements.values()):
-                msg = "Invalid structure override manifest"
-                raise ValueError(msg)
-            paths.extend(Path(v) for v in replacements.values())
+            paths.extend(load_structure_overrides(manifest).values())
     return list(dict.fromkeys(paths))
 
 

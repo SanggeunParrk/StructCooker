@@ -1,4 +1,4 @@
-import os
+import subprocess
 from collections import deque
 from collections.abc import Iterable
 from pathlib import Path
@@ -349,11 +349,22 @@ def run_mmseqs2(
     mmseqs2_covmode: str = "0",
     mmseqs2_clustermode: str = "1",
 ) -> None:
-    """Run MMSeqs2 to cluster sequences."""
+    """Cluster ``fasta_path`` with MMseqs2 into ``<tmp_dir>_cluster.tsv``.
+
+    A failed run raises (it used to go unnoticed, leaving a stale or missing table). A
+    fasta with no sequence -- a type this DB lacks, e.g. D-polypeptides in a small build --
+    gets an empty table: mmseqs createdb refuses an empty input.
+    """
+    out = Path(f"{tmp_dir}_cluster.tsv")
+    if not any(line.startswith(">") for line in Path(fasta_path).open()):
+        out.write_text("")
+        return
     print(f"Running MMSeqs2 clustering for {fasta_path}...")  # noqa: T201 (CLI progress)
-    os.system(  # noqa: S605
-        f"mmseqs easy-cluster {fasta_path} {tmp_dir} {tmp_dir}/tmp/ "  # noqa: S108
-        f"--min-seq-id {mmseqs2_seq_id} -c {mmseqs2_cov} --cov-mode {mmseqs2_covmode} --cluster-mode {mmseqs2_clustermode}",
+    subprocess.run(  # noqa: S603
+        ["mmseqs", "easy-cluster", str(fasta_path), str(tmp_dir), f"{tmp_dir}/tmp/",  # noqa: S607
+         "--min-seq-id", str(mmseqs2_seq_id), "-c", str(mmseqs2_cov),
+         "--cov-mode", str(mmseqs2_covmode), "--cluster-mode", str(mmseqs2_clustermode)],
+        check=True,
     )
     print(f"MMSeqs2 clustering finished for {fasta_path}")  # noqa: T201 (CLI progress)
 
@@ -589,8 +600,15 @@ def run_CDHIT(  # noqa: N802 (referenced by dotted-path)
 
     Other parameters are set to recommended values for antibody clustering.
     """
-    os.system(  # noqa: S605
-        f"cd-hit -i {input_fasta} -o {output_path} -c {seq_id} -n 2 -M 256000 -d 0 -T 0 -l 1 -s 0.8 -aL 0.8 -aS 0.8 -g 1",
+    if not any(line.startswith(">") for line in Path(input_fasta).open()):
+        # No antibody chain of this type in the build: an empty cluster file, as cd-hit
+        # rejects an empty input.
+        Path(f"{output_path}.clstr").write_text("")
+        return
+    subprocess.run(  # noqa: S603
+        ["cd-hit", "-i", str(input_fasta), "-o", str(output_path), "-c", str(seq_id), "-n", "2",  # noqa: S607
+         "-M", "256000", "-d", "0", "-T", "0", "-l", "1", "-s", "0.8", "-aL", "0.8", "-aS", "0.8", "-g", "1"],
+        check=True,
     )
 
 

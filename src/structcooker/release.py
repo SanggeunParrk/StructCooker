@@ -17,7 +17,7 @@ from datacooker.executors.slurm import SlurmExecutor
 from datacooker.utils.paths import scan_paths
 from omegaconf import OmegaConf
 
-from structcooker import preflight
+from structcooker import preflight, workflow_ops
 from structcooker.build_state import (
     Fingerprints,
     claim_output,
@@ -28,6 +28,8 @@ from structcooker.build_state import (
 from structcooker.build_verify import verify_output
 from structcooker.production import encode_engine_paths, freeze_config, snapshot
 
+# Stages that finish together queue for the dispatch lock (held for a few sbatch calls).
+_DISPATCH_WAIT = 600
 _ACTIVE = {"PENDING", "RUNNING", "CONFIGURING", "COMPLETING", "SUSPENDED", "REQUEUED"}
 
 
@@ -91,7 +93,7 @@ def _submit(run: Path, name: str, action: str, depends: tuple[str, ...] = ()) ->
 def dispatch(run: Path) -> None:
     """Submit ready stage planners once, then exit; verification jobs dispatch children."""
     definition = _read(run / "release.json")
-    with exclusive(run / "dispatch.lock"):
+    with exclusive(run / "dispatch.lock", wait=_DISPATCH_WAIT):
         states = {name: _read(_state(run, name)) for name in definition["graph"]}
         for name, parents in definition["graph"].items():
             state = states[name]
@@ -147,7 +149,7 @@ def start(repo: Path, manifest: Path, run: Path, policy: Path) -> None:
                 OmegaConf.save(OmegaConf.create(cfg), folder / "config.yaml")
                 write_json(_state(run, name), {"phase": "waiting"})
         else:
-            with exclusive(run / "dispatch.lock"):
+            with exclusive(run / "dispatch.lock", wait=_DISPATCH_WAIT):
                 reconcile(run)
     dispatch(run)
 
@@ -210,10 +212,10 @@ def _pin_references(cfg: dict[str, Any], attempt: Path) -> dict[str, Any]:
         target = attempt / "references" / (key + source.suffix)
         target.parent.mkdir(exist_ok=True)
         if key == "OPENFOLD_STRUCTURE_OVERRIDES":
-            mapping = _read(source)
+            from structcooker.instructions.readers.openfold import load_structure_overrides
+
             pinned = {}
-            for original, replacement in mapping.items():
-                payload = Path(replacement)
+            for original, payload in load_structure_overrides(source).items():
                 dest = target.parent / (Fingerprints().file(payload) + payload.suffix)
                 shutil.copy2(payload, dest)
                 pinned[original] = str(dest)
@@ -267,13 +269,11 @@ def plan_stage(run: Path, name: str) -> None:
         OmegaConf.save(OmegaConf.create(encode_engine_paths(engine_cfg, freeze_config(engine_cfg, Path(definition["repo"]), Path(definition["frozen"])))), attempt / "engine.yaml")
         state.update(attempt=str(attempt), identity=identity)
         write_json(state_path, state)
-        if cfg.get("output_data_path"):
-            op = "extract-lmdb" if cfg.get("db_path") or cfg.get("extract_recipe") else "run"
-            handle = _executor(run, attempt).run_once(
-                name="projection", argv=[sys.executable, "-m", "datacooker.cli.workflow", op, str(attempt / "engine.yaml")],
-                mem_gb=128, cores=8,
-            )
-            terminal = str(handle.job_id)
+        op = workflow_ops.op_of(cfg)
+        if op in workflow_ops.WORKFLOW_CMD:
+            # Projections and parallel searches write files, not an LMDB: one job, or an
+            # N-task array for a parallel op that declares node_count.
+            terminal = str(workflow_ops.submit(_executor(run, attempt), op, op, attempt / "engine.yaml", cfg))
         else:
             result = subprocess.run([sys.executable, "-m", "datacooker.cli.lmdb", "pipeline",  # noqa: S603 - captured config argv
                                      str(attempt / "engine.yaml"), "--workdir", str(attempt),
@@ -288,7 +288,7 @@ def plan_stage(run: Path, name: str) -> None:
                 raise RuntimeError(msg)
             terminal = match.group(1)
         write_json(attempt / "submitted.json", {"terminal": terminal})
-    with exclusive(run / "dispatch.lock"):
+    with exclusive(run / "dispatch.lock", wait=_DISPATCH_WAIT):
         job = _submit(run, name, "verify", (terminal,))
         state.update(phase="submitted", job=job, terminal=terminal, identity=identity, action="verify")
         write_json(state_path, state)
@@ -315,12 +315,11 @@ def repair_attempt(run: Path, cfg: dict[str, Any], attempt: Path) -> str:
                 handle = executor.run_once(name=f"repair_{path.stem}_{i}", argv=command, mem_gb=128, cores=8)
                 workers.append(str(handle.job_id))
     if publish is None or index is None:
-        if cfg.get("output_data_path"):
-            # Projection retries overwrite their own declared outputs through the same recipe.
-            op = "extract-lmdb" if cfg.get("db_path") or cfg.get("extract_recipe") else "run"
-            handle = executor.run_once(name="projection_retry", argv=[sys.executable, "-m", "datacooker.cli.workflow", op,
-                                                                       str(attempt / "engine.yaml")], mem_gb=128, cores=8)
-            return str(handle.job_id)
+        op = workflow_ops.op_of(cfg)
+        if op in workflow_ops.WORKFLOW_CMD:
+            # Projection retries overwrite their own declared outputs through the same recipe;
+            # parallel retries skip the items whose outputs are already written.
+            return str(workflow_ops.submit(executor, f"{op}_retry", op, attempt / "engine.yaml", cfg))
         msg = "Incomplete submission manifests; reconcile before retrying"
         raise RuntimeError(msg)
     merged = executor.run_once(name="repair_publish", argv=publish, mem_gb=128, cores=8, depends_on=tuple(workers))

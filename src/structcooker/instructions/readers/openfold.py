@@ -57,6 +57,23 @@ def _map_changed(name: str, path: Path) -> bool:
 
 
 
+def load_structure_overrides(manifest: Path) -> dict[str, Path]:
+    """Read an OPENFOLD_STRUCTURE_OVERRIDES manifest: ``{original: replacement}``.
+
+    Keys are paths under the OpenFold raw root (``monomer_distillation_sets_v2/...``) or
+    absolute paths; relative replacements are relative to the manifest, so the manifest
+    and its files can live anywhere (``intermediate/openfold_distillation/long_recovered``,
+    written by scripts/staging/recover_ofd_long_npz.py).
+    """
+    mapping = json.loads(Path(manifest).read_text())
+    if not isinstance(mapping, dict) or any(
+        not isinstance(key, str) or not isinstance(value, str) for key, value in mapping.items()
+    ):
+        msg = "Structure overrides must map original paths to recovered paths"
+        raise ValueError(msg)
+    return {key: Path(manifest).parent / value for key, value in mapping.items()}
+
+
 def _structure_path(path: Path) -> Path:
     """Resolve explicitly recorded, separately recovered structures for this run."""
     global _STRUCTURE_OVERRIDES  # noqa: PLW0603 - process-local cache
@@ -67,14 +84,12 @@ def _structure_path(path: Path) -> Path:
     changed = _map_changed("structure", Path(manifest))
     if _STRUCTURE_OVERRIDES is None or changed:
         _STRUCTURE_OVERRIDES = None
-        mapping = json.loads(Path(manifest).read_text()) if manifest else {}
-        if not isinstance(mapping, dict) or any(
-            not isinstance(key, str) or not isinstance(value, str) for key, value in mapping.items()
-        ):
-            msg = "Structure overrides must map original paths to recovered paths"
-            raise ValueError(msg)
-        _STRUCTURE_OVERRIDES = mapping
-    return Path(_STRUCTURE_OVERRIDES.get(str(path), str(path)))
+        _STRUCTURE_OVERRIDES = {k: str(v) for k, v in load_structure_overrides(Path(manifest)).items()}
+    text = str(path)
+    for key, replacement in _STRUCTURE_OVERRIDES.items():
+        if text == key or text.endswith("/" + key):
+            return Path(replacement)
+    return path
 
 
 def _monomer_seqid_map() -> dict[str, str]:

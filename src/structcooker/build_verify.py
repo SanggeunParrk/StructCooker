@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from biomol.exceptions import FeatureKeyError
 from datacooker.config.runtime import activate_environment
 from datacooker.lmdb import default_lmdb_key
 from datacooker.lmdb.index import read_index
@@ -21,6 +22,7 @@ from structcooker.instructions.transforms.cifmol import (
 )
 from structcooker.instructions.transforms.codecs import from_bytes
 from structcooker.instructions.transforms.msa import msa_statistics
+from structcooker.instructions.transforms.pruning import load_pruned_cifmol
 from structcooker.mols import CIFMol
 
 
@@ -31,6 +33,9 @@ def verify_structure(value: Any, schema: str) -> None:
     if schema in adapters:
         assemblies = adapters[schema](value)
         mols = [item["cifmol"] for item in assemblies.values()]
+    elif schema == "H":
+        # Pruned model-input records carry a compact index table (schemas.SCHEMAS["H"]).
+        mols = [load_pruned_cifmol(value)]
     else:
         mols = [CIFMol.from_dict(value)]
     if not mols:
@@ -45,8 +50,11 @@ def verify_structure(value: Any, schema: str) -> None:
         if chain.min() < 0 or chain.max() >= len(mol.chains.chain_id.value):
             msg = "Atom-to-chain index out of range"
             raise ValueError(msg)
-        bonds = mol.atoms.bond_type
-        for endpoints in (bonds.src_indices, bonds.dst_indices):
+        try:
+            bonds = mol.atoms.bond_type
+        except FeatureKeyError:
+            bonds = None                     # pruned (H) records keep no bonds
+        for endpoints in (bonds.src_indices, bonds.dst_indices) if bonds is not None else ():
             if len(endpoints) and (endpoints.min() < 0 or endpoints.max() >= len(xyz)):
                 msg = "Bond endpoint out of range"
                 raise ValueError(msg)
@@ -57,16 +65,24 @@ def verify_structure(value: Any, schema: str) -> None:
                     raise ValueError(msg)
 
 
+def _nonempty(path: Path) -> bool:
+    if path.is_dir():
+        return any(p.is_file() and p.stat().st_size for p in path.rglob("*"))
+    return path.is_file() and path.stat().st_size > 0
+
+
 def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str, dict[str, str]]) -> dict[str, Any]:
     """Check all records, complete index coverage, and exact build-input key coverage."""
     activate_environment(cfg)
     target = cfg.get("new_env_path") or cfg.get("env_path")
     if target is None:
+        # A projection writes files; a parallel op (and a few multi-output projections)
+        # fills a directory.
         outputs = preflight.output_paths(cfg)
-        if not outputs or any(not p.is_file() or not p.stat().st_size for p in outputs):
+        if not outputs or any(not _nonempty(p) for p in outputs):
             msg = "Projection outputs are missing or empty"
             raise ValueError(msg)
-        return {"outputs": list(map(str, outputs)), "verification": "nonempty files"}
+        return {"outputs": list(map(str, outputs)), "verification": "nonempty files/directories"}
     path = Path(target)
     indices = read_index(path)
     sizes = {item.key: item.value_bytes for item in indices}
@@ -148,8 +164,11 @@ def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str
     if unexpected:
         msg = f"Unapproved input failures: {sorted(unexpected)}"
         raise ValueError(msg)
-    if (totals["written"] + totals["skipped_existing"] != checked or totals["attempted"] !=
-            totals["written"] + totals["skipped_existing"] + totals["skipped_empty"] + totals["failed"]):
+    # An exploding rebuild (cif_chain: entry -> its chains) attempts source entries but
+    # writes sub-records, so only the record count can be checked against attempts there.
+    exploded = bool(cfg.get("explode_entries"))
+    if (totals["written"] + totals["skipped_existing"] != checked or (not exploded and totals["attempted"] !=
+            totals["written"] + totals["skipped_existing"] + totals["skipped_empty"] + totals["failed"])):
         msg = "Shard accounting does not match output records"
         raise ValueError(msg)
     if not cfg.get("old_env_path"):

@@ -39,14 +39,21 @@ def fasta_chain_list(fasta_path: str | Path, out_path: str | Path) -> str:
     """Write the pdbid_chain id of every polypeptide(L) record, one per line.
 
     This is the protein-chain work list (``template_chain_filelist``) that the
-    Phase 1/2 candidate precompute and the Phase 4 keyed build iterate over.
+    Phase 1/2 candidate precompute and the Phase 4 keyed build iterate over. A chain
+    appears once per altloc in the fasta (``1J4R_A_A``, ``1J4R_A_B``, ``1J4R_A_.``) but
+    is one work item, so each id is written once, in first-seen order.
     """
     n = 0
+    seen: set[str] = set()
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     with Path(fasta_path).open(encoding="utf-8") as f, Path(out_path).open("w", encoding="utf-8") as out:
         for line in f:
             if line.startswith(">") and _L_TYPE in line:
-                out.write(_chain_id(line[1:]) + "\n")
+                chain = _chain_id(line[1:])
+                if chain in seen:
+                    continue
+                seen.add(chain)
+                out.write(chain + "\n")
                 n += 1
     return f"chain list: {n} polypeptide(L) chains -> {out_path}"
 

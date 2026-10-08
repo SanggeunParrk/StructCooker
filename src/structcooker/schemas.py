@@ -113,7 +113,9 @@ def _v_F(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
 def _v_G(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(v) or "chem_comp_dict" not in v:
         return ["missing chem_comp_dict"]
-    return [] if _is_dict(v["chem_comp_dict"]) else ["chem_comp_dict not a dict"]
+    # None: a component the CCD defines without atoms (UNL, unknown ligand); the CIF build
+    # reads it as "no definition", so the record is kept.
+    return [] if v["chem_comp_dict"] is None or _is_dict(v["chem_comp_dict"]) else ["chem_comp_dict not a dict"]
 
 
 def _v_I(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)

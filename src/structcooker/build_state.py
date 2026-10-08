@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import tempfile
+import time
 from collections.abc import Callable, Iterator, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
@@ -41,15 +42,24 @@ def write_json(path: Path, value: object) -> None:
 
 
 @contextmanager
-def exclusive(path: Path) -> Iterator[None]:
-    """Reject concurrent writers; kernel locks are released on process death."""
+def exclusive(path: Path, wait: float = 0) -> Iterator[None]:
+    """Reject concurrent writers; kernel locks are released on process death.
+
+    ``wait`` > 0 queues for up to that many seconds instead: for short critical sections
+    that peers enter routinely (two release stages finishing at once both dispatch).
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a") as handle:
-        try:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError as exc:
-            msg = f"Another build owns {path}"
-            raise RuntimeError(msg) from exc
+        deadline = time.monotonic() + wait
+        while True:
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError as exc:
+                if time.monotonic() >= deadline:
+                    msg = f"Another build owns {path}"
+                    raise RuntimeError(msg) from exc
+                time.sleep(0.5)
         try:
             yield
         finally:

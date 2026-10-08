@@ -23,5 +23,5 @@ test_run: false
 
 # Explicit, fingerprinted reader inputs.
 runtime_environment:
-  MONOMER_SEQID_MAP: ${oc.env:MONOMER_SEQID_MAP,${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/metadata/distillation_monomer_seqid.tsv}
+  MONOMER_SEQID_MAP: ${oc.env:MONOMER_SEQID_MAP,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/distillation_monomer_seqid.tsv}   # metadata/distillation_monomer_seqid
 duplicate_input_policy: first_path

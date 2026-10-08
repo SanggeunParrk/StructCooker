@@ -31,3 +31,11 @@ def test_filtered_schema_checks_every_assembly(missing):
 @pytest.mark.parametrize("value", [{}, None, {"1_1_.": {"cifmol_attached_dict": {}}}])
 def test_filtered_schema_rejects_other_wrappers(value):
     assert get("I").validate(value)
+
+
+def test_ccd_component_without_atoms_is_valid():
+    # UNL (unknown ligand) has no atoms in the CCD; the build stores chem_comp_dict None.
+    from structcooker import schemas as s
+
+    assert s.get("G").validate({"chem_comp_dict": None}) == []
+    assert s.get("G").validate({"chem_comp_dict": "x"}) == ["chem_comp_dict not a dict"]
