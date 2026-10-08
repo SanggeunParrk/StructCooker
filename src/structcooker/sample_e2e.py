@@ -227,10 +227,17 @@ class Sampler:
             if sid[0] in "PR":
                 msas += link_tree(self.inter / "msa" / sid[0] / sid[-3:] / sid,
                                   self.s_inter / "msa" / sid[0] / sid[-3:] / sid) > 0
-                link(self.prod_out / f"materials/intermediate/signalp/{sid}.gff3",
-                     self.out / f"materials/intermediate/signalp/{sid}.gff3")
-        (self.out / "materials/intermediate/signalp").mkdir(parents=True, exist_ok=True)
-        self.report["pdb"] = {"entries": dict(sorted(chosen.items())), "seq_ids": len(seq_ids), "msas": msas}
+        # SignalP files are named in the older 7-digit id format (P0172039.gff3 for
+        # P00000000000000172039); the build matches them by counter, and so does this.
+        from structcooker.instructions.transforms.metadata import _sequence_counter_key
+
+        counters = {_sequence_counter_key(sid) for sid in seq_ids}
+        signalp, s_signalp = self.prod_out / "materials/intermediate/signalp", self.out / "materials/intermediate/signalp"
+        s_signalp.mkdir(parents=True, exist_ok=True)
+        predictions = sum(link(p, s_signalp / p.name) for p in signalp.glob("*.gff3")
+                          if _sequence_counter_key(p.stem) in counters)
+        self.report["pdb"] = {"entries": dict(sorted(chosen.items())), "seq_ids": len(seq_ids), "msas": msas,
+                              "signalp": predictions}
 
     # -- OpenFold distillation --------------------------------------------------------
     def ofd(self) -> None:

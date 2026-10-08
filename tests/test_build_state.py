@@ -287,3 +287,21 @@ def test_exclusive_waits_when_asked(tmp_path):
                 pass
     thread.join()
     assert entered
+
+
+def test_directory_fingerprint_is_content_keyed_and_rejects_dir_symlinks(tmp_path):
+    from structcooker.build_state import Fingerprints
+
+    root = tmp_path / "msa"
+    (root / "P" / "001").mkdir(parents=True)
+    (root / "P" / "001" / "a.a3m").write_text(">q\nA\n")
+    (root / "b.a3m").write_text(">q\nC\n")
+    first = Fingerprints().path(root)
+    assert sorted(first) == ["P/001/a.a3m", "b.a3m"]
+    (root / "b.a3m").write_text(">q\nG\n")
+    assert Fingerprints().path(root)["b.a3m"] != first["b.a3m"]
+    other = tmp_path / "other"
+    other.mkdir()
+    (root / "linked").symlink_to(other)
+    with pytest.raises(ValueError, match="Directory symlink"):
+        Fingerprints().path(root)

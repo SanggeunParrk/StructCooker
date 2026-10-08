@@ -102,7 +102,9 @@ class Fingerprints:
 
     def files(self, paths: list[Path]) -> dict[str, str]:
         """Overlap bounded file I/O without trusting size/mtime as a content hash."""
-        with ThreadPoolExecutor(max_workers=16) as pool:
+        # Network-filesystem reads overlap well: 64 in flight hash ~3.5x faster than 16
+        # (OpenFold long raw: 3,200 vs 900 files/s, 2026-10-08).
+        with ThreadPoolExecutor(max_workers=64) as pool:
             values = {}
             for offset in range(0, len(paths), 1024):
                 batch = paths[offset:offset + 1024]
@@ -122,16 +124,18 @@ class Fingerprints:
                     "shards": {str(p): self.path(p) for p in shard_paths(path)}}
         if (path / "data.mdb").is_file():
             return {"data.mdb": self.file(path / "data.mdb")}
-        entries = {}
-        for child in sorted(path.rglob("*")):
+        from datacooker.utils.paths import scan_paths
+
+        children = []
+        for child in scan_paths(path, pattern="*"):        # parallel listing, sorted
             if "__pycache__" in child.parts or child.suffix == ".pyc":
                 continue
-            if child.is_symlink() and child.is_dir():
+            if child.is_dir():                              # listed as a non-directory: a symlink
                 msg = f"Directory symlink requires an explicit input root: {child}"
                 raise ValueError(msg)
-            if child.is_file():
-                entries[str(child.relative_to(path))] = self.file(child)
-        return entries
+            children.append(child)
+        hashes = self.files(children)
+        return {str(child.relative_to(path)): hashes[str(child)] for child in children}
 
 
 class BuildState:
