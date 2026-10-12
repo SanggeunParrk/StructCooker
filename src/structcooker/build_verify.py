@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
+import os
+from collections.abc import Iterator
+from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 from pathlib import Path
 from typing import Any
 
@@ -65,6 +69,70 @@ def verify_structure(value: Any, schema: str) -> None:
                     raise ValueError(msg)
 
 
+_VERIFY_BATCH = 256
+
+
+def _verify_workers() -> int:
+    return max(1, int(os.environ.get("SLURM_CPUS_PER_TASK") or os.cpu_count() or 1))
+
+
+_WORKER_ENVS: dict[str, Any] = {}
+
+
+def _check_records(path: str, keys: list[str], schema_name: str, max_depth: int | None) -> int:
+    """Read and validate a batch of records (runs in a worker process); returns how many."""
+    schema = schemas.get(schema_name)
+    if path not in _WORKER_ENVS:
+        _WORKER_ENVS[path] = open_env(path, readonly=True, lock=False, readahead=False)
+    with _WORKER_ENVS[path].begin() as txn:
+        values = [(key, txn.get(key.encode())) for key in keys]
+    for key, raw in values:
+        if raw is None:
+            msg = f"Record {key} vanished during verification"
+            raise ValueError(msg)
+        value = raw if schema.codec == schemas.Codec.raw else from_bytes(raw)
+        issues = schema.validate(value)
+        if issues:
+            msg = f"Invalid {schema.name} record {key}: {issues}"
+            raise ValueError(msg)
+        if schema.name in {"A", "B", "C", "H", "I"}:
+            if not isinstance(value, dict):
+                msg = f"Invalid structure payload for {key}"
+                raise ValueError(msg)
+            verify_structure(value, schema.name)
+        if schema.name == "E":
+            _check_msa(key, value, max_depth)
+    return len(keys)
+
+
+def _check_msa(key: str, value: Any, max_depth: int | None) -> None:
+    if not isinstance(value, dict):
+        msg = f"Invalid MSA payload type for {key}"
+        raise ValueError(msg)
+    msa = value["msa_dict"]
+    sequence = msa["sequences"]
+    aligned = sequence["aligned_sequences"]
+    if max_depth is not None and len(aligned) > int(max_depth):
+        msg = f"MSA depth exceeds configured cap for {key}"
+        raise ValueError(msg)
+    profile = sequence["profile"]
+    if (aligned.ndim != 2 or min(aligned.shape) == 0
+            or sequence["deletions"].shape != aligned.shape
+            or profile.shape[0] != aligned.shape[1]
+            or not np.isfinite(profile).all()
+            or not np.allclose(profile.sum(axis=1), 1)
+            or aligned.min() < 0 or aligned.max() >= profile.shape[1]
+            or sequence["deletions"].min() < 0 or sequence["deletions"].max() > 255
+            or any(len(v) != len(aligned) for v in msa["headers"].values())):
+        msg = f"Invalid MSA arrays for {key}"
+        raise ValueError(msg)
+    deletion_mean, expected_profile = msa_statistics(aligned, sequence["deletions"], profile.shape[1])
+    if (not np.array_equal(profile, expected_profile)
+            or not np.array_equal(sequence["deletion_mean"], deletion_mean)):
+        msg = f"Incorrect MSA statistics for {key}"
+        raise ValueError(msg)
+
+
 def _nonempty(path: Path) -> bool:
     if path.is_dir():
         return any(p.is_file() and p.stat().st_size for p in path.rglob("*"))
@@ -96,51 +164,37 @@ def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str
             or metadata["max_bytes"] != max(sizes.values())):
         msg = "Index/metadata mismatch"
         raise ValueError(msg)
+    max_depth = cfg.get("parameters", {}).get("max_depth")
     checked = 0
     with open_env(str(path), readonly=True, lock=False, readahead=False) as env, env.begin(buffers=True) as txn:
-        for raw_key, raw_value in txn.cursor():
-            key = bytes(raw_key).decode()
-            if sizes.get(key) != len(raw_value):
-                msg = f"DB/index mismatch for {key}"
-                raise ValueError(msg)
-            value = bytes(raw_value) if schema.codec == schemas.Codec.raw else from_bytes(bytes(raw_value))
-            issues = schema.validate(value)
-            if issues:
-                msg = f"Invalid {schema.name} record {key}: {issues}"
-                raise ValueError(msg)
-            if schema.name in {"A", "B", "C", "H", "I"}:
-                if not isinstance(value, dict):
-                    msg = f"Invalid structure payload for {key}"
+
+        def batches() -> Iterator[list[str]]:
+            batch: list[str] = []
+            for raw_key, raw_value in txn.cursor():
+                key = bytes(raw_key).decode()
+                if sizes.get(key) != len(raw_value):
+                    msg = f"DB/index mismatch for {key}"
                     raise ValueError(msg)
-                verify_structure(value, schema.name)
-            if schema.name == "E":
-                if not isinstance(value, dict):
-                    msg = f"Invalid MSA payload type for {key}"
-                    raise ValueError(msg)
-                msa = value["msa_dict"]
-                sequence = msa["sequences"]
-                aligned = sequence["aligned_sequences"]
-                max_depth = cfg.get("parameters", {}).get("max_depth")
-                if max_depth is not None and len(aligned) > int(max_depth):
-                    msg = f"MSA depth exceeds configured cap for {key}"
-                    raise ValueError(msg)
-                profile = sequence["profile"]
-                if (aligned.ndim != 2 or min(aligned.shape) == 0
-                        or sequence["deletions"].shape != aligned.shape
-                        or profile.shape[0] != aligned.shape[1]
-                        or not np.isfinite(profile).all()
-                        or not np.allclose(profile.sum(axis=1), 1)
-                        or aligned.min() < 0 or aligned.max() >= profile.shape[1]
-                        or sequence["deletions"].min() < 0 or sequence["deletions"].max() > 255
-                        or any(len(v) != len(aligned) for v in msa["headers"].values())):
-                    msg = f"Invalid MSA arrays for {key}"
-                    raise ValueError(msg)
-                deletion_mean, expected_profile = msa_statistics(aligned, sequence["deletions"], profile.shape[1])
-                if (not np.array_equal(profile, expected_profile)
-                        or not np.array_equal(sequence["deletion_mean"], deletion_mean)):
-                    msg = f"Incorrect MSA statistics for {key}"
-                    raise ValueError(msg)
-            checked += 1
+                batch.append(key)
+                if len(batch) == _VERIFY_BATCH:
+                    yield batch
+                    batch = []
+            if batch:
+                yield batch
+
+        # Decoding and re-deriving MSA statistics is CPU-bound: one process verified ~30
+        # OFD long MSAs/s, days for 16M records. Workers read and check their own keys
+        # (values never cross processes); a few batches in flight keep memory bounded.
+        workers = _verify_workers()
+        context = multiprocessing.get_context("forkserver")
+        with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
+            pending: set[Future[int]] = set()
+            for batch in batches():
+                pending.add(pool.submit(_check_records, str(path), batch, schema.name, max_depth))
+                if len(pending) >= 4 * workers:
+                    done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                    checked += sum(f.result() for f in done)
+            checked += sum(f.result() for f in pending)
     if checked != len(sizes):
         msg = "Index contains keys absent from the DB"
         raise ValueError(msg)

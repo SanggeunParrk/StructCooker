@@ -82,7 +82,9 @@ def _submit(run: Path, name: str, action: str, depends: tuple[str, ...] = ()) ->
                sys.executable, "-m", "structcooker.release", action, str(run), name]
     handle = _executor(run, folder).run_once(
         name=f"release_{action}_{name.replace('/', '_')}", argv=command,
-        mem_gb=128, cores=8, depends_on=depends,
+        # Verification decodes every record on a process pool (build_verify); planning is
+        # mostly I/O.
+        mem_gb=128, cores=112 if action == "verify" else 8, depends_on=depends,
     )
     if not handle.job_id:
         msg = "Scheduler did not return a job ID"
