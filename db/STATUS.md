@@ -184,7 +184,7 @@ staging and reference inputs in [docs/e2e-build.md](../docs/e2e-build.md)).
 |---|---|---|---|---|
 | PDB | ✅ 249,676 / 249,644 (`cPDB_`) | ✅ 178,249 (+d16k/d2k/d512); RNA 6,572 | production DB (inputs unchanged) | experimental |
 | OFD short | ✅ 430,418 / 430,418 (released relaxed PDB) | ✅ 430,245 (+d2k/d512/d5k) | ✅ 430,370 (rebuilt on the fixed cif_chain) | pLDDT |
-| OFD long | ✅ 16,099,404 / 16,099,404 (released relaxed PDB; 80 ids have no model in the release) | ✅ 16,098,794 (+d2k/d512) | ✅ 16,080,773 (1,644,360 with hits on the added chains patched) | pLDDT |
+| OFD long | ✅ 16,099,404 / 16,099,404 (released relaxed PDB; 80 ids have no model in the release) | ✅ 16,098,808 (+d2k/d512) | ✅ 16,080,773 (1,644,360 with hits on the added chains patched) | pLDDT |
 | OFD rna | ✅ 126,778 / 126,778 | ✅ 126,751 (+d2k/d512/d5k) | — | 0 (not published) |
 | OFD disordered | ✅ 28,567 / 28,567 (+contacts) | ✅ 19,649 (+d2k/d512) | ✅ 78,176 | 0 (not published) |
 | teddymer | ✅ 510,454 / 510,454 | ✅ 999,853 (+d2k) | ✅ 998,878 | pLDDT |
@@ -196,6 +196,18 @@ staging and reference inputs in [docs/e2e-build.md](../docs/e2e-build.md)).
 whole entry when any assembly was over it. Template DBs built before that miss those chains as
 candidates; the OFD short and long templates were rebuilt/patched for that on 2026-10-06/07.
 Partial rebuilds use `structcooker patch NAME --keys|--files [--nodes N]`.
+
+Fixes from the sampled end-to-end check (`structcooker e2e-sample`), 2026-10-08..12:
+- OFD long MSA (`msa_long`, `_d2k`, `_d512`) gained the 14 entries recovered on 2026-09-14
+  (P00000000000019613388..401): their seq_ids were missing from the hand-supplied
+  `distillation_monomer_seqid.tsv`, now a DAG stage (old copy in `metadata/_superseded_20261008/`).
+  16,098,794 -> 16,098,808.
+- CCD rebuilt with the current code (adds `component_atom_id`; the 2026-08-31 build predated it;
+  old copy in `ccd/_superseded_20261008/`). Of the 4,207 PDB entries using a component with such
+  aliases, only 5j2p changes; it was patched in cif, cif_attached, both train sets, mpnn and
+  cif_chain. Counts unchanged.
+- A sample of every source now rebuilds identically to the release for every structure, MSA
+  and CCD record (docs/e2e-build.md §5).
 
 MSA and template DBs are keyed by seq_id, so they count unique sequences, not structures: the
 AFM release predicts one model per UniProt entry, and 126,492 homodimers share their sequence
