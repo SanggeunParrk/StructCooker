@@ -78,6 +78,12 @@ test). Each set's manifest still builds that set alone.
 
 Sizes and times on this cluster (2026-09/10): OFD long cif ≈ 8 × 3 h; teddymer MSA (MMseqs2,
 8 nodes) ≈ 2 days; teddymer hmmsearch (8 nodes) ≈ 31 h; AFM hmmsearch (8 nodes) ≈ 6 days.
+A release stage also fingerprints its inputs (planning and verification) and decodes every
+output record to verify it. Measured on OFD long (2026-10-08..12): scanning raw/ (16.4M
+files) takes ~80 min, hashing ~3,200 files/s, verification ~0.2 CPU s per MSA record (~8 h
+for 16M on a 112-core verification job). A 1% sample of everything (`e2e-sample prepare
+--count ofd_long=160000 ...`) builds in a few hours.
+
 Large `parallel` searches declare `node_count: 8` and are submitted as an 8-task array; each
 task refuses to start on a node whose `/dev/shm` cannot hold process semaphores (joblib would
 otherwise run serially there); set `DATACOOKER_EXCLUDE_NODES=node04,node07` (any such
