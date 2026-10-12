@@ -66,6 +66,11 @@ structcooker inspect --strict --manifest db/MANIFEST_all.yaml     # every input 
 structcooker build-all --manifest db/MANIFEST_all.yaml --workdir <scratch>
 ```
 
+A stage may fail only on inputs listed in `db/release-exceptions.json`, each with its reason
+and SHA256: 5 PDB entries the parser cannot map, and 840 OpenFold `alignment.npz` files that
+are empty or corrupt in the release (OFD long 667, short 173; the MSA DBs lack those
+sequences). Any other failure stops the stage.
+
 `db/MANIFEST_all.yaml` is the union of the per-set manifests (`MANIFEST.yaml`,
 `MANIFEST_{pdb,distillation,teddymer,afdb_multimer,msa,cifcore*}.yaml`); regenerate it after
 editing one (`python -c 'from structcooker.manifests import write; write()'`, enforced by a

@@ -34,6 +34,10 @@ _DATA_ROOT_DEFAULT = "/data/shared/cssb_data"
 DB_ROOT = REPO / "db"
 PIPELINE_CLI = [sys.executable, "-u", "-m", "datacooker.cli.lmdb", "pipeline"]
 _SCHEMA_LINE = re.compile(r"^\s*schema\s*:.*$", re.MULTILINE)
+# Inputs a release build may fail on, per stage, each with its reason and SHA256: the PDB
+# entries the parser cannot map and the OpenFold alignment.npz files that are empty or
+# corrupt in the release (db/release-exceptions.json, a superset of pdb-exceptions.json).
+RELEASE_EXCEPTIONS = DB_ROOT / "release-exceptions.json"
 
 
 def _resolve_db(name: str) -> Path:
@@ -475,7 +479,7 @@ def build_all(manifest: Path | None, workdir: Path | None,
         msg = "--workdir is required for persistent, verified release state"
         raise click.ClickException(msg)
     try:
-        start(REPO, man_path, workdir.resolve(), DB_ROOT / "pdb-exceptions.json")
+        start(REPO, man_path, workdir.resolve(), RELEASE_EXCEPTIONS)
     except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"Release jobs submitted/resumed; inspect {workdir / 'summary.json'} for verified completion")
@@ -545,7 +549,7 @@ def e2e_sample_run(root: Path, manifest: Path) -> None:
     if bad:
         raise click.ClickException("paths outside the sample root:\n  " + "\n  ".join(bad))
     try:
-        start(REPO, manifest, root / "run", DB_ROOT / "pdb-exceptions.json")
+        start(REPO, manifest, root / "run", RELEASE_EXCEPTIONS)
     except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"sample build submitted/resumed; structcooker e2e-sample status {root}")
