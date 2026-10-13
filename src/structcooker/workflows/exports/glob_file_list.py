@@ -10,6 +10,7 @@ recipe.step(
     kwargs={
         "sources": ("sources", list),
         "out_path": ("out_path", str),
+        "relative_to": ("relative_to", str | None),
     },
 )
 RECIPE = recipe

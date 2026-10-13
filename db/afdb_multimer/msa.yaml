@@ -16,6 +16,7 @@ env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/afd
 # Inputs: the release's MSAs (materials/raw) plus the one we generated (materials/intermediate),
 # listed by metadata/afm_msa_filelist so the raw tree holds only what was downloaded.
 file_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/worklists/afm_msa_filelist.txt}
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials}   # the list's lines are relative to it
 
 recipe: ${p:src/structcooker/workflows/ingest/a3m.py}
 key_builder: structcooker.instructions.readers.afdb.afm_msa_seqid_key
