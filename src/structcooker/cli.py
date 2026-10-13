@@ -692,16 +692,19 @@ def foldbench_keys(package: Path, out: Path | None) -> None:
 @foldbench_group.command("build")
 @click.argument("package", type=click.Path(exists=True, path_type=Path))
 @click.argument("out", type=click.Path(path_type=Path))
-@click.option("--release", type=click.Path(exists=True, path_type=Path),
-              default=Path(_DATA_ROOT_DEFAULT) / "BioMol", show_default=True,
-              help="BioMol root holding lmdb/pdb/{msa,template}.")
+@click.option("--release", type=click.Path(exists=True, path_type=Path), default=None,
+              help="Release tree to cut from (default: OUTPUT_ROOT, else DATA_ROOT/BioMol_clean).")
 @click.option("--ccd", type=click.Path(exists=True, path_type=Path), default=None,
-              help="CCD LMDB with the single-atom components (skipped when omitted).")
+              help="Inference CCD LMDB (atoms/residues/chains, single-atom components in); skipped when omitted.")
 @click.option("--fallback", type=click.Path(exists=True, path_type=Path), multiple=True,
               help="DB already holding the from-scratch (edge) MSAs, so they are not searched again.")
 @click.option("--local", is_flag=True, help="Run here instead of as a SLURM job (a few thousand key reads).")
-def foldbench_build(package: Path, out: Path, release: Path, ccd: Path | None, fallback: tuple[Path, ...], local: bool) -> None:
+def foldbench_build(package: Path, out: Path, release: Path | None, ccd: Path | None, fallback: tuple[Path, ...],
+                    local: bool) -> None:
     """Cut the FoldBench MSA / template / CCD LMDBs under OUT (never replaces an existing DB)."""
+    if release is None:
+        release = Path(os.environ.get("OUTPUT_ROOT")
+                       or Path(os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT)) / "BioMol_clean")
     argv = ["build", str(package.resolve()), str(out.resolve()), "--release", str(release.resolve())]
     if ccd is not None:
         argv += ["--ccd", str(ccd.resolve())]

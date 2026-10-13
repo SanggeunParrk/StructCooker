@@ -77,10 +77,10 @@ def test_copy_keys_never_replaces_an_existing_db(tmp_path):
 
 def test_build_then_verify_resolves_every_lookup(tmp_path):
     pkg = make_package(tmp_path / "pkg")
-    rel = tmp_path / "rel" / "lmdb" / "pdb"
-    make_db(rel / "msa" / "a3m.lmdb", {"P00000000000000000001": b"m1", "P00000000000000000002": b"m2"})
-    make_db(rel / "msa" / "msa_rna_pdb_shard0.lmdb", {"R00000000000000000007": b"r7"})
-    make_db(rel / "template" / "template.lmdb", {"t1xx_A": b"t"})
+    rel = tmp_path / "rel" / "lmdb"
+    make_db(rel / "pdb" / "msa" / "a3m.lmdb", {"P00000000000000000001": b"m1", "P00000000000000000002": b"m2"})
+    make_db(rel / "pdb" / "msa" / "msa_rna.lmdb", {"R00000000000000000007": b"r7"})
+    make_db(rel / "chain" / "template" / "template.lmdb", {"t1xx_A": b"t"})
     edge = make_db(tmp_path / "edge_a3m", {"P00000000000000300001": b"e1"})
     ccd = make_db(tmp_path / "CCD_x.lmdb", {"ZN": b"z", "NAG": b"n"})
     out = tmp_path / "out"
@@ -93,3 +93,15 @@ def test_build_then_verify_resolves_every_lookup(tmp_path):
     v = fb.verify(pkg, out, decode_sample=0)
     assert v["msa_slots"] == {"found": 3, "expected_missing": 1, "missing": 0}  # the D key has no MSA by design
     assert v["template_slots"] == {"found": 1, "missing": 1}
+
+
+def test_release_layout_matches_the_db_configs(monkeypatch, tmp_path):
+    """FoldBench cuts from the paths the release's own db configs write."""
+    from datacooker.config import load_config
+
+    from structcooker.cli import _resolve_db
+
+    monkeypatch.setenv("OUTPUT_ROOT", str(tmp_path))
+    for name, (db, rel) in fb.RELEASE_LAYOUT.items():
+        cfg = load_config(_resolve_db(db))
+        assert str(cfg.get("new_env_path") or cfg.get("env_path")) == str(tmp_path / rel), name

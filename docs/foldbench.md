@@ -8,9 +8,14 @@ records byte-for-byte and verifies that every lookup a `data.yaml` makes resolve
 | asset | out path | key | value | cut from |
 |---|---|---|---|---|
 | protein MSA | `msa/a3m.lmdb` | `P` + 20 digits | `{msa_dict}` (schema E) | `lmdb/pdb/msa/a3m.lmdb` |
-| RNA MSA | `msa/a3m_rna.lmdb` | `R` + 20 digits | `{msa_dict}` (schema E) | `lmdb/pdb/msa/msa_rna_pdb_shard0.lmdb` |
-| template | `template/template.lmdb` | `{pdbid}_{chain}` | `{template_mols}` (schema D) | `lmdb/pdb/template/template.lmdb` |
-| CCD | `CCD/<name>.lmdb` | component code | `{chem_comp_dict}` (schema G) | a CCD LMDB with single-atom components |
+| RNA MSA | `msa/a3m_rna.lmdb` | `R` + 20 digits | `{msa_dict}` (schema E) | `lmdb/pdb/msa/msa_rna.lmdb` |
+| template | `template/template.lmdb` | `{pdbid}_{chain}` | `{template_mols}` (schema D) | `lmdb/chain/template/template.lmdb` |
+| CCD | `CCD/<name>.lmdb` | component code | inference CCD record (`atoms` / `residues` / `chains`) | `--ccd` |
+
+Sources are the release tree (`OUTPUT_ROOT`, default `/data/shared/cssb_data/BioMol_clean`), at the paths its db
+configs write (`msa/a3m`, `msa/msa_rna`, `template/chain_template`). The CCD is a separate input: inference reads
+records in BioMol `atoms`/`residues`/`chains` form with the single-atom components in, not the release's schema-G
+`ccd/biomol_CCD.lmdb`.
 
 ## Package input
 
@@ -28,15 +33,23 @@ ids); CCD codes are the inline `(XXX)` residues and ligands of `chain_seqid_map.
 ## Build
 
 ```bash
-structcooker foldbench keys   /data/shared/cssb_data/BioMol/foldbench                  # counts
-structcooker foldbench build  /data/shared/cssb_data/BioMol/foldbench  OUT \
-    --release /data/shared/cssb_data/BioMol --ccd /data/psk6950/CCD/CCD_20260718.lmdb \
+PKG=/data/psk6950/foldbench_src                                                   # inputs/, meta/
+structcooker foldbench keys   $PKG                                                 # counts
+structcooker foldbench build  $PKG OUT --ccd /data/psk6950/CCD/CCD_20260718.lmdb \
     --fallback /data/shared/cssb_data/BioMol/foldbench/msa/a3m.lmdb               # SLURM job; --local to run here
-structcooker foldbench verify /data/shared/cssb_data/BioMol/foldbench  OUT
+structcooker foldbench verify $PKG OUT
 ```
 
 `build` never replaces an existing DB, reports keys no source holds, and writes `OUT/foldbench_build.json` (requested,
 written, from_fallback, missing, bytes per asset).
+
+## Compared with the earlier FoldBench DBs
+
+The earlier DBs (`/data/shared/cssb_data/BioMol/foldbench`) were cut from the July `BioMol` tree. Cut from the release
+tree instead (checked 2026-10-13 on their own key lists): templates are byte-identical (1,937 found, 987 absent in
+both); protein MSAs carry the same alignments, 32 of a 300-key sample differing only in the `headers/database` labels;
+RNA MSAs differ in depth for most keys, as the release rebuilt them from the sanitized RNA alignments
+([RNA MSA exceptions](history/rna_msa_sanitized_exceptions.md)).
 
 ## What is not rebuilt here
 

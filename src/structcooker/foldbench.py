@@ -6,9 +6,9 @@ FoldBench (BEAM-Labs, 9 tasks, 1,522 assemblies) is predicted from three kinds o
 asset          key                         value                                       source (full-release LMDB)
 =============  ==========================  ==========================================  ==============================
 protein MSA    ``P`` + 20 digits           ``{msa_dict}`` (schema E)                   ``lmdb/pdb/msa/a3m.lmdb``
-RNA MSA        ``R`` + 20 digits           ``{msa_dict}`` (schema E, a3m_type=rna)     ``lmdb/pdb/msa/msa_rna_pdb_shard0.lmdb``
-template       ``{pdbid}_{chain}``         ``{template_mols}`` (schema D)              ``lmdb/pdb/template/template.lmdb``
-CCD            component code              ``{chem_comp_dict}`` (schema G)             ``CCD/CCD_*.lmdb`` (single-atom ions in)
+RNA MSA        ``R`` + 20 digits           ``{msa_dict}`` (schema E, a3m_type=rna)     ``lmdb/pdb/msa/msa_rna.lmdb``
+template       ``{pdbid}_{chain}``         ``{template_mols}`` (schema D)              ``lmdb/chain/template/template.lmdb``
+CCD            component code              inference CCD record (``atoms``/``residues``/``chains``)  ``--ccd`` (see below)
 =============  ==========================  ==========================================  ==============================
 
 The sequences were already searched and the templates already resolved for the whole PDB, so a FoldBench DB is a
@@ -19,6 +19,11 @@ byte-for-byte (the values are never decoded), and verifies that every lookup a `
 The few sequences the PDB-wide DBs do not cover (FoldBench's 3 chromophore-abbreviated entries and a 99-mer) were
 searched from scratch once with :func:`structcooker.instructions.transforms.msa.run_msa_search`; ``--fallback`` points
 at a DB that already holds them, so a rebuild does not repeat that search.
+
+Sources are the release tree (``OUTPUT_ROOT``, e.g. ``/data/shared/cssb_data/BioMol_clean``), at the
+paths its db configs write (``RELEASE_LAYOUT``; a test keeps the two in step). The CCD is not the release's
+``ccd/biomol_CCD.lmdb`` (schema G, ``{chem_comp_dict}``): inference reads a CCD whose records are BioMol
+``atoms``/``residues``/``chains`` with the single-atom components in, passed as ``--ccd``.
 
 Run as ``structcooker foldbench keys|build|verify`` (see :mod:`structcooker.cli`) or
 ``python -m structcooker.foldbench build PACKAGE OUT``.
@@ -171,6 +176,14 @@ def copy_keys(dst: Path, keys: Iterable[str], sources: Sequence[Path], *, name: 
     return report
 
 
+# Release-relative path of each source, as the db config that builds it writes it.
+RELEASE_LAYOUT = {
+    "protein_msa": ("msa/a3m", "lmdb/pdb/msa/a3m.lmdb"),
+    "rna_msa": ("msa/msa_rna", "lmdb/pdb/msa/msa_rna.lmdb"),
+    "template": ("template/chain_template", "lmdb/chain/template/template.lmdb"),
+}
+
+
 @dataclass
 class Sources:
     """The full-release DBs to cut the FoldBench DB from."""
@@ -183,10 +196,9 @@ class Sources:
 
     @classmethod
     def from_release(cls, release: Path, *, ccd: Path | None = None, fallback: Sequence[Path] = ()) -> "Sources":
-        """``release`` = a BioMol root holding ``lmdb/pdb/{msa,template}`` (e.g. ``/data/shared/cssb_data/BioMol``)."""
-        pdb = release / "lmdb" / "pdb"
-        return cls(pdb / "msa" / "a3m.lmdb", pdb / "msa" / "msa_rna_pdb_shard0.lmdb", pdb / "template" / "template.lmdb",
-                   ccd, list(fallback))
+        """``release`` = a release tree (``OUTPUT_ROOT``, e.g. ``/data/shared/cssb_data/BioMol_clean``)."""
+        paths = {name: release / rel for name, (_db, rel) in RELEASE_LAYOUT.items()}
+        return cls(paths["protein_msa"], paths["rna_msa"], paths["template"], ccd, list(fallback))
 
 
 def build(package: Path, out: Path, sources: Sources) -> dict:
@@ -274,8 +286,8 @@ def main(argv: list[str] | None = None) -> int:
     b = sub.add_parser("build", help="cut the FoldBench DBs out of the full-release LMDBs")
     b.add_argument("package", type=Path)
     b.add_argument("out", type=Path)
-    b.add_argument("--release", type=Path, required=True, help="BioMol root holding lmdb/pdb/{msa,template}")
-    b.add_argument("--ccd", type=Path, help="CCD LMDB with single-atom components (omit to skip)")
+    b.add_argument("--release", type=Path, required=True, help="release tree (OUTPUT_ROOT), e.g. .../BioMol_clean")
+    b.add_argument("--ccd", type=Path, help="inference CCD LMDB (atoms/residues/chains, single-atom components in)")
     b.add_argument("--fallback", type=Path, action="append", default=[], help="DB holding the from-scratch edge MSAs")
     v = sub.add_parser("verify", help="check every data.yaml lookup resolves in OUT")
     v.add_argument("package", type=Path)
