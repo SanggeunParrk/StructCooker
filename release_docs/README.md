@@ -8,6 +8,7 @@ this one tree; the build resolves every path against it (`BIOMOL_ROOT`).
 
 | page | |
 |---|---|
+| [index.html](index.html) | the release on one page: totals, data sets, what to copy, a searchable list of every database |
 | [databases.md](databases.md) | every database: path, record schema, key, count, size, what it is built from |
 | [scenarios.md](scenarios.md) | what to copy for a given use (PDB only, with MSA/templates, distillation, inference, rebuild, ...) |
 | [provenance.md](provenance.md) | sources, versions, build dates, known gaps and differences |

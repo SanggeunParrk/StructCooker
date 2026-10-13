@@ -469,7 +469,7 @@ def release_check(manifest: Path) -> None:
 @click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_all.yaml",
               show_default=True)
 def release_docs(manifest: Path) -> None:
-    """Write BIOMOL_ROOT/docs: README, provenance, databases, what-to-copy scenarios, check.
+    """Write BIOMOL_ROOT/docs: README, provenance, databases, what-to-copy scenarios, check, index.html.
 
     The database list, the scenario sizes and the check summary are generated from the tree
     (configs, .meta.json, data.mdb sizes, release_check.json); rerun after a build or a move.

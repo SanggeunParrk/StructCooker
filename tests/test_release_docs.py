@@ -45,3 +45,20 @@ def test_every_scenario_path_is_a_release_path(monkeypatch, tmp_path):
         for entry in [*(item.get("take") or []), *(item.get("optional") or [])]:
             path = entry["path"]
             assert path in outputs or path in extra or path.startswith("materials/"), (item["id"], path)
+
+
+def test_html_and_markdown_render_the_same_rows(tmp_path):
+    rows = [{"path": "lmdb/pdb/cif/cif.lmdb", "group": "lmdb/pdb", "stage": "pdb/cif", "schema": "A",
+             "title": "structure", "entries": 1234, "size": 5_000_000, "op": "build", "source": "materials/raw/cif"},
+            {"path": "lmdb/ccd/x<y>.lmdb", "group": "lmdb/ccd", "stage": "", "schema": "", "title": "",
+             "entries": None, "size": None, "op": "staging", "source": ""}]
+    items = [{"id": "s", "title": "PDB", "when": "training", "take": [{"path": "lmdb/pdb/cif/cif.lmdb",
+              "exists": True, "size": 5_000_000, "note": "structures"}], "take_total": 5_000_000}]
+    report = {"stages": 94, "with_problems": 0, "when": "2026-10-13 10:00", "reports": []}
+    page = release_docs.render_html(tmp_path, rows, items, report)
+    assert "94/94 OK" in page and "5.0 MB" in page and "1,234" in page
+    assert "x&lt;y&gt;" in page and "x<y>" not in page            # paths are escaped
+    md = release_docs.databases_md(rows)
+    assert "## `lmdb/ccd`" in md and "| 1,234 |" in md
+    assert "**needed** — 5.0 MB" in release_docs.scenarios_md(items)
+    assert "not run" in release_docs.render_html(tmp_path, rows, items, None)

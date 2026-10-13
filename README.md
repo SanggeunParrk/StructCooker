@@ -18,7 +18,7 @@ pixi run structcooker build-all --manifest db/MANIFEST_all.yaml --workdir /path/
 - [docs/e2e-build.md](docs/e2e-build.md) — the build runbook: downloads, staging, reference
   inputs, `build-all`, release check, patching.
 - [docs/stages.md](docs/stages.md) — what each stage builds and with which parameters.
-- [db/STATUS.md](db/STATUS.md) — per-database status ledger.
+- [db/STATUS.md](db/STATUS.md) — what the current release holds, its known gaps and checks.
 
 Sequence ids are assigned counters: keep `materials/reference/seq_id_map_seed.tsv` (and the
 other supplied reference inputs, [docs/e2e-build.md §3](docs/e2e-build.md#3-reference-inputs))

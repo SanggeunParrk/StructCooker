@@ -51,7 +51,7 @@ Every command submits SLURM jobs and returns; nothing heavy runs where you type 
 | `structcooker build-all --manifest M --workdir RUN` | the release: every stage as verified SLURM jobs, resumable |
 | `structcooker patch NAME --keys/--files LIST` | rebuild some records of a published DB and swap them in |
 | `structcooker release-check` | check a release tree is complete and self-contained → `release_check.json` |
-| `structcooker release-docs` | write the release's own docs into `$BIOMOL_ROOT/docs` |
+| `structcooker release-docs` | write the release's own docs into `$BIOMOL_ROOT/docs` (Markdown pages + an `index.html` overview) |
 | `structcooker e2e-sample {prepare,run,status,verify} ROOT` | the release DAG on a sample of a few hundred inputs, compared with the release |
 | `structcooker foldbench {keys,build,verify}` | FoldBench inference DBs cut from the release by key |
 
