@@ -22,8 +22,11 @@ at a DB that already holds them, so a rebuild does not repeat that search.
 
 Sources are the release tree (``OUTPUT_ROOT``, e.g. ``/data/shared/cssb_data/BioMol_clean``), at the
 paths its db configs write (``RELEASE_LAYOUT``; a test keeps the two in step). The CCD is not the release's
-``ccd/biomol_CCD.lmdb`` (schema G, ``{chem_comp_dict}``): inference reads a CCD whose records are BioMol
-``atoms``/``residues``/``chains`` with the single-atom components in, passed as ``--ccd``.
+``ccd/biomol_CCD.lmdb`` (schema G, ``{chem_comp_dict}``): inference reads CCDMol graphs
+(``atoms``/``residues``/``chains``), reshaped from it into ``foldbench/ccd_inference.lmdb``
+(:mod:`structcooker.instructions.transforms.ccdmol`, scripts/staging/build_inference_ccd.py). The four
+from-scratch edge MSAs are kept in ``foldbench/msa_edge.lmdb``; ``structcooker foldbench build`` uses
+both by default.
 
 Run as ``structcooker foldbench keys|build|verify`` (see :mod:`structcooker.cli`) or
 ``python -m structcooker.foldbench build PACKAGE OUT``.

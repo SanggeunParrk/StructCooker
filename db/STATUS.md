@@ -207,6 +207,20 @@ Fixes from the sampled end-to-end check (`structcooker e2e-sample`), 2026-10-08.
 - A sample of every source now rebuilds identically to the release for every structure, MSA
   and CCD record (docs/e2e-build.md §5).
 
+Release tree layout and check, 2026-10-13:
+- The six OFD long shard collections hold their shards inside their own directory
+  (`<db>.lmdb/shards/`, hard links; scripts/staging/consolidate_shards.py), so no published DB
+  reads from a build, release or patch directory.
+- The PDB template DBs are the July production build, hard-linked in at the paths the db configs
+  write (`lmdb/chain/template/{template,seqid_template_mols}.lmdb`, with their metadata and
+  intermediates): 1,007,928 chain templates, 176,579 seq_ids. They predate the 293 entries
+  (51,895 chains) cif_chain gained on 2026-09-30, which are therefore not template candidates.
+- `foldbench/` holds what FoldBench needs beyond the PDB-wide DBs: `ccd_inference.lmdb` (CCDMol
+  graphs reshaped from the release CCD) and `msa_edge.lmdb` (4 from-scratch edge MSAs);
+  docs/foldbench.md.
+- `structcooker release-check`: 95 of 95 stages present, self-contained and consistent
+  (`release_check.json`).
+
 MSA and template DBs are keyed by seq_id, so they count unique sequences, not structures: the
 AFM release predicts one model per UniProt entry, and 126,492 homodimers share their sequence
 with another entry (other strains, or proteins conserved across close species), so 1,750,755 +
