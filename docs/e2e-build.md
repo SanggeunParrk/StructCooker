@@ -91,8 +91,9 @@ for 16M on a 112-core verification job). A 1% sample of everything (`e2e-sample 
 
 Large `parallel` searches declare `node_count: 8` and are submitted as an 8-task array; each
 task refuses to start on a node whose `/dev/shm` cannot hold process semaphores (joblib would
-otherwise run serially there); set `DATACOOKER_EXCLUDE_NODES=node04,node07` (any such
-nodes) before `build-all` so the scheduler does not place tasks on them.
+otherwise run serially there). List such nodes in `DATACOOKER_EXCLUDE_NODES` before
+`build-all` so the scheduler does not place tasks on them; scripts/cluster/cssb.env has this
+cluster's.
 
 ## 5. Sampled end-to-end check
 

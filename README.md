@@ -23,11 +23,10 @@ git clone --recursive <repo-url> && cd StructCooker
 # 2. environment (pixi installs StructCooker + DataCooker + biomol + hmmer/kalign/…)
 pixi install && pixi shell
 
-# 3. choose the root (defaults match the existing cluster layout). Everything -- inputs
-#    under materials/{raw,reference,intermediate}, DBs under lmdb/, tables under metadata/ --
-#    hangs off this one variable; only the shared search databases live outside it.
-export BIOMOL_ROOT=/path/to/BioMol_clean   # default /data/shared/cssb_data/BioMol_clean
-export SEQ_DB_ROOT=/path/to/seq_db         # UniRef30/MMseqs2; default /data/shared/cssb_data/seq_db
+# 3. cluster settings: the root and SLURM (partition, QOS, nodes to avoid, node size).
+#    Everything -- inputs under materials/{raw,reference,intermediate}, DBs under lmdb/,
+#    tables under metadata/ -- hangs off BIOMOL_ROOT. On the CSSB cluster:
+source scripts/cluster/cssb.env            # elsewhere: copy it and set your values
 
 # 4. provide the reference inputs under $BIOMOL_ROOT/materials/reference (seq_id seed,
 #    OFD reference fastas, PDB MSAs, SignalP, historical CCD, chain model choice) --
@@ -58,7 +57,6 @@ structcooker build pdb/cif_attached  # + metadata  -> pdb/cif_attached (rebuild)
 structcooker pdb-build --run-dir /path/to/durable/pdb-run
 
 # 8c. end to end: every DB (PDB, OFD, teddymer, AFDB multimer), 94 stages
-export DATACOOKER_EXCLUDE_NODES=...  # nodes whose /dev/shm is full, if any
 structcooker build-all --manifest db/MANIFEST_all.yaml   # skips whatever is already built
 
 # Fix some records of a built DB without rebuilding it

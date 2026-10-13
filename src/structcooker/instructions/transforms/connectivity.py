@@ -362,6 +362,7 @@ def connectivity_qc_record(record: dict, ccd_linker_db_path: str) -> dict:
 
 # --- 3-tier bondability (free-valence) connectivity QC ------------------------
 import json as _json  # noqa: E402
+from structcooker.paths import biomol_root
 
 _HETERO = frozenset({"N", "O", "S", "P", "SE"})
 
@@ -384,7 +385,8 @@ def connectivity_qc_3tier(assembly: dict, ccd_valence_db_path: str,
                           ccd_linker_db_path: str | None = None) -> dict:
     """Run connectivity QC with 3-tier bondability (결합 불가능 / 가능성 / 필요).
 
-    ``ccd_linker_db_path`` defaults to ``$CCD_LINKER_DB`` (built by configs/ingest/ccd_linker.yaml).
+    ``ccd_linker_db_path`` defaults to ``$CCD_LINKER_DB``, else ``BIOMOL_ROOT/lmdb/ccd/ccd_linker.lmdb``
+    (workflows/ingest/ccd_linker.py; not part of the release build).
 
     Per atom, from the deposited heavy bonds + CCD ideal valence:
       slack = V_ideal - sum(bond_order of present heavy bonds)
@@ -396,7 +398,7 @@ def connectivity_qc_3tier(assembly: dict, ccd_valence_db_path: str,
     Returns {"actions": {...}, "tiers": {...}, "examples": {...}} or {} if clean.
     """
     if ccd_linker_db_path is None:
-        ccd_linker_db_path = os.environ.get("CCD_LINKER_DB", "/data/psk6950/CCD/ccd_linker.lmdb")
+        ccd_linker_db_path = os.environ.get("CCD_LINKER_DB", str(biomol_root() / "lmdb/ccd/ccd_linker.lmdb"))
     atoms = assembly["atoms"]
     nd = atoms["nodes"]
     xyz = np.array(nd["xyz"]["value"], dtype=np.float64)

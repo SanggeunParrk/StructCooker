@@ -36,10 +36,13 @@ from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from structcooker.paths import biomol_root
+
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-PROD_ROOT = Path("/data/shared/cssb_data/BioMol_clean")
+# The release a sample is drawn from and compared with: BIOMOL_ROOT of the shell that submits.
+PROD_ROOT = biomol_root()
 SEED = "structcooker-e2e-sample-v1"
 
 # Reader overrides the db configs consult before BIOMOL_ROOT (and the retired roots). A
@@ -334,8 +337,6 @@ def sample_environment(root: Path) -> dict[str, str]:
     """``os.environ`` for a sampled run: roots at the sample, every override cleared."""
     env = {k: v for k, v in os.environ.items() if k not in ROOT_OVERRIDES}
     env.update(BIOMOL_ROOT=str(root), STRUCTCOOKER_MAX_NODES="1")
-    # Nodes whose /dev/shm cannot hold joblib's semaphores (docs/e2e-build.md §4).
-    env.setdefault("DATACOOKER_EXCLUDE_NODES", "node01,node04,node07")
     return env
 
 

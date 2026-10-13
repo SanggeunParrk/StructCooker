@@ -27,6 +27,7 @@ from datacooker.config import load_config
 from omegaconf import OmegaConf
 
 from structcooker import preflight, schemas, workflow_ops
+from structcooker.cluster import NODE_CORES, NODE_MEM_GB
 from structcooker.paths import biomol_root, mmcif_root, seq_db_root
 
 REPO = Path(__file__).resolve().parents[2]          # StructCooker/
@@ -376,15 +377,15 @@ def patch(name: str, keys: Path | None, files: Path | None, workdir: Path | None
     out = target.parent / f".{target.stem}.build" / f"patch_{stamp}" / f"{target.stem}_patch.lmdb"
     lmdb_cli = [sys.executable, "-u", "-m", "datacooker.cli.lmdb"]
     build = [*lmdb_cli, op, str(engine), "--key-list" if keys else "--file-list", str(keys or files),
-             "--output", str(out), "--n-jobs", "112"]
+             "--output", str(out), "--n-jobs", str(NODE_CORES)]
     execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
     if nodes > 1:
         # Each task builds its key-hash slice into <out stem>_shard<i>; all are applied at once.
-        b = execu.run_tier_shards(name=f"{target.stem}_patch_build", n_shards=nodes, mem_gb=490, cores=112,
+        b = execu.run_tier_shards(name=f"{target.stem}_patch_build", n_shards=nodes, mem_gb=NODE_MEM_GB, cores=NODE_CORES,
                                   argv_for_shard=lambda i: [*build, "--shard-idx", str(i), "--n-shards", str(nodes)])
         outs = [out.with_name(f"{out.stem}_shard{i}{out.suffix}") for i in range(nodes)]
     else:
-        b = execu.run_once(name=f"{target.stem}_patch_build", argv=build, mem_gb=490, cores=112)
+        b = execu.run_once(name=f"{target.stem}_patch_build", argv=build, mem_gb=NODE_MEM_GB, cores=NODE_CORES)
         outs = [out]
     apply = [*lmdb_cli, "patch", "--target", str(target)]
     for o in outs:

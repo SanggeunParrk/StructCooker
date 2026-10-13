@@ -18,6 +18,7 @@ from datacooker.utils.paths import scan_paths
 from omegaconf import OmegaConf
 
 from structcooker import preflight, workflow_ops
+from structcooker.cluster import NODE_CORES
 from structcooker.build_state import (
     Fingerprints,
     claim_output,
@@ -73,7 +74,6 @@ def output_identity(cfg: dict[str, Any]) -> dict[str, Any]:
 
 def _executor(run: Path, folder: Path) -> SlurmExecutor:
     definition = _read(run / "release.json")
-    os.environ.setdefault("DATACOOKER_EXCLUDE_NODES", "node20")
     return SlurmExecutor(workdir=folder, repo=Path(definition["repo"]),
                          pixi_manifest=(Path(definition["repo"]) / "pyproject.toml").resolve())
 
@@ -88,7 +88,7 @@ def _submit(run: Path, name: str, action: str, depends: tuple[str, ...] = ()) ->
         name=f"release_{action}_{name.replace('/', '_')}", argv=command,
         # Verification decodes every record on a process pool (build_verify); planning is
         # mostly I/O.
-        mem_gb=128, cores=112 if action == "verify" else 8, depends_on=depends,
+        mem_gb=128, cores=NODE_CORES if action == "verify" else 8, depends_on=depends,
     )
     if not handle.job_id:
         msg = "Scheduler did not return a job ID"

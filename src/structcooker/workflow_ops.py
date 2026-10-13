@@ -9,6 +9,8 @@ import os
 import sys
 from typing import TYPE_CHECKING
 
+from structcooker.cluster import NODE_CORES, NODE_MEM_GB
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
@@ -21,7 +23,7 @@ WORKFLOW_CMD = {"materialize": "run", "extract": "extract-lmdb", "parallel": "pa
 # workflow CLI re-reads the yaml and rejects unknown keys), so size by op: parallel
 # fans out (full node); extract runs joblib over a whole DB; materialize is mostly
 # single-process (a couple stream a multi-GB fasta, hence the mem headroom).
-WORKFLOW_RESOURCES = {"parallel": (490, 112), "extract": (200, 32), "materialize": (128, 8)}
+WORKFLOW_RESOURCES = {"parallel": (NODE_MEM_GB, NODE_CORES), "extract": (200, 32), "materialize": (128, 8)}
 WORKFLOW_CLI = [sys.executable, "-u", "-m", "datacooker.cli.workflow"]
 # Caps every config's node_count (a sampled e2e run sets 1: a few hundred items do not
 # need an 8-node array). Splitting is by item key, so the cap changes no result.
@@ -58,7 +60,7 @@ def resources(op: str, cfg: Mapping) -> tuple[int, int, int]:
     # 112 on 8, ~14x slower).
     n_jobs = int((cfg.get("inputs") or {}).get("n_jobs") or 0)
     if op == "materialize" and n_jobs > cores:
-        mem_gb, cores = WORKFLOW_RESOURCES["parallel"] if n_jobs >= 112 else (mem_gb, n_jobs)
+        mem_gb, cores = WORKFLOW_RESOURCES["parallel"] if n_jobs >= NODE_CORES else (mem_gb, n_jobs)
     nodes = int(cfg.get("node_count") or 1) if op == "parallel" else 1
     cap = os.environ.get(MAX_NODES_ENV)
     if cap:

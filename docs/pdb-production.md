@@ -23,7 +23,7 @@ From the repository root:
 export BIOMOL_ROOT=/path/to/new/pdb-release   # materials/{raw,reference} in place; outputs go to lmdb/, metadata/
 export PDB_RUN_DIR=/path/to/durable/pdb-run
 export DATACOOKER_MAX_NODES=18
-export DATACOOKER_EXCLUDE_NODES=node01,node04,node07
+source scripts/cluster/cssb.env
 sbatch -p cpu-long --qos=cpu-long-q -c 8 --mem=128g -o pdb_build_%j.out \
   --wrap "pixi run --frozen structcooker pdb-build --run-dir $PDB_RUN_DIR"
 
@@ -36,8 +36,8 @@ native arrays, merge and index jobs use SLURM dependencies. Up to two independen
 stages can progress concurrently. `DATACOOKER_MAX_NODES` limits each native pipeline,
 not the combined allocation; SLURM QOS limits still apply. Worker defaults are
 112 CPUs and 490 GB per node; override `DATACOOKER_CPUS_PER_NODE` and
-`DATACOOKER_NODE_MEM_GB` when appropriate. The wrapper excludes node20 so it remains
-available for experiments. Do not launch a second full build beside an existing
+`DATACOOKER_NODE_MEM_GB` when appropriate (scripts/cluster/cssb.env holds this cluster's values).
+Do not launch a second full build beside an existing
 full-capacity run merely to validate the software.
 
 Resubmit the same command with the same roots, run directory, inputs and software

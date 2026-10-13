@@ -9,20 +9,21 @@ from typing import TypeVar
 import numpy as np
 
 from structcooker.utils.mapping import ResidueMapping
+from structcooker.paths import seq_db_root
 from structcooker.utils.seq_id import seq_id_shard_path
 
-DEFAULT_DB_UR30 = Path(
-    "/data/shared/cssb_data/db_protSeq/uniref30/2022_02/UniRef30_2022_02",
-)
-DEFAULT_DB_BFD = Path(
-    "/data/shared/cssb_data/db_protSeq/bfd/bfd_metaclust_clu_complete_id30_c90_final_seq.sorted_opt",
-)
-DEFAULT_HHSUITE_BIN = Path("/software/hhsuite/build/bin")
+# HHblits search (not in the release build: the PDB and FoldBench edge MSAs were searched once).
+# Database and binary locations come from the environment; the defaults are the CSSB cluster's.
+DEFAULT_DB_UR30 = Path(os.environ.get(
+    "HHBLITS_UNIREF30", "/data/shared/cssb_data/db_protSeq/uniref30/2022_02/UniRef30_2022_02"))
+DEFAULT_DB_BFD = Path(os.environ.get(
+    "HHBLITS_BFD", "/data/shared/cssb_data/db_protSeq/bfd/bfd_metaclust_clu_complete_id30_c90_final_seq.sorted_opt"))
+DEFAULT_HHSUITE_BIN = Path(os.environ.get("HHSUITE_BIN", "/software/hhsuite/build/bin"))
 
 # RNA MSA (AlphaFold3-style): nhmmer over Rfam / RNAcentral / nucleotide
 # collection, hits realigned to the query with hmmalign, cropped to 5000.
-# The three nucleotide databases live together; RMSA_DB_ROOT relocates them.
-_RMSA_DB_ROOT = Path(os.environ.get("RMSA_DB_ROOT", "/data/psk6950/rmsa_db"))
+# The three nucleotide databases live together under RMSA_DB_ROOT (default: SEQ_DB_ROOT/rmsa).
+_RMSA_DB_ROOT = Path(os.environ.get("RMSA_DB_ROOT", str(seq_db_root() / "rmsa")))
 DEFAULT_DB_RFAM = _RMSA_DB_ROOT / "rfam.fasta"
 DEFAULT_DB_RNACENTRAL = _RMSA_DB_ROOT / "rnacentral.fasta"
 DEFAULT_DB_NT = _RMSA_DB_ROOT / "nucleotide_collection.fasta"

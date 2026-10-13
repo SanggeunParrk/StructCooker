@@ -11,9 +11,8 @@ raw downloads (`materials/raw/`) and the existing CCD/chain/sequence reference a
 `lmdb/` and `metadata/`:
 
 ```bash
+source scripts/cluster/cssb.env             # cluster settings (or your own copy)
 export BIOMOL_ROOT=/path/to/new-release
-export SEQ_DB_ROOT=/path/to/seq_db           # shared search databases, outside the tree
-export DATACOOKER_EXCLUDE_NODES=node20
 pixi run --frozen structcooker release-build --run-dir /path/to/run-state
 ```
 
