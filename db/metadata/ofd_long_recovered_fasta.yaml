@@ -5,7 +5,7 @@
 # the 2026-09-14 recovery of 14 long entries, so those 14 sequences are in no reference fasta.
 # They are the sequences of ofd_long.fasta (extracted from the rebuilt long_cif) not in the
 # reference long.fasta. seq_id_map reads this file LAST, so no earlier DB's ids move
-# (docs/long-cif-recovery-2026-09-14.md).
+# (docs/history/long-cif-recovery-2026-09-14.md).
 recipe_path: ${p:src/structcooker/workflows/metadata/new_sequences.py}
 
 inputs:

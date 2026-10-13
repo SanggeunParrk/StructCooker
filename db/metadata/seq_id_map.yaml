@@ -29,7 +29,7 @@ inputs:
     # at the end leaves every earlier DB's ids exactly as they were -- teddymer's included,
     # whose attached DB is already built. Insert a DB anywhere else and later ids shift.
     - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/afm.fasta}
-    # 14 OFD long entries recovered 2026-09-14 (docs/long-cif-recovery-2026-09-14.md) are in no
+    # 14 OFD long entries recovered 2026-09-14 (docs/history/long-cif-recovery-2026-09-14.md) are in no
     # supplied fasta. Their recovery-version ids (P...16902258-71) were issued in a separate
     # namespace and are now held by other sequences here, so they get fresh ids at the end.
     - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd_long_recovered.fasta}

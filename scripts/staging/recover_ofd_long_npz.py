@@ -5,7 +5,7 @@ Each raw `preprocessed/<id>/structure.npz` holds a complete zip archive followed
 wrong one ("Bad magic number for central directory"). The valid archive is the first
 `retained_bytes` bytes. This writes those prefixes under intermediate (raw stays as
 downloaded), checks both hashes against the 2026-09-14 recovery record, and writes
-`overrides.json` for OPENFOLD_STRUCTURE_OVERRIDES (docs/long-cif-recovery-2026-09-14.md):
+`overrides.json` for OPENFOLD_STRUCTURE_OVERRIDES (docs/history/long-cif-recovery-2026-09-14.md):
 
     {"<path under raw/openfold_distillation>": "<path relative to overrides.json>"}
 

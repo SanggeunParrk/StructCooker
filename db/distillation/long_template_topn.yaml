@@ -23,6 +23,6 @@ writer:
 
 runtime_environment:
   # The 14 long entries whose structure.npz ends in stale bytes read the recovered copies
-  # (scripts/staging/recover_ofd_long_npz.py; docs/long-cif-recovery-2026-09-14.md).
+  # (scripts/staging/recover_ofd_long_npz.py; docs/history/long-cif-recovery-2026-09-14.md).
   OPENFOLD_STRUCTURE_OVERRIDES: ${oc.env:OPENFOLD_STRUCTURE_OVERRIDES,${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/long_recovered/overrides.json}
 input_patterns: [template.npz, structure.npz]

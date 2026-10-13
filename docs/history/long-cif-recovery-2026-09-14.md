@@ -93,7 +93,7 @@ the remaining contacts/MSA/template jobs.
 
 ## ID namespace resolution — September 26
 
-The per-DB seq_id/cluster rebuild ([scheme](seq-id-and-cluster-scheme.md)) regenerated
+The per-DB seq_id/cluster rebuild ([scheme](../seq-id-and-cluster-scheme.md)) regenerated
 `BioMol_clean/metadata/seq_id_map.tsv` from the production reference, independently of the
 recovery version above. Its re-attach of long therefore used the supplied `long.fasta`,
 which lacks the 14 recovered entries, and published 16,099,470 records. The recovery-version

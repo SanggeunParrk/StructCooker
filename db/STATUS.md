@@ -2,11 +2,11 @@
 
 Historical migration notes below do not establish current output correctness.
 For the September 10 recovery, production comparisons, and final build status,
-see [the recovery report](../docs/recovery-2026-09-10.md).
+see [the recovery report](../docs/history/recovery-2026-09-10.md).
 
 Every non-distillation BioMol DB and the status of its declarative `db/*.yaml`.
 CIF reproduction also requires the explicit historical CCD reference described in
-[the recovery report](../docs/recovery-2026-09-10.md); a missing or incompatible
+[the recovery report](../docs/history/recovery-2026-09-10.md); a missing or incompatible
 definition raises an error instead of dropping observed atoms.
 `structcooker build <name>` works only for ✅ rows; 🔴 rows need engine work first
 (a build whose items are **keys** can't be sized by input `st_size`, and script-only
@@ -169,7 +169,7 @@ surface (see the metadata section). `cif_{long,short,rna,disordered}_attached` a
 A→B rebuilds of the base + the shared attach recipe (proven by pdb/cif_attached).
 
 The earlier sample-only restriction was superseded by the explicit end-to-end
-distillation build request. See [the September 15 follow-up](../docs/distillation-followup-2026-09-15.md)
+distillation build request. See [the September 15 follow-up](../docs/history/distillation-followup-2026-09-15.md)
 for the completed long CIF audit and active native SLURM MSA/template graph.
 Submission is not completion; terminal coverage and validation reports decide status.
 

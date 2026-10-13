@@ -12,7 +12,7 @@ legacy scripts or hand-written sbatch.
 
 > **One artifact = one `db/*.yaml`, built by `structcooker build <name>` on the
 > datacooker Ray engine.** No `configs/` legacy, no `scripts/` one-offs, no manual
-> `sbatch`. A reader reproduces any BioMol DB by reading its config.
+> `sbatch` (`configs/`, `submits/` and the one-off scripts were retired on 2026-10-13). A reader reproduces any BioMol DB by reading its config.
 
 - **Test output → `/data/shared/cssb_data/BioMol_clean`.** The production tree
   `/data/shared/cssb_data/BioMol` is read-only for validation; its **raw inputs are
@@ -133,8 +133,9 @@ libs/datacooker/                                 # engine (Ray-only)
 docs/                                            # mkdocs
 ```
 
-Retire (out of the published package): `configs/` (legacy per-tier), one-off
-`scripts/`/`submits/` (move canonical ones to `examples/`, gitignore scratch).
+Retired on 2026-10-13: `configs/` (legacy per-tier), `submits/`, and the one-off
+`scripts/` were archived out of the checkout; `scripts/staging/` is the only
+script directory kept.
 
 ## Phased plan
 

@@ -112,7 +112,7 @@ portability checks enumerate every YAML under `db/`.
 The provided submission wrapper is `sbatch dev/pdb_acceptance.sbatch`.
 
 This acceptance test is not a fresh full-scale rerun of the complete PDB snapshot.
-The prior bulk-output evidence remains in [CIF recovery](recovery-2026-09-10.md) and
+The prior bulk-output evidence remains in [CIF recovery](history/recovery-2026-09-10.md) and
 [MSA reproduction](msa-reproduction.md). In particular, missing MSA coverage and
 RNA source-version differences described there remain explicit data limitations.
 Template search, distillation completion, fresh-environment deployment and atomic

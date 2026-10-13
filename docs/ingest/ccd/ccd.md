@@ -3,17 +3,19 @@
 Documentation for the **CCD ingest** workflow.
 
 - Transform recipe: `structcooker.workflows.ingest.ccd` (`RECIPE`, `TARGETS`)
-- Read / Write boundary: `configs/ingest/ccd_lmdb.yaml`
+- Read / Write boundary, source, target:
+  [`db/ccd/ccd.yaml`](https://github.com/SanggeunParrk/StructCooker/blob/main/db/ccd/ccd.yaml)
+  (schema `G`), built with `structcooker build ccd/ccd`
 
 The recipe is the *Transform* layer only. The *Read* (loader) and *Write*
-(serializer) boundaries come from the ingest config, not the recipe — both are
+(serializer) boundaries come from the db config, not the recipe — both are
 shown together in the pipeline diagram below.
 
 ## Pipeline (Read -> Transform -> Write)
 
-Raw CCD `*.cif` files are loaded by `get_cif_data` into the three raw tables the
-recipe consumes; the recipe produces `chem_comp_dict`; `to_bytes` serializes it
-into the `biomol_CCD` LMDB.
+The split CCD `*.cif` files (one per component, made by `structcooker download ccd`)
+are loaded by `get_cif_data` into the three raw tables the recipe consumes; the
+recipe produces `chem_comp_dict`; `to_bytes` serializes it into the `biomol_CCD` LMDB.
 
 ![CCD ingest pipeline](sources/pipeline.png)
 
@@ -21,8 +23,8 @@ into the `biomol_CCD` LMDB.
 |----------|------|-------|
 | Read  | `loader`     | `structcooker.instructions.readers.cif.get_cif_data` |
 | Write | `serializer` | `structcooker.instructions.transforms.codecs.to_bytes` |
-| Source | files   | `/public_data/CCD/components/*.cif*` |
-| Dest   | LMDB    | `/public_data/CCD/biomol_CCD_202602.lmdb` |
+| Source | files   | `DATA_ROOT/BioMol/materials/intermediate/ccd/components/*.cif*` |
+| Dest   | LMDB    | `OUTPUT_ROOT/ccd/biomol_CCD.lmdb` |
 
 ## Transform recipe (detail)
 

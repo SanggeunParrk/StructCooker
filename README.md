@@ -91,7 +91,7 @@ versions and parameters as well as those files.
 For PDB operations, use the [verified build and recovery guide](docs/pdb-production.md).
 The completed CIF recovery has full key-set checks and sampled payload comparisons,
 with documented chemistry differences and five rejected source entries. See the
-[CIF verification report](docs/recovery-2026-09-10.md) and
+[CIF verification report](docs/history/recovery-2026-09-10.md) and
 [MSA reproduction report](docs/msa-reproduction.md) for the bulk-output evidence and
 coverage limitations. Every stage of `db/MANIFEST_all.yaml` has been run on this cluster
 (2026-09/10; db/STATUS.md), but not as one uninterrupted `build-all` from empty storage, and
@@ -135,7 +135,7 @@ A config names a `recipe` and its `reader`/`writer` hooks (all in
 
 ## Docs
 
-- [Getting started](docs_src/getting-started.md) — clone, install, smoke test
+- [Getting started](docs/getting-started.md) — clone, install, smoke test
 - [docs/data-provenance.md](docs/data-provenance.md) — input locations, snapshot references, and the limits of reproduction
 - [docs/raw-materials.md](docs/raw-materials.md) — what each staged raw tree holds and where it came from
 - [docs/seq-id-and-cluster-scheme.md](docs/seq-id-and-cluster-scheme.md) — one shared seq_id space, per-DB clustering
@@ -150,7 +150,7 @@ RNA snapshot differences, and protein/RNA depth caps.
 
 ## Development checks
 
-The [quality follow-up](docs/quality-2026-09-10.md) records the latest checks.
+The [quality follow-up](docs/history/quality-2026-09-10.md) records the latest checks.
 See [development.md](docs/development.md) for Ruff, Pyright, and the full test suite
 on a SLURM compute node. Recovery logs and snapshots are evidence, not required
 imports or build entry points.

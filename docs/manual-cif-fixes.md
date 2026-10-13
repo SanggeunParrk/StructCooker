@@ -1,10 +1,10 @@
 # Historical mmCIF substitutions
 
 An earlier BioMol snapshot used 53 substitutions listed in
-[`manual_cif_fixes.txt`](../db/pdb/manual_cif_fixes.txt). This is historical provenance,
+[`manual_cif_fixes.txt`](https://github.com/SanggeunParrk/StructCooker/blob/main/db/pdb/manual_cif_fixes.txt). This is historical provenance,
 not a required preprocessing step for every PDB release. The September 10 recovery
 used the provided snapshot directly; its five rejected records and causes are in the
-[recovery report](recovery-2026-09-10.md).
+[recovery report](history/recovery-2026-09-10.md).
 
 When reproducing the older snapshot, obtain its corrected files and apply them to a
 copy of the raw input that you own:

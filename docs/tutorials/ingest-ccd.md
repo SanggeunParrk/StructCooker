@@ -5,18 +5,28 @@ component id. This is step 1 of the [data flow](../data-flow.md) — the CIF
 ingest resolves residues/ligands against it.
 
 - Recipe (Transform): `structcooker.workflows.ingest.ccd` (`chem_comp_dict`)
-- Read/Write boundary: `configs/ingest/ccd_lmdb.yaml`
+- Config (Read/Write boundary, source, target):
+  [`db/ccd/ccd.yaml`](https://github.com/SanggeunParrk/StructCooker/blob/main/db/ccd/ccd.yaml)
+  — schema `G` (`{chem_comp_dict}`, keyed by comp id), op `build`
 
 The recipe is the *Transform* layer only. The *Read* (loader) and *Write*
 (serializer) boundaries come from the config, not the recipe — see the
 [DataCooker LMDB guide](https://CSSB-SNU.github.io/DataCooker/tutorials/build_lmdb/)
 for how those hooks work.
 
+## Input
+
+`structcooker download ccd` keeps the wwPDB download as raw
+(`DATA_ROOT/BioMol/materials/raw/ccd/components_<date>.cif.gz`) and splits it
+into one `<COMP_ID>.cif` per `data_` block under
+`DATA_ROOT/BioMol/materials/intermediate/ccd/components/` — that split directory
+is the build's `data_dir`. See [raw materials](../raw-materials.md).
+
 ## Pipeline (Read → Transform → Write)
 
-Raw CCD `*.cif` files are loaded by `get_cif_data` into the three raw tables the
-recipe consumes; the recipe produces `chem_comp_dict`; `to_bytes` serializes it
-into the CCD LMDB.
+The split CCD `*.cif` files are loaded by `get_cif_data` into the three raw
+tables the recipe consumes; the recipe produces `chem_comp_dict`; `to_bytes`
+serializes it into the CCD LMDB.
 
 ![CCD ingest pipeline](assets/ccd/pipeline.png)
 
@@ -24,8 +34,8 @@ into the CCD LMDB.
 |----------|------|-------|
 | Read  | `loader`     | `structcooker.instructions.readers.cif.get_cif_data` |
 | Write | `serializer` | `structcooker.instructions.transforms.codecs.to_bytes` |
-| Source | files   | CCD `components/*.cif*` |
-| Dest   | LMDB    | `biomol_CCD_*.lmdb` |
+| Source | files   | `DATA_ROOT/BioMol/materials/intermediate/ccd/components/*.cif*` |
+| Dest   | LMDB    | `OUTPUT_ROOT/ccd/biomol_CCD.lmdb` |
 
 ## Transform recipe
 
@@ -51,7 +61,10 @@ flowchart LR
 ## Run
 
 ```bash
-sbatch submits/ingest/ccd_lmdb.sh
-# or directly:
-pixi run python -m datacooker.cli.lmdb build configs/ingest/ccd_lmdb.yaml --map-size 100000000000
+pixi run structcooker build ccd/ccd --show   # resolved pipeline invocation
+pixi run structcooker build ccd/ccd          # size, submit, merge, index
 ```
+
+`ccd/ccd` has no upstream in `db/MANIFEST_all.yaml`; every structure build
+(`pdb/cif`, `distillation/*_cif`, `teddymer/cif`, `afdb_multimer/*_cif`)
+depends on it, so `build-all` builds it first.

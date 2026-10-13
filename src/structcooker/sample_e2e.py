@@ -67,7 +67,7 @@ PDB_SEED_DBS = (
 )
 PDB_SEEDS_PER_DB = 2
 MANUAL_FIXES_IN_SAMPLE = 2
-# Two of the 14 OFD long entries recovered on 2026-09-14 (docs/long-cif-recovery-2026-09-14.md):
+# Two of the 14 OFD long entries recovered on 2026-09-14 (docs/history/long-cif-recovery-2026-09-14.md):
 # absent from the reference long.fasta, so they exercise ofd_long_recovered_fasta.
 OFD_LONG_RECOVERED = ("MGYP000485802788", "MGYP006508416081")
 # The AFM homodimer whose MSA the release lacks; we generate it (docs/e2e-build.md §2).

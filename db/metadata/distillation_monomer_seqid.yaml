@@ -11,7 +11,7 @@ inputs:
     - ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/long.fasta}
     - ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/rna.fasta}
     # The 14 long entries recovered 2026-09-14 are in no reference fasta; without them their
-    # MSAs got no key (docs/long-cif-recovery-2026-09-14.md).
+    # MSAs got no key (docs/history/long-cif-recovery-2026-09-14.md).
     - ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd_long_recovered.fasta}
   seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
 

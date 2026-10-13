@@ -1,6 +1,6 @@
 # `structcooker build-all` — the BioMol DAG
 
-One command turns [`db/MANIFEST.yaml`](../db/MANIFEST.yaml) into a datacooker
+One command turns [`db/MANIFEST.yaml`](https://github.com/SanggeunParrk/StructCooker/blob/main/db/MANIFEST.yaml) into a datacooker
 meta-recipe: **31 database configs**, topologically sorted, each dispatched by the op
 class `structcooker build` infers from its config, and SLURM-chained with `afterok` so a
 node only starts once its upstreams exit 0. Already-built outputs are skipped.

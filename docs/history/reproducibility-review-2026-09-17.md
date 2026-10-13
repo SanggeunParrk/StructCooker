@@ -143,7 +143,7 @@ chain key 부재는 `continue`, 디코딩/변환 예외도 광범위한 `except 
 
 - `build-all`을 `release.py`의 유한 SLURM 단계 제출 경로로 전환했다. DB/index
   존재만으로 완료를 판단하지 않고 입력·코드·출력 identity와 전체 LMDB 검증 receipt를
-  사용한다. 동작과 재개 방법은 [release-build.md](release-build.md)에 기록했다.
+  사용한다. 동작과 재개 방법은 [release-build.md](../release-build.md)에 기록했다.
 - 입력 중복은 기본 거부한다. distillation MSA의 명시적 `first_path` 정책은 정렬된
   경로로 결정하며 제외 경로를 기록한다. 엔진의 중복 output key도 오류로 처리한다.
 - reader map/override를 config 입력으로 선언하고 attempt에 복사한다. 직접 호출의

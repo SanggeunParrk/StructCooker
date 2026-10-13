@@ -3,7 +3,7 @@ site_description: A biomolecular domain package built on top of DataCooker.
 site_url: https://SanggeunParrk.github.io/StructCooker/
 repo_url: https://github.com/SanggeunParrk/StructCooker
 repo_name: SanggeunParrk/StructCooker
-docs_dir: docs_src
+docs_dir: docs
 
 theme:
   name: material
@@ -38,9 +38,22 @@ nav:
   - Overview: index.md
   - Getting Started: getting-started.md
   - Data flow: data-flow.md
+  - Building the release:
+      - End-to-end build: e2e-build.md
+      - Raw and intermediate materials: raw-materials.md
+      - seq_id and cluster scheme: seq-id-and-cluster-scheme.md
+      - build-all: build-all.md
+      - Release build: release-build.md
+      - PDB production: pdb-production.md
+      - Manual CIF fixes: manual-cif-fixes.md
+      - LMDB storage policy: lmdb-storage-policy.md
+      - Data provenance: data-provenance.md
+      - MSA reproduction: msa-reproduction.md
+      - MPNN pruning: mpnn_pruning.md
   - Tutorials:
       - Overview: tutorials.md
       - CCD ingest: tutorials/ingest-ccd.md
+      - CCD ingest (reference): ingest/ccd/ccd.md
       - CIF ingest: tutorials/ingest-cif.md
       - MSA ingest: tutorials/ingest-msa.md
       - Template ingest: tutorials/ingest-template.md
@@ -50,3 +63,13 @@ nav:
       - Filters: tutorials/filters.md
       - Exports: tutorials/exports.md
       - Analysis: tutorials/analysis.md
+  - Development: development.md
+  - Roadmap: roadmap.md
+  - History:
+      - 2026-09-10 quality: history/quality-2026-09-10.md
+      - 2026-09-10 recovery: history/recovery-2026-09-10.md
+      - 2026-09-11 distillation CIF: history/distillation-cif-2026-09-11.md
+      - 2026-09-14 long CIF recovery: history/long-cif-recovery-2026-09-14.md
+      - 2026-09-15 distillation follow-up: history/distillation-followup-2026-09-15.md
+      - 2026-09-17 reproducibility review: history/reproducibility-review-2026-09-17.md
+      - RNA MSA sanitized exceptions: history/rna_msa_sanitized_exceptions.md
