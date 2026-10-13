@@ -1,7 +1,7 @@
 # Full distillation CIF build
 
 **September 13 update:** the long merge DAG described below was replaced by the
-[5M shard storage policy](../lmdb-storage-policy.md). Old jobs 266824–266825 and
+[5M shard storage policy](lmdb-storage-policy.md). Old jobs 266824–266825 and
 266848–266853 were cancelled; jobs 267271–267278 now publish shard collections,
 build attachment in 18 independent tasks, index and audit. Historical details
 below are retained for provenance.

@@ -2,7 +2,7 @@
 # OFD arrives as four FASTAs (short / long / rna / disordered, the reference set under
 # BioMol/materials/intermediate/openfold_distillation/fasta -- the same files seq_id_map reads);
 # clustering is per DB (docs/seq-id-and-cluster-scheme.md), so they are concatenated here.
-# Replaces scripts/maintenance/build_ofd_fasta.py.
+# Concatenates the four supplied OFD fastas (materials/reference/openfold_distillation/fasta).
 recipe_path: ${p:src/structcooker/workflows/metadata/concat_fasta.py}
 
 inputs:

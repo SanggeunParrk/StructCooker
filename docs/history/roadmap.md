@@ -1,5 +1,8 @@
 # StructCooker Rebuild Roadmap
 
+!!! note "Historical record"
+    Moved here on 2026-10-13 and kept as written. Commands it names may since have been removed (`pdb-build`, `pdb-status`, `release-build`, `fix-cif`); the current guide is the [end-to-end build](../e2e-build.md).
+
 Goal: a clean, publishable library that **reproduces the BioMol directory from raw
 inputs** — every artifact built by one declarative config, on one engine, with no
 legacy scripts or hand-written sbatch.

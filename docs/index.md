@@ -1,49 +1,67 @@
 # StructCooker
 
-StructCooker is a **biomolecular domain package built on top of
-[DataCooker](https://CSSB-SNU.github.io/DataCooker/)**. DataCooker provides the
-generic recipe engine (RecipeBook, the Cooker, hooks, and the LMDB workflows);
-StructCooker adds everything specific to structures, sequences, and alignments.
+StructCooker builds the **BioMol** database set — structures, MSAs, templates, training and
+validation sets as LMDBs, plus the sequence-id and cluster tables — from downloaded sources:
+the PDB, the CCD, the OpenFold3 distillation sets, teddymer and the AFDB multimer release.
+Every database is one declarative config, `db/<group>/<name>.yaml`; the whole release is the
+94-stage DAG in `db/MANIFEST_all.yaml`, built on SLURM by one command.
 
-```mermaid
-flowchart TB
-    subgraph SC["StructCooker (this site) — biomolecular domain"]
-      M[mols<br/>CIFMol / TemplateMol]
-      R[readers<br/>cif / a3m / openfold ...]
-      T[transforms<br/>cifmol / msa / codecs ...]
-      W[workflows<br/>ingest / filters / metadata / exports]
-    end
-    subgraph DC["DataCooker — generic engine"]
-      E[RecipeBook · Cooker · hooks · lmdb]
-    end
-    SC -->|builds on| DC
+StructCooker is the biomolecular layer on top of
+[DataCooker](https://CSSB-SNU.github.io/DataCooker/), which provides the generic engine:
+recipes, the planning-first LMDB pipeline (plan → shard array → merge → index) and the SLURM
+executor. How recipes and LMDB builds work is documented there, once; this site covers the
+data sets, the configs and how to build and check a release.
+
+## Install
+
+StructCooker vendors DataCooker as a git submodule (`libs/datacooker`) and uses
+[pixi](https://pixi.sh):
+
+```bash
+git clone --recursive git@github.com:SanggeunParrk/StructCooker.git
+cd StructCooker                      # already cloned: git submodule update --init --recursive
+pixi install                         # StructCooker + DataCooker (editable), biomol, hmmer, kalign, mmseqs2, ...
+pixi run python -c "import structcooker, datacooker, biomol; print('ok')"
 ```
 
-!!! tip "Engine concepts live in the DataCooker docs"
-    How recipes, targets, hooks, and LMDB builds work is documented once, in
-    the [DataCooker docs](https://CSSB-SNU.github.io/DataCooker/). This site
-    covers only the **domain layer** — the molecular objects, readers, and
-    dataset recipes that StructCooker adds on top.
+## Quick start
 
-## Package layout
+Everything hangs off one root, `BIOMOL_ROOT`; inputs must already be in place under
+`$BIOMOL_ROOT/materials/` (downloads, staging and supplied reference inputs:
+[end-to-end build](e2e-build.md) §1–3).
 
-- `mols/` — BioMol-backed domain objects (`CIFMol`, `TemplateMol`).
-- `instructions/readers/` — external loaders (mmCIF, a3m, OpenFold `.npz`, LMDB).
-- `instructions/transforms/` — adapters, serializers, reusable transforms.
-- `instructions/writers/` — output materializers.
+```bash
+source scripts/cluster/cssb.env       # BIOMOL_ROOT and the SLURM settings; elsewhere, copy and edit it
+pixi run structcooker inspect --strict --manifest db/MANIFEST_all.yaml
+pixi run structcooker build-all --manifest db/MANIFEST_all.yaml --workdir /path/to/run   # rerun to resume
+pixi run structcooker release-check   # after summary.json says complete: true
+pixi run structcooker release-docs
+```
 
-## Workflow layout
+Every command submits SLURM jobs and returns; nothing heavy runs where you type it.
 
-- `workflows/ingest/` — LMDB build recipes (CIF, a3m, template, OpenFold).
-- `workflows/filters/` — dataset filtering and cleanup.
-- `workflows/metadata/` — metadata enrichment and export prep.
-- `workflows/exports/` — downstream artifact extraction.
-- `workflows/search/` — MSA, template, and clustering recipes.
-- `workflows/analysis/` — validation and profiling.
+## Commands
 
-## Next steps
+| Command | Does |
+|---|---|
+| `structcooker list` | every `db/` config with its op, schema and target |
+| `structcooker inspect [--strict] [--manifest M] [NAME]` | preflight: external inputs present, manifest dependencies closed |
+| `structcooker download {ccd,sabdab,mmcif,openfold}` | fetch a raw input into `materials/raw` (`mmcif` needs `--yes`; `openfold` prints instructions) |
+| `structcooker build NAME [--show/--dry-run]` | build one stage on its own (op inferred from the config) |
+| `structcooker build-all --manifest M --workdir RUN` | the release: every stage as verified SLURM jobs, resumable |
+| `structcooker patch NAME --keys/--files LIST` | rebuild some records of a published DB and swap them in |
+| `structcooker release-check` | check a release tree is complete and self-contained → `release_check.json` |
+| `structcooker release-docs` | write the release's own docs into `$BIOMOL_ROOT/docs` |
+| `structcooker e2e-sample {prepare,run,status,verify} ROOT` | the release DAG on a sample of a few hundred inputs, compared with the release |
+| `structcooker foldbench {keys,build,verify}` | FoldBench inference DBs cut from the release by key |
 
-- [Getting Started](getting-started.md) — install StructCooker (with DataCooker).
-- [OpenFold3 distillation ingest](tutorials/openfold-distillation.md) — build
-  MSA / structure / template LMDBs from the distillation datasets.
-- Engine reference: [DataCooker docs](https://CSSB-SNU.github.io/DataCooker/).
+## Pages
+
+- [End-to-end build](e2e-build.md) — the runbook: download, stage, reference inputs,
+  `build-all`, release check and docs, the sampled check, patching.
+- [Stages](stages.md) — what each data set's stages do, their recipes and parameters.
+- [Raw materials](raw-materials.md) — the `materials/{raw,reference,intermediate}` tree.
+- [seq_id and cluster scheme](seq-id-and-cluster-scheme.md) — one id space, per-DB clusters.
+- [FoldBench DBs](foldbench.md) — key-list subsets for FoldBench inference.
+- [Development](development.md) — tests, cluster settings, code layout, LMDB storage.
+- History — dated reports and superseded guides, kept as records.

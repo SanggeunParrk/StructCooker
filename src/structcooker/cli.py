@@ -95,7 +95,7 @@ def list_dbs() -> None:
     """List every db/*.yaml with its inferred op, schema, and target."""
     rows: list[tuple[str, str, str, str]] = []
     for f in sorted(DB_ROOT.rglob("*.yaml")):
-        if f.name == "MANIFEST.yaml":
+        if f.name.startswith("MANIFEST"):
             continue
         try:
             cfg = load_config(f)
@@ -117,8 +117,8 @@ def list_dbs() -> None:
 
 
 def _manifest_names(manifest: Path | None) -> list[str]:
-    """Return the node names declared in the manifest (default db/MANIFEST.yaml)."""
-    man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST.yaml"
+    """Return the node names declared in the manifest (default db/MANIFEST_all.yaml)."""
+    man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST_all.yaml"
     if not man_path.exists():
         msg = f"no manifest at {man_path}"
         raise click.ClickException(msg)
@@ -131,7 +131,7 @@ def _manifest_names(manifest: Path | None) -> list[str]:
 
 @cli.command("inspect")
 @click.option("--manifest", type=click.Path(path_type=Path), default=None,
-              help="DB dependency manifest (default: db/MANIFEST.yaml).")
+              help="DB dependency manifest (default: db/MANIFEST_all.yaml, the whole release).")
 @click.option("--strict", is_flag=True,
               help="Exit nonzero for missing inputs or invalid manifest dependencies.")
 @click.argument("name", required=False)
@@ -148,7 +148,7 @@ def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
     configs = {n: load_config(_resolve_db(n)) for n in names}
     reports = preflight.inspect(configs)
     dependencies = {} if name else OmegaConf.to_container(
-        OmegaConf.load(manifest or DB_ROOT / "MANIFEST.yaml"), resolve=True,
+        OmegaConf.load(manifest or DB_ROOT / "MANIFEST_all.yaml"), resolve=True,
     )
     deps_map = {str(k): [str(d) for d in (v or [])] for k, v in dependencies.items()} if isinstance(dependencies, dict) else {}
     errors = preflight.dependency_errors(configs, deps_map)
@@ -408,7 +408,7 @@ def build(name: str, workdir: Path | None, dry_run: bool,
 
 @cli.command("build-all")
 @click.option("--manifest", type=click.Path(path_type=Path), default=None,
-              help="DB dependency manifest (default: db/MANIFEST.yaml).")
+              help="DB dependency manifest (default: db/MANIFEST_all.yaml, the whole release).")
 @click.option("--workdir", type=click.Path(path_type=Path), default=None,
               help="Parent scratch dir (each DB gets a <workdir>/<name> subdir).")
 @click.option("--dry-run", is_flag=True, help="Plan + write scripts, do not sbatch.")
@@ -419,7 +419,7 @@ def build_all(manifest: Path | None, workdir: Path | None,
     """Submit or resume verified release stages through finite native SLURM jobs."""
     from structcooker.release import start
 
-    man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST.yaml"
+    man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST_all.yaml"
     if dry_run:
         raw = OmegaConf.to_container(OmegaConf.load(man_path))
         if not isinstance(raw, dict):

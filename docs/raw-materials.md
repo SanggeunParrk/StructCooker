@@ -29,7 +29,7 @@ raw/
 ├── openfold_distillation/                                        OFD — OpenFold3-preview2 distillation
 │   ├── monomer_distillation_sets_v2/   README.md (OpenFold's) · shared/reference_mols/
 │   │   ├── short_monomers/   preprocessed/ 430,420 · raw/ 430,420 · cache.json · cache_lmdb/
-│   │   └── long_monomers/    preprocessed/ 16,099,486 · raw/ 8,083 · cache.json · cache_lmdb/
+│   │   └── long_monomers/    preprocessed/ 16,099,486 · raw/ 16,099,404 (relaxed models only) · cache.json · cache_lmdb/
 │   ├── rna_distillation_set/            rna_monomer_preprocessed_cache/ 126,780 (no raw)
 │   └── disordered_set/                  structure_files/ · templates/ 28,569 · alignment_arrays/
 │
@@ -63,19 +63,20 @@ Staged by `scripts/staging/stage_teddymer.py` (copy).
 
 ### openfold_distillation
 
-The OpenFold3-preview2 distillation release, downloaded from its S3 bucket (`bin/s5cmd`).
-Builds read `preprocessed/` (`structure.npz` / `alignment.npz` / `template.npz` per entry).
-`raw/` is the pipeline's own output (`best_structure_relaxed.pdb`, with pLDDT in the B column
-and hydrogens; MSAs; `hmm_output.sto`), complete for short but only 8,083 entries for long.
-`structure.npz` carries no B-factor or pLDDT, so the OFD cif DBs hold b_factor = 0.
+The OpenFold3-preview2 distillation release, downloaded from its S3 bucket (`s5cmd`).
+`preprocessed/` holds `structure.npz` / `alignment.npz` / `template.npz` per entry; `raw/`
+is OpenFold's pipeline output, of which only `best_structure_relaxed.pdb[.zst]` is fetched.
+The short and long cif DBs are built from that model (pLDDT in its B column); MSAs and
+templates from `preprocessed/`; the RNA and disordered cif DBs from `structure.npz`, which
+carries no pLDDT, so they hold b_factor = 0.
 `/data/shared/cssb_data/openfold_distillation` is a link to this directory so older paths
 keep resolving.
 
-`long_monomers/raw/` now holds `best_structure_relaxed.pdb[.zst]` for 16,099,404 of 16,099,484
-long ids (downloaded 2026-09-30..10-05; the other files of a raw entry were not fetched). 80 ids
-have no relaxed model in the release at all; they are not in the long cif DB. Partial files left
-by interrupted downloads (`best_structure_relaxed.pdb<digits>`, 9,924) were moved out of the
-tree, to `/data/shared/cssb_data/BioMol/materials/intermediate/openfold_distillation/_download_partials_20261005/`;
+`long_monomers/raw/` holds the relaxed model for 16,099,404 of 16,099,484 long ids
+(downloaded 2026-09-30..10-05). 80 ids have no relaxed model in the release at all; they are
+not in the long cif DB. Partial files left by interrupted downloads
+(`best_structure_relaxed.pdb<digits>`, 9,924) were moved out of the tree, to
+`/data/shared/cssb_data/BioMol/materials/intermediate/openfold_distillation/_download_partials_20261005/`;
 builds match the two exact names only.
 
 ### afdb_multimer
@@ -172,5 +173,4 @@ stay outside the tree, in `/data/shared/cssb_data/BioMol/materials/intermediate/
   choosing a subset are fine; editing contents, adding files we generated, or keeping our
   maps and lists there is not -- those go to `intermediate/` (or `reference/`, when they
   were supplied rather than derived), and a build that needs a change
-  applies it at read time (overrides, file lists). Exception still to fix: `structcooker
-  fix-cif` writes the manual PDB fixes into the mmCIF tree itself.
+  applies it at read time (overrides, file lists).

@@ -4,7 +4,7 @@ One function per ``structcooker download`` target. Small public inputs (CCD, Sab
 download and unpack directly; the huge ones (mmCIF, OpenFold distillation) require an
 explicit ``confirmed=True`` and print a size warning first, so nobody kicks off a
 multi-hundred-GB / multi-TB transfer by accident. The ``seq_id_map`` seed is NOT here --
-it is a provided reproduction input described in docs/data-provenance.md.
+it is a supplied reference input (docs/e2e-build.md, "Reference inputs").
 
 Destinations follow the ``BIOMOL_ROOT`` layout the db configs read (``materials/raw``).
 """

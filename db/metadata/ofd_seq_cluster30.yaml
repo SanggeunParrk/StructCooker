@@ -5,7 +5,7 @@
 # cOFD_<rep seq_id>, so a cluster from this DB can never be confused with another's.
 # seq_id stays the one shared space, which is what still allows cross-DB comparison.
 #
-# OpenFold distillation is MGnify metagenomic sequence predicted by OpenFold3 -- short/long/rna/disordered consolidated into one fasta by scripts/maintenance/build_ofd_fasta.py.
+# OpenFold distillation is MGnify metagenomic sequence predicted by OpenFold3 -- short/long/rna/disordered consolidated into one fasta by metadata/ofd_fasta.
 recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
 output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30_OFD.tsv}
 

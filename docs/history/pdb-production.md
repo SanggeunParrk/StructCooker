@@ -1,5 +1,8 @@
 # Verified PDB builds
 
+!!! note "Historical record"
+    Moved here on 2026-10-13 and kept as written. Commands it names may since have been removed (`pdb-build`, `pdb-status`, `release-build`, `fix-cif`); the current guide is the [end-to-end build](../e2e-build.md).
+
 The [5M storage policy](lmdb-storage-policy.md) governs finalization: larger DBs
 publish immutable shard collections. Verified readers, indexing and content
 fingerprints support both formats. Existing completed PDB outputs are retained.
@@ -99,7 +102,7 @@ live-release switch: consumers should use a separately selected completed root.
 The automated tests cover interrupted waits and verification, uncertain submission,
 confirmed failure, content changes/corruption, source snapshots, exact failure
 coverage, exit receipts and persistent output ownership. Run them as a batch job
-([development](development.md)), not on the login node.
+([development](../development.md)), not on the login node.
 
 A one-off acceptance script (archived with the retired `dev/` tree on 2026-10-13) ran inside a compute allocation
 and submitted real isolated native jobs. It builds two actual PDB CIF entries, three
@@ -109,11 +112,11 @@ the MSA input and checks downstream invalidation. It temporarily uses
 `db/_production_acceptance`; run only one acceptance instance at a time.
 Run the repository-wide tests after acceptance finishes, since their configuration
 portability checks enumerate every YAML under `db/`.
-For a current end-to-end check use `structcooker e2e-sample` ([end-to-end build](e2e-build.md)).
+For a current end-to-end check use `structcooker e2e-sample` ([end-to-end build](../e2e-build.md)).
 
 This acceptance test is not a fresh full-scale rerun of the complete PDB snapshot.
-The prior bulk-output evidence remains in [CIF recovery](history/recovery-2026-09-10.md) and
-[MSA reproduction](msa-reproduction.md). In particular, missing MSA coverage and
+The prior bulk-output evidence remains in [CIF recovery](recovery-2026-09-10.md) and
+[MSA reproduction](../stages.md#msas). In particular, missing MSA coverage and
 RNA source-version differences described there remain explicit data limitations.
 Template search, distillation completion, fresh-environment deployment and atomic
 release publication are outside this PDB build acceptance scope.

@@ -1,7 +1,10 @@
 # LMDB storage policy — 2026-09-13
 
+!!! note "Historical record"
+    Moved here on 2026-10-13 and kept as written. Commands it names may since have been removed (`pdb-build`, `pdb-status`, `release-build`, `fix-cif`); the current guide is the [end-to-end build](../e2e-build.md).
+
 September 14: the 14 omitted long CIF entries were recovered from CRC-verified NPZ
-prefixes. The [recovery report](history/long-cif-recovery-2026-09-14.md) describes the extra
+prefixes. The [recovery report](long-cif-recovery-2026-09-14.md) describes the extra
 shards, required metadata reference version, and queued full audits. The table
 below records the pre-recovery inventory; the recovered long CIF target count is
 16,099,484 per DB.

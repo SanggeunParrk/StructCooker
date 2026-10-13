@@ -1,5 +1,8 @@
 # Verified native SLURM releases
 
+!!! note "Historical record"
+    Moved here on 2026-10-13 and kept as written. Commands it names may since have been removed (`pdb-build`, `pdb-status`, `release-build`, `fix-cif`); the current guide is the [end-to-end build](../e2e-build.md).
+
 `structcooker release-build` submits finite planning, worker, publication, index,
 and verification jobs. Only a verified stage releases its dependents. The command
 returns after submission; `summary.json` with `complete: true` records completion.
@@ -7,7 +10,7 @@ There is no resident controller. `build-all --workdir RUN` uses this same path.
 
 For a new distillation release, use a fresh `BIOMOL_ROOT` whose `materials/` holds the
 raw downloads (`materials/raw/`) and the existing CCD/chain/sequence reference artifacts
-(`materials/reference/`, see [raw-materials.md](raw-materials.md)); outputs land under its
+(`materials/reference/`, see [raw-materials.md](../raw-materials.md)); outputs land under its
 `lmdb/` and `metadata/`:
 
 ```bash

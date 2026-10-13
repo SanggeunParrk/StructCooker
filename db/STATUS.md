@@ -32,7 +32,7 @@ variants with `pdb/cif.yaml` alone. Schema **G** (CCD chem-component) added for 
 Schema **H** (pruned CIFMol, one key per assembly-model-altloc) added for the first
 *model-input* DB, `train/train_20210930_mpnn` — a view of a CIF DB carrying only the
 features one model reads. It is the one rebuild that is 1:N rather than 1:1
-(`explode_entries`), so a key is a training sample. See `docs/mpnn_pruning.md` for the
+(`explode_entries`), so a key is a training sample. See [docs/stages.md](../docs/stages.md#train-valid-and-mpnn) for the
 size measurements and for why its `index_table` must be read through
 `instructions.transforms.pruning.load_pruned_cifmol`.
 
@@ -127,11 +127,10 @@ with its wwPDB snapshot — mostly NMR ensembles whose non-polymer ligand is re-
 breaking the atom→scheme match (verified on `1ai0`: `IPH` at `auth_seq` 22 in some models,
 31 in others, vs a single scheme number). The production build substituted an older
 known-good cif for each before ingest (legacy `scripts/manually_fix_cif.py`, source
-`BioMolDB_2024Oct21`). Ported as `structcooker fix-cif --source <corrected-cif-dir>`; run
-it for a snapshot requiring those substitutions, and `inspect` reports the state.
+`BioMolDB_2024Oct21`). It was ported as `structcooker fix-cif`, since removed (see below).
 These historical substitutions are distinct from the CCD compatibility corrections
 verified in the September 10 recovery.
-Full write-up: [docs/manual-cif-fixes.md](../docs/manual-cif-fixes.md).
+Full write-up: [docs/history/manual-cif-fixes.md](../docs/history/manual-cif-fixes.md).
 **Not needed with the current parser (checked 2026-10-01):** all 53 records were compared with
 production `BioMol/lmdb/pdb/cif/cif_pdb.lmdb` -- the 48 that build are identical in every array,
 and the other 5 (2g10, 2icy, 2q44, 4xq2, 9gdy) are absent from production too.

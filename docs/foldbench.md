@@ -57,8 +57,8 @@ RNA MSAs differ in depth for most keys, as the release rebuilt them from the san
 ## What is not rebuilt here
 
 - **Edge sequences** (3 chromophore-abbreviated entries and a 99-mer, ids `P0300001`-`P0300004`) are not in the PDB-wide DB.
-  They were searched from scratch once with `instructions.transforms.msa.run_msa_search` (SignalP, hhblits UniRef30 and BFD);
-  They are kept in `lmdb/foldbench/msa_edge.lmdb`, which `build` uses as its fallback.
+  They were searched from scratch once (SignalP, then HHblits against UniRef30 and BFD; that search code has since been
+  removed) and are kept in `lmdb/foldbench/msa_edge.lmdb`, which `build` uses as its fallback.
 - **DNA** has no MSA (matching AF3): `D` / `N` / `Q` keys are expected to be absent and are counted separately by `verify`.
 - **Templates** are limited by the cutoff the full-release template DB was built with (2021-09-30); this command does not
   re-filter by date.

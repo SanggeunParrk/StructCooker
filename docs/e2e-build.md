@@ -1,21 +1,29 @@
 # End-to-end build
 
 From downloaded sources to every BioMol_clean DB: PDB, OpenFold distillation (OFD),
-teddymer (TDM) and AFDB multimer (AFM). Downloading is described, not automated here;
-everything after it is `structcooker`.
+teddymer (TDM) and AFDB multimer (AFM). Part of the downloading is `structcooker download`,
+the rest is described here; everything after it is `structcooker`. All of it runs as SLURM
+jobs; the commands below only submit them, so they are safe on a login node.
 
 ```
-download (manual, §1)  ->  stage (scripts/staging, §2)  ->  reference inputs in place (§3)
-    ->  structcooker build-all --manifest db/MANIFEST_all.yaml  (§4)
+download (§1)  ->  stage (scripts/staging, §2)  ->  reference inputs in place (§3)
+    ->  structcooker build-all --manifest db/MANIFEST_all.yaml --workdir RUN  (§4)
+    ->  release-check, release-docs (§5)
 ```
+
+§6 checks the DAG on a sample instead of the full data; §7 fixes some records of a published
+DB.
 
 Everything lives under one root, `BIOMOL_ROOT` (default `/data/shared/cssb_data/BioMol_clean`):
-inputs under `materials/`, DBs under `lmdb/`, released tables under `metadata/`. Only the shared
-UniRef30/MMseqs2 search databases sit outside it, under `SEQ_DB_ROOT` (default
-`/data/shared/cssb_data/seq_db`). The tree and the raw/reference/intermediate rule are in
-[raw-materials.md](raw-materials.md): **`materials/raw/` holds exactly what was downloaded;
-`materials/reference/` holds supplied inputs that cannot be derived from the downloads;
-anything derived goes to `materials/intermediate/`.**
+inputs under `materials/`, DBs under `lmdb/`, released tables under `metadata/`, the release's
+own docs under `docs/`. Only the shared UniRef30/MMseqs2 search databases sit outside it,
+under `SEQ_DB_ROOT` (default `/data/shared/cssb_data/seq_db`); the release DAG does not read
+them (only the hand-run `teddymer/msa_search` and the AFM missing-MSA job do). Cluster
+settings come from the environment: `source scripts/cluster/cssb.env` (see
+[development](development.md#cluster-settings)). The tree and the raw/reference/intermediate
+rule are in [raw-materials.md](raw-materials.md): **`materials/raw/` holds exactly what was
+downloaded; `materials/reference/` holds supplied inputs that cannot be derived from the
+downloads; anything derived goes to `materials/intermediate/`.**
 
 ## 1. Download
 
@@ -68,25 +76,61 @@ self-consistent but not identical to this release.
 ## 4. Build
 
 ```bash
-structcooker inspect --strict --manifest db/MANIFEST_all.yaml     # every input present, DAG closed
-structcooker build-all --manifest db/MANIFEST_all.yaml --workdir <scratch>
+source scripts/cluster/cssb.env                                    # BIOMOL_ROOT, SLURM settings
+structcooker inspect --strict --manifest db/MANIFEST_all.yaml      # every input present, DAG closed
+structcooker build-all --manifest db/MANIFEST_all.yaml --workdir <run dir>
 ```
 
-A stage may fail only on inputs listed in `db/release-exceptions.json`, each with its reason
-and SHA256: 5 PDB entries the parser cannot map, and 840 OpenFold `alignment.npz` files that
-are empty or corrupt in the release (OFD long 667, short 173; the MSA DBs lack those
-sequences). Any other failure stops the stage.
+`--manifest` defaults to `db/MANIFEST_all.yaml`, the whole release; a per-set manifest builds
+that set alone. `--dry-run` validates the DAG and submits nothing. The command returns once the ready
+stages are submitted; there is no resident controller. `<run dir>/summary.json` shows each
+stage's phase, and `complete: true` there is what marks the release built.
+
+**What a stage does.** On its first invocation `build-all` freezes the release definition
+into the run dir: a snapshot of `src/`, `libs/datacooker/src`, `pyproject.toml` and
+`pixi.lock`, every stage config with its paths resolved, and `db/release-exceptions.json`.
+Every job runs that snapshot. Each stage then runs as finite SLURM jobs:
+
+1. a **plan** job fingerprints the stage's inputs (raw payloads, file lists, reader maps),
+   claims its outputs and submits the work: the LMDB pipeline (shards → merge → index) for
+   build / rebuild, one job or an N-task array for the workflow ops;
+2. a **verify** job (a full node) decodes every output record and checks it against the
+   schema, the shard accounting and the input → output key coverage;
+3. only a verified stage releases its dependents, which the verify job submits.
+
+Outputs of at most 5,000,000 records are merged into one LMDB; larger ones are published as a
+shard collection (`shards.json`), see [development](development.md#lmdb-storage).
+
+**Resume.** Rerun the same command with the same roots, code and run dir. Jobs still active
+are kept; a stage that ended is replayed from its recorded attempt, rerunning only the
+worker shards that did not finish, then publication and indexing; a completed stage has its
+input and output fingerprints rechecked on a compute node before it is reused. If the code,
+a config or the exceptions changed, the command refuses ("Release definition changed"): use a
+new run dir and a new `BIOMOL_ROOT`. An output that exists but was not produced by this run
+is refused too ("Untracked output"), so a release is always built into an empty tree. A
+submission whose outcome cannot be established (no job id recorded) fails closed and is not
+resubmitted; inspect the stage's `<run dir>/nodes/<stage>/` and its attempt logs. Do not
+delete the run dir or shard directories behind a published collection.
+
+**Failures.** A stage may fail only on inputs listed in `db/release-exceptions.json`, each by
+exact key with its reason and SHA256 (verification rechecks the hash): the 5 PDB entries the
+parser cannot map, and 840 OpenFold `alignment.npz` files that are empty or corrupt in the
+release (OFD long 667, short 173; the MSA DBs lack those sequences). Any other failed record
+stops the stage, and a rebuild may not fail any record. Two inputs with the same key fail the
+stage, except where a config sets `duplicate_input_policy: first_path` (the OFD MSA and
+short/long cif stages, the AFM MSA): the lexicographically first path is kept and the choice
+recorded in the attempt's `input-selection.json`.
 
 `db/MANIFEST_all.yaml` is the union of the per-set manifests (`MANIFEST.yaml`,
 `MANIFEST_{pdb,distillation,teddymer,afdb_multimer,msa,cifcore*}.yaml`); regenerate it after
 editing one (`python -c 'from structcooker.manifests import write; write()'`, enforced by a
-test). Each set's manifest still builds that set alone.
+test). Each set's manifest still builds that set alone. What each stage builds is in
+[stages](stages.md).
 
 Sizes and times on this cluster (2026-09/10): OFD long cif ≈ 8 × 3 h; teddymer hmmsearch (8 nodes) ≈ 31 h; AFM hmmsearch (8 nodes) ≈ 6 days.
-A release stage also fingerprints its inputs (planning and verification) and decodes every
-output record to verify it. Measured on OFD long (2026-10-08..12): scanning raw/ (16.4M
-files) takes ~80 min, hashing ~3,200 files/s, verification ~0.2 CPU s per MSA record (~8 h
-for 16M on a 112-core verification job). A 1% sample of everything (`e2e-sample prepare
+Planning and verification add to that. Measured on OFD long (2026-10-08..12): scanning raw/
+(16.4M files) takes ~80 min, hashing ~3,200 files/s, verification ~0.2 CPU s per MSA record
+(~8 h for 16M on a 112-core verification job). A 1% sample of everything (`e2e-sample prepare
 --count ofd_long=160000 ...`) builds in a few hours.
 
 Large `parallel` searches declare `node_count: 8` and are submitted as an 8-task array; each
@@ -95,7 +139,22 @@ otherwise run serially there). List such nodes in `DATACOOKER_EXCLUDE_NODES` bef
 `build-all` so the scheduler does not place tasks on them; scripts/cluster/cssb.env has this
 cluster's.
 
-## 5. Sampled end-to-end check
+## 5. Check and document the release
+
+```bash
+structcooker release-check     # SLURM job -> $BIOMOL_ROOT/release_check.json
+structcooker release-docs      # writes $BIOMOL_ROOT/docs/
+```
+
+`release-check` checks the tree is complete and self-contained: every stage's output at its
+configured path, a shard collection's shards inside its own directory, entry counts agreeing
+with `.meta.json` and `.index.tsv`, and a sample of 200 records per DB decoding and passing the
+build's checks. `release-docs` writes the release's own README, provenance and licences
+(copied from `release_docs/`), the database list, the what-to-copy scenarios with this tree's
+sizes (`release_docs/scenarios.yaml`) and a summary of `release_check.json`. Both default to
+`db/MANIFEST_all.yaml`; rerun them after a build, a patch or a move.
+
+## 6. Sampled end-to-end check
 
 A full build is days and terabytes. To check that the release DAG still builds end to
 end after a change, run every stage on a sample of a few hundred inputs instead
@@ -111,11 +170,12 @@ structcooker e2e-sample verify $R       # job: compare with the release -> $R/ve
 ```
 
 **Sample.** By default 30 PDB entries and 20 entries each from OFD short, long, rna and
-disordered, teddymer, and AFM homo- and heterodimers (`--count pdb=50` etc.). The
+disordered (plus 20 disordered template chains), teddymer, and AFM homo- and heterodimers
+(`--count pdb=50` etc.). The
 selection is a seeded hash order, so the same production data gives the same sample.
 On top of that random selection, the sample also includes these cases on purpose:
 
-- the accepted PDB failures (`db/pdb-exceptions.json`)
+- the accepted PDB failures (`pdb/cif` in `db/release-exceptions.json`)
 - two manually fixed mmCIFs
 - two entries from each published PDB-derived DB (train, valid1/2, mpnn, chain), so every filter has something to keep
 - the six repaired AFM heterodimers
@@ -153,3 +213,19 @@ A run is pinned to the code it started with (the release definition includes a s
 `src/`). After a fix, `run` on the same root refuses ("Release definition changed"):
 `prepare` a new root (about 5 minutes) and run that. A stage shown as `stalled` lost its
 work job; its attempt logs are under `$R/run/nodes/<stage>/attempts/`.
+
+## 7. Patching one DB
+
+To fix some records of a published DB — built wrong or missing — without rebuilding it:
+
+```bash
+structcooker patch distillation/long_cif --files bad_inputs.txt [--nodes 8]   # build op: input files
+structcooker patch pdb/cif_attached --keys bad_keys.txt                        # rebuild op: keys
+```
+
+The records are built into a separate LMDB next to the target
+(`.<name>.build/patch_<stamp>/`), then applied: a single LMDB takes the new values in place; a
+shard collection drops those keys from its shards and gains the patch as one more shard. The
+index is rewritten from its old rows plus the patch. `--dry-run` writes the scripts without
+submitting. A patch is outside the release run's bookkeeping, so rerun `release-check` and
+`release-docs` afterwards.

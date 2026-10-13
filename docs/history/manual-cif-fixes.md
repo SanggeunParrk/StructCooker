@@ -1,10 +1,13 @@
 # Historical mmCIF substitutions
 
+!!! note "Historical record"
+    Moved here on 2026-10-13 and kept as written. Commands it names may since have been removed (`pdb-build`, `pdb-status`, `release-build`, `fix-cif`); the current guide is the [end-to-end build](../e2e-build.md).
+
 An earlier BioMol snapshot used 53 substitutions listed in
 [`manual_cif_fixes.txt`](https://github.com/SanggeunParrk/StructCooker/blob/main/db/pdb/manual_cif_fixes.txt). This is historical provenance,
 not a required preprocessing step for every PDB release. The September 10 recovery
 used the provided snapshot directly; its five rejected records and causes are in the
-[recovery report](history/recovery-2026-09-10.md).
+[recovery report](recovery-2026-09-10.md).
 
 When reproducing the older snapshot, obtain its corrected files and apply them to a
 copy of the raw input that you own. `fix-cif` writes into `BIOMOL_ROOT/materials/raw/cif`,
@@ -26,7 +29,7 @@ these historical substitutions as pending work for a different snapshot.
 
 Never apply replacements to the shared production snapshot. Without `BIOMOL_ROOT`,
 the destination is the production `/data/shared/cssb_data/BioMol_clean/materials/raw/cif`.
-This is also why it is an exception to the raw rule in [raw-materials.md](raw-materials.md):
+This is also why it is an exception to the raw rule in [raw-materials.md](../raw-materials.md):
 it edits the mmCIF tree itself.
 
 ## Not needed with the current parser (2026-10-01)

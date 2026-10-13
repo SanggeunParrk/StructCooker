@@ -12,7 +12,7 @@
 # The explode costs disk: zstd was deduplicating the near-identical altloc copies
 # inside one record, and splitting them removes that window. ~48G -> ~31G, where
 # keeping the nesting would reach ~21G. The trade is deliberate — see
-# docs/mpnn_pruning.md.
+# docs/stages.md (train, valid and mpnn).
 schema: H
 
 old_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb}

@@ -14,15 +14,15 @@ structcooker list                # every db/*.yaml with op, schema, target
 
 ## How a build runs
 
-Finalization follows the [5M storage policy](../docs/lmdb-storage-policy.md): at most
+Finalization follows the [5M storage rule](../docs/development.md#lmdb-storage): at most
 5,000,000 output items are merged; larger outputs retain immutable `shard_lmdb`
 collections. This decision uses completed output counts, including exploded keys.
 
-For PDB CIF and supplied MSA, use `structcooker pdb-build --run-dir <durable-path>`
-with `MANIFEST_pdb.yaml`. It adds content-based reuse, durable SLURM restart state,
-failure accounting and mandatory output validation. See the
-[operating guide](../docs/pdb-production.md); the individual `build` interface below
-does not provide that completion contract.
+For a release, build the whole DAG with `structcooker build-all --manifest
+db/MANIFEST_all.yaml --workdir <run dir>`: it adds content-based reuse, durable SLURM restart
+state, failure accounting against `release-exceptions.json` and mandatory output
+verification ([end-to-end build](../docs/e2e-build.md)). The individual `build` interface
+below does not provide that completion contract.
 
 `structcooker build` reads the `schema:` tag, looks up that schema's measured
 **expansion factor E** (peak-live-mem ÷ stored-value-bytes) in
