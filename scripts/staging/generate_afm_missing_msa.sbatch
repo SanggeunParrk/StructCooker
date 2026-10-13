@@ -13,16 +13,17 @@ set -uo pipefail
 # align -> result2msa. The release used colabfold_search with a per-taxon filter (--filter 2);
 # this does not -- the lineage note goes in the README. A whole node's memory keeps the 226 GB
 # index in page cache (with 128 GB each mmseqs step re-read it and timed out).
-# Output: BioMol/materials/intermediate/afdb_multimer/msa_generated/ (not raw: it is ours);
+# Output: materials/intermediate/afdb_multimer/msa_generated/ (not raw: it is ours);
 # stage_afdb_multimer_msa.py finalize compresses it to .a3m.zst beside it.
-D=${DATA_ROOT:-/data/shared/cssb_data}
-MM=$D/seq_db/tools/mmseqs/bin/mmseqs
-DB=$D/seq_db/uniref30/2302/msadb/uniref30_2302
-OUT=$D/BioMol/materials/intermediate/afdb_multimer/msa_generated
+D=${BIOMOL_ROOT:-/data/shared/cssb_data/BioMol_clean}
+S=${SEQ_DB_ROOT:-/data/shared/cssb_data/seq_db}
+MM=$S/tools/mmseqs/bin/mmseqs
+DB=$S/uniref30/2302/msadb/uniref30_2302
+OUT=$D/materials/intermediate/afdb_multimer/msa_generated
 ID=${1:?usage: sbatch generate_afm_missing_msa.sbatch AF-<n>  (an entity the release ships no MSA for)}
 N=${ID#AF-}
 W=${TMPDIR:-/tmp}/afm_gen_$SLURM_JOB_ID; mkdir -p $W $OUT
-PDB=$D/BioMol/materials/raw/afdb_multimer/homodimer/pdb/${N: -3}/$ID-model_v1.pdb
+PDB=$D/materials/raw/afdb_multimer/homodimer/pdb/${N: -3}/$ID-model_v1.pdb
 echo "=== START $(date -Is) on $(hostname)  from $PDB ==="
 python3 - "$PDB" "$W/query.fasta" "$ID" <<'PY'
 import sys
@@ -46,7 +47,7 @@ cat > $OUT/README.md <<EOF2
 
 The AFDB complex release distributes one MSA per monomer entity (msas/251124_1.2M,
 251124_8.8M, 251209_13.4M; 23,425,744 entities). Checked against every structure in
-BioMol/materials/raw/afdb_multimer/{homodimer,heterodimer} on 2026-09-25, by entity id and, where the metadata could not
+materials/raw/afdb_multimer/{homodimer,heterodimer} on 2026-09-25, by entity id and, where the metadata could not
 map an entity, by exact sequence:
 
 - homodimers: 1,750,754 / 1,750,755 covered

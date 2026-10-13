@@ -46,13 +46,17 @@ def input_identity(cfg: dict[str, Any]) -> str:
     hashes = Fingerprints()
     inputs = {}
     for path in preflight.input_paths(cfg):
+        if str(path) == str(cfg.get("data_dir")) and cfg.get("file_list"):
+            continue                  # the base a file list's relative lines resolve against
         if str(path) == str(cfg.get("data_dir")):
             patterns = cfg.get("input_patterns", [cfg.get("file_pattern", "*")])
             paths = sorted({p for pattern in patterns for p in scan_paths(path, pattern=pattern)})
             inputs[str(path)] = hashes.files(paths)
         elif str(path) == str(cfg.get("file_list")) and not cfg.get("keyed"):
-            inputs[str(path)] = {"list": hashes.file(path),
-                                 "payloads": hashes.files([Path(s) for s in path.read_text().splitlines() if s])}
+            from datacooker.cli.lmdb import resolve_listed
+
+            listed = [resolve_listed(s, cfg.get("data_dir")) for s in path.read_text().splitlines() if s]
+            inputs[str(path)] = {"list": hashes.file(path), "payloads": hashes.files(listed)}
         else:
             inputs[str(path)] = hashes.path(path)
     return digest({"config": freeze_config(cfg, Path.cwd(), Path.cwd()), "inputs": inputs})
@@ -198,6 +202,10 @@ def reconcile(run: Path) -> None:
                 write_json(_state(run, name), state)
 
 
+# Reader env vars naming an {original: replacement} JSON map; the replacements are pinned too.
+OVERRIDE_MAPS = ("OPENFOLD_STRUCTURE_OVERRIDES", "AFM_CIF_OVERRIDES")
+
+
 def _pin_references(cfg: dict[str, Any], attempt: Path) -> dict[str, Any]:
     """Freeze small reader maps/recovery references while retaining original input identity."""
     import shutil
@@ -213,7 +221,7 @@ def _pin_references(cfg: dict[str, Any], attempt: Path) -> dict[str, Any]:
             raise FileNotFoundError(msg)
         target = attempt / "references" / (key + source.suffix)
         target.parent.mkdir(exist_ok=True)
-        if key == "OPENFOLD_STRUCTURE_OVERRIDES":
+        if key in OVERRIDE_MAPS:
             from structcooker.instructions.readers.openfold import load_structure_overrides
 
             pinned = {}

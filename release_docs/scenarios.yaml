@@ -1,0 +1,100 @@
+# What to copy for a given use. Paths are relative to the tree root; `structcooker
+# release-docs` renders this into docs/scenarios.md with the sizes of this tree.
+# take: needed; optional: commonly wanted extras. A note starting with "or" marks an alternative.
+- id: pdb-structures
+  title: PDB structures only (no MSA, no templates)
+  when: structure-only training, analysis, or your own MSA/template pipeline
+  take:
+    - {path: lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb, note: "train: released by 2021-09-30, res <= 9 A, <= 300 chains"}
+    - {path: lmdb/pdb/valid/cif_attached_valid_1.lmdb, note: "valid: released 2021-09-30 .. 2023-09-30"}
+    - {path: lmdb/pdb/valid/cif_attached_valid_2.lmdb, note: "valid1 minus clusters connected to train"}
+    - {path: metadata/seq_cluster30_PDB.tsv, note: "cluster sampling weights"}
+  optional:
+    - {path: lmdb/pdb/cif_attached/cif_pdb_attached_train_20260301_res9_chain300.lmdb, note: "or the 2026-03-01 train cut"}
+    - {path: lmdb/pdb/cif_attached/cif_pdb_attached.lmdb, note: "every entry, unfiltered"}
+    - {path: metadata/cif_metadata.tsv, note: "resolution, dates, counts per assembly"}
+- id: pdb-msa-templates
+  title: PDB with MSAs and templates
+  when: AF3-style training on the PDB
+  take:
+    - {path: lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb}
+    - {path: lmdb/pdb/valid/cif_attached_valid_1.lmdb}
+    - {path: lmdb/pdb/valid/cif_attached_valid_2.lmdb}
+    - {path: metadata/seq_cluster30_PDB.tsv}
+    - {path: lmdb/pdb/msa/a3m_d2k.lmdb, note: "protein MSA, depth <= 2,000 (or a3m_d512 / a3m_d16k / a3m)"}
+    - {path: lmdb/pdb/msa/msa_rna_d2k.lmdb, note: "RNA MSA (or msa_rna_d512 / msa_rna)"}
+    - {path: lmdb/chain/template/template.lmdb, note: "templates by chain"}
+    - {path: lmdb/ccd/biomol_CCD.lmdb, note: "ligand chemistry"}
+  optional:
+    - {path: lmdb/chain/template/seqid_template_mols.lmdb, note: "the same templates by seq_id"}
+    - {path: lmdb/chain/cif/cif_chain.lmdb, note: "per-chain structures the templates come from"}
+- id: mpnn
+  title: ProteinMPNN training
+  when: sequence design on backbones
+  take:
+    - {path: lmdb/pdb/cif/cif_mpnn_train_20210930_res9_chain300.lmdb, note: "pruned to what MPNN reads"}
+    - {path: metadata/seq_cluster30_PDB.tsv}
+- id: distillation
+  title: PDB plus OpenFold3 distillation
+  when: AF3-style training with the distillation sets; pick the MSA depth to fit the disk
+  take:
+    - {path: lmdb/distillation_short/cif_attached/cif_short_attached.lmdb}
+    - {path: lmdb/distillation_short/msa/msa_short_d2k.lmdb, note: "or d512 / d5k / full"}
+    - {path: lmdb/distillation_short/template/template_topn_short.lmdb}
+    - {path: lmdb/distillation_long/cif_attached/cif_long_attached.lmdb}
+    - {path: lmdb/distillation_long/msa/msa_long_d512.lmdb, note: "or d2k (3.5 TB) / full (18 TB)"}
+    - {path: lmdb/distillation_long/template/template_topn_long.lmdb}
+    - {path: lmdb/distillation_rna/cif_attached/cif_rna_attached.lmdb}
+    - {path: lmdb/distillation_rna/msa/msa_rna_d2k.lmdb, note: "or d512 / d5k / full"}
+    - {path: lmdb/distillation_disordered/cif_attached/cif_disordered_attached.lmdb, note: "with chain contacts"}
+    - {path: lmdb/distillation_disordered/msa/msa_disordered_d2k.lmdb, note: "or d512 / full"}
+    - {path: lmdb/distillation_disordered/template/template_disordered.lmdb}
+    - {path: metadata/seq_cluster30_OFD.tsv}
+  notes: Add everything from "PDB with MSAs and templates".
+- id: teddymer-afm
+  title: PDB plus Teddymer and AFDB multimer
+  when: training on predicted dimers / domain interfaces
+  take:
+    - {path: lmdb/teddymer/cif_attached/cif_teddymer_attached.lmdb}
+    - {path: lmdb/teddymer/msa/msa_teddymer_d2k.lmdb, note: "or full"}
+    - {path: lmdb/teddymer/template/template_teddymer.lmdb}
+    - {path: lmdb/afdb_multimer/cif_attached/cif_afm_homodimer_attached.lmdb}
+    - {path: lmdb/afdb_multimer/cif_attached/cif_afm_heterodimer_attached.lmdb}
+    - {path: lmdb/afdb_multimer/msa/msa_afm_d2k.lmdb, note: "or full; shared by homo- and heterodimers"}
+    - {path: lmdb/afdb_multimer/template/template_afm.lmdb}
+    - {path: metadata/seq_cluster30_TDM.tsv}
+    - {path: metadata/seq_cluster30_AFM.tsv}
+  notes: Add everything from "PDB with MSAs and templates".
+- id: foldbench
+  title: FoldBench inference
+  when: predicting the FoldBench targets
+  take:
+    - {path: lmdb/ccd/ccd_inference.lmdb, note: "the CCD as inference reads it"}
+    - {path: lmdb/foldbench/msa_edge.lmdb, note: "4 sequences not in the PDB-wide MSA DB"}
+  notes: >-
+    `structcooker foldbench build PACKAGE OUT` cuts the protein/RNA MSAs and templates a
+    FoldBench package looks up (about 2 GB) out of lmdb/pdb/msa/a3m, msa_rna and
+    lmdb/chain/template/template; copy OUT, or copy those three DBs whole.
+- id: sequences
+  title: Sequences and clusters only
+  when: sequence analysis, redundancy filtering, joining databases by sequence
+  take:
+    - {path: metadata/seq_id_map.tsv, note: "seq_id -> sequence, every database"}
+    - {path: metadata/seq_cluster30_PDB.tsv}
+    - {path: metadata/seq_cluster30_OFD.tsv}
+    - {path: metadata/seq_cluster30_TDM.tsv}
+    - {path: metadata/seq_cluster30_AFM.tsv}
+  optional:
+    - {path: materials/intermediate/fasta, note: "per-database fastas with chain headers"}
+- id: rebuild
+  title: Rebuilding or extending (new PDB entries, a fixed recipe)
+  when: running StructCooker on this tree
+  take:
+    - {path: materials/raw, note: "the downloads"}
+    - {path: materials/reference, note: "supplied inputs; without them a build is self-consistent but not identical to this release"}
+    - {path: materials/intermediate, note: "staged and derived inputs"}
+  notes: >-
+    Plus the StructCooker repository and the shared search databases (SEQ_DB_ROOT:
+    UniRef30 2302, MMseqs2) for the Teddymer MSA search. `structcooker build-all` writes
+    lmdb/ and metadata/ afresh; `structcooker patch` rebuilds selected records of one
+    database in place.

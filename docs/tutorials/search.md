@@ -21,7 +21,7 @@ is written as `c<DB>_<rep seq_id>`.
 - Parameters (all four): `mmseqs2_seq_id: 0.30`, `mmseqs2_cov: 0.8`,
   `mmseqs2_covmode: "0"`, `mmseqs2_clustermode: "1"`; inputs are the DB's own
   FASTA, `seq_id_map.tsv`, and the SAbDab summary
-  (`DATA_ROOT/external/SabDab/sabdab_summary_all.tsv`).
+  (`BIOMOL_ROOT/materials/raw/sabdab/sabdab_summary_all.tsv`).
 
 ```bash
 pixi run structcooker build metadata/pdb_seq_cluster30
@@ -39,8 +39,8 @@ Teddymer MSAs are searched with **MMseqs2** (CPU) against UniRef30 2302 only:
 - Recipe: `structcooker.workflows.search.msa_search_mmseqs`
 - Config (parallel): `db/teddymer/msa_search.yaml` — `threads: 28`,
   `chunk_size: 1000`, `n_jobs: 4` (4 × 28 = 112 CPUs per node), `node_count: 8`;
-  queries from `metadata/seq_id_map_TDM.tsv`
-- Output: `<seq_id>.a3m` under `OUTPUT_ROOT/materials/intermediate/msa/`, in the
+  queries from `materials/intermediate/worklists/seq_id_map_TDM.tsv`
+- Output: `<seq_id>.a3m` under `BIOMOL_ROOT/materials/intermediate/msa/`, in the
   layout the a3m ingest reads (`db/teddymer/msa.yaml`).
 
 ```bash

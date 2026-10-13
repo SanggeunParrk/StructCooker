@@ -8,7 +8,6 @@ from structcooker.paths import mmcif_root
 
 
 def test_download_uses_build_input_without_deleting(monkeypatch, tmp_path):
-    monkeypatch.setenv("MMCIF_ROOT", str(tmp_path / "mirror"))
     calls = []
     monkeypatch.setattr(downloads.subprocess, "run", lambda argv, **_kw: calls.append(argv))
     assert downloads.download_mmcif(tmp_path, confirmed=True) == mmcif_root(tmp_path)
@@ -17,7 +16,6 @@ def test_download_uses_build_input_without_deleting(monkeypatch, tmp_path):
 
 
 def test_unconfirmed_download_has_no_side_effects(monkeypatch, tmp_path):
-    monkeypatch.setenv("MMCIF_ROOT", str(tmp_path / "mirror"))
     with pytest.raises(RuntimeError, match="--yes"):
         downloads.download_mmcif(tmp_path, confirmed=False)
     assert not mmcif_root(tmp_path).exists()

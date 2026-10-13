@@ -10,16 +10,16 @@ records byte-for-byte and verifies that every lookup a `data.yaml` makes resolve
 | protein MSA | `msa/a3m.lmdb` | `P` + 20 digits | `{msa_dict}` (schema E) | `lmdb/pdb/msa/a3m.lmdb` |
 | RNA MSA | `msa/a3m_rna.lmdb` | `R` + 20 digits | `{msa_dict}` (schema E) | `lmdb/pdb/msa/msa_rna.lmdb` |
 | template | `template/template.lmdb` | `{pdbid}_{chain}` | `{template_mols}` (schema D) | `lmdb/chain/template/template.lmdb` |
-| CCD | `CCD/<name>.lmdb` | component code | CCDMol graph (`atoms` / `residues` / `chains`) | `foldbench/ccd_inference.lmdb` |
+| CCD | `CCD/<name>.lmdb` | component code | CCDMol graph (`atoms` / `residues` / `chains`) | `lmdb/ccd/ccd_inference.lmdb` |
 
-Sources are the release tree (`OUTPUT_ROOT`, default `/data/shared/cssb_data/BioMol_clean`), at the paths its db
-configs write (`msa/a3m`, `msa/msa_rna`, `template/chain_template`). What FoldBench needs beyond those lives in the release's
-`foldbench/` directory, and `build` uses it by default:
+Sources are the release tree (`BIOMOL_ROOT`, default `/data/shared/cssb_data/BioMol_clean`), at the paths its db
+configs write (`msa/a3m`, `msa/msa_rna`, `template/chain_template`). What FoldBench needs beyond those also lives in the
+release's `lmdb/`, and `build` uses it by default:
 
-- `foldbench/ccd_inference.lmdb` -- the CCD as inference reads it: one CCDMol graph per component, a pure reshape of
-  the release's schema-G `ccd/biomol_CCD.lmdb` (`scripts/staging/build_inference_ccd.py`; UNL, which has no atoms, is the
+- `lmdb/ccd/ccd_inference.lmdb` -- the CCD as inference reads it: one CCDMol graph per component, a pure reshape of
+  the release's schema-G `lmdb/ccd/biomol_CCD.lmdb` (`scripts/staging/build_inference_ccd.py`; UNL, which has no atoms, is the
   one component left out). For FoldBench's 956 components it equals the July `CCD_20260718.lmdb` value for value.
-- `foldbench/msa_edge.lmdb` -- the four from-scratch edge MSAs (below).
+- `lmdb/foldbench/msa_edge.lmdb` -- the four from-scratch edge MSAs (below).
 
 ## Package input
 
@@ -58,7 +58,7 @@ RNA MSAs differ in depth for most keys, as the release rebuilt them from the san
 
 - **Edge sequences** (3 chromophore-abbreviated entries and a 99-mer, ids `P0300001`-`P0300004`) are not in the PDB-wide DB.
   They were searched from scratch once with `instructions.transforms.msa.run_msa_search` (SignalP, hhblits UniRef30 and BFD);
-  They are kept in `foldbench/msa_edge.lmdb`, which `build` uses as its fallback.
+  They are kept in `lmdb/foldbench/msa_edge.lmdb`, which `build` uses as its fallback.
 - **DNA** has no MSA (matching AF3): `D` / `N` / `Q` keys are expected to be absent and are counted separately by `verify`.
 - **Templates** are limited by the cutoff the full-release template DB was built with (2021-09-30); this command does not
   re-filter by date.

@@ -4,14 +4,16 @@
 # production before publication; full builds are authorized.
 schema: D
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/template/template_disordered.lmdb}
-file_list: ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/disordered_set/protein_tmpl_filelist.txt}
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/template/template_disordered.lmdb}
+file_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/openfold_distillation/disordered_set/protein_tmpl_filelist.txt}
+# Its lines are relative to the OpenFold download (datacooker resolves them against data_dir).
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/openfold_distillation}
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_template_disordered.py}
 key_builder: structcooker.instructions.readers.openfold.openfold_chain_key
 
 inputs:
-  ccd_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/ccd/biomol_CCD.lmdb}
+  ccd_db_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/ccd/biomol_CCD.lmdb}
 
 reader:
   loader: structcooker.instructions.readers.openfold.get_disordered_template_chain

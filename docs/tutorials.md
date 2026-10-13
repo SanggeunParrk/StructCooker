@@ -18,8 +18,9 @@ pixi run structcooker build <group>/<name>            # plan, size, submit (afte
 The op (`build` / `rebuild` LMDB pipeline, or the `materialize` / `extract` /
 `parallel` workflow ops) is inferred from the config's shape, and the SLURM jobs
 are sized and submitted by `structcooker` itself — there is no map size, shard
-count, or sbatch script to write. Paths resolve from `DATA_ROOT` (default
-`/data/shared/cssb_data`) and `OUTPUT_ROOT` (default `DATA_ROOT/BioMol_clean`).
+count, or sbatch script to write. Paths resolve from one root, `BIOMOL_ROOT` (default
+`/data/shared/cssb_data/BioMol_clean`); only the shared search databases come from
+`SEQ_DB_ROOT` (default `/data/shared/cssb_data/seq_db`).
 The whole release is the DAG in `db/MANIFEST_all.yaml`; to build it end to end
 see the [end-to-end build](e2e-build.md) runbook and, for where inputs live,
 [raw materials](raw-materials.md).

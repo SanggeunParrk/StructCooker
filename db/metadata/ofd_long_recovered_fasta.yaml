@@ -9,10 +9,10 @@
 recipe_path: ${p:src/structcooker/workflows/metadata/new_sequences.py}
 
 inputs:
-  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd_long.fasta}
-  base_fasta_path: ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/fasta/long.fasta}
+  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/ofd_long.fasta}
+  base_fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/openfold_distillation/fasta/long.fasta}
 
-output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/ofd_long_recovered.fasta}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/ofd_long_recovered.fasta}
 
 writer:
   materializer: structcooker.instructions.writers.projections.write_fasta_dict

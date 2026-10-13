@@ -82,7 +82,7 @@ is ported under `db/metadata/`:
 | config | op | notes |
 |---|---|---|
 | `cif_fasta` / `cif_metadata` | extract | cif_pdb → fasta / metadata TSV (recipes verified on prod records) |
-| `seq_id_map` | materialize | **optional seed exception** — seq_id is an assigned counter, so from-scratch ≠ production; seed via the provided reference `DATA_ROOT/reference/seq_id_map.tsv` to match, else fresh ids. Validated. |
+| `seq_id_map` | materialize | **optional seed exception** — seq_id is an assigned counter, so from-scratch ≠ production; seed via the provided reference `materials/reference/seq_id_map_seed.tsv` to match, else fresh ids. Validated. |
 | `{pdb,ofd,teddymer,afm}_seq_cluster30` | materialize | mmseqs2 at 30% (antibodies via cd-hit), **per DB** over that DB's own fasta; ids `c<DB>_<rep seq_id>` ([scheme](../docs/seq-id-and-cluster-scheme.md)). Replaced the global `seq_cluster40` / `seq_cluster30` (2026-09-23). SabDab is an external input |
 | `interacting_seq_ids` / `interacting_seq_clusters` | extract / materialize | interface partners for valid-2 dedup |
 
@@ -137,7 +137,7 @@ production `BioMol/lmdb/pdb/cif/cif_pdb.lmdb` -- the 48 that build are identical
 and the other 5 (2g10, 2icy, 2q44, 4xq2, 9gdy) are absent from production too.
 
 **Superseded run:** the 233,579-entry database described above used the old input
-snapshot. The current recovery reads `BioMol/materials/raw/cif` and has 249,676 CIF
+snapshot. The current recovery reads the raw mmCIF tree (now `BIOMOL_ROOT/materials/raw/cif`) and has 249,676 CIF
 keys, with no missing production keys. It does not wait for the old manual-fix
 snapshot. See the recovery report for the actual comparison scope, CCD compatibility
 references, deliberate source differences, and final build status.
@@ -220,6 +220,14 @@ Release tree layout and check, 2026-10-13:
   docs/foldbench.md.
 - `structcooker release-check`: 95 of 95 stages present, self-contained and consistent
   (`release_check.json`).
+- Inputs moved into the tree, under one root `BIOMOL_ROOT` (default
+  `/data/shared/cssb_data/BioMol_clean`): `materials/raw` (as downloaded, now incl. SabDab),
+  `materials/reference` (supplied: PDB MSAs, SignalP, OFD reference fastas and disordered work
+  lists, seq_id seed, reference CCD/chain-selection DBs), `materials/intermediate` (derived,
+  incl. the build work lists in `worklists/`); docs/raw-materials.md. The CCD is now
+  `lmdb/ccd/biomol_CCD.lmdb`, the FoldBench assets `lmdb/ccd/ccd_inference.lmdb` and
+  `lmdb/foldbench/msa_edge.lmdb`. `DATA_ROOT`, `OUTPUT_ROOT` and the per-input root overrides
+  are gone; the shared search databases are under `SEQ_DB_ROOT`.
 
 MSA and template DBs are keyed by seq_id, so they count unique sequences, not structures: the
 AFM release predicts one model per UniProt entry, and 126,492 homodimers share their sequence

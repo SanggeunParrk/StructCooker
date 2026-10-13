@@ -3,8 +3,8 @@
 # Full distillation builds authorized; require coverage and validation receipts.
 schema: E
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_long/msa/msa_long.lmdb}
-data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/monomer_distillation_sets_v2/long_monomers/preprocessed}
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_long/msa/msa_long.lmdb}
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/openfold_distillation/monomer_distillation_sets_v2/long_monomers/preprocessed}
 file_pattern: "alignment.npz"
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_msa.py}
@@ -23,5 +23,5 @@ test_run: false
 
 # Explicit, fingerprinted reader inputs.
 runtime_environment:
-  MONOMER_SEQID_MAP: ${oc.env:MONOMER_SEQID_MAP,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/distillation_monomer_seqid.tsv}   # metadata/distillation_monomer_seqid
+  MONOMER_SEQID_MAP: ${oc.env:MONOMER_SEQID_MAP,${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/worklists/distillation_monomer_seqid.tsv}   # metadata/distillation_monomer_seqid
 duplicate_input_policy: first_path

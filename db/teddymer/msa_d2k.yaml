@@ -4,8 +4,8 @@
 # the DB set is what matters here.)
 schema: E
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/teddymer/msa/msa_teddymer.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/teddymer/msa/msa_teddymer_d2k.lmdb}
+old_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/teddymer/msa/msa_teddymer.lmdb}
+new_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/teddymer/msa/msa_teddymer_d2k.lmdb}
 
 recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
 

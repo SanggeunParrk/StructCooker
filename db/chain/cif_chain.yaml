@@ -5,11 +5,11 @@
 # and the recipe passes each chain's biomoldict through, so explode writes one record
 # per chain. Replaces scripts/maintenance/build_cif_chain.py.
 #
-# Source and destination both resolve under OUTPUT_ROOT.
+# Source and destination both resolve under BIOMOL_ROOT.
 schema: C
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/chain/cif/cif_chain.lmdb}
+old_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+new_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/chain/cif/cif_chain.lmdb}
 
 recipe: ${p:src/structcooker/workflows/exports/cif_chain.py}
 
@@ -28,4 +28,4 @@ writer:
 
 # Optional reference choices preserve legacy ties; absent -> numeric model order.
 parameters:
-  reference_selection_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/reference_chain_selection.lmdb}
+  reference_selection_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/reference_chain_selection.lmdb}

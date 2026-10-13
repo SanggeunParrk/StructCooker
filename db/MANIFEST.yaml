@@ -22,7 +22,7 @@ pdb/cif: [ccd/ccd]                                # cif build reads the ccd DB f
 # ---- metadata (projection ops off cif) ----
 metadata/cif_fasta: [pdb/cif]
 metadata/cif_metadata: [pdb/cif]
-metadata/seq_id_map: [metadata/cif_fasta]         # + optional reference seed (DATA_ROOT/reference/seq_id_map.tsv) to match production
+metadata/seq_id_map: [metadata/cif_fasta]         # + optional reference seed (materials/reference/seq_id_map_seed.tsv) to match production
 # seq_id_map is SHARED across DBs (docs/seq-id-and-cluster-scheme.md): its config also reads the
 # OFD fastas (supplied), metadata/teddymer_fasta, metadata/afm_fasta and ofd_long_recovered.fasta,
 # in that order. Those producers live in MANIFEST_teddymer / MANIFEST_afdb_multimer.

@@ -189,7 +189,7 @@ def execute_manifest(
                 for output in sorted(outputs):
                     stack.enter_context(exclusive(Path(str(output) + ".build.lock")))
                 if not record.data and any(p.exists() for p in outputs) and not rebuild_untracked:
-                    msg = f"{name}: existing output has no receipt; use a fresh OUTPUT_ROOT or explicitly rebuild untracked outputs."
+                    msg = f"{name}: existing output has no receipt; use a fresh BIOMOL_ROOT or explicitly rebuild untracked outputs."
                     raise RuntimeError(msg)
                 for output in sorted(outputs):
                     claim_output(output, record.path)

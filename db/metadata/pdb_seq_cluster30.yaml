@@ -7,16 +7,16 @@
 #
 # PDB chains are experimentally determined and concentrated in a few well-studied organisms; their redundancy structure is nothing like a metagenomic prediction set.
 recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
-output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_cluster30_PDB.tsv}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30_PDB.tsv}
 
 inputs:
   db_code: PDB
-  tmp_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/tmp/seq_cluster30_PDB}
+  tmp_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/tmp/seq_cluster30_PDB}
   # Shared id space: this DB's sequences must be in the map before clustering runs.
-  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
   # This DB's own consolidated fasta -- not a union corpus.
-  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/cif_pdb.fasta}
-  sabdab_summary_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/external/SabDab/sabdab_summary_all.tsv}
+  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cif_pdb.fasta}
+  sabdab_summary_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/sabdab/sabdab_summary_all.tsv}
   mmseqs2_seq_id: 0.30
   mmseqs2_cov: 0.8
   mmseqs2_covmode: "0"

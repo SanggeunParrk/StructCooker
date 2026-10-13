@@ -8,8 +8,8 @@
 # C-terminal OXT; chain id 'A' as in the PDB (the npz relabelled it '1'); bonds from the CCD.
 schema: A
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_short/cif/cif_short.lmdb}
-data_dir: ${p:${oc.env:DISTILLATION_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/openfold_distillation}/monomer_distillation_sets_v2/short_monomers/raw}
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_short/cif/cif_short.lmdb}
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/openfold_distillation/monomer_distillation_sets_v2/short_monomers/raw}
 file_pattern: "best_structure_relaxed.pdb|best_structure_relaxed.pdb.zst"   # exact names: a trailing * also took s5cmd partials (pdb<digits>)
 duplicate_input_policy: first_path
 
@@ -17,7 +17,7 @@ recipe: ${p:src/structcooker/workflows/ingest/teddymer_structure.py}   # PDB mod
 key_builder: structcooker.instructions.readers.openfold.openfold_entry_key
 
 inputs:
-  ccd_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/ccd/biomol_CCD.lmdb}
+  ccd_db_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/ccd/biomol_CCD.lmdb}
 
 reader:
   loader: structcooker.instructions.readers.openfold.get_openfold_pdb_structure_data

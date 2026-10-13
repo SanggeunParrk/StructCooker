@@ -17,9 +17,9 @@ for how those hooks work.
 ## Input
 
 `structcooker download ccd` keeps the wwPDB download as raw
-(`DATA_ROOT/BioMol/materials/raw/ccd/components_<date>.cif.gz`) and splits it
+(`BIOMOL_ROOT/materials/raw/ccd/components_<date>.cif.gz`) and splits it
 into one `<COMP_ID>.cif` per `data_` block under
-`DATA_ROOT/BioMol/materials/intermediate/ccd/components/` — that split directory
+`BIOMOL_ROOT/materials/intermediate/ccd/components/` — that split directory
 is the build's `data_dir`. See [raw materials](../raw-materials.md).
 
 ## Pipeline (Read → Transform → Write)
@@ -34,8 +34,8 @@ serializes it into the CCD LMDB.
 |----------|------|-------|
 | Read  | `loader`     | `structcooker.instructions.readers.cif.get_cif_data` |
 | Write | `serializer` | `structcooker.instructions.transforms.codecs.to_bytes` |
-| Source | files   | `DATA_ROOT/BioMol/materials/intermediate/ccd/components/*.cif*` |
-| Dest   | LMDB    | `OUTPUT_ROOT/ccd/biomol_CCD.lmdb` |
+| Source | files   | `BIOMOL_ROOT/materials/intermediate/ccd/components/*.cif*` |
+| Dest   | LMDB    | `BIOMOL_ROOT/lmdb/ccd/biomol_CCD.lmdb` |
 
 ## Transform recipe
 

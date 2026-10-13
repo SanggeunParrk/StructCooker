@@ -9,14 +9,14 @@
 schema: A
 test_run: false
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/cif/cif_afm_heterodimer.lmdb}
-data_dir: ${p:${oc.env:AFDB_MULTIMER_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/afdb_multimer}/heterodimer/cif}
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/afdb_multimer/cif/cif_afm_heterodimer.lmdb}
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/afdb_multimer/heterodimer/cif}
 file_pattern: "*/AF-*-model_v1.cif.gz"
 
 recipe: ${p:src/structcooker/workflows/ingest/cif.py}
 key_builder: structcooker.instructions.readers.afdb.afdb_entity_key
-ccd_db_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/ccd/biomol_CCD.lmdb}
-ccd_reference_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/reference_ccd.lmdb}
+ccd_db_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/ccd/biomol_CCD.lmdb}
+ccd_reference_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/reference_ccd.lmdb}
 
 reader:
   loader: structcooker.instructions.readers.afdb.get_afm_cif_data
@@ -29,4 +29,4 @@ writer:
 # _entity_poly_seq were repaired (4 crossed entity ids, 2 UniProt 'Z'); the repaired copies
 # live in materials/intermediate and this map substitutes them at read time.
 runtime_environment:
-  AFM_CIF_OVERRIDES: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/afdb_multimer/heterodimer/repaired/overrides.json}
+  AFM_CIF_OVERRIDES: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/afdb_multimer/heterodimer/repaired/overrides.json}

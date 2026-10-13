@@ -8,16 +8,16 @@ assembly graph (`assembly_dict`) plus `metadata_dict`, loadable as a
 - Recipe: `structcooker.workflows.ingest.cif` (`assembly_dict`, `metadata_dict`)
 - Config:
   [`db/pdb/cif.yaml`](https://github.com/SanggeunParrk/StructCooker/blob/main/db/pdb/cif.yaml)
-  — schema `A`, op `build`, target `OUTPUT_ROOT/lmdb/pdb/cif/cif_pdb.lmdb`
+  — schema `A`, op `build`, target `BIOMOL_ROOT/lmdb/pdb/cif/cif_pdb.lmdb`
 
 | Boundary | Hook | Value |
 |----------|------|-------|
 | Read | `loader` | `structcooker.instructions.readers.cif.get_cif_data` |
 | Read | `key_transform` | `structcooker.instructions.readers.cif.dot_transform` |
 | Write | `serializer` | `structcooker.instructions.transforms.codecs.to_bytes` |
-| Source | files | `*.cif.gz` under `MMCIF_ROOT` (default `DATA_ROOT/BioMol/materials/raw/cif`) |
-| Extra input | `ccd_db_path` | `OUTPUT_ROOT/ccd/biomol_CCD.lmdb` from the [previous step](ingest-ccd.md) |
-| Extra input | `ccd_reference_path` | `OUTPUT_ROOT/metadata/reference_ccd.lmdb` — historical definitions for atoms removed from the current CCD |
+| Source | files | `*.cif.gz` under `BIOMOL_ROOT/materials/raw/cif` |
+| Extra input | `ccd_db_path` | `BIOMOL_ROOT/lmdb/ccd/biomol_CCD.lmdb` from the [previous step](ingest-ccd.md) |
+| Extra input | `ccd_reference_path` | `BIOMOL_ROOT/materials/reference/reference_ccd.lmdb` — historical definitions for atoms removed from the current CCD |
 
 The key is the PDB id (`dot_transform` handles the `.cif` suffix). The recipe
 extracts metadata (`_entry.id`, resolution, deposition date), merges chemical

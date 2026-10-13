@@ -14,8 +14,8 @@ store one folder per entry. The monomer sets ship the released model under
 StructCooker ingests four sets — long monomers, short monomers, RNA monomers,
 and the PDB-derived disordered set — into structure (`CIFMol`), attached, MSA,
 and template LMDBs, with **one reader / transform / writer set per data type**
-shared across sets. Raw inputs live under `DISTILLATION_ROOT` (default
-`DATA_ROOT/BioMol/materials/raw/openfold_distillation`, fetched by
+shared across sets. Raw inputs live under
+`BIOMOL_ROOT/materials/raw/openfold_distillation` (fetched by
 `structcooker download openfold`); see [raw materials](../raw-materials.md).
 
 ```mermaid
@@ -66,7 +66,7 @@ by a `key_builder`:
 - structures and monomer templates: `openfold_entry_key` — the parent folder
   (the entry id);
 - monomer MSAs: `openfold_seqid_key` — the entry's sequence id, looked up in
-  `MONOMER_SEQID_MAP` (`OUTPUT_ROOT/metadata/distillation_monomer_seqid.tsv`,
+  `MONOMER_SEQID_MAP` (`BIOMOL_ROOT/materials/intermediate/worklists/distillation_monomer_seqid.tsv`,
   built by `db/metadata/distillation_monomer_seqid.yaml`), so MSAs share the
   seq-id key space of the PDB a3m DB;
 - disordered MSAs: `openfold_disordered_seqid_key` via `DISORDERED_SEQID_MAP`;
@@ -76,7 +76,7 @@ by a `key_builder`:
 # db/distillation/long_msa.yaml
 key_builder: structcooker.instructions.readers.openfold.openfold_seqid_key
 runtime_environment:
-  MONOMER_SEQID_MAP: .../metadata/distillation_monomer_seqid.tsv
+  MONOMER_SEQID_MAP: .../materials/intermediate/worklists/distillation_monomer_seqid.tsv
 duplicate_input_policy: first_path
 ```
 
@@ -124,7 +124,8 @@ pixi run structcooker release-build --run-dir <durable run dir>
 
 `release-build` defaults to `db/MANIFEST_distillation.yaml` and
 `db/distillation-exceptions.json`; it expects the CCD, `cif_chain`, and
-`seq_id_map` references to exist already (`REFERENCE_ROOT`). See
+`seq_id_map` references to exist already (under `BIOMOL_ROOT`, the references in
+`materials/reference/`). See
 [release builds](../release-build.md). Sizing, sharding, merging and indexing
 are done by the pipeline; outputs above 5M items stay as shard collections
 (see the [storage policy](../lmdb-storage-policy.md)). See the

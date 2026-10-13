@@ -5,7 +5,7 @@ config it resolves the paths the recipe **reads** and sorts them into
 
 * **upstream** -- produced by another node in ``db/MANIFEST.yaml`` (build-all will
   build it first; not something the user provides), and
-* **external** -- a raw input under ``DATA_ROOT`` that must already exist (mmCIF, CCD,
+* **external** -- a raw input under ``BIOMOL_ROOT/materials`` that must already exist (mmCIF, CCD,
   OpenFold sets, SabDab, provided MSAs/SignalP).
 
 plus the external tools the recipes shell out to and the configured input and output roots. The report
@@ -49,11 +49,11 @@ _BIN_TOOLS: tuple[tuple[str, bool], ...] = (
 # Tools imported as Python modules (kalign-python, anarci), not PATH binaries.
 _PY_TOOLS: tuple[tuple[str, bool], ...] = (("kalign", False), ("anarci", False))
 
-# DATA_ROOT-relative prefixes a downloader can fetch -> `structcooker download` target.
+# BIOMOL_ROOT-relative prefixes a downloader can fetch -> `structcooker download` target.
 _DOWNLOADABLE: tuple[tuple[str, str], ...] = (
     ("materials/raw/cif", "mmcif"),
-    ("openfold_distillation", "openfold"),   # huge -- code-only, warns before fetching
-    ("external/SabDab", "sabdab"),
+    ("materials/raw/openfold_distillation", "openfold"),   # huge -- code-only, warns before fetching
+    ("materials/raw/sabdab", "sabdab"),
     ("materials/raw/ccd", "ccd"),
     ("materials/intermediate/ccd", "ccd"),        # split from the raw download by `download ccd`
 )
@@ -103,12 +103,13 @@ def input_paths(cfg: Mapping[str, object]) -> list[Path]:
         if isinstance(section, dict):
             collect(section)
     runtime = cfg.get("runtime_environment", {})
-    if isinstance(runtime, dict) and runtime.get("OPENFOLD_STRUCTURE_OVERRIDES"):
-        from structcooker.instructions.readers.openfold import load_structure_overrides
+    for var in ("OPENFOLD_STRUCTURE_OVERRIDES", "AFM_CIF_OVERRIDES"):
+        if isinstance(runtime, dict) and runtime.get(var):
+            from structcooker.instructions.readers.openfold import load_structure_overrides
 
-        manifest = Path(str(runtime["OPENFOLD_STRUCTURE_OVERRIDES"]))
-        if manifest.is_file():
-            paths.extend(load_structure_overrides(manifest).values())
+            manifest = Path(str(runtime[var]))
+            if manifest.is_file():
+                paths.extend(load_structure_overrides(manifest).values())
     return list(dict.fromkeys(paths))
 
 
@@ -132,14 +133,14 @@ def output_paths(cfg: Mapping[str, object]) -> list[Path]:
     return outs
 
 
-def download_hint(path: Path, data_root: str) -> str | None:
+def download_hint(path: Path, root: str) -> str | None:
     """Return the ``structcooker download`` target for a missing external path, if any."""
-    for root, target in ((mmcif_root(data_root), "mmcif"),
-                         (distillation_root(data_root), "openfold")):
-        if path == root or root in path.parents:
+    for base, target in ((mmcif_root(root), "mmcif"),
+                         (distillation_root(root), "openfold")):
+        if path == base or base in path.parents:
             return target
     try:
-        rel = path.relative_to(data_root).as_posix()
+        rel = path.relative_to(root).as_posix()
     except ValueError:
         return None
     for marker, target in _DOWNLOADABLE:
@@ -231,14 +232,14 @@ def check_tools() -> list[tuple[str, bool, bool]]:
 def check_env() -> dict[str, str | None]:
     """Return deployment roots and supplied-input overrides."""
     return {name: os.environ.get(name) for name in (
-        "DATA_ROOT", "OUTPUT_ROOT", "MMCIF_ROOT", "DISTILLATION_ROOT", "MSA_ROOT", "SEQ_CLUSTER30_PATH",
+        "BIOMOL_ROOT", "SEQ_DB_ROOT",
     )}
 
 
-def missing_externals(reports: Iterable[NodeReport], data_root: str) -> dict[str, str | None]:
+def missing_externals(reports: Iterable[NodeReport], root: str) -> dict[str, str | None]:
     """Return every missing external path -> its download hint (deduped)."""
     out: dict[str, str | None] = {}
     for report in reports:
         for path in report.missing:
-            out.setdefault(path, download_hint(Path(path), data_root))
+            out.setdefault(path, download_hint(Path(path), root))
     return out

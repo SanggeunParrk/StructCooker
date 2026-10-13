@@ -23,8 +23,8 @@ recipe produces `chem_comp_dict`; `to_bytes` serializes it into the `biomol_CCD`
 |----------|------|-------|
 | Read  | `loader`     | `structcooker.instructions.readers.cif.get_cif_data` |
 | Write | `serializer` | `structcooker.instructions.transforms.codecs.to_bytes` |
-| Source | files   | `DATA_ROOT/BioMol/materials/intermediate/ccd/components/*.cif*` |
-| Dest   | LMDB    | `OUTPUT_ROOT/ccd/biomol_CCD.lmdb` |
+| Source | files   | `BIOMOL_ROOT/materials/intermediate/ccd/components/*.cif*` |
+| Dest   | LMDB    | `BIOMOL_ROOT/lmdb/ccd/biomol_CCD.lmdb` |
 
 ## Transform recipe (detail)
 

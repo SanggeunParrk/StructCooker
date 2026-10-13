@@ -12,10 +12,10 @@
 map_size: 1_500_000_000_000
 schema: E
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/msa/msa_afm.lmdb}
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/afdb_multimer/msa/msa_afm.lmdb}
 # Inputs: the release's MSAs (materials/raw) plus the one we generated (materials/intermediate),
 # listed by metadata/afm_msa_filelist so the raw tree holds only what was downloaded.
-file_list: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/afm_msa_filelist.txt}
+file_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/worklists/afm_msa_filelist.txt}
 
 recipe: ${p:src/structcooker/workflows/ingest/a3m.py}
 key_builder: structcooker.instructions.readers.afdb.afm_msa_seqid_key
@@ -28,5 +28,5 @@ writer:
 test_run: false
 
 runtime_environment:
-  AFM_MSA_SEQID_MAP: ${oc.env:AFM_MSA_SEQID_MAP,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/afm_msa_seqid.tsv}
+  AFM_MSA_SEQID_MAP: ${oc.env:AFM_MSA_SEQID_MAP,${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/worklists/afm_msa_seqid.tsv}
 duplicate_input_policy: first_path

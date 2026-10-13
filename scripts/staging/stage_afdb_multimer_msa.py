@@ -13,7 +13,7 @@ to be tied to a monomer entity, which the release does not do for us:
 
 Because that link is derived, every heterodimer chain's MSA is re-checked here: its query
 sequence must equal the chain's own sequence in the structure. The resulting table is ours, not the release's, so it goes to
-``BioMol/materials/intermediate/afdb_multimer/heterodimer/chain_msa.tsv`` (raw holds only
+``materials/intermediate/afdb_multimer/heterodimer/chain_msa.tsv`` (raw holds only
 what was downloaded). Generated MSAs (entities the release does not ship) live in
 ``intermediate/afdb_multimer/msa_generated/`` as ``.a3m`` and, compressed, ``.a3m.zst``.
 
@@ -40,13 +40,13 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-_DATA = Path(os.environ.get("DATA_ROOT", "/data/shared/cssb_data"))
+_ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 # The download (release msas/ batches + metadata CSVs) and a scratch dir for the plan.
 DIST = Path(os.environ.get("AFM_MSA_DOWNLOAD", "/data/psk6950/external_source/AFDB/multimer/msas"))
 BATCHES = ("251124_1.2M", "251124_8.8M", "251209_13.4M")
 WORK = Path(os.environ.get("AFM_STAGE_WORK", "/data/psk6950/external_source/AFDB/multimer"))
-RAW = _DATA / "BioMol/materials/raw/afdb_multimer"            # release MSAs, as shipped
-INTER = _DATA / "BioMol/materials/intermediate/afdb_multimer"  # what we derive from them
+RAW = _ROOT / "materials/raw/afdb_multimer"            # release MSAs, as shipped
+INTER = _ROOT / "materials/intermediate/afdb_multimer"  # what we derive from them
 HOMO_META = WORK / "homodimer_metadata.csv"
 HET_META = Path(os.environ.get("AFM_HET_METADATA", "/data/shared/cssb_data/AFDB_heterodimer/heterodimer_metadata.csv"))
 SEQ_FOUND = WORK / "msa_found_by_sequence.tsv"
@@ -282,12 +282,12 @@ def finalize() -> None:
 A homodimer uses the MSA of its own entity. A heterodimer uses the MSAs of its two monomers
 (the release concatenates them without pairing); the chain -> monomer link, every row
 content-checked (MSA query == chain sequence), is
-`BioMol/materials/intermediate/afdb_multimer/heterodimer/chain_msa.tsv`.
+`materials/intermediate/afdb_multimer/heterodimer/chain_msa.tsv`.
 
 Source: the AFDB complex release msas/ (251124_1.2M, 251124_8.8M, 251209_13.4M) -- only the
 entities used here, out of 23,425,744. Directory-stored files are hard links into the download
 mirror; tar-only ones were extracted. {n_gen} entity(ies) the release does not ship have an MSA
-we generated, in `BioMol/materials/intermediate/afdb_multimer/msa_generated/` (marked
+we generated, in `materials/intermediate/afdb_multimer/msa_generated/` (marked
 `generated` in SOURCE.tsv).
 
 The release's `pandemic_prep/` batch (200 tars, posted 2026-09-11) is not staged: no structure

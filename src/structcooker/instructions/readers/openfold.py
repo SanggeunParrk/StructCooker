@@ -22,6 +22,7 @@ import numpy as np
 import zstandard
 
 from structcooker.instructions.readers.teddymer import pdb_atom_table
+from structcooker.paths import biomol_root
 
 
 def openfold_entry_key(path: Path) -> str:
@@ -98,14 +99,13 @@ def _monomer_seqid_map() -> dict[str, str]:
     The MSA depends only on the sequence, so the distillation MSA DBs are keyed by
     seq_id (like the PDB a3m DBs), not by the per-structure entry id. This maps each
     monomer entry (``path.parent.name``: MGYP id for short/long, accession for rna) to
-    its seq_id via ``$OUTPUT_ROOT/metadata/distillation_monomer_seqid.tsv`` -- a build
+    its seq_id via ``$BIOMOL_ROOT/materials/intermediate/worklists/distillation_monomer_seqid.tsv`` -- a build
     artifact (distillation fasta sequences resolved through seq_id_map). Structures
     sharing a sequence collapse onto one seq_id, matching production's dedup.
     """
     global _MONOMER_SEQID  # noqa: PLW0603 - process-local cache
-    root = os.environ.get("OUTPUT_ROOT", "/data/shared/cssb_data/BioMol_clean")
     map_path = Path(os.environ.get(
-        "MONOMER_SEQID_MAP", str(Path(root) / "metadata" / "distillation_monomer_seqid.tsv"),
+        "MONOMER_SEQID_MAP", str(biomol_root() / "materials/intermediate/worklists/distillation_monomer_seqid.tsv"),
     ))
     changed = _map_changed("monomer", map_path)
     if _MONOMER_SEQID is None or changed:

@@ -101,7 +101,7 @@ def test_release_layout_matches_the_db_configs(monkeypatch, tmp_path):
 
     from structcooker.cli import _resolve_db
 
-    monkeypatch.setenv("OUTPUT_ROOT", str(tmp_path))
+    monkeypatch.setenv("BIOMOL_ROOT", str(tmp_path))
     for name, (db, rel) in fb.RELEASE_LAYOUT.items():
         cfg = load_config(_resolve_db(db))
         assert str(cfg.get("new_env_path") or cfg.get("env_path")) == str(tmp_path / rel), name

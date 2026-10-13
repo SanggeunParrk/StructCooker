@@ -23,24 +23,23 @@ git clone --recursive <repo-url> && cd StructCooker
 # 2. environment (pixi installs StructCooker + DataCooker + biomol + hmmer/kalign/…)
 pixi install && pixi shell
 
-# 3. choose input and output roots (defaults match the existing cluster layout)
-export DATA_ROOT=/path/to/inputs
-export OUTPUT_ROOT=/path/to/reproduced/db # defaults to $DATA_ROOT/BioMol_clean
-# Optional input relocation, shared by download helpers and build configs:
-export MMCIF_ROOT=$DATA_ROOT/BioMol/materials/raw/cif
-export DISTILLATION_ROOT=$DATA_ROOT/BioMol/materials/raw/openfold_distillation
+# 3. choose the root (defaults match the existing cluster layout). Everything -- inputs
+#    under materials/{raw,reference,intermediate}, DBs under lmdb/, tables under metadata/ --
+#    hangs off this one variable; only the shared search databases live outside it.
+export BIOMOL_ROOT=/path/to/BioMol_clean   # default /data/shared/cssb_data/BioMol_clean
+export SEQ_DB_ROOT=/path/to/seq_db         # UniRef30/MMseqs2; default /data/shared/cssb_data/seq_db
 
-# 4. provide the reference inputs (seq_id seed, OFD reference fastas, PDB MSAs, SignalP,
-#    historical CCD, chain model choice) -- docs/e2e-build.md §3; downloads alone do not
-#    supply them.
+# 4. provide the reference inputs under $BIOMOL_ROOT/materials/reference (seq_id seed,
+#    OFD reference fastas, PDB MSAs, SignalP, historical CCD, chain model choice) --
+#    docs/e2e-build.md §3; downloads alone do not supply them.
 
-# 5. download into an input directory you own (these commands write raw files)
+# 5. download into $BIOMOL_ROOT/materials/raw (these commands write raw files)
 structcooker download ccd
 structcooker download sabdab
 structcooker download mmcif --yes
 structcooker download openfold       # prints portal instructions; no auto-fetch
 # teddymer, AFDB multimer and the OpenFold relaxed models: docs/e2e-build.md §1, then the
-# staging scripts in scripts/staging/ (§2) lay them out under BioMol/materials/raw.
+# staging scripts in scripts/staging/ (§2) lay them out under materials/raw.
 
 # 6. verify input presence and declared dependencies before building
 structcooker inspect --manifest db/MANIFEST_all.yaml --strict
@@ -82,11 +81,10 @@ it waits for final jobs as well as upstream jobs. A failed or unconfirmable job 
 and the raw inputs on disk. See [docs/roadmap.md](docs/roadmap.md) for raw inputs.
 
 **Reproduction inputs matter.** Sequence IDs are assigned counters. Provide
-`DATA_ROOT/reference/seq_id_map.tsv` to preserve existing IDs; its absence creates
-a fresh ID space. Clustering is per DB at 30% (`seq_cluster30_{PDB,OFD,TDM,AFM}.tsv`,
+`BIOMOL_ROOT/materials/reference/seq_id_map_seed.tsv` to preserve existing IDs; its absence
+creates a fresh ID space. Clustering is per DB at 30% (`seq_cluster30_{PDB,OFD,TDM,AFM}.tsv`,
 docs/seq-id-and-cluster-scheme.md); attachment and validation read those under
-`OUTPUT_ROOT/metadata/`. `SEQ_CLUSTER30_PATH` overrides the PDB clustering. Preserve input
-versions and parameters as well as those files.
+`BIOMOL_ROOT/metadata/`. Preserve input versions and parameters as well as those files.
 
 For PDB operations, use the [verified build and recovery guide](docs/pdb-production.md).
 The completed CIF recovery has full key-set checks and sampled payload comparisons,
@@ -111,10 +109,12 @@ and 80,248 heterodimers, the release's own MSAs). All DBs share one `seq_id` spa
 cluster per DB (`cPDB_` / `cOFD_` / `cTDM_` / `cAFM_`); see
 [docs/seq-id-and-cluster-scheme.md](docs/seq-id-and-cluster-scheme.md).
 
-Build configs use `DATA_ROOT` and `OUTPUT_ROOT`, with optional input-location
-overrides described in [data provenance](docs/data-provenance.md). Existing shared
-input paths remain the defaults. A custom `DATA_ROOT` also relocates the default
-output root; it no longer silently writes to the cluster's default output directory.
+Build configs resolve every path against one root, `BIOMOL_ROOT` (default
+`/data/shared/cssb_data/BioMol_clean`): inputs under `materials/{raw,reference,intermediate}`,
+DBs under `lmdb/`, released tables under `metadata/`. Only the shared UniRef30/MMseqs2
+search databases sit outside it, under `SEQ_DB_ROOT`. Moving or renaming the tree is one
+variable; see [data provenance](docs/data-provenance.md) and
+[raw materials](docs/raw-materials.md) for the layout.
 
 ## How it fits together
 
@@ -137,7 +137,7 @@ A config names a `recipe` and its `reader`/`writer` hooks (all in
 
 - [Getting started](docs/getting-started.md) — clone, install, smoke test
 - [docs/data-provenance.md](docs/data-provenance.md) — input locations, snapshot references, and the limits of reproduction
-- [docs/raw-materials.md](docs/raw-materials.md) — what each staged raw tree holds and where it came from
+- [docs/raw-materials.md](docs/raw-materials.md) — the `materials/{raw,reference,intermediate}` tree: what each part holds and where it came from
 - [docs/seq-id-and-cluster-scheme.md](docs/seq-id-and-cluster-scheme.md) — one shared seq_id space, per-DB clustering
 - [docs/build-all.md](docs/build-all.md) — the build-all DAG + submit/skip/afterok mechanism, diagrammed
 - [docs/manual-cif-fixes.md](docs/manual-cif-fixes.md) — historical substitutions, applied only when reproducing that snapshot

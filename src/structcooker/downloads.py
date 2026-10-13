@@ -6,7 +6,7 @@ explicit ``confirmed=True`` and print a size warning first, so nobody kicks off 
 multi-hundred-GB / multi-TB transfer by accident. The ``seq_id_map`` seed is NOT here --
 it is a provided reproduction input described in docs/data-provenance.md.
 
-Destinations follow the same ``DATA_ROOT`` / ``OUTPUT_ROOT`` layout the db configs read.
+Destinations follow the ``BIOMOL_ROOT`` layout the db configs read (``materials/raw``).
 """
 from __future__ import annotations
 
@@ -33,17 +33,17 @@ def _curl(url: str, dest: Path) -> None:
     )
 
 
-def download_ccd(data_root: Path) -> Path:
+def download_ccd(root: Path) -> Path:
     """Fetch the wwPDB CCD and split it into one ``<COMP_ID>.cif`` per component.
 
-    The download is raw input: ``DATA_ROOT/BioMol/materials/raw/ccd/components_<YYYYMMDD>.cif.gz``,
+    The download is raw input: ``BIOMOL_ROOT/materials/raw/ccd/components_<YYYYMMDD>.cif.gz``,
     dated because the CCD is a moving snapshot. The ccd build is file-per-component, and the
-    split files are ours, so they go to ``DATA_ROOT/BioMol/materials/intermediate/ccd/components``
+    split files are ours, so they go to ``BIOMOL_ROOT/materials/intermediate/ccd/components``
     (docs/raw-materials.md: raw holds only what was downloaded). Returns the components directory.
     """
-    raw_dir = data_root / "BioMol" / "materials" / "raw" / "ccd"
+    raw_dir = root / "materials" / "raw" / "ccd"
     gz_path = raw_dir / f"components_{datetime.datetime.now(datetime.UTC):%Y%m%d}.cif.gz"
-    components = data_root / "BioMol" / "materials" / "intermediate" / "ccd" / "components"
+    components = root / "materials" / "intermediate" / "ccd" / "components"
     _curl(CCD_URL, gz_path)
     components.mkdir(parents=True, exist_ok=True)
 
@@ -64,22 +64,22 @@ def download_ccd(data_root: Path) -> Path:
     return components
 
 
-def download_sabdab(data_root: Path) -> Path:
+def download_sabdab(root: Path) -> Path:
     """Fetch the SabDab antibody summary TSV (used by seq_cluster). Returns its path."""
-    dest = data_root / "external" / "SabDab" / "sabdab_summary_all.tsv"
+    dest = root / "materials" / "raw" / "sabdab" / "sabdab_summary_all.tsv"
     _curl(SABDAB_URL, dest)
     return dest
 
 
-def download_mmcif(data_root: Path, *, confirmed: bool) -> Path:
+def download_mmcif(root: Path, *, confirmed: bool) -> Path:
     """Rsync the full wwPDB mmCIF mirror (~90 GB+). Requires ``confirmed=True``.
 
     Mirrors the divided (2-char subdir) layout of ``*.cif.gz`` files, which is exactly
-    what pdb/cif reads: ``MMCIF_ROOT`` or ``DATA_ROOT/BioMol/materials/raw/cif``.
+    what pdb/cif reads: ``BIOMOL_ROOT/materials/raw/cif``.
     Divided subdirectories are scanned recursively. Existing local files absent
     from the mirror are retained; a download does not recreate a historical snapshot.
     """
-    dest = mmcif_root(data_root)
+    dest = mmcif_root(root)
     if not confirmed:
         msg = (f"mmCIF is a ~90 GB+ rsync from {MMCIF_RSYNC}. "
                f"Re-run with --yes to start it (target: {dest}).")
@@ -92,7 +92,7 @@ def download_mmcif(data_root: Path, *, confirmed: bool) -> Path:
     return dest
 
 
-def download_openfold(data_root: Path, *, confirmed: bool) -> Path:  # noqa: ARG001
+def download_openfold(root: Path, *, confirmed: bool) -> Path:  # noqa: ARG001
     """Document the OpenFold3 distillation download -- it is TB-scale and portal-hosted.
 
     The distillation sets are served from an interactive portal, not a single bulk URL,
@@ -100,7 +100,7 @@ def download_openfold(data_root: Path, *, confirmed: bool) -> Path:  # noqa: ARG
     them and the destination layout the db/distillation configs expect. Even with
     ``confirmed=True`` it only prints instructions.
     """
-    dest = distillation_root(data_root)
+    dest = distillation_root(root)
     msg = (
         f"OpenFold3 distillation sets are TB-scale and served from an interactive "
         f"portal, so they are not auto-downloaded. Unlike the PDB mmCIFs, these are used "

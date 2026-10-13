@@ -24,7 +24,7 @@ Resumable: a move that already happened is simply absent from the source directo
 copy whose destination already has the right size is skipped.
 
 Usage:
-    python scripts/staging/stage_afdb_multimer.py --out /data/shared/cssb_data/BioMol/materials/raw/afdb_multimer
+    python scripts/staging/stage_afdb_multimer.py --out /data/shared/cssb_data/BioMol_clean/materials/raw/afdb_multimer
 """
 
 from __future__ import annotations

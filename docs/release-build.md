@@ -5,13 +5,14 @@ and verification jobs. Only a verified stage releases its dependents. The comman
 returns after submission; `summary.json` with `complete: true` records completion.
 There is no resident controller. `build-all --workdir RUN` uses this same path.
 
-For a new distillation release, supply existing CCD/chain/sequence reference
-artifacts separately from a fresh destination:
+For a new distillation release, use a fresh `BIOMOL_ROOT` whose `materials/` holds the
+raw downloads (`materials/raw/`) and the existing CCD/chain/sequence reference artifacts
+(`materials/reference/`, see [raw-materials.md](raw-materials.md)); outputs land under its
+`lmdb/` and `metadata/`:
 
 ```bash
-export DATA_ROOT=/path/to/raw-data
-export REFERENCE_ROOT=/path/to/reference-release
-export OUTPUT_ROOT=/path/to/new-release
+export BIOMOL_ROOT=/path/to/new-release
+export SEQ_DB_ROOT=/path/to/seq_db           # shared search databases, outside the tree
 export DATACOOKER_EXCLUDE_NODES=node20
 pixi run --frozen structcooker release-build --run-dir /path/to/run-state
 ```
@@ -26,8 +27,8 @@ CCD/chain reference databases. For PDB use `--manifest db/MANIFEST_pdb.yaml
 Repeat the exact command with the same roots, code, lock and run directory to
 resume. Active recorded jobs are retained. Terminal attempts reuse worker shards
 and retry publication/indexing; a completed run rechecks content identities on
-compute nodes before reuse. Changed definitions require a new run and output
-root. An ambiguous submission or unknown scheduler state fails closed and needs
+compute nodes before reuse. Changed definitions require a new run and a new
+`BIOMOL_ROOT`. An ambiguous submission or unknown scheduler state fails closed and needs
 inspection of the recorded job manifests; it is not automatically resubmitted.
 Do not delete run-state or physical shards behind a published shard database.
 

@@ -47,32 +47,25 @@ def test_output_collision(tmp_path):
     assert any("both write" in e for e in preflight.dependency_errors(configs, {}))
 
 
-@pytest.mark.parametrize("overrides", [False, True])
-def test_portable_config_paths(monkeypatch, tmp_path, overrides):
-    for key in preflight.check_env():
-        monkeypatch.delenv(key, raising=False)
-    monkeypatch.setenv("DATA_ROOT", str(tmp_path))
-    if overrides:
-        monkeypatch.setenv("MMCIF_ROOT", str(tmp_path / "custom-cif"))
-        monkeypatch.setenv("DISTILLATION_ROOT", str(tmp_path / "custom-openfold"))
-        monkeypatch.setenv("OUTPUT_ROOT", str(tmp_path / "custom-output"))
-        monkeypatch.setenv("SEQ_CLUSTER30_PATH", str(tmp_path / "provided-clusters.tsv"))
+def test_portable_config_paths(monkeypatch, tmp_path):
+    """Every path resolves under BIOMOL_ROOT, except the shared search DBs (SEQ_DB_ROOT)."""
+    monkeypatch.setenv("BIOMOL_ROOT", str(tmp_path / "root"))
+    monkeypatch.setenv("SEQ_DB_ROOT", str(tmp_path / "seq_db"))
     configs = {str(p.relative_to(DB_ROOT)): load_config(p)
                for p in DB_ROOT.rglob("*.yaml") if not p.name.startswith("MANIFEST")}
     for cfg in configs.values():
         for path in preflight.input_paths(cfg) + preflight.output_paths(cfg):
-            assert path.is_relative_to(tmp_path), path
-    assert configs["pdb/cif.yaml"]["data_dir"] == mmcif_root(tmp_path)
-    assert configs["distillation/short_cif.yaml"]["data_dir"].is_relative_to(distillation_root(tmp_path))
+            assert path.is_relative_to(tmp_path / "root") or path.is_relative_to(tmp_path / "seq_db"), path
+    assert configs["pdb/cif.yaml"]["data_dir"] == mmcif_root(tmp_path / "root")
+    assert configs["distillation/short_cif.yaml"]["data_dir"].is_relative_to(distillation_root(tmp_path / "root"))
     # Every PDB consumer reads the one PDB clustering (cPDB_*; docs/seq-id-and-cluster-scheme.md).
     cluster_paths = [configs[p]["metadata_input"]["seqcluster_path"]
                      for p in ("pdb/cif_attached.yaml", "valid/valid1_attach.yaml", "valid/valid2.yaml")]
     cluster_paths.append(configs["metadata/interacting_seq_clusters.yaml"]["inputs"]["seqcluster_path"])
     assert len(set(cluster_paths)) == 1
-    if not overrides:
-        assert cluster_paths[0] == configs["metadata/pdb_seq_cluster30.yaml"]["output_data_path"]
-    assert preflight.download_hint(mmcif_root(tmp_path), str(tmp_path)) == "mmcif"
-    assert preflight.download_hint(Path("/elsewhere/materials/raw/cif"), str(tmp_path)) is None
+    assert cluster_paths[0] == configs["metadata/pdb_seq_cluster30.yaml"]["output_data_path"]
+    assert preflight.download_hint(mmcif_root(tmp_path / "root"), str(tmp_path / "root")) == "mmcif"
+    assert preflight.download_hint(Path("/elsewhere/materials/raw/cif"), str(tmp_path / "root")) is None
 
 
 @pytest.mark.parametrize("manifest", sorted(DB_ROOT.glob("MANIFEST*.yaml")))
@@ -83,9 +76,8 @@ def test_shipped_manifest_dependencies(manifest):
 
 
 def test_strict_inspect_missing_input(monkeypatch, tmp_path):
-    monkeypatch.setenv("DATA_ROOT", str(tmp_path))
-    monkeypatch.setenv("OUTPUT_ROOT", str(tmp_path / "out"))
+    monkeypatch.setenv("BIOMOL_ROOT", str(tmp_path))
     result = CliRunner().invoke(cli, ["inspect", "pdb/cif", "--strict"])
     assert result.exit_code == 1
-    assert "ccd/biomol_CCD.lmdb" in result.output
+    assert "lmdb/ccd/biomol_CCD.lmdb" in result.output
     assert "Preflight failed" in result.output

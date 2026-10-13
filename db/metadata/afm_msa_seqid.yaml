@@ -7,11 +7,11 @@
 recipe_path: ${p:src/structcooker/workflows/metadata/afm_msa_seqid.py}
 
 inputs:
-  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/afm.fasta}
-  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
-  chain_msa_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/afdb_multimer/heterodimer/chain_msa.tsv}
+  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/afm.fasta}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+  chain_msa_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/afdb_multimer/heterodimer/chain_msa.tsv}
 
-output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/afm_msa_seqid.tsv}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/worklists/afm_msa_seqid.tsv}
 
 writer:
   materializer: structcooker.instructions.writers.projections.write_afm_msa_seqid_map

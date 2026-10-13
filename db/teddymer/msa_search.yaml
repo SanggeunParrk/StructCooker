@@ -14,8 +14,8 @@
 # Output is <seq_id>.a3m in the layout db/msa/a3m.yaml ingests, so nothing downstream
 # needs to know which search produced it.
 inputs:
-  db_uniref: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/seq_db/uniref30/2302/msadb/uniref30_2302}
-  mmseqs_bin: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/seq_db/tools/mmseqs/bin/mmseqs}
+  db_uniref: ${p:${oc.env:SEQ_DB_ROOT,/data/shared/cssb_data/seq_db}/uniref30/2302/msadb/uniref30_2302}
+  mmseqs_bin: ${p:${oc.env:SEQ_DB_ROOT,/data/shared/cssb_data/seq_db}/tools/mmseqs/bin/mmseqs}
   threads: 28
   # 1,000 rather than 5,000 [changed 2026-09-24]. joblib splits chunks across nodes
   # statically, so chunk granularity is what balances the tail: with 5,000 the first run
@@ -24,9 +24,9 @@ inputs:
   # queries out. Search parameters are deliberately unchanged, so alignments produced
   # before and after this change stay comparable.
   chunk_size: 1000
-  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map_TDM.tsv}
-  work_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/mmseqs_tmp}
-  output_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/msa/}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/worklists/seq_id_map_TDM.tsv}
+  work_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/mmseqs_tmp}
+  output_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/msa/}
 split_recipe_path: ${p:src/structcooker/workflows/metadata/load_protein_sequence_chunks.py}
 recipe_path: ${p:src/structcooker/workflows/search/msa_search_mmseqs.py}
 # 4 chunks x 28 threads = 112 CPUs. Few, fat processes on purpose: --db-load-mode 2

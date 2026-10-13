@@ -17,8 +17,8 @@ each ``_entity_poly`` row is replaced (that row is re-joined with single spaces,
 reads the same); every other line is byte-identical.
 
 The raw release files are not touched. Repaired copies are written to
-``BioMol/materials/intermediate/afdb_multimer/heterodimer/repaired/cif/<last 3>/`` with
-``ENTITY_POLY_REPAIRS.tsv`` (every change) and ``overrides.json`` ({raw path: repaired path}),
+``materials/intermediate/afdb_multimer/heterodimer/repaired/cif/<last 3>/`` with
+``ENTITY_POLY_REPAIRS.tsv`` (every change) and ``overrides.json`` ({raw path under raw/afdb_multimer: repaired path under repaired/}),
 which db/afdb_multimer/heterodimer_cif.yaml passes to the reader as AFM_CIF_OVERRIDES.
 
 Usage:
@@ -37,9 +37,9 @@ import os
 import shlex
 from pathlib import Path
 
-_DATA = Path(os.environ.get("DATA_ROOT", "/data/shared/cssb_data"))
-RAW = _DATA / "BioMol/materials/raw/afdb_multimer/heterodimer"
-OUT = _DATA / "BioMol/materials/intermediate/afdb_multimer/heterodimer/repaired"
+_ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
+RAW = _ROOT / "materials/raw/afdb_multimer/heterodimer"
+OUT = _ROOT / "materials/intermediate/afdb_multimer/heterodimer/repaired"
 _AA = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E",
        "GLY": "G", "HIS": "H", "ILE": "I", "LEU": "L", "LYS": "K", "MET": "M", "PHE": "F",
        "PRO": "P", "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V"}
@@ -120,7 +120,9 @@ def main() -> None:
         dest = OUT / "cif" / n[-3:] / name
         changes = repair(path, dest)
         if changes:
-            overrides[str(path)] = str(dest)
+            # relative both ways (raw path under the AFDB multimer root -> file under OUT), so the
+            # map holds wherever the tree lives (readers.afdb.get_afm_cif_data)
+            overrides[str(path.relative_to(RAW.parent))] = str(dest.relative_to(OUT))
         for ent, before, after in changes:
             diff = [i for i, (x, y) in enumerate(zip(before, after, strict=False)) if x != y]
             kind = "ambiguity_code" if len(before) == len(after) and {before[i] for i in diff} <= set("ZBXJU") \

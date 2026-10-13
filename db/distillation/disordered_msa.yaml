@@ -4,8 +4,10 @@
 # Full distillation builds authorized; require coverage and validation receipts.
 schema: E
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_disordered/msa/msa_disordered.lmdb}
-file_list: ${p:${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/disordered_set/msa_filelist.txt}
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/msa/msa_disordered.lmdb}
+file_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/openfold_distillation/disordered_set/msa_filelist.txt}
+# Its lines are relative to the OpenFold download (datacooker resolves them against data_dir).
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/openfold_distillation}
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_msa.py}
 key_builder: structcooker.instructions.readers.openfold.openfold_disordered_seqid_key
@@ -22,5 +24,5 @@ writer:
 
 # Explicit, fingerprinted reader inputs.
 runtime_environment:
-  DISORDERED_SEQID_MAP: ${oc.env:DISORDERED_SEQID_MAP,${oc.env:OFD_INTERMEDIATE_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/openfold_distillation}/disordered_set/msa_stem_seqid.tsv}
+  DISORDERED_SEQID_MAP: ${oc.env:DISORDERED_SEQID_MAP,${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/openfold_distillation/disordered_set/msa_stem_seqid.tsv}
 duplicate_input_policy: first_path

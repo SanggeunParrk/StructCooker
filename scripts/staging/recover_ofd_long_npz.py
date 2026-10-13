@@ -9,9 +9,10 @@ downloaded), checks both hashes against the 2026-09-14 recovery record, and writ
 
     {"<path under raw/openfold_distillation>": "<path relative to overrides.json>"}
 
-Usage: python scripts/staging/recover_ofd_long_npz.py [--data-root /data/shared/cssb_data]
+Usage: python scripts/staging/recover_ofd_long_npz.py [--root /data/shared/cssb_data/BioMol_clean]
 """
 import argparse
+import os
 import hashlib
 import json
 from pathlib import Path
@@ -37,10 +38,10 @@ SET = Path("monomer_distillation_sets_v2/long_monomers/preprocessed")
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-root", type=Path, default=Path("/data/shared/cssb_data"))
+    parser.add_argument("--root", type=Path, default=Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean")))
     args = parser.parse_args()
-    raw = args.data_root / "BioMol/materials/raw/openfold_distillation"
-    out = args.data_root / "BioMol/materials/intermediate/openfold_distillation/long_recovered"
+    raw = args.root / "materials/raw/openfold_distillation"
+    out = args.root / "materials/intermediate/openfold_distillation/long_recovered"
     overrides = {}
     for key, original_sha, retained, recovered_sha in RECOVERED:
         data = (raw / SET / key / "structure.npz").read_bytes()

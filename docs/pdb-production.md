@@ -12,20 +12,20 @@ their existing-output checks do not provide these guarantees.
 ## Submit and resume
 
 Install the locked Pixi environment and provide the inputs described in
-[data provenance](data-provenance.md), including sequence-ID/cluster references,
-chain selection and SignalP results. Supplied distillation sequences may be needed
+[data provenance](data-provenance.md) under `BIOMOL_ROOT/materials/`, including the
+sequence-ID seed, chain selection and SignalP results (`materials/reference/`). Supplied distillation sequences may be needed
 as reference inputs to the shared sequence-ID space; this command does not build
 the distillation datasets or generate missing MSA searches.
 
 From the repository root:
 
 ```bash
-export DATA_ROOT=/path/to/inputs
-export OUTPUT_ROOT=/path/to/new/pdb-release
+export BIOMOL_ROOT=/path/to/new/pdb-release   # materials/{raw,reference} in place; outputs go to lmdb/, metadata/
 export PDB_RUN_DIR=/path/to/durable/pdb-run
 export DATACOOKER_MAX_NODES=18
-export DATACOOKER_EXCLUDE_NODES=node20
-sbatch dev/pdb_build.sbatch
+export DATACOOKER_EXCLUDE_NODES=node01,node04,node07
+sbatch -p cpu-long --qos=cpu-long-q -c 8 --mem=128g -o pdb_build_%j.out \
+  --wrap "pixi run --frozen structcooker pdb-build --run-dir $PDB_RUN_DIR"
 
 # Lightweight status; safe on the login node:
 pixi run structcooker pdb-status --run-dir "$PDB_RUN_DIR"
@@ -88,7 +88,7 @@ also prevent a new run directory from bypassing ownership after the original
 driver exits while native jobs remain alive. Resume the owner run. Do not remove
 ownership/state files to force a retry with outstanding jobs.
 
-Existing outputs without receipts are rejected. Prefer a fresh `OUTPUT_ROOT`.
+Existing outputs without receipts are rejected. Prefer a fresh `BIOMOL_ROOT`.
 `--rebuild-untracked` explicitly permits rebuilding untracked outputs; it does not
 import old outputs as verified and cannot override another run's ownership. Keep
 the existing recovered dataset untouched. These are build outputs, not an atomic
@@ -98,18 +98,18 @@ live-release switch: consumers should use a separately selected completed root.
 
 The automated tests cover interrupted waits and verification, uncertain submission,
 confirmed failure, content changes/corruption, source snapshots, exact failure
-coverage, exit receipts and persistent output ownership. Run `sbatch dev/test.sbatch`
-on this cluster, not on the login node.
+coverage, exit receipts and persistent output ownership. Run them as a batch job
+([development](development.md)), not on the login node.
 
-`dev/pdb_acceptance.py --run-dir /new/acceptance/path` runs inside a compute allocation
-and submits real isolated native jobs. It builds two actual PDB CIF entries, three
+A one-off acceptance script (archived with the retired `dev/` tree on 2026-10-13) ran inside a compute allocation
+and submitted real isolated native jobs. It builds two actual PDB CIF entries, three
 CCD fixtures and a small protein MSA with a depth-capped derivative. It interrupts
 the CLI, confirms job-ID reuse, confirms unchanged-stage reuse, then changes only
 the MSA input and checks downstream invalidation. It temporarily uses
 `db/_production_acceptance`; run only one acceptance instance at a time.
 Run the repository-wide tests after acceptance finishes, since their configuration
 portability checks enumerate every YAML under `db/`.
-The provided submission wrapper is `sbatch dev/pdb_acceptance.sbatch`.
+For a current end-to-end check use `structcooker e2e-sample` ([end-to-end build](e2e-build.md)).
 
 This acceptance test is not a fresh full-scale rerun of the complete PDB snapshot.
 The prior bulk-output evidence remains in [CIF recovery](history/recovery-2026-09-10.md) and

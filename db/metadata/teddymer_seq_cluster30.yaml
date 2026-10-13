@@ -10,16 +10,16 @@
 # not become redundant with the protein it was cut from -- while hiding the redundancy
 # that matters, which is between teddymer's own domains.
 recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
-output_data_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_cluster30_TDM.tsv}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30_TDM.tsv}
 
 inputs:
   db_code: TDM
-  tmp_dir: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/tmp/seq_cluster30_TDM}
+  tmp_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/tmp/seq_cluster30_TDM}
   # Shared id space: teddymer sequences must be in the map before clustering runs.
-  seq_id_map_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/metadata/seq_id_map.tsv}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
   # This DB's own consolidated fasta, projected from teddymer/cif -- not a union corpus.
-  fasta_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/materials/intermediate/fasta/teddymer.fasta}
-  sabdab_summary_path: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/external/SabDab/sabdab_summary_all.tsv}
+  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/teddymer.fasta}
+  sabdab_summary_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/sabdab/sabdab_summary_all.tsv}
   mmseqs2_seq_id: 0.30
   mmseqs2_cov: 0.8
   mmseqs2_covmode: "0"

@@ -27,10 +27,9 @@ from datacooker.config import load_config
 from omegaconf import OmegaConf
 
 from structcooker import preflight, schemas, workflow_ops
-from structcooker.paths import mmcif_root
+from structcooker.paths import biomol_root, mmcif_root, seq_db_root
 
 REPO = Path(__file__).resolve().parents[2]          # StructCooker/
-_DATA_ROOT_DEFAULT = "/data/shared/cssb_data"
 DB_ROOT = REPO / "db"
 PIPELINE_CLI = [sys.executable, "-u", "-m", "datacooker.cli.lmdb", "pipeline"]
 _SCHEMA_LINE = re.compile(r"^\s*schema\s*:.*$", re.MULTILINE)
@@ -143,7 +142,7 @@ def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
     for the missing ones the ``structcooker download`` target that fetches them. Inputs
     built by another node (upstream) are noted, not flagged -- build-all builds those.
     """
-    data_root = os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT)
+    root = biomol_root()
     names = [name] if name else _manifest_names(manifest)
     configs = {n: load_config(_resolve_db(n)) for n in names}
     reports = preflight.inspect(configs)
@@ -155,12 +154,9 @@ def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
 
     env = preflight.check_env()
     click.echo("[env]")
-    click.echo(f"  DATA_ROOT   = {env['DATA_ROOT'] or f'(unset -> {data_root})'}")
-    click.echo(f"  OUTPUT_ROOT = {env['OUTPUT_ROOT'] or '(unset -> BioMol_clean default)'}")
-    for key in ("MMCIF_ROOT", "DISTILLATION_ROOT", "MSA_ROOT", "SEQ_CLUSTER30_PATH"):
-        if env[key]:
-            click.echo(f"  {key} = {env[key]}")
-    seed = Path(data_root) / "reference" / "seq_id_map.tsv"
+    click.echo(f"  BIOMOL_ROOT = {env['BIOMOL_ROOT'] or f'(unset -> {root})'}")
+    click.echo(f"  SEQ_DB_ROOT = {env['SEQ_DB_ROOT'] or f'(unset -> {seq_db_root()})'}")
+    seed = root / "materials" / "reference" / "seq_id_map_seed.tsv"
     click.echo(f"  seq_id seed = {'present -> match production' if seed.exists() else 'absent -> fresh id space'}  ({seed})")
 
     click.echo("[tools available for optional workflows; not all are needed by every node]")
@@ -178,7 +174,7 @@ def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
             detail += f"; upstream {len(set(r.upstream))}"
         click.echo(f"  {'READY  ' if r.ready else 'BLOCKED'}  {r.name:<34} {detail}")
 
-    missing = preflight.missing_externals(reports, data_root)
+    missing = preflight.missing_externals(reports, str(root))
     ready = sum(1 for r in reports if r.ready)
     click.echo(f"[summary] {ready}/{len(reports)} nodes ready; "
                f"{len(missing)} distinct external inputs missing")
@@ -197,10 +193,6 @@ def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
 _MANUAL_FIXES_PATH = REPO / "db" / "pdb" / "manual_cif_fixes.txt"
 
 
-def _mmcif_dir(data_root: str | Path) -> Path:
-    return mmcif_root(data_root)
-
-
 @cli.command("fix-cif")
 @click.option("--source", "source", type=click.Path(exists=True, path_type=Path),
               required=True, help="Corrected-cif snapshot (divided <id[1:3]>/ or flat; "
@@ -217,8 +209,7 @@ def fix_cif_cmd(source: Path, dry_run: bool) -> None:
     """
     from structcooker import cif_fixes
 
-    data_root = os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT)
-    mmcif_dir = _mmcif_dir(data_root)
+    mmcif_dir = mmcif_root(biomol_root())
     if not mmcif_dir.is_dir():
         msg = f"mmCIF input dir not found: {mmcif_dir} (download mmcif first)."
         raise click.ClickException(msg)
@@ -235,7 +226,7 @@ def fix_cif_cmd(source: Path, dry_run: bool) -> None:
 @click.argument("target", type=click.Choice(["ccd", "sabdab", "mmcif", "openfold"]))
 @click.option("--yes", is_flag=True, help="Confirm large downloads (mmcif is ~90 GB+).")
 def download_cmd(target: str, yes: bool) -> None:
-    """Fetch a raw external input into the DATA_ROOT / OUTPUT_ROOT layout.
+    """Fetch a raw external input into BIOMOL_ROOT/materials/raw.
 
     ``ccd`` / ``sabdab`` are small and download directly; ``mmcif`` (~90 GB+) needs
     ``--yes``; ``openfold`` (TB-scale, portal-hosted) only prints instructions. The
@@ -244,16 +235,16 @@ def download_cmd(target: str, yes: bool) -> None:
     """
     from structcooker import downloads
 
-    data_root = Path(os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT))
+    root = biomol_root()
     try:
         if target == "ccd":
-            dest = downloads.download_ccd(data_root)
+            dest = downloads.download_ccd(root)
         elif target == "sabdab":
-            dest = downloads.download_sabdab(data_root)
+            dest = downloads.download_sabdab(root)
         elif target == "mmcif":
-            dest = downloads.download_mmcif(data_root, confirmed=yes)
+            dest = downloads.download_mmcif(root, confirmed=yes)
         else:
-            dest = downloads.download_openfold(data_root, confirmed=yes)
+            dest = downloads.download_openfold(root, confirmed=yes)
     except (RuntimeError, subprocess.CalledProcessError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"downloaded {target} -> {dest}")
@@ -473,7 +464,7 @@ def build_all(manifest: Path | None, workdir: Path | None,
         click.echo(f"Validated {len(raw)} release stages; no jobs submitted")
         return
     if force:
-        msg = "Use a fresh OUTPUT_ROOT and run directory for a new release; --force cannot bypass ownership"
+        msg = "Use a fresh BIOMOL_ROOT and run directory for a new release; --force cannot bypass ownership"
         raise click.ClickException(msg)
     if workdir is None:
         msg = "--workdir is required for persistent, verified release state"
@@ -491,18 +482,33 @@ def build_all(manifest: Path | None, workdir: Path | None,
 def release_check(manifest: Path) -> None:
     """Check a release tree is complete and self-contained (SLURM job).
 
-    Every stage's output at its configured path under OUTPUT_ROOT, shards inside their own
+    Every stage's output at its configured path under BIOMOL_ROOT, shards inside their own
     collection, entry counts agreeing with .meta.json and .index.tsv, and a sample of
-    records decoding cleanly. Report: OUTPUT_ROOT/release_check.json.
+    records decoding cleanly. Report: BIOMOL_ROOT/release_check.json.
     """
     from datacooker.executors.slurm import SlurmExecutor
 
-    out_root = Path(os.environ.get("OUTPUT_ROOT") or Path(os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT)) / "BioMol_clean")
+    out_root = biomol_root()
     execu = SlurmExecutor(workdir=REPO / "logs" / "release_check", repo=REPO)
     job = execu.run_once(name="release_check", argv=[sys.executable, "-u", "-m", "structcooker.release_check",
                                                        str(manifest.resolve()), str(out_root / "release_check.json")],
                          mem_gb=256, cores=16).job_id
     click.echo(f"release-check job {job}; report -> {out_root / 'release_check.json'}")
+
+
+@cli.command("release-docs")
+@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_all.yaml",
+              show_default=True)
+def release_docs(manifest: Path) -> None:
+    """Write BIOMOL_ROOT/docs: README, provenance, databases, what-to-copy scenarios, check.
+
+    The database list, the scenario sizes and the check summary are generated from the tree
+    (configs, .meta.json, data.mdb sizes, release_check.json); rerun after a build or a move.
+    """
+    from structcooker import release_docs as docs
+
+    for path in docs.write(biomol_root(), manifest.resolve()):
+        click.echo(f"wrote {path}")
 
 
 @cli.group("e2e-sample")
@@ -527,7 +533,7 @@ def _sample_job(root: Path, name: str, argv: list[str], mem_gb: int) -> str:
 @click.option("--count", "counts", multiple=True, metavar="SOURCE=N",
               help="Sample size per source, e.g. --count pdb=50 (sources: see sample_e2e.DEFAULT_COUNTS).")
 def e2e_sample_prepare(root: Path, counts: tuple[str, ...]) -> None:
-    """Pick the sample and build ROOT/data (DATA_ROOT) and ROOT/out (OUTPUT_ROOT)."""
+    """Pick the sample and build ROOT, a small BIOMOL_ROOT."""
     import json
 
     from structcooker.sample_e2e import DEFAULT_COUNTS
@@ -693,24 +699,23 @@ def foldbench_keys(package: Path, out: Path | None) -> None:
 @click.argument("package", type=click.Path(exists=True, path_type=Path))
 @click.argument("out", type=click.Path(path_type=Path))
 @click.option("--release", type=click.Path(exists=True, path_type=Path), default=None,
-              help="Release tree to cut from (default: OUTPUT_ROOT, else DATA_ROOT/BioMol_clean).")
+              help="Release tree to cut from (default: BIOMOL_ROOT).")
 @click.option("--ccd", type=click.Path(exists=True, path_type=Path), default=None,
-              help="Inference CCD LMDB (default: RELEASE/foldbench/ccd_inference.lmdb, "
+              help="Inference CCD LMDB (default: RELEASE/lmdb/ccd/ccd_inference.lmdb, "
                    "scripts/staging/build_inference_ccd.py).")
 @click.option("--fallback", type=click.Path(exists=True, path_type=Path), multiple=True,
-              help="DB holding the from-scratch (edge) MSAs (default: RELEASE/foldbench/msa_edge.lmdb).")
+              help="DB holding the from-scratch (edge) MSAs (default: RELEASE/lmdb/foldbench/msa_edge.lmdb).")
 @click.option("--local", is_flag=True, help="Run here instead of as a SLURM job (a few thousand key reads).")
 def foldbench_build(package: Path, out: Path, release: Path | None, ccd: Path | None, fallback: tuple[Path, ...],
                     local: bool) -> None:
     """Cut the FoldBench MSA / template / CCD LMDBs under OUT (never replaces an existing DB)."""
     if release is None:
-        release = Path(os.environ.get("OUTPUT_ROOT")
-                       or Path(os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT)) / "BioMol_clean")
+        release = biomol_root()
     # The release keeps what FoldBench needs beyond the PDB-wide DBs under foldbench/.
-    if ccd is None and (release / "foldbench" / "ccd_inference.lmdb").is_dir():
-        ccd = release / "foldbench" / "ccd_inference.lmdb"
-    if not fallback and (release / "foldbench" / "msa_edge.lmdb").is_dir():
-        fallback = (release / "foldbench" / "msa_edge.lmdb",)
+    if ccd is None and (release / "lmdb" / "ccd" / "ccd_inference.lmdb").is_dir():
+        ccd = release / "lmdb" / "ccd" / "ccd_inference.lmdb"
+    if not fallback and (release / "lmdb" / "foldbench" / "msa_edge.lmdb").is_dir():
+        fallback = (release / "lmdb" / "foldbench" / "msa_edge.lmdb",)
     argv = ["build", str(package.resolve()), str(out.resolve()), "--release", str(release.resolve())]
     if ccd is not None:
         argv += ["--ccd", str(ccd.resolve())]

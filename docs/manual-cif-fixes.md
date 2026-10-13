@@ -7,10 +7,11 @@ used the provided snapshot directly; its five rejected records and causes are in
 [recovery report](history/recovery-2026-09-10.md).
 
 When reproducing the older snapshot, obtain its corrected files and apply them to a
-copy of the raw input that you own:
+copy of the raw input that you own. `fix-cif` writes into `BIOMOL_ROOT/materials/raw/cif`,
+so point `BIOMOL_ROOT` at a tree of your own holding that copy:
 
 ```bash
-export MMCIF_ROOT=/path/to/your/copied/mmcif
+export BIOMOL_ROOT=/path/to/your/tree   # materials/raw/cif = your copied mmCIF
 structcooker fix-cif --source /path/to/corrected-snapshot --dry-run
 structcooker fix-cif --source /path/to/corrected-snapshot
 ```
@@ -23,8 +24,10 @@ Duplicate compressed destinations are rejected. The marker
 a content checksum or a scientific validation. General preflight no longer treats
 these historical substitutions as pending work for a different snapshot.
 
-Never apply replacements to the shared production snapshot. Without `MMCIF_ROOT`,
-the destination is `DATA_ROOT/BioMol/materials/raw/cif`.
+Never apply replacements to the shared production snapshot. Without `BIOMOL_ROOT`,
+the destination is the production `/data/shared/cssb_data/BioMol_clean/materials/raw/cif`.
+This is also why it is an exception to the raw rule in [raw-materials.md](raw-materials.md):
+it edits the mmCIF tree itself.
 
 ## Not needed with the current parser (2026-10-01)
 

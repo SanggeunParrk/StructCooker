@@ -7,17 +7,19 @@ guide. The completed checks and remaining work are recorded in
 
 ## Inputs used for CIF reproduction
 
-Production `DATA_ROOT/BioMol` is read-only. With the current defaults,
-`DATA_ROOT=/data/shared/cssb_data` and `OUTPUT_ROOT=DATA_ROOT/BioMol_clean`.
+Every location below hangs off one root, `BIOMOL_ROOT` (default
+`/data/shared/cssb_data/BioMol_clean`); inputs sit under `materials/{raw,reference,intermediate}`
+([raw-materials.md](raw-materials.md)). Only the shared UniRef30/MMseqs2 search databases are
+outside it, under `SEQ_DB_ROOT` (default `/data/shared/cssb_data/seq_db`).
 
 | Input | Configured location | Purpose |
 |---|---|---|
-| Raw mmCIF snapshot | `DATA_ROOT/BioMol/materials/raw/cif/` | Source structures, scanned recursively |
-| Current CCD LMDB | `OUTPUT_ROOT/ccd/biomol_CCD.lmdb` | Component atom and bond chemistry |
-| Historical CCD reference | `OUTPUT_ROOT/metadata/reference_ccd.lmdb` | Matching definitions for atoms removed from newer CCD versions |
-| Chain model-choice reference | `OUTPUT_ROOT/metadata/reference_chain_selection.lmdb` | Preserve production choices when occupancy scores tie |
-| Sequence-ID and clustering references | `DATA_ROOT/reference/` | Preserve the assigned sequence IDs and cluster space |
-| SignalP results | `OUTPUT_ROOT/materials/intermediate/signalp/` | Provided predictions used for sequence trimming |
+| Raw mmCIF snapshot | `materials/raw/cif/` | Source structures, scanned recursively |
+| Current CCD LMDB | `lmdb/ccd/biomol_CCD.lmdb` | Component atom and bond chemistry |
+| Historical CCD reference | `materials/reference/reference_ccd.lmdb` | Matching definitions for atoms removed from newer CCD versions |
+| Chain model-choice reference | `materials/reference/reference_chain_selection.lmdb` | Preserve production choices when occupancy scores tie |
+| Sequence-ID seed | `materials/reference/seq_id_map_seed.tsv` | Preserve the assigned sequence IDs |
+| SignalP results | `materials/reference/signalp/` | Provided predictions used for sequence trimming |
 
 The historical CCD reference contains 24 selected component definitions from the
 February 2026 CCD and the November 9, 2024 archive. Source selections are recorded
@@ -25,10 +27,10 @@ in `logs/recovery/ccd_reference_report.json`. The chain reference records produc
 choices for 4,111,014 keys. Without a chain reference, the recipe uses deterministic
 numeric tie-breaking, which can choose a different valid model.
 
-Preserve these supplied references when rebuilding outputs. Their placement under
-`OUTPUT_ROOT` does not make them disposable caches. Some CCD/reference inputs still
-resolve through existing shared paths or links, so changing one root does not yet
-relocate every dependency.
+Preserve these supplied references when rebuilding outputs. They sit in
+`materials/reference/` because they cannot be derived from the downloads; they are not
+disposable caches. Every input resolves under `BIOMOL_ROOT`, so moving or renaming the tree
+relocates every dependency except the search databases (`SEQ_DB_ROOT`).
 
 ## Download helpers and shared input paths
 
@@ -36,55 +38,46 @@ The repository provides download helpers with the following destinations. These
 are the helpers' configured paths, not evidence that a new download reproduces the
 snapshot used in the recovery.
 
-| Helper | Source | Destination under `DATA_ROOT` |
+| Helper | Source | Destination under `BIOMOL_ROOT` |
 |---|---|---|
-| `download mmcif` | RCSB divided mmCIF mirror | `BioMol/materials/raw/cif/` (or `MMCIF_ROOT`) |
-| `download ccd` | wwPDB CCD (raw), split into component CIF files | `BioMol/materials/raw/ccd/components_<date>.cif.gz` → `BioMol/materials/intermediate/ccd/components/` |
-| `download openfold` | OpenFold distillation release | `BioMol/materials/raw/openfold_distillation/` (or `DISTILLATION_ROOT`) |
-| `download sabdab` | OPIG SabDab summary | `external/SabDab/` |
+| `download mmcif` | RCSB divided mmCIF mirror | `materials/raw/cif/` |
+| `download ccd` | wwPDB CCD (raw), split into component CIF files | `materials/raw/ccd/components_<date>.cif.gz` → `materials/intermediate/ccd/components/` |
+| `download openfold` | OpenFold distillation release | `materials/raw/openfold_distillation/` |
+| `download sabdab` | OPIG SabDab summary | `materials/raw/sabdab/` |
 
-Download, build, and the optional historical `fix-cif` command now use the same
-`MMCIF_ROOT`, defaulting to `DATA_ROOT/BioMol/materials/raw/cif/`. OpenFold configs and
-download instructions use `DISTILLATION_ROOT`, defaulting to
-`DATA_ROOT/BioMol/materials/raw/openfold_distillation/`. CCD remains under
-`DATA_ROOT/BioMol/materials/intermediate/ccd/components/` (split from the raw download). With no `OUTPUT_ROOT` override, output
-paths follow `DATA_ROOT/BioMol_clean`.
+Download, build, and the optional historical `fix-cif` command use the same mmCIF tree,
+`BIOMOL_ROOT/materials/raw/cif/`. OpenFold configs and download instructions use
+`BIOMOL_ROOT/materials/raw/openfold_distillation/`. The split CCD is derived, so it goes to
+`BIOMOL_ROOT/materials/intermediate/ccd/components/`. There are no per-input overrides:
+point `BIOMOL_ROOT` at another tree to relocate inputs and outputs together.
 
-Downloads write inputs, so use a directory you own; the shared production snapshot
-is read-only. A live PDB mirror and a newer CCD change scientific inputs and do not
+Downloads write inputs, so use a `BIOMOL_ROOT` you own; the shared production tree
+is not a download target. A live PDB mirror and a newer CCD change scientific inputs and do not
 recreate an older snapshot. The mmCIF downloader retains files absent from the mirror.
 
 Clustering is per DB (docs/seq-id-and-cluster-scheme.md): PDB attachment and all three
-validation consumers read the generated `OUTPUT_ROOT/metadata/seq_cluster30_PDB.tsv`
+validation consumers read the generated `BIOMOL_ROOT/metadata/seq_cluster30_PDB.tsv`
 (ids `cPDB_<rep seq_id>`); OFD, teddymer and AFM each read their own
-`seq_cluster30_{OFD,TDM,AFM}.tsv`. `SEQ_CLUSTER30_PATH` overrides the PDB clustering.
-The September 10 production comparison predates this scheme; it used the supplied
-global cluster space:
+`seq_cluster30_{OFD,TDM,AFM}.tsv`. There is no override for these paths. The September 10
+production comparison predates this scheme; it used a supplied global cluster space
+(`seq_cluster30.tsv` / `seq_cluster40.tsv`, selected then through environment overrides
+that have since been removed).
 
-```bash
-export SEQ_CLUSTER30_PATH=$DATA_ROOT/reference/seq_cluster30.tsv
-export SEQ_CLUSTER40_PATH=$DATA_ROOT/reference/seq_cluster40.tsv
-structcooker inspect --manifest db/MANIFEST_cifcore.yaml --strict
-```
-
-(Historical: no config reads `SEQ_CLUSTER40_PATH` since the per-DB clustering of 2026-09-23.)
-
-These overrides choose supplied inputs explicitly. They do not disable clustering
-nodes in a manifest; omit those nodes and their dependency edges in a custom manifest
-if rebuilding supplied clusters is unnecessary. Existing output files can be reused
+To reuse supplied clusters instead of rebuilding them, place them at the configured
+paths and omit the clustering nodes and their dependency edges in a custom manifest. Existing output files can be reused
 by the incremental build. Changing references does not invalidate existing outputs
-automatically; use a separate output root for a different scientific dataset.
+automatically; use a separate `BIOMOL_ROOT` for a different scientific dataset.
 
 The source session used manual substitutions for 53 entries in one historical
 mmCIF snapshot. See [manual-cif-fixes.md](manual-cif-fixes.md) for that history. The
-September 10 recovery uses the provided `BioMol/materials/raw/cif` snapshot and does
+September 10 recovery uses the provided `materials/raw/cif` snapshot and does
 not wait for the earlier manual-fix archive. OpenFold distillation inputs are
 intended to be consumed as released.
 
 ## Generated outputs
 
 CIF recipes generate the structure, attached, chain, training, MPNN, and validation
-LMDBs under `OUTPUT_ROOT/lmdb/`. FASTA projections, sequence metadata, and interaction
+LMDBs under `BIOMOL_ROOT/lmdb/`. FASTA projections, sequence metadata, and interaction
 TSVs are generated by the corresponding `db/metadata/` configs. Sequence IDs are
 assigned counters: a fresh assignment can differ from production unless seeded
 with its provided reference. Validation deduplication uses 30% sequence clusters.

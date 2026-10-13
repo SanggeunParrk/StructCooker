@@ -12,7 +12,7 @@ the sequence id map, clustering, and template search).
 
 - Recipe: `structcooker.workflows.exports.fasta` (`fasta`)
 - Config (extract): `db/metadata/cif_fasta.yaml` — `cif_pdb.lmdb` →
-  `OUTPUT_ROOT/materials/intermediate/fasta/cif_pdb.fasta`
+  `BIOMOL_ROOT/materials/intermediate/fasta/cif_pdb.fasta`
   (`reader.deserializer: ...codecs.from_bytes`, `writer.materializer: ...projections.write_fasta`)
 
 ```bash

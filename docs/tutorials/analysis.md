@@ -11,7 +11,7 @@ Two CLI checks cover a built release; both submit SLURM jobs.
 # configured path, shards inside their own collection, entry counts matching
 # .meta.json / .index.tsv, and a sample of records decoding cleanly.
 pixi run structcooker release-check            # --manifest db/MANIFEST_all.yaml (default)
-# -> OUTPUT_ROOT/release_check.json
+# -> BIOMOL_ROOT/release_check.json
 
 # Does a from-scratch build reproduce the release? Build the whole DAG on a
 # small sample of inputs and compare every sampled output with the release.

@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 
 from structcooker.instructions.readers.cif import get_cif_data
+from structcooker.paths import biomol_root
 
 _ENTITY = re.compile(r"^(AF-\d+)-(?:model|msa)_v1\.")
 
@@ -34,14 +35,13 @@ _AFM_MSA_SEQID: dict[str, str] | None = None
 def _afm_msa_seqid_map() -> dict[str, str]:
     """Load (and cache) the MSA entity -> seq_id map built by metadata/afm_msa_seqid.
 
-    The path comes from ``AFM_MSA_SEQID_MAP`` (defaulting under ``$OUTPUT_ROOT/metadata``),
+    The path comes from ``AFM_MSA_SEQID_MAP`` (defaulting to ``$BIOMOL_ROOT/materials/intermediate/worklists``),
     the same pattern ``openfold_seqid_key`` uses for the distillation MSAs.
     """
     global _AFM_MSA_SEQID  # noqa: PLW0603 - process-local cache
     if _AFM_MSA_SEQID is None:
-        root = os.environ.get("OUTPUT_ROOT", "/data/shared/cssb_data/BioMol_clean")
         map_path = Path(os.environ.get(
-            "AFM_MSA_SEQID_MAP", str(Path(root) / "metadata" / "afm_msa_seqid.tsv"),
+            "AFM_MSA_SEQID_MAP", str(biomol_root() / "materials/intermediate/worklists/afm_msa_seqid.tsv"),
         ))
         mapping: dict[str, str] = {}
         with map_path.open(encoding="utf-8") as handle:
@@ -70,11 +70,18 @@ def get_afm_cif_data(cif_path: Path) -> dict:
 
     ``materials/raw`` holds the release files exactly as downloaded. The few we had to
     repair live under ``materials/intermediate``; ``AFM_CIF_OVERRIDES`` names a JSON map
-    ``{raw path: repaired path}`` (unset or empty: read everything as is).
+    ``{original: repaired}`` (unset or empty: read everything as is). Keys are paths under the
+    AFDB multimer raw root (``heterodimer/cif/267/AF-...cif.gz``) or absolute; relative
+    replacements are relative to the map, so it holds wherever the tree lives.
     """
     global _CIF_OVERRIDES  # noqa: PLW0603 - process-local cache
     manifest = os.environ.get("AFM_CIF_OVERRIDES", "")
     if _CIF_OVERRIDES is None:
-        _CIF_OVERRIDES = json.loads(Path(manifest).read_text()) if manifest else {}
-    return get_cif_data(Path(_CIF_OVERRIDES.get(str(cif_path), str(cif_path))))
+        from structcooker.instructions.readers.openfold import load_structure_overrides
 
+        _CIF_OVERRIDES = {k: str(v) for k, v in load_structure_overrides(Path(manifest)).items()} if manifest else {}
+    text = str(cif_path)
+    for key, replacement in _CIF_OVERRIDES.items():
+        if text == key or text.endswith("/" + key):
+            return get_cif_data(Path(replacement))
+    return get_cif_data(Path(cif_path))

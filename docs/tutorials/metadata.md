@@ -12,14 +12,14 @@ attach, and clusters join on the same key.
 - Recipe: `structcooker.workflows.metadata.seq_id_map` (`seq_id_map`)
 - Config (materialize):
   [`db/metadata/seq_id_map.yaml`](https://github.com/SanggeunParrk/StructCooker/blob/main/db/metadata/seq_id_map.yaml)
-- Writer: `...writers.projections.write_seq_id_map` → `OUTPUT_ROOT/metadata/seq_id_map.tsv`
+- Writer: `...writers.projections.write_seq_id_map` → `BIOMOL_ROOT/metadata/seq_id_map.tsv`
 - Inputs (`fasta_paths`, in order): `cif_pdb.fasta`, the four OpenFold FASTAs
   (short / long / rna / disordered), `teddymer.fasta`, `afm.fasta`,
   `ofd_long_recovered.fasta`
 
 The seq id is an assigned counter (mol-type prefix + ordinal), not a hash, so
 the order of `fasta_paths` matters: a DB appended at the end leaves every
-earlier id unchanged. `old_seq_id_map_path` (`DATA_ROOT/reference/seq_id_map.tsv`)
+earlier id unchanged. `old_seq_id_map_path` (`BIOMOL_ROOT/materials/reference/seq_id_map_seed.tsv`)
 seeds the map: present → ids match production; absent → a fresh, self-consistent
 id space. `structcooker inspect` reports which case applies.
 
@@ -64,7 +64,7 @@ pixi run structcooker build pdb/cif_attached
 
 `structcooker.workflows.metadata.extract` (`metadata_dict`) dumps per-chain
 metadata (resolution, dates, chain/residue/atom counts, NA/D-form flags) from
-`cif_pdb.lmdb` into `OUTPUT_ROOT/metadata/cif_metadata.tsv` for the template
+`cif_pdb.lmdb` into `BIOMOL_ROOT/metadata/cif_metadata.tsv` for the template
 date rule and downstream filtering.
 
 - Config (extract): `db/metadata/cif_metadata.yaml`

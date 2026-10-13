@@ -4,8 +4,8 @@
 # production before publication; full builds are authorized.
 schema: E
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_long/msa/msa_long.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_long/msa/msa_long_d512.lmdb}
+old_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_long/msa/msa_long.lmdb}
+new_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_long/msa/msa_long_d512.lmdb}
 
 recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
 

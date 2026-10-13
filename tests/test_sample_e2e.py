@@ -50,11 +50,11 @@ def test_sample_environment_confines_every_config(tmp_path, monkeypatch):
     """With the sample env, no release config reads or writes outside the sample root."""
     from structcooker.cli import _resolve_db
 
-    monkeypatch.setenv("MMCIF_ROOT", "/elsewhere")
+    monkeypatch.setenv("MONOMER_SEQID_MAP", "/elsewhere/map.tsv")
     env = sample_e2e.sample_environment(tmp_path)
-    assert "MMCIF_ROOT" not in env
-    monkeypatch.delenv("MMCIF_ROOT")
-    for key in ("DATA_ROOT", "OUTPUT_ROOT", "STRUCTCOOKER_MAX_NODES"):
+    assert "MONOMER_SEQID_MAP" not in env
+    monkeypatch.delenv("MONOMER_SEQID_MAP")
+    for key in ("BIOMOL_ROOT", "STRUCTCOOKER_MAX_NODES"):
         monkeypatch.setenv(key, env[key])
     graph = yaml.safe_load((REPO / "db/MANIFEST_all.yaml").read_text())
     configs = {n: load_config(_resolve_db(n)) for n in graph}

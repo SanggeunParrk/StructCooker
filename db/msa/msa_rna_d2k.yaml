@@ -1,8 +1,8 @@
 # RNA MSA capped to 2000 rows, preserving the query and recomputing statistics.
 schema: E
 
-old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/msa/msa_rna.lmdb}
-new_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/pdb/msa/msa_rna_d2k.lmdb}
+old_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/msa/msa_rna.lmdb}
+new_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/msa/msa_rna_d2k.lmdb}
 
 recipe: ${p:src/structcooker/workflows/exports/cap_msa_depth.py}
 

@@ -9,15 +9,15 @@
 schema: A
 test_run: false
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/afdb_multimer/cif/cif_afm_homodimer.lmdb}
-data_dir: ${p:${oc.env:AFDB_MULTIMER_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/raw/afdb_multimer}/homodimer/pdb}
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/afdb_multimer/cif/cif_afm_homodimer.lmdb}
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/afdb_multimer/homodimer/pdb}
 file_pattern: "*/AF-*-model_v1.pdb"
 
 recipe: ${p:src/structcooker/workflows/ingest/teddymer_structure.py}
 key_builder: structcooker.instructions.readers.afdb.afdb_entity_key
 
 inputs:
-  ccd_db_path: ${p:${oc.env:REFERENCE_ROOT,${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}}/ccd/biomol_CCD.lmdb}
+  ccd_db_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/ccd/biomol_CCD.lmdb}
 
 reader:
   loader: structcooker.instructions.readers.teddymer.get_teddymer_structure_data

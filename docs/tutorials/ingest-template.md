@@ -8,8 +8,8 @@ phases, each its own `db/template/*.yaml`:
 | Phase | Config | Op | Recipe | Output |
 | --- | --- | --- | --- | --- |
 | 0 | `db/template/hmmsearch.yaml` | parallel | `search.hmmsearch` | `materials/intermediate/hmm_output/` (see [Search](search.md)) |
-| 1/2 | `db/template/template_candidates.yaml` | materialize | `ingest.template_candidates` | `metadata/seqid_to_chains.tsv`, `chain_to_templates.tsv`, `materials/intermediate/hmm_reduced/` |
-| 3 maps | `db/template/template_seqs.yaml` | materialize | `ingest.template_seqs` | `metadata/seqid_to_seq.tsv`, `chain_to_seq.tsv` |
+| 1/2 | `db/template/template_candidates.yaml` | materialize | `ingest.template_candidates` | `materials/intermediate/worklists/seqid_to_chains.tsv`, `chain_to_templates.tsv`, `materials/intermediate/hmm_reduced/` |
+| 3 maps | `db/template/template_seqs.yaml` | materialize | `ingest.template_seqs` | `materials/intermediate/worklists/seqid_to_seq.tsv`, `chain_to_seq.tsv` |
 | 3 | `db/template/seqid_template_mols.yaml` | build (keyed), schema `D` | `ingest.seqid_template_mols` | `lmdb/chain/template/seqid_template_mols.lmdb` |
 | 4 | `db/template/chain_template.yaml` | build (keyed), schema `D` | `ingest.chain_template_from_seqid` | `lmdb/chain/template/template.lmdb` |
 

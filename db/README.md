@@ -67,12 +67,16 @@ engine: `structcooker` materializes a schema-stripped `engine.yaml` in the workd
 
 ## Targets
 
-DB destinations default to **`/data/shared/cssb_data/BioMol_clean/`** and can be
-changed with `OUTPUT_ROOT`. Each set keeps its base structures in `lmdb/<set>/cif/` and
+Every path resolves under one root, **`BIOMOL_ROOT`** (default
+`/data/shared/cssb_data/BioMol_clean/`): inputs under `materials/{raw,reference,intermediate}`
+([docs/raw-materials.md](../docs/raw-materials.md)), DBs under `lmdb/`, released tables under
+`metadata/`. Only the shared UniRef30/MMseqs2 search databases live outside it (`SEQ_DB_ROOT`,
+default `/data/shared/cssb_data/seq_db`). Each set keeps its base structures in `lmdb/<set>/cif/` and
 the attached (sequence-metadata) DBs in `lmdb/<set>/cif_attached/`; a sharded DB's
 `shards.json` points at its `.build/` directory relatively, so the two move together. Production `BioMol/` stays read-only throughout the
 recovery, including after verification. Historical CCD and chain-selection
-references under the output tree are provided reproduction inputs; preserve them.
+references (`materials/reference/reference_{ccd,chain_selection}.lmdb`) and the seq_id seed
+are provided reproduction inputs; preserve them.
 
 ## Layout
 

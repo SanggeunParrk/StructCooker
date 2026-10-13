@@ -1,4 +1,4 @@
-"""Deployability check of a release tree (OUTPUT_ROOT): every stage's output, self-contained.
+"""Deployability check of a release tree (BIOMOL_ROOT): every stage's output, self-contained.
 
 For each stage in the release DAG:
 
@@ -10,7 +10,7 @@ For each stage in the release DAG:
 * a file or directory output must exist and be non-empty.
 
 Run through ``structcooker release-check`` (a SLURM job); the report goes to
-``<OUTPUT_ROOT>/release_check.json``.
+``<BIOMOL_ROOT>/release_check.json``.
 """
 from __future__ import annotations
 

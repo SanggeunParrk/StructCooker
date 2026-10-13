@@ -9,7 +9,7 @@ from the core databases. Structure filters are `rebuild` ops
 The filter recipes trim each assembly by token count, polymer chain count,
 resolution and date window, remove water, and drop SignalP-flagged sequence
 regions (`metadata_recipe: metadata.load_signalp`, reading
-`materials/intermediate/signalp` and `seq_id_map.tsv`).
+`materials/reference/signalp` and `metadata/seq_id_map.tsv`).
 
 - `structcooker.workflows.filters.data_attached` (`cifmol_attached_dict`) — train
   splits, read from the **attached** DB so records keep their seq and cluster ids.

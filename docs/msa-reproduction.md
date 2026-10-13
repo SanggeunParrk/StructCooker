@@ -1,8 +1,8 @@
 # MSA ingestion and verification
 
 The PDB MSA workflow consumes provided A3M alignments. It does not regenerate
-HHblits or RNA search results. The default input is
-`DATA_ROOT/BioMol/materials/intermediate/msa`, overridable with `MSA_ROOT`:
+HHblits or RNA search results. They are a supplied reference input, read from
+`BIOMOL_ROOT/materials/reference/msa` ([raw-materials.md](raw-materials.md)):
 
 ```text
 P/<last-three-digits>/<sequence-id>/<sequence-id>.a3m
@@ -10,7 +10,7 @@ R/<last-three-digits>/<sequence-id>/<sequence-id>.a3m
 ```
 
 The structured file patterns select final alignments and avoid HHblits/SignalP
-intermediate directories. All seven outputs live under `OUTPUT_ROOT/lmdb/pdb/msa/`:
+intermediate directories. All seven outputs live under `BIOMOL_ROOT/lmdb/pdb/msa/`:
 `a3m.lmdb`, `a3m_d16k.lmdb`, `a3m_d2k.lmdb`, `a3m_d512.lmdb`, `msa_rna.lmdb`, `msa_rna_d2k.lmdb`, and `msa_rna_d512.lmdb`.
 The protein and RNA caps retain the query and first hits, then recompute the profile
 and deletion mean. They do not select a random subset.

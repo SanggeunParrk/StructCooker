@@ -14,8 +14,8 @@ derive depth-capped copies for training.
 |----------|------|-------|
 | Read | `loader` | `structcooker.instructions.readers.a3m.get_a3m_data` |
 | Write | `serializer` | `structcooker.instructions.transforms.codecs.to_bytes` |
-| Source | files | `P/*/P*/P*.a3m` (protein) / `R/*/R*/R*.a3m` (RNA) under `MSA_ROOT` (default `DATA_ROOT/BioMol/materials/intermediate/msa`) |
-| Dest | LMDB | `OUTPUT_ROOT/lmdb/pdb/msa/a3m.lmdb` / `msa_rna.lmdb` |
+| Source | files | `P/*/P*/P*.a3m` (protein) / `R/*/R*/R*.a3m` (RNA) under `BIOMOL_ROOT/materials/reference/msa` (supplied) |
+| Dest | LMDB | `BIOMOL_ROOT/lmdb/pdb/msa/a3m.lmdb` / `msa_rna.lmdb` |
 
 The PDB alignments are provided inputs; the release build does not rerun the
 HHblits search that produced them (see [MSA reproduction](../msa-reproduction.md)).

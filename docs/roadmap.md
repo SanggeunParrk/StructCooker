@@ -14,9 +14,11 @@ legacy scripts or hand-written sbatch.
 > datacooker Ray engine.** No `configs/` legacy, no `scripts/` one-offs, no manual
 > `sbatch` (`configs/`, `submits/` and the one-off scripts were retired on 2026-10-13). A reader reproduces any BioMol DB by reading its config.
 
-- **Test output → `/data/shared/cssb_data/BioMol_clean`.** The production tree
-  `/data/shared/cssb_data/BioMol` is read-only for validation; its **raw inputs are
-  never touched** (mmCIF, a3m, OpenFold downloads).
+- **One tree → `BIOMOL_ROOT`** (default `/data/shared/cssb_data/BioMol_clean`): inputs under
+  `materials/{raw,reference,intermediate}`, DBs under `lmdb/`, tables under `metadata/`.
+  The older production tree `/data/shared/cssb_data/BioMol` is read-only for validation;
+  **raw inputs are never edited** (mmCIF, OpenFold downloads, ...; supplied a3m live in
+  `materials/reference`).
 - Correctness bar: a reproduced DB is **decode-level deep-equal** to production
   (compression framing may differ; decoded content must match).
 
@@ -104,7 +106,7 @@ DAG · ⏸️ deferred (code exists, build later) · ⬜ not started.
 
 ### #2 — Distillation (per set: long, short, rna, disordered)
 
-Inputs live under `/data/shared/cssb_data/BioMol/materials/raw/openfold_distillation`
+Inputs live under `BIOMOL_ROOT/materials/raw/openfold_distillation`
 (`monomer_distillation_sets_v2/{long,short}_monomers`, `rna_distillation_set`,
 `disordered_set`). All ⏸️ deferred today.
 

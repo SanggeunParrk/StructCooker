@@ -1,19 +1,19 @@
 """Sampled end-to-end check: the whole release DAG on a few hundred inputs.
 
 A full ``build-all`` takes days and terabytes, too much to run for every change. This
-builds a small DATA_ROOT and OUTPUT_ROOT under one scratch root and runs the same 94
-stages on them (``db/MANIFEST_all.yaml``, the same configs and the same code path as a
+builds a small BIOMOL_ROOT (same layout: materials/raw, reference, intermediate) in one
+scratch directory and runs the same stages on it (``db/MANIFEST_all.yaml``, the same configs and the same code path as a
 release), then compares what came out with the published DBs.
 
 * ``prepare`` picks a deterministic sample per source -- hash-ordered ids, plus edge
   cases chosen on purpose (accepted PDB failures, manually fixed mmCIFs, repaired AFM
   heterodimers, the AFM homodimer whose MSA we generated, recovered OFD long entries, and
   PDB entries that reach train/valid/mpnn/chain) -- and mirrors their files into
-  ``<root>/data`` as per-file symlinks in the production layout. Reference fastas and
+  ``<root>/materials`` as per-file symlinks in the release layout. Reference fastas and
   work lists are cut down to the sample; reference DBs and search databases are linked
   whole. Nothing under production is written.
-* ``run`` is ``build-all`` with ``DATA_ROOT``/``OUTPUT_ROOT`` pointed at the sample (and
-  every other root override cleared, so no path can resolve to production) and parallel
+* ``run`` is ``build-all`` with ``BIOMOL_ROOT`` pointed at the sample (reader overrides
+  cleared, so no path can resolve to the release; only SEQ_DB_ROOT stays shared) and parallel
   searches capped at one node.
 * ``verify`` reads every output and compares it with the release, key by key. Records
   that depend only on their own inputs (structures, MSAs, CCD: schemas A/E/G) must be
@@ -39,17 +39,14 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-PROD_DATA_ROOT = Path("/data/shared/cssb_data")
-PROD_OUTPUT_ROOT = PROD_DATA_ROOT / "BioMol_clean"
-MATERIALS = Path("BioMol/materials")
+PROD_ROOT = Path("/data/shared/cssb_data/BioMol_clean")
 SEED = "structcooker-e2e-sample-v1"
 
-# Env vars the db configs consult before DATA_ROOT/OUTPUT_ROOT. A sampled run clears them
-# all so every path resolves under the sample root.
+# Reader overrides the db configs consult before BIOMOL_ROOT (and the retired roots). A
+# sampled run clears them all so every path resolves under the sample root.
 ROOT_OVERRIDES = (
-    "MMCIF_ROOT", "DISTILLATION_ROOT", "OFD_INTERMEDIATE_ROOT", "TEDDYMER_ROOT", "AFDB_MULTIMER_ROOT",
-    "MSA_ROOT", "REFERENCE_ROOT", "SEQ_CLUSTER30_PATH", "MONOMER_SEQID_MAP", "DISORDERED_SEQID_MAP",
-    "OPENFOLD_STRUCTURE_OVERRIDES",
+    "DATA_ROOT", "OUTPUT_ROOT", "MONOMER_SEQID_MAP", "DISORDERED_SEQID_MAP", "AFM_MSA_SEQID_MAP",
+    "OPENFOLD_STRUCTURE_OVERRIDES", "AFM_CIF_OVERRIDES",
 )
 DEFAULT_COUNTS = {"pdb": 30, "ofd_short": 20, "ofd_long": 20, "ofd_rna": 20, "ofd_disordered": 20,
                   "ofd_disordered_templates": 20, "teddymer": 20, "afm_homodimer": 20, "afm_heterodimer": 20}
@@ -157,15 +154,12 @@ def tsv_rows(path: Path) -> Iterator[list[str]]:
 
 # --------------------------------------------------------------------------- prepare
 class Sampler:
-    """Builds ``<root>/data`` (DATA_ROOT) and ``<root>/out`` (OUTPUT_ROOT) for a sample."""
+    """Builds ``<root>``, a BIOMOL_ROOT holding a sample of the release's inputs."""
 
-    def __init__(self, root: Path, counts: dict[str, int],
-                 prod_data: Path = PROD_DATA_ROOT, prod_out: Path = PROD_OUTPUT_ROOT) -> None:
-        self.root, self.counts = root, counts
-        self.data, self.out = root / "data", root / "out"
-        self.prod_data, self.prod_out = prod_data, prod_out
-        self.raw, self.inter = prod_data / MATERIALS / "raw", prod_data / MATERIALS / "intermediate"
-        self.s_raw, self.s_inter = self.data / MATERIALS / "raw", self.data / MATERIALS / "intermediate"
+    def __init__(self, root: Path, counts: dict[str, int], prod: Path = PROD_ROOT) -> None:
+        self.root, self.counts, self.prod = root, counts, prod
+        self.raw, self.ref, self.inter = (prod / "materials" / d for d in ("raw", "reference", "intermediate"))
+        self.s_raw, self.s_ref, self.s_inter = (root / "materials" / d for d in ("raw", "reference", "intermediate"))
         self.report: dict[str, Any] = {}
 
     def run(self) -> dict[str, Any]:
@@ -182,19 +176,15 @@ class Sampler:
         return self.report
 
     def shared(self) -> None:
-        """Inputs linked whole: search DBs, CCD, the seq_id seed and reference DBs."""
-        (self.data / "seq_db").parent.mkdir(parents=True, exist_ok=True)
-        (self.data / "seq_db").symlink_to(self.prod_data / "seq_db")
-        link(self.prod_data / "external/SabDab/sabdab_summary_all.tsv",
-             self.data / "external/SabDab/sabdab_summary_all.tsv")
-        link((self.prod_data / "reference/seq_id_map.tsv").resolve(), self.data / "reference/seq_id_map.tsv")
+        """Inputs linked whole: CCD, SabDab, the seq_id seed and reference DBs (SEQ_DB_ROOT stays shared)."""
+        link(self.raw / "sabdab/sabdab_summary_all.tsv", self.s_raw / "sabdab/sabdab_summary_all.tsv")
+        link(self.ref / "seq_id_map_seed.tsv", self.s_ref / "seq_id_map_seed.tsv")
         link_tree(self.inter / "ccd/components", self.s_inter / "ccd/components")
         link_tree(self.inter / "openfold_distillation/long_recovered",
                   self.s_inter / "openfold_distillation/long_recovered")
-        (self.out / "metadata").mkdir(parents=True, exist_ok=True)
         for name in ("reference_ccd.lmdb", "reference_chain_selection.lmdb"):
-            link_tree(self.prod_out / "metadata" / name, self.out / "metadata" / name)
-        (self.out / "materials/intermediate/mmseqs_tmp").mkdir(parents=True, exist_ok=True)
+            link_tree(self.ref / name, self.s_ref / name)
+        (self.s_inter / "mmseqs_tmp").mkdir(parents=True, exist_ok=True)
 
     # -- PDB --------------------------------------------------------------------------
     def pdb(self) -> None:
@@ -204,7 +194,7 @@ class Sampler:
         small = [i for i, s in sizes.items() if s <= PDB_MAX_BYTES]
         chosen = {i: "random" for i in pick(small, self.counts["pdb"])}
         for db in PDB_SEED_DBS:
-            ids = {k[:4] for k in index_keys(self.prod_out / "lmdb" / f"{db}.index.tsv")}
+            ids = {k[:4] for k in index_keys(self.prod / "lmdb" / f"{db}.index.tsv")}
             for i in pick((i for i in ids if sizes.get(i, PDB_MAX_BYTES + 1) <= PDB_MAX_BYTES), PDB_SEEDS_PER_DB, salt=db):
                 chosen.setdefault(i, f"seed:{db}")
         policy = json.loads((Path(__file__).resolve().parents[2] / "db/pdb-exceptions.json").read_text())
@@ -219,20 +209,19 @@ class Sampler:
 
         # Their chains' seq_ids (published fasta + map) -> the provided MSAs and SignalP files.
         upper = {i.upper() for i in chosen}
-        seqs = {s for h, s in read_fasta(self.prod_out / "materials/intermediate/fasta/cif_pdb.fasta")
-                if h.split("_", 1)[0] in upper}
-        seq_ids = [sid for sid, seq, *_ in tsv_rows(self.prod_out / "metadata/seq_id_map.tsv") if seq in seqs]
+        seqs = {s for h, s in read_fasta(self.inter / "fasta/cif_pdb.fasta") if h.split("_", 1)[0] in upper}
+        seq_ids = [sid for sid, seq, *_ in tsv_rows(self.prod / "metadata/seq_id_map.tsv") if seq in seqs]
         msas = 0
         for sid in seq_ids:
             if sid[0] in "PR":
-                msas += link_tree(self.inter / "msa" / sid[0] / sid[-3:] / sid,
-                                  self.s_inter / "msa" / sid[0] / sid[-3:] / sid) > 0
+                msas += link_tree(self.ref / "msa" / sid[0] / sid[-3:] / sid,
+                                  self.s_ref / "msa" / sid[0] / sid[-3:] / sid) > 0
         # SignalP files are named in the older 7-digit id format (P0172039.gff3 for
         # P00000000000000172039); the build matches them by counter, and so does this.
         from structcooker.instructions.transforms.metadata import _sequence_counter_key
 
         counters = {_sequence_counter_key(sid) for sid in seq_ids}
-        signalp, s_signalp = self.prod_out / "materials/intermediate/signalp", self.out / "materials/intermediate/signalp"
+        signalp, s_signalp = self.ref / "signalp", self.s_ref / "signalp"
         s_signalp.mkdir(parents=True, exist_ok=True)
         predictions = sum(link(p, s_signalp / p.name) for p in signalp.glob("*.gff3")
                           if _sequence_counter_key(p.stem) in counters)
@@ -243,7 +232,7 @@ class Sampler:
     def ofd(self) -> None:
         ofd_raw = self.raw / "openfold_distillation"
         s_ofd_raw = self.s_raw / "openfold_distillation"
-        fasta, s_fasta = self.inter / "openfold_distillation/fasta", self.s_inter / "openfold_distillation/fasta"
+        fasta, s_fasta = self.ref / "openfold_distillation/fasta", self.s_ref / "openfold_distillation/fasta"
         for subset in ("short", "long"):
             ids = set(pick((fasta_entry_id(h) for h, _ in read_fasta(fasta / f"{subset}.fasta")),
                            self.counts[f"ofd_{subset}"]))
@@ -269,7 +258,7 @@ class Sampler:
         write_fasta_subset(fasta / "disordered.fasta", s_fasta / "disordered.fasta", dis)
         for i in dis:
             link_tree(ofd_raw / "disordered_set/structure_files" / i, s_ofd_raw / "disordered_set/structure_files" / i)
-        work, s_work = self.inter / "openfold_distillation/disordered_set", self.s_inter / "openfold_distillation/disordered_set"
+        work, s_work = self.ref / "openfold_distillation/disordered_set", self.s_ref / "openfold_distillation/disordered_set"
         s_work.mkdir(parents=True, exist_ok=True)
 
         def ours(stem: str) -> bool:
@@ -281,6 +270,9 @@ class Sampler:
         templates = pick((s for s in (work / "protein_tmpl_filelist.txt").read_text().splitlines() if s),
                          self.counts["ofd_disordered_templates"])
         (s_work / "protein_tmpl_filelist.txt").write_text("".join(f"{s}\n" for s in templates))
+        # The lists name files relative to the OpenFold download: link the listed ones in.
+        for line in [*msa_lines, *templates]:
+            link(ofd_raw / line, s_ofd_raw / line)
         self.report["ofd_disordered"] = {"entries": sorted(dis), "msas": len(msa_lines), "templates": len(templates)}
 
     # -- teddymer ---------------------------------------------------------------------
@@ -311,25 +303,22 @@ class Sampler:
             link_msa(e)
 
         overrides = json.loads((afm_inter / "heterodimer/repaired/overrides.json").read_text())
-        repaired = {Path(p).name.removesuffix("-model_v1.cif.gz"): p for p in overrides}
+        repaired = {Path(p).name.removesuffix("-model_v1.cif.gz") for p in overrides}
         chain_msa = list(tsv_rows(afm_inter / "heterodimer/chain_msa.tsv"))
         header, rows = chain_msa[0], chain_msa[1:]
         hetero = sorted(set(pick(entities(root / "heterodimer/SOURCE.tsv"), self.counts["afm_heterodimer"]))
                         | set(repaired))
-        sample_overrides = {}
         for e in hetero:
-            src = root / "heterodimer/cif" / e[-3:] / f"{e}-model_v1.cif.gz"
-            dst = s_root / "heterodimer/cif" / e[-3:] / f"{e}-model_v1.cif.gz"
-            link(src, dst)
-            if e in repaired:
-                sample_overrides[str(dst)] = overrides[repaired[e]]
+            link(root / "heterodimer/cif" / e[-3:] / f"{e}-model_v1.cif.gz",
+                 s_root / "heterodimer/cif" / e[-3:] / f"{e}-model_v1.cif.gz")
         kept = [r for r in rows if r[0] in set(hetero)]
-        (s_afm_inter / "heterodimer/repaired").mkdir(parents=True, exist_ok=True)
+        (s_afm_inter / "heterodimer").mkdir(parents=True, exist_ok=True)
         (s_afm_inter / "heterodimer/chain_msa.tsv").write_text("".join("\t".join(r) + "\n" for r in [header, *kept]))
-        (s_afm_inter / "heterodimer/repaired/overrides.json").write_text(json.dumps(sample_overrides, indent=1))
+        # The overrides map is relative (raw path suffix -> file next to the map): link it whole.
+        link_tree(afm_inter / "heterodimer/repaired", s_afm_inter / "heterodimer/repaired")
         linked = sum(link_msa(r[3]) for r in kept)
         link_tree(afm_inter / "msa_generated", s_afm_inter / "msa_generated", "AF-*")
-        self.report["afm"] = {"homodimer": homo, "heterodimer": hetero, "repaired": sorted(set(repaired) & set(hetero)),
+        self.report["afm"] = {"homodimer": homo, "heterodimer": hetero, "repaired": sorted(repaired & set(hetero)),
                               "heterodimer_msas": linked}
 
 
@@ -337,20 +326,21 @@ class Sampler:
 def sample_environment(root: Path) -> dict[str, str]:
     """``os.environ`` for a sampled run: roots at the sample, every override cleared."""
     env = {k: v for k, v in os.environ.items() if k not in ROOT_OVERRIDES}
-    env.update(DATA_ROOT=str(root / "data"), OUTPUT_ROOT=str(root / "out"), STRUCTCOOKER_MAX_NODES="1")
+    env.update(BIOMOL_ROOT=str(root), STRUCTCOOKER_MAX_NODES="1")
     # Nodes whose /dev/shm cannot hold joblib's semaphores (docs/e2e-build.md §4).
     env.setdefault("DATACOOKER_EXCLUDE_NODES", "node01,node04,node07")
     return env
 
 
 def escaping_paths(configs: dict[str, dict], root: Path) -> list[str]:
-    """Inputs or outputs of a sampled run that resolve outside the sample root."""
+    """Inputs or outputs of a sampled run that resolve outside the sample root (or SEQ_DB_ROOT)."""
     from structcooker import preflight
+    from structcooker.paths import seq_db_root
 
     bad = []
     for name, cfg in configs.items():
         for path in [*preflight.input_paths(cfg), *preflight.output_paths(cfg)]:
-            if not Path(path).is_relative_to(root):
+            if not (Path(path).is_relative_to(root) or Path(path).is_relative_to(seq_db_root())):
                 bad.append(f"{name}: {path}")
     return bad
 
@@ -501,9 +491,9 @@ def verify(root: Path, run_dir: Path, manifest: Path) -> dict[str, Any]:
     graph = yaml.safe_load(manifest.read_text())
     summary = json.loads((run_dir / "summary.json").read_text()) if (run_dir / "summary.json").exists() else {}
     states = summary.get("nodes", {})
-    out_root = root / "out"
+    out_root = root
     sample_map = out_root / "metadata/seq_id_map.tsv"
-    table = seq_id_translation(sample_map, PROD_OUTPUT_ROOT / "metadata/seq_id_map.tsv") if sample_map.exists() else {}
+    table = seq_id_translation(sample_map, PROD_ROOT / "metadata/seq_id_map.tsv") if sample_map.exists() else {}
     nodes: dict[str, Any] = {"_seq_id_translation": {"renumbered": len(table)}}
     failures: list[str] = []
     for name in graph:
@@ -519,7 +509,7 @@ def verify(root: Path, run_dir: Path, manifest: Path) -> dict[str, Any]:
         try:
             if target and Path(target).exists():
                 schema = str(cfg["schema"])
-                prod = PROD_OUTPUT_ROOT / Path(target).relative_to(out_root)
+                prod = PROD_ROOT / Path(target).relative_to(out_root)
                 entry["schema"] = schema
                 entry["exact"] = schema in EXACT_SCHEMAS
                 entry.update(compare_lmdb(Path(target), prod, schema, table) if prod.exists() else {"release": "absent"})
@@ -529,7 +519,7 @@ def verify(root: Path, run_dir: Path, manifest: Path) -> dict[str, Any]:
             elif not target:
                 files = {}
                 for out in preflight.output_paths(cfg):
-                    prod = PROD_OUTPUT_ROOT / out.relative_to(out_root)
+                    prod = PROD_ROOT / out.relative_to(out_root)
                     if out.is_file() and prod.is_file():
                         files[str(out.relative_to(out_root))] = compare_lines(out, prod, table)
                     elif out.is_dir():

@@ -12,7 +12,7 @@ which are the only entries with published interface metrics:
 Usage:
     python scripts/staging/stage_teddymer.py \
         --teddymer-root /data/psk6950/external_source/teddymer \
-        --out /data/shared/cssb_data/BioMol/materials/raw/teddymer
+        --out /data/shared/cssb_data/BioMol_clean/materials/raw/teddymer
 """
 
 from __future__ import annotations

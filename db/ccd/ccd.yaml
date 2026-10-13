@@ -7,9 +7,9 @@
 # BioMol/materials/intermediate/ccd/components -- the split files are ours, not the download.
 schema: G
 
-env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/ccd/biomol_CCD.lmdb}
-# Split components: an input made from the raw download, under DATA_ROOT (not OUTPUT_ROOT).
-data_dir: ${p:${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol/materials/intermediate/ccd/components}
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/ccd/biomol_CCD.lmdb}
+# Split components: an input made from the raw download, under materials/intermediate/ccd (the raw download stays in materials/raw/ccd).
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/ccd/components}
 file_pattern: "*.cif*"
 
 recipe: ${p:src/structcooker/workflows/ingest/ccd.py}

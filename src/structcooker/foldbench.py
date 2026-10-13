@@ -20,7 +20,7 @@ The few sequences the PDB-wide DBs do not cover (FoldBench's 3 chromophore-abbre
 searched from scratch once with :func:`structcooker.instructions.transforms.msa.run_msa_search`; ``--fallback`` points
 at a DB that already holds them, so a rebuild does not repeat that search.
 
-Sources are the release tree (``OUTPUT_ROOT``, e.g. ``/data/shared/cssb_data/BioMol_clean``), at the
+Sources are the release tree (``BIOMOL_ROOT``, e.g. ``/data/shared/cssb_data/BioMol_clean``), at the
 paths its db configs write (``RELEASE_LAYOUT``; a test keeps the two in step). The CCD is not the release's
 ``ccd/biomol_CCD.lmdb`` (schema G, ``{chem_comp_dict}``): inference reads CCDMol graphs
 (``atoms``/``residues``/``chains``), reshaped from it into ``foldbench/ccd_inference.lmdb``
@@ -199,7 +199,7 @@ class Sources:
 
     @classmethod
     def from_release(cls, release: Path, *, ccd: Path | None = None, fallback: Sequence[Path] = ()) -> "Sources":
-        """``release`` = a release tree (``OUTPUT_ROOT``, e.g. ``/data/shared/cssb_data/BioMol_clean``)."""
+        """``release`` = a release tree (``BIOMOL_ROOT``, e.g. ``/data/shared/cssb_data/BioMol_clean``)."""
         paths = {name: release / rel for name, (_db, rel) in RELEASE_LAYOUT.items()}
         return cls(paths["protein_msa"], paths["rna_msa"], paths["template"], ccd, list(fallback))
 
@@ -289,7 +289,7 @@ def main(argv: list[str] | None = None) -> int:
     b = sub.add_parser("build", help="cut the FoldBench DBs out of the full-release LMDBs")
     b.add_argument("package", type=Path)
     b.add_argument("out", type=Path)
-    b.add_argument("--release", type=Path, required=True, help="release tree (OUTPUT_ROOT), e.g. .../BioMol_clean")
+    b.add_argument("--release", type=Path, required=True, help="release tree (BIOMOL_ROOT), e.g. .../BioMol_clean")
     b.add_argument("--ccd", type=Path, help="inference CCD LMDB (atoms/residues/chains, single-atom components in)")
     b.add_argument("--fallback", type=Path, action="append", default=[], help="DB holding the from-scratch edge MSAs")
     v = sub.add_parser("verify", help="check every data.yaml lookup resolves in OUT")
