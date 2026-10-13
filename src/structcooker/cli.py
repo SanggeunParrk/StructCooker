@@ -485,6 +485,26 @@ def build_all(manifest: Path | None, workdir: Path | None,
     click.echo(f"Release jobs submitted/resumed; inspect {workdir / 'summary.json'} for verified completion")
 
 
+@cli.command("release-check")
+@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_all.yaml",
+              show_default=True)
+def release_check(manifest: Path) -> None:
+    """Check a release tree is complete and self-contained (SLURM job).
+
+    Every stage's output at its configured path under OUTPUT_ROOT, shards inside their own
+    collection, entry counts agreeing with .meta.json and .index.tsv, and a sample of
+    records decoding cleanly. Report: OUTPUT_ROOT/release_check.json.
+    """
+    from datacooker.executors.slurm import SlurmExecutor
+
+    out_root = Path(os.environ.get("OUTPUT_ROOT") or Path(os.environ.get("DATA_ROOT", _DATA_ROOT_DEFAULT)) / "BioMol_clean")
+    execu = SlurmExecutor(workdir=REPO / "logs" / "release_check", repo=REPO)
+    job = execu.run_once(name="release_check", argv=[sys.executable, "-u", "-m", "structcooker.release_check",
+                                                       str(manifest.resolve()), str(out_root / "release_check.json")],
+                         mem_gb=256, cores=16).job_id
+    click.echo(f"release-check job {job}; report -> {out_root / 'release_check.json'}")
+
+
 @cli.group("e2e-sample")
 def e2e_sample() -> None:
     """Sampled end-to-end check: the release DAG on a few hundred inputs.
