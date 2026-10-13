@@ -37,7 +37,7 @@ ids); CCD codes are the inline `(XXX)` residues and ligands of `chain_seqid_map.
 ## Build
 
 ```bash
-PKG=/data/psk6950/foldbench_src                                                   # inputs/, meta/
+PKG=$BIOMOL_ROOT/materials/reference/foldbench                                    # inputs/, meta/
 structcooker foldbench keys   $PKG                                                 # counts
 structcooker foldbench build  $PKG OUT                                            # SLURM job; --local to run here
 structcooker foldbench verify $PKG OUT
@@ -48,7 +48,7 @@ written, from_fallback, missing, bytes per asset).
 
 ## Compared with the earlier FoldBench DBs
 
-The earlier DBs (`/data/shared/cssb_data/BioMol/foldbench`) were cut from the July `BioMol` tree. Cut from the release
+The earlier DBs were cut from the July `BioMol` tree (since deleted). Cut from the release
 tree instead (checked 2026-10-13 on their own key lists): templates are byte-identical (1,937 found, 987 absent in
 both); protein MSAs carry the same alignments, 32 of a 300-key sample differing only in the `headers/database` labels;
 RNA MSAs differ in depth for most keys, as the release rebuilt them from the sanitized RNA alignments

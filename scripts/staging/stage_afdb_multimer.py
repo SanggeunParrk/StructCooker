@@ -3,9 +3,10 @@
 Two sources, handled differently because of who owns them and what they contain:
 
 * Homodimers -- the high-confidence set from the AFDB complex paper (Han et al.), shared by
-  the first author as ``high_conf_homodimers_manuscript_v1.tar.gz`` and extracted under a
-  personal scratch path. 1,750,755 PDBs. These are MOVED (same filesystem, so each move is
-  a rename); the tarball stays where it is as the source of truth.
+  the first author as ``high_conf_homodimers_manuscript_v1.tar.gz`` (kept in
+  ``raw/afdb_multimer/download/homodimer_bundle``) and extracted to a scratch directory
+  (``AFM_HOMODIMER_SRC``). 1,750,755 PDBs. These are MOVED out of the extraction (same
+  filesystem, so each move is a rename); the tarball is the source of truth.
 * Heterodimers -- the 80,248 ``passes_quality_threshold`` entries fetched one by one by
   hatapakacha5 into ``AFDB_heterodimer/cif``. That directory is someone else's work and not
   writable to us, so these are COPIED. Their ``.cif`` files are gzip streams (the server sent
@@ -35,10 +36,9 @@ import re
 import shutil
 from pathlib import Path
 
-HOMO_SRC = Path(
-    "/data/psk6950/external_source/AFDB/multimer/test/high_conf_homodimers_manuscript_v1",
-)
-HET_SRC = Path("/data/shared/cssb_data/AFDB_heterodimer/cif")
+HOMO_SRC = Path(os.environ.get(           # the bundle's extraction
+    "AFM_HOMODIMER_SRC", "/data/psk6950/external_source/AFDB/multimer/test/high_conf_homodimers_manuscript_v1"))
+HET_SRC = Path(os.environ.get("AFM_HETERODIMER_SRC", "/data/shared/cssb_data/AFDB_heterodimer/cif"))
 _ID = re.compile(r"^AF[-_](\d+)-model_v1\.(pdb|cif)$")
 
 

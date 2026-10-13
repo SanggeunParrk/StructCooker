@@ -41,14 +41,14 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 _ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
-# The download (release msas/ batches + metadata CSVs) and a scratch dir for the plan.
-DIST = Path(os.environ.get("AFM_MSA_DOWNLOAD", "/data/psk6950/external_source/AFDB/multimer/msas"))
-BATCHES = ("251124_1.2M", "251124_8.8M", "251209_13.4M")
-WORK = Path(os.environ.get("AFM_STAGE_WORK", "/data/psk6950/external_source/AFDB/multimer"))
 RAW = _ROOT / "materials/raw/afdb_multimer"            # release MSAs, as shipped
 INTER = _ROOT / "materials/intermediate/afdb_multimer"  # what we derive from them
-HOMO_META = WORK / "homodimer_metadata.csv"
-HET_META = Path(os.environ.get("AFM_HET_METADATA", "/data/shared/cssb_data/AFDB_heterodimer/heterodimer_metadata.csv"))
+# The download (release msas/ batches + metadata CSVs) and the dir for the staging tables.
+DIST = Path(os.environ.get("AFM_MSA_DOWNLOAD", str(RAW / "download/msas")))
+BATCHES = ("251124_1.2M", "251124_8.8M", "251209_13.4M")
+WORK = Path(os.environ.get("AFM_STAGE_WORK", str(INTER / "staging")))
+HOMO_META = RAW / "download/metadata/homodimer_metadata.csv"
+HET_META = Path(os.environ.get("AFM_HET_METADATA", str(RAW / "download/heterodimer_fetch/heterodimer_metadata.csv")))
 SEQ_FOUND = WORK / "msa_found_by_sequence.tsv"
 PLAN = WORK / "msa_stage_plan.tsv"          # entity, kind(dir|tar), path, member, roles
 CHAIN_SEQ = WORK / "msa_stage_chainseq.tsv"  # het, chain, sequence

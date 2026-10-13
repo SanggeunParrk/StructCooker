@@ -25,6 +25,7 @@ raw/
 ├── cif/                    <mid 2 chars>/<pdb id>.cif.gz         RCSB mmCIF mirror, 1,101 shards
 ├── rna_alignment_arrays/   <pdb>_<chain>.npz · DOWNLOAD.log      from s3://openfold3-data/pdb_training_set
 ├── sabdab/                 sabdab_summary_all.tsv                SAbDab antibody summary (seq_cluster)
+│                           sabdab_summary_all_20260316.tsv       the earlier download
 │
 ├── openfold_distillation/                                        OFD — OpenFold3-preview2 distillation
 │   ├── monomer_distillation_sets_v2/   README.md (OpenFold's) · shared/reference_mols/
@@ -36,7 +37,10 @@ raw/
 ├── teddymer/                                                     TDM — 510,454 TED domain pairs
 │   ├── README.md
 │   ├── SOURCE.tsv          dimer_index · source path · bytes
-│   └── pdb/<last 3 digits of DimerIndex>/<DimerIndex>DI_<acc>_<TED pair>.pdb
+│   ├── pdb/<last 3 digits of DimerIndex>/<DimerIndex>DI_<acc>_<TED pair>.pdb
+│   └── download/           the release as fetched: teddymer_dimerpdbs.tar (all 10,089,503 dimers),
+│                           teddymer.tar.gz (cluster metadata), their extraction (dimer_pdbs/,
+│                           teddymer_data/) and the download logs
 │
 └── afdb_multimer/                                                AFM — AFDB complex release
     ├── README.md
@@ -46,10 +50,17 @@ raw/
     ├── heterodimer/        80,248  passes_quality_threshold heterodimers
     │   ├── SOURCE.tsv
     │   └── cif/<last 3>/AF-<n>-model_v1.cif.gz
-    └── msa/                1,799,836  monomer MSAs the release ships, for the entities used
+    ├── msa/                1,799,836  monomer MSAs the release ships, for the entities used
     │   ├── README.md
     │   ├── SOURCE.tsv      entity · release batch dir / tar member / generated · used by
     │   └── <last 3>/AF-<n>-msa_v1.a3m.zst
+    └── download/           the release as fetched
+        ├── models/         chunk_*.tar  the full complex model release
+        ├── msas/           <batch>/     the MSA release (msa/ above are hard links into it)
+        ├── homodimer_bundle/            high_conf_homodimers_manuscript_v1.tar.gz + extraction records
+        ├── metadata/       homodimer_metadata.csv · model_entity_metadata_mapping.csv
+        └── heterodimer_fetch/           heterodimer_metadata.csv, ids and fetch script (copied from
+                                         AFDB_heterodimer, hatapakacha5's fetch of the 80,248 heterodimers)
 ```
 
 ### teddymer
@@ -75,9 +86,7 @@ keep resolving.
 `long_monomers/raw/` holds the relaxed model for 16,099,404 of 16,099,484 long ids
 (downloaded 2026-09-30..10-05). 80 ids have no relaxed model in the release at all; they are
 not in the long cif DB. Partial files left by interrupted downloads
-(`best_structure_relaxed.pdb<digits>`, 9,924) were moved out of the tree, to
-`/data/shared/cssb_data/BioMol/materials/intermediate/openfold_distillation/_download_partials_20261005/`;
-builds match the two exact names only.
+(`best_structure_relaxed.pdb<digits>`, 9,924) were removed; builds match the two exact names only.
 
 ### afdb_multimer
 
@@ -104,6 +113,7 @@ reference/
 ├── msa/<P|R>/<last 3>/<seq_id>/ the provided PDB MSAs (HHblits)
 ├── msa_teddymer/P/<last 3>/<seq_id>/  the teddymer MSAs (MMseqs2 vs uniref30_2302, searched once)
 ├── signalp/                     SignalP predictions for PDB sequences (7-digit legacy names)
+├── foldbench/                   the FoldBench package (inputs/, meta/) `structcooker foldbench` cuts by
 ├── reference_ccd.lmdb           24 historical CCD definitions older PDB entries need
 ├── reference_chain_selection.lmdb  the release's chain model choice
 └── openfold_distillation/       README.md
@@ -155,9 +165,7 @@ generated one) -- so raw is never edited.
 
 The teddymer MSAs are supplied too, in their own tree (`reference/msa_teddymer`), apart from
 the PDB ones (`reference/msa`): anything that scans a directory to find its queries (the MSA
-and template searches do) is scoped by which tree it points at. Legacy leftovers
-that no build reads (old LMDBs, the s5cmd client, download scripts and logs, `hhm/`, `hhr/`)
-stay outside the tree, in `/data/shared/cssb_data/BioMol/materials/intermediate/`.
+and template searches do) is scoped by which tree it points at.
 
 ## Conventions
 
