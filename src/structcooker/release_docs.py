@@ -146,7 +146,7 @@ def write(root: Path, manifest: Path) -> list[Path]:
     out = root / "docs"
     out.mkdir(exist_ok=True)
     written = []
-    for name in ("README.md", "provenance.md"):
+    for name in ("README.md", "provenance.md", "licenses.md"):
         shutil.copyfile(SOURCES / name, out / name)
         written.append(out / name)
     text, _total = databases(root, manifest)

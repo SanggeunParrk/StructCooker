@@ -12,6 +12,7 @@ this one tree; the build resolves every path against it (`BIOMOL_ROOT`).
 | [scenarios.md](scenarios.md) | what to copy for a given use (PDB only, with MSA/templates, distillation, inference, rebuild, ...) |
 | [provenance.md](provenance.md) | sources, versions, build dates, known gaps and differences |
 | [check.md](check.md) | the latest `structcooker release-check` of this tree |
+| [licenses.md](licenses.md) | the terms each source's data comes under |
 
 ## Layout
 
