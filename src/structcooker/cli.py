@@ -668,5 +668,66 @@ def release_build(manifest: Path, run_dir: Path, policy: Path) -> None:
     click.echo(f"Submitted/resumed release; status: {run_dir / 'summary.json'}")
 
 
+@cli.group("foldbench")
+def foldbench_group() -> None:
+    """FoldBench inference DBs: key-list subsets of the full-release LMDBs (see docs/foldbench.md)."""
+
+
+@foldbench_group.command("keys")
+@click.argument("package", type=click.Path(exists=True, path_type=Path))
+@click.option("--out", type=click.Path(path_type=Path), default=None, help="Also write the key lists as JSON.")
+def foldbench_keys(package: Path, out: Path | None) -> None:
+    """Count (and save) the protein / RNA / template / CCD keys a FoldBench package looks up."""
+    import json
+    from dataclasses import asdict
+
+    from structcooker import foldbench
+
+    keys = foldbench.load_keys(package)
+    click.echo(json.dumps(keys.counts()))
+    if out is not None:
+        out.write_text(json.dumps(asdict(keys), indent=1))
+
+
+@foldbench_group.command("build")
+@click.argument("package", type=click.Path(exists=True, path_type=Path))
+@click.argument("out", type=click.Path(path_type=Path))
+@click.option("--release", type=click.Path(exists=True, path_type=Path),
+              default=Path(_DATA_ROOT_DEFAULT) / "BioMol", show_default=True,
+              help="BioMol root holding lmdb/pdb/{msa,template}.")
+@click.option("--ccd", type=click.Path(exists=True, path_type=Path), default=None,
+              help="CCD LMDB with the single-atom components (skipped when omitted).")
+@click.option("--fallback", type=click.Path(exists=True, path_type=Path), multiple=True,
+              help="DB already holding the from-scratch (edge) MSAs, so they are not searched again.")
+@click.option("--local", is_flag=True, help="Run here instead of as a SLURM job (a few thousand key reads).")
+def foldbench_build(package: Path, out: Path, release: Path, ccd: Path | None, fallback: tuple[Path, ...], local: bool) -> None:
+    """Cut the FoldBench MSA / template / CCD LMDBs under OUT (never replaces an existing DB)."""
+    argv = ["build", str(package.resolve()), str(out.resolve()), "--release", str(release.resolve())]
+    if ccd is not None:
+        argv += ["--ccd", str(ccd.resolve())]
+    for f in fallback:
+        argv += ["--fallback", str(f.resolve())]
+    if local:
+        from structcooker import foldbench
+
+        raise SystemExit(foldbench.main(argv))
+    from datacooker.executors.slurm import SlurmExecutor
+
+    execu = SlurmExecutor(workdir=REPO / "logs" / "foldbench", repo=REPO)
+    job = execu.run_once(name="foldbench_build", argv=[sys.executable, "-u", "-m", "structcooker.foldbench", *argv],
+                         mem_gb=32, cores=4).job_id
+    click.echo(f"foldbench build job {job}; report -> {out / 'foldbench_build.json'}")
+
+
+@foldbench_group.command("verify")
+@click.argument("package", type=click.Path(exists=True, path_type=Path))
+@click.argument("out", type=click.Path(exists=True, path_type=Path))
+def foldbench_verify(package: Path, out: Path) -> None:
+    """Check every a3m_key / template lookup in the package's data.yaml resolves in OUT, and decode a sample."""
+    from structcooker import foldbench
+
+    raise SystemExit(foldbench.main(["verify", str(package), str(out)]))
+
+
 if __name__ == "__main__":
     main()

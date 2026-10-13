@@ -49,6 +49,7 @@ nav:
       - LMDB storage policy: lmdb-storage-policy.md
       - Data provenance: data-provenance.md
       - MSA reproduction: msa-reproduction.md
+      - FoldBench DBs: foldbench.md
       - MPNN pruning: mpnn_pruning.md
   - Tutorials:
       - Overview: tutorials.md
