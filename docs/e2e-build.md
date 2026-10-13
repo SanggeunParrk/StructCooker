@@ -56,9 +56,10 @@ self-consistent but not identical to this release.
 
 | Input | Location | Fixes |
 |---|---|---|
-| seq_id seed | `seq_id_map_seed.tsv` | production seq_ids; new sequences are appended in `db/metadata/seq_id_map.yaml` order (PDB, OFD, TDM, AFM, recovered long) |
+| seq_id seed | `seq_id_map_seed.tsv` | this release's seq_id_map (all DBs); a rebuild keeps every id, and new sequences are appended in `db/metadata/seq_id_map.yaml` order |
 | OFD reference fastas | `openfold_distillation/fasta/{short,long,rna,disordered}.fasta` | the OFD sequence set seq_id_map and OFD clustering run over |
 | PDB MSAs | `msa/` | PDB a3m DBs and the PDB template search |
+| Teddymer MSAs | `msa_teddymer/` | teddymer MSA DBs and template search (MMseqs2, searched once; `teddymer/msa_search` is run by hand for new sequences only) |
 | SignalP results | `signalp/` | sequence trimming |
 | Historical CCD | `reference_ccd.lmdb` | 24 component definitions older PDB entries need |
 | Chain model choice | `reference_chain_selection.lmdb` | production's per-chain model choice on occupancy ties |
@@ -81,8 +82,7 @@ sequences). Any other failure stops the stage.
 editing one (`python -c 'from structcooker.manifests import write; write()'`, enforced by a
 test). Each set's manifest still builds that set alone.
 
-Sizes and times on this cluster (2026-09/10): OFD long cif ≈ 8 × 3 h; teddymer MSA (MMseqs2,
-8 nodes) ≈ 2 days; teddymer hmmsearch (8 nodes) ≈ 31 h; AFM hmmsearch (8 nodes) ≈ 6 days.
+Sizes and times on this cluster (2026-09/10): OFD long cif ≈ 8 × 3 h; teddymer hmmsearch (8 nodes) ≈ 31 h; AFM hmmsearch (8 nodes) ≈ 6 days.
 A release stage also fingerprints its inputs (planning and verification) and decodes every
 output record to verify it. Measured on OFD long (2026-10-08..12): scanning raw/ (16.4M
 files) takes ~80 min, hashing ~3,200 files/s, verification ~0.2 CPU s per MSA record (~8 h
@@ -131,7 +131,7 @@ rewritten for the sample. The following are linked whole:
 - the seq_id seed
 - the reference CCD and chain-selection DBs
 
-The search DBs are not copied: `SEQ_DB_ROOT` stays shared.
+No search database is needed: every MSA the build reads is a download or a supplied input.
 
 **Run.** `BIOMOL_ROOT` points at the sample, reader overrides are cleared, and `run`
 refuses to start if any config still resolves outside `$R` (or `SEQ_DB_ROOT`). Parallel

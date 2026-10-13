@@ -99,9 +99,10 @@ Staged by `scripts/staging/stage_afdb_multimer.py` and `stage_afdb_multimer_msa.
 
 ```
 reference/
-├── seq_id_map_seed.tsv          seq_id seed: keeps existing seq_ids (docs/data-provenance.md)
-├── msa/<P|R>/<last 3>/<seq_id>/ the provided PDB MSAs
-├── signalp/<P|R>/               SignalP predictions for PDB sequences
+├── seq_id_map_seed.tsv          seq_id seed: this release's seq_id_map, so a rebuild keeps every id
+├── msa/<P|R>/<last 3>/<seq_id>/ the provided PDB MSAs (HHblits)
+├── msa_teddymer/P/<last 3>/<seq_id>/  the teddymer MSAs (MMseqs2 vs uniref30_2302, searched once)
+├── signalp/                     SignalP predictions for PDB sequences (7-digit legacy names)
 ├── reference_ccd.lmdb           24 historical CCD definitions older PDB entries need
 ├── reference_chain_selection.lmdb  the release's chain model choice
 └── openfold_distillation/       README.md
@@ -138,7 +139,6 @@ intermediate/
 │                           distillation_monomer_seqid.tsv, seqid_template_filelist.txt,
 │                           template_chain_filelist.txt, chain_to_templates.tsv, seqid_to_chains.tsv,
 │                           chain_to_seq.tsv, seqid_to_seq.tsv, seq_id_map_{AFM,TDM}.tsv, template_{AFM,TDM}/
-├── msa/P/<last 3>/<seq_id>/<seq_id>.a3m   teddymer MSAs (MMseqs2, uniref30_2302)
 ├── msa_wo_lower{,_TDM,_AFM}/              lowercase-stripped a3m, hmmbuild input
 ├── hmm{,_TDM,_AFM}/ · hmm_output{,_TDM,_AFM}/   template search (Phase 0)
 ├── hmm_reduced{,_TDM,_AFM}/               Phase 1/2 reduced hits
@@ -152,9 +152,9 @@ maps paths relative to `raw/afdb_multimer` to paths relative to the json, so it 
 wherever the tree lives), the AFM MSA DB through `metadata/afm_msa_filelist` (raw MSAs + the
 generated one) -- so raw is never edited.
 
-`intermediate/msa` holds only teddymer's MSAs; PDB's are supplied and live in
-`reference/msa`. Anything that scans a directory to find its queries (the MSA and template
-searches do) is scoped by which tree it points at, so keep the two apart. Legacy leftovers
+The teddymer MSAs are supplied too, in their own tree (`reference/msa_teddymer`), apart from
+the PDB ones (`reference/msa`): anything that scans a directory to find its queries (the MSA
+and template searches do) is scoped by which tree it points at. Legacy leftovers
 that no build reads (old LMDBs, the s5cmd client, download scripts and logs, `hhm/`, `hhr/`)
 stay outside the tree, in `/data/shared/cssb_data/BioMol/materials/intermediate/`.
 

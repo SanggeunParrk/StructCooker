@@ -33,14 +33,17 @@ The PDB and OpenFold MSAs are provided inputs; the release build does not
 rerun their HHblits search (the `search.msa_search_hhblits` recipe has no `db/`
 config). See [MSA reproduction](../msa-reproduction.md).
 
-Teddymer MSAs are searched with **MMseqs2** (CPU) against UniRef30 2302 only:
+Teddymer MSAs were searched once with **MMseqs2** (CPU) against UniRef30 2302 only; the
+result is a supplied input (`materials/reference/msa_teddymer`) and the release build does
+not search again. `teddymer/msa_search` is outside the release DAG, for sequences that have
+no MSA yet:
 
 - Split recipe: `structcooker.workflows.metadata.load_protein_sequence_chunks`
 - Recipe: `structcooker.workflows.search.msa_search_mmseqs`
 - Config (parallel): `db/teddymer/msa_search.yaml` — `threads: 28`,
   `chunk_size: 1000`, `n_jobs: 4` (4 × 28 = 112 CPUs per node), `node_count: 8`;
   queries from `materials/intermediate/worklists/seq_id_map_TDM.tsv`
-- Output: `<seq_id>.a3m` under `BIOMOL_ROOT/materials/intermediate/msa/`, in the
+- Output: `<seq_id>.a3m` under `BIOMOL_ROOT/materials/reference/msa_teddymer/`, in the
   layout the a3m ingest reads (`db/teddymer/msa.yaml`).
 
 ```bash

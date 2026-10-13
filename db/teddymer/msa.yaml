@@ -13,7 +13,7 @@
 schema: E
 
 env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/teddymer/msa/msa_teddymer.lmdb}
-data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/msa}
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/msa_teddymer}   # searched once (teddymer/msa_search); a supplied input since
 file_pattern: "P/*/P*/P*.a3m"
 
 recipe: ${p:src/structcooker/workflows/ingest/a3m.py}

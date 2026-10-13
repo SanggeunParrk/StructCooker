@@ -26,9 +26,10 @@
 #   Clustering is per DB (cTDM_<rep seq_id>, metadata/teddymer_seq_cluster30), so adding
 #   teddymer moved no PDB/OFD cluster label.
 #
-# MSA + TEMPLATE. teddymer/msa_search (MMseqs2 vs uniref30_2302) writes the a3m files to
-# BioMol_clean/materials/intermediate/msa over the metadata/teddymer_seq_id_map list, as an
-# 8-node array (node_count: 8). teddymer/msa and teddymer/msa_wo_lower read that tree.
+# MSA + TEMPLATE. The MSAs were searched once (teddymer/msa_search: MMseqs2 vs uniref30_2302,
+# ~2 days on 8 nodes) and are a supplied input, materials/reference/msa_teddymer, keyed by
+# the release seq_ids (materials/reference/seq_id_map_seed.tsv keeps them). teddymer/msa and
+# teddymer/msa_wo_lower read that tree; msa_search is run by hand only for new sequences.
 
 metadata/cif_fasta: []                                  # PDB fasta (template chain seqs); built in MANIFEST.yaml
 metadata/cif_metadata: []                               # PDB release dates; built in MANIFEST.yaml
@@ -41,10 +42,9 @@ metadata/teddymer_seq_id_map: [metadata/teddymer_fasta, metadata/seq_id_map]   #
 metadata/teddymer_seq_cluster30: [metadata/teddymer_fasta, metadata/seq_id_map]
 teddymer/cif_attached: [teddymer/cif, metadata/teddymer_fasta, metadata/seq_id_map, metadata/teddymer_seq_cluster30]
 metadata/pdb_polypeptide_L: [metadata/cif_fasta]        # template target; built in MANIFEST.yaml
-teddymer/msa_search: [metadata/teddymer_seq_id_map]
-teddymer/msa: [teddymer/msa_search]
+teddymer/msa: []
 teddymer/msa_d2k: [teddymer/msa]
-teddymer/msa_wo_lower: [teddymer/msa_search]
+teddymer/msa_wo_lower: []
 teddymer/hmmsearch: [teddymer/msa_wo_lower, metadata/pdb_polypeptide_L]   # template Phase 0
 teddymer/template_candidates: [teddymer/hmmsearch, metadata/teddymer_seq_id_map, metadata/cif_metadata, metadata/cif_fasta]   # Phase 1/2 per seq_id
 teddymer/template: [teddymer/template_candidates, chain/cif_chain]                  # Phase 3 + top-20 -> final DB

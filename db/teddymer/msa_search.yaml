@@ -1,3 +1,7 @@
+# NOT part of the release DAG (2026-10-13): the 999,853 teddymer MSAs were searched once and
+# are a supplied input (materials/reference/msa_teddymer), like the PDB HHblits MSAs. Run this
+# only to search sequences that have none (e.g. after adding teddymer entries):
+#   structcooker build teddymer/msa_search
 # teddymer MSA search — MMseqs2 (CPU), batched per chunk.
 #
 # Replaces the HHblits path for teddymer. Measured on 716 teddymer domains that had gone
@@ -26,7 +30,7 @@ inputs:
   chunk_size: 1000
   seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/worklists/seq_id_map_TDM.tsv}
   work_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/mmseqs_tmp}
-  output_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/msa/}
+  output_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/msa_teddymer/}
 split_recipe_path: ${p:src/structcooker/workflows/metadata/load_protein_sequence_chunks.py}
 recipe_path: ${p:src/structcooker/workflows/search/msa_search_mmseqs.py}
 # 4 chunks x 28 threads = 112 CPUs. Few, fat processes on purpose: --db-load-mode 2

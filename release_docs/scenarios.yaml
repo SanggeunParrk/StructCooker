@@ -94,7 +94,8 @@
     - {path: materials/reference, note: "supplied inputs; without them a build is self-consistent but not identical to this release"}
     - {path: materials/intermediate, note: "staged and derived inputs"}
   notes: >-
-    Plus the StructCooker repository and the shared search databases (SEQ_DB_ROOT:
-    UniRef30 2302, MMseqs2) for the Teddymer MSA search. `structcooker build-all` writes
+    Plus the StructCooker repository. Every MSA the build reads is a download or a supplied
+    input; a search database (SEQ_DB_ROOT: UniRef30 2302, MMseqs2) is needed only to search
+    new Teddymer sequences (teddymer/msa_search). `structcooker build-all` writes
     lmdb/ and metadata/ afresh; `structcooker patch` rebuilds selected records of one
     database in place.

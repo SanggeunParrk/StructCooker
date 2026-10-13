@@ -21,8 +21,9 @@ These cannot be derived from the downloads; each pins part of the result to the 
 
 | input | fixes |
 |---|---|
-| `seq_id_map_seed.tsv` | the seq_id numbering; new sequences are appended after it |
+| `seq_id_map_seed.tsv` | the seq_id numbering (this release's map); new sequences are appended after it |
 | `msa/` | the PDB protein/RNA MSAs (HHblits, searched once) |
+| `msa_teddymer/` | the Teddymer MSAs (MMseqs2 vs UniRef30 2302, searched once) |
 | `openfold_distillation/{fasta,disordered_set}` | the OFD sequence set and the disordered work lists |
 | `signalp/` | signal-peptide predictions used to trim training structures (7-digit legacy ids, matched by counter) |
 | `reference_ccd.lmdb` | 24 historical CCD definitions older entries need |

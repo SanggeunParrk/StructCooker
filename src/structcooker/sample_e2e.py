@@ -282,7 +282,14 @@ class Sampler:
         chosen = pick(names, self.counts["teddymer"])
         for i in chosen:
             link(root / "pdb" / i[-3:] / names[i], self.s_raw / "teddymer/pdb" / i[-3:] / names[i])
-        self.report["teddymer"] = {"entries": [names[i] for i in chosen]}
+        # Their chains' MSAs: searched once, a supplied input keyed by the release seq_ids.
+        entries = {Path(names[i]).stem for i in chosen}
+        seqs = {s for h, s in read_fasta(self.inter / "fasta/teddymer.fasta")
+                if h.split()[0].rsplit("_", 2)[0] in entries}
+        seq_ids = [sid for sid, seq, *_ in tsv_rows(self.prod / "metadata/seq_id_map.tsv") if seq in seqs]
+        msas = sum(link_tree(self.ref / "msa_teddymer" / sid[0] / sid[-3:] / sid,
+                             self.s_ref / "msa_teddymer" / sid[0] / sid[-3:] / sid) > 0 for sid in seq_ids)
+        self.report["teddymer"] = {"entries": [names[i] for i in chosen], "seq_ids": len(seq_ids), "msas": msas}
 
     # -- AFDB multimer ----------------------------------------------------------------
     def afm(self) -> None:
