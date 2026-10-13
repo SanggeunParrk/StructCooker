@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from datetime import date
 from typing import cast
 
@@ -107,57 +106,6 @@ def filter_signalp_by_sequence(
     return cast("dict", filtered.to_dict()) if len(filtered.residues) else None
 
 
-def filter_a3m(
-    max_msa_depth: int = 16_384,
-    gap_character: int = 31,
-) -> Callable:
-    """Filter instruction to select entries by resolution and date."""
-
-    def worker(
-        sequences: dict[str, np.ndarray],
-        headers: dict[str, np.ndarray],
-    ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
-        aligned_sequences, deletions = (
-            sequences["aligned_sequences"],
-            sequences["deletions"],
-        )
-        msa_depth = aligned_sequences.shape[0]
-
-        if msa_depth < max_msa_depth:
-            return (
-                sequences,
-                headers,
-            )
-
-        gap_fraction = np.mean(
-            aligned_sequences == gap_character,  # gap character in a3m
-            axis=1,
-        )
-        sorted_indices = np.argsort(gap_fraction)
-        selected_indices = sorted_indices[:max_msa_depth]
-        aligned_sequences = aligned_sequences[selected_indices, :]
-        deletions = deletions[selected_indices, :]
-
-        sequences = {
-            "query_sequence": sequences["query_sequence"],
-            "aligned_sequences": aligned_sequences,
-            "deletions": deletions,
-            "deletion_mean": sequences["deletion_mean"],
-            "profile": sequences["profile"],
-        }
-
-        headers = {
-            "database": headers["database"][selected_indices],
-            "database_id": headers["database_id"][selected_indices],
-            "species": headers["species"][selected_indices],
-            "rep_id": headers["rep_id"][selected_indices],
-        }
-
-        return sequences, headers
-
-    return worker
-
-
 def filter_cifmol_by_token_count(
     cifmol: CIFMol | None,
     min_token_count: int = 1,
@@ -243,18 +191,3 @@ def filter_cifmol_by_clusters(
     return cast("dict", cifmol.to_dict())
 
 
-def filter_min_unresolved_residues(
-    cifmol: CIFMol | None,
-    min_unresolved_residues: int = 40,
-) -> CIFMol | None:
-    """Filter instruction to remove entries with unresolved residues."""
-    if cifmol is None:
-        return None
-    valid_xyz = cifmol.atoms.xyz.value
-    valid_mask = np.isfinite(valid_xyz).all(axis=1)
-    valid_residue_mask = np.zeros(len(cifmol.residues), dtype=bool)
-    valid_residue_mask[cifmol.index_table.atom_to_res[valid_mask]] = True
-    unresolved_residue_count = np.sum(~valid_residue_mask)
-    if unresolved_residue_count < min_unresolved_residues:
-        return None
-    return cifmol

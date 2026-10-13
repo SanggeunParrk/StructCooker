@@ -9,7 +9,6 @@ id space shared across DBs (docs/seq-id-and-cluster-scheme.md).
 
 from __future__ import annotations
 
-import json
 import os
 import re
 from pathlib import Path

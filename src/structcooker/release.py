@@ -5,8 +5,10 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
+from importlib.metadata import distributions
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -27,11 +29,77 @@ from structcooker.build_state import (
     write_json,
 )
 from structcooker.build_verify import verify_output
-from structcooker.production import encode_engine_paths, freeze_config, snapshot
 
 # Stages that finish together queue for the dispatch lock (held for a few sbatch calls).
 _DISPATCH_WAIT = 600
 _ACTIVE = {"PENDING", "RUNNING", "CONFIGURING", "COMPLETING", "SUSPENDED", "REQUEUED"}
+
+
+# -- frozen code and configs: a release runs the code it started with ----------------
+def encode_engine_paths(original: Any, resolved: Any) -> Any:
+    """Preserve nested Path types when round-tripping frozen config through YAML."""
+    if isinstance(original, Path):
+        return "${p:" + json.dumps(str(resolved)) + "}"
+    if isinstance(original, dict):
+        return {k: encode_engine_paths(v, resolved[k]) for k, v in original.items()}
+    if isinstance(original, (list, tuple)):
+        return [encode_engine_paths(v, r) for v, r in zip(original, resolved, strict=True)]
+    return resolved
+
+def snapshot(repo: Path, workdir: Path) -> tuple[Path, str]:
+    """Freeze source packages and dependency declarations before submitting any job."""
+    fingerprints = Fingerprints()
+    sources = [repo / "src", repo / "libs/datacooker/src", repo / "pyproject.toml", repo / "pixi.lock"]
+    contents = {str(p.relative_to(repo)): fingerprints.path(p) for p in sources}
+    runtime = {"python": sys.version, "packages": sorted((str(d.metadata.get("Name", "unknown")), d.version) for d in distributions())}
+    signature = digest({"contents": contents, "runtime": runtime})
+    destination = workdir / "snapshots" / signature
+    if not destination.exists():
+        temporary = destination.with_name(signature + "." + uuid4().hex)
+        temporary.mkdir(parents=True)
+        for source in sources:
+            if not source.exists():
+                continue
+            target = temporary / source.relative_to(repo)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if source.is_dir():
+                shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            else:
+                shutil.copy2(source, target)
+        temporary.rename(destination)
+        write_json(destination / "environment.json", runtime)
+    captured = {str(p.relative_to(repo)): fingerprints.path(destination / p.relative_to(repo)) for p in sources}
+    # Optional dependency declaration files may be absent in test repositories.
+    for source in sources:
+        if not source.exists():
+            captured[str(source.relative_to(repo))] = contents[str(source.relative_to(repo))]
+    if captured != contents:
+        msg = f"Code snapshot is incomplete or was modified: {destination}"
+        raise RuntimeError(msg)
+    return destination, signature
+
+def freeze_config(cfg: dict[str, Any], repo: Path, frozen: Path) -> dict[str, Any]:
+    """Resolve path objects and pin all recipe paths to the captured source tree."""
+    def convert(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: convert(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [convert(v) for v in value]
+        if callable(value):
+            module = getattr(value, "__module__", None)
+            name = getattr(value, "__qualname__", "")
+            if not module or not name or "<" in name:
+                msg = f"Config callable must be importable by name: {value}"
+                raise ValueError(msg)
+            return f"{module}.{name}"
+        if isinstance(value, Path):
+            if not value.is_absolute():
+                value = repo / value
+            value = str(value)
+        if isinstance(value, str) and value.startswith(str(repo / "src") + "/"):
+            return str(frozen / Path(value).relative_to(repo))
+        return value
+    return convert(cfg)
 
 
 def _read(path: Path) -> dict[str, Any]:

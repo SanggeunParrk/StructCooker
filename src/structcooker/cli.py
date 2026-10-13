@@ -28,7 +28,7 @@ from omegaconf import OmegaConf
 
 from structcooker import preflight, schemas, workflow_ops
 from structcooker.cluster import NODE_CORES, NODE_MEM_GB
-from structcooker.paths import biomol_root, mmcif_root, seq_db_root
+from structcooker.paths import biomol_root, seq_db_root
 
 REPO = Path(__file__).resolve().parents[2]          # StructCooker/
 DB_ROOT = REPO / "db"
@@ -36,7 +36,7 @@ PIPELINE_CLI = [sys.executable, "-u", "-m", "datacooker.cli.lmdb", "pipeline"]
 _SCHEMA_LINE = re.compile(r"^\s*schema\s*:.*$", re.MULTILINE)
 # Inputs a release build may fail on, per stage, each with its reason and SHA256: the PDB
 # entries the parser cannot map and the OpenFold alignment.npz files that are empty or
-# corrupt in the release (db/release-exceptions.json, a superset of pdb-exceptions.json).
+# corrupt in the release (db/release-exceptions.json).
 RELEASE_EXCEPTIONS = DB_ROOT / "release-exceptions.json"
 
 
@@ -189,38 +189,6 @@ def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
     if strict and (missing or errors):
         msg = "Preflight failed; resolve the inputs/dependencies listed above."
         raise click.ClickException(msg)
-
-
-_MANUAL_FIXES_PATH = REPO / "db" / "pdb" / "manual_cif_fixes.txt"
-
-
-@cli.command("fix-cif")
-@click.option("--source", "source", type=click.Path(exists=True, path_type=Path),
-              required=True, help="Corrected-cif snapshot (divided <id[1:3]>/ or flat; "
-                                  ".cif or .cif.gz). Provided input; see the docs.")
-@click.option("--dry-run", is_flag=True, help="Report what would be substituted, write nothing.")
-def fix_cif_cmd(source: Path, dry_run: bool) -> None:
-    """Overlay the manually-fixed mmCIFs the pdb/cif build needs, from a corrected snapshot.
-
-    A set of PDB entries (``db/pdb/manual_cif_fixes.txt``) error out from the current
-    wwPDB mmCIF -- mostly NMR ensembles with per-model-renumbered ligands -- so the
-    production build substituted an older, known-good cif for each before ingest. This
-    ports that step: it copies each id's corrected cif from ``--source`` into the mmCIF
-    input dir. Run it before ``structcooker build pdb/cif``. See docs/manual-cif-fixes.md.
-    """
-    from structcooker import cif_fixes
-
-    mmcif_dir = mmcif_root(biomol_root())
-    if not mmcif_dir.is_dir():
-        msg = f"mmCIF input dir not found: {mmcif_dir} (download mmcif first)."
-        raise click.ClickException(msg)
-    ids = cif_fixes.load_fix_ids(_MANUAL_FIXES_PATH)
-    applied, missing = cif_fixes.apply_fixes(ids, source, mmcif_dir, dry_run=dry_run)
-    verb = "would substitute" if dry_run else "substituted"
-    click.echo(f"{verb} {len(applied)}/{len(ids)} mmCIFs from {source} -> {mmcif_dir}")
-    if missing:
-        click.echo(f"  {len(missing)} not found in source (provide them): "
-                   f"{', '.join(missing)}")
 
 
 @cli.command("download")
@@ -628,51 +596,6 @@ def e2e_sample_verify(root: Path, manifest: Path) -> None:
 def main() -> None:
     """Entry point for ``python -m structcooker`` / the ``structcooker`` script."""
     cli()
-
-
-@cli.command("pdb-build")
-@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_pdb.yaml")
-@click.option("--run-dir", type=click.Path(path_type=Path), required=True)
-@click.option("--policy", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "pdb-exceptions.json")
-@click.option("--rebuild-untracked", is_flag=True, help="Explicitly allow rebuilding existing outputs without receipts.")
-def pdb_build(manifest: Path, run_dir: Path, policy: Path, rebuild_untracked: bool) -> None:
-    """Build PDB outputs with content identities, verified receipts, and safe restart."""
-    from structcooker.production import execute_manifest
-
-    try:
-        results = execute_manifest(REPO, manifest, run_dir.resolve(), policy,
-                                   rebuild_untracked=rebuild_untracked)
-    except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
-        raise click.ClickException(str(exc)) from exc
-    click.echo(f"Verified {len(results)} nodes: {results}")
-
-
-@cli.command("pdb-status")
-@click.option("--run-dir", type=click.Path(exists=True, path_type=Path), required=True)
-def pdb_status(run_dir: Path) -> None:
-    """Read durable node states without scanning datasets or submitting any jobs."""
-    import json
-
-    for path in sorted((run_dir / "nodes").rglob("state.json")):
-        state = json.loads(path.read_text())
-        name = path.parent.relative_to(run_dir / "nodes")
-        click.echo(f"{name}: {state.get('phase', 'unknown')} job={state.get('job', '-')} "
-                   f"error={state.get('error') or '-'}")
-
-
-@cli.command("release-build")
-@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_distillation.yaml")
-@click.option("--run-dir", type=click.Path(path_type=Path), required=True)
-@click.option("--policy", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "distillation-exceptions.json")
-def release_build(manifest: Path, run_dir: Path, policy: Path) -> None:
-    """Submit or resume a release DAG without a resident scheduler controller."""
-    from structcooker.release import start
-
-    try:
-        start(REPO, manifest, run_dir.resolve(), policy)
-    except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
-        raise click.ClickException(str(exc)) from exc
-    click.echo(f"Submitted/resumed release; status: {run_dir / 'summary.json'}")
 
 
 @cli.group("foldbench")

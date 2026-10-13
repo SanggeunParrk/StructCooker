@@ -200,7 +200,7 @@ class Sampler:
             ids = {k[:4] for k in index_keys(self.prod / "lmdb" / f"{db}.index.tsv")}
             for i in pick((i for i in ids if sizes.get(i, PDB_MAX_BYTES + 1) <= PDB_MAX_BYTES), PDB_SEEDS_PER_DB, salt=db):
                 chosen.setdefault(i, f"seed:{db}")
-        policy = json.loads((Path(__file__).resolve().parents[2] / "db/pdb-exceptions.json").read_text())
+        policy = json.loads((Path(__file__).resolve().parents[2] / "db/release-exceptions.json").read_text())
         for i in policy.get("pdb/cif", {}):
             chosen.setdefault(i, "accepted failure")
         fixes = Path(__file__).resolve().parents[2] / "db/pdb/manual_cif_fixes.txt"

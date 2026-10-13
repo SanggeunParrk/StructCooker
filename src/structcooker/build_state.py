@@ -7,15 +7,10 @@ import json
 import os
 import tempfile
 import time
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
-
-
-class BuildFailedError(RuntimeError):
-    """The recorded terminal job can no longer publish an output."""
 
 
 def digest(value: object) -> str:
@@ -138,67 +133,3 @@ class Fingerprints:
         return {str(child.relative_to(path)): hashes[str(child)] for child in children}
 
 
-class BuildState:
-    """One node's persistent submit/wait/verify state; never trust output existence."""
-
-    def __init__(self, path: Path) -> None:
-        self.path = path
-        self.data: dict[str, Any] = json.loads(path.read_text()) if path.exists() else {}
-
-    def save(self, **fields: Any) -> None:
-        """Persist a state transition."""
-        self.data.update(fields)
-        write_json(self.path, self.data)
-
-    def run(
-        self, *, identity: str, submit: Callable[[], str], wait: Callable[[str], None],
-        verify: Callable[[], Mapping[str, object]], unchanged: Callable[[], bool],
-        output_signature: Callable[[], object],
-    ) -> str:
-        """Reuse verified outputs, resume a recorded job, or submit a new attempt."""
-        previous = self.data.get("identity")
-        phase = self.data.get("phase")
-        if phase == "submitting":
-            msg = "Submission outcome is ambiguous; reconcile scheduler jobs before retrying."
-            raise RuntimeError(msg)
-        if phase == "submitted" and previous != identity:
-            msg = "Inputs changed while a recorded job is outstanding; finish or cancel it first."
-            raise RuntimeError(msg)
-        if phase == "complete" and previous == identity and self.data.get("output") == output_signature():
-            return "reused"
-        if phase not in {"submitted", "built"} or previous != identity:
-            self.save(phase="submitting", identity=identity, error=None)
-            try:
-                job = submit()
-                if not job:
-                    msg = "Submission returned no job ID"
-                    raise RuntimeError(msg)  # noqa: TRY301 - retain ambiguous submission state
-            except Exception as exc:
-                # A submitter may have created some jobs before losing its response.
-                self.save(error=str(exc))
-                raise
-            self.save(phase="submitted", job=job)
-        job = str(self.data["job"])
-        # Keep phase=submitted on an interrupted/unknown wait, so retry cannot
-        # submit a duplicate writer. Explicit scheduler reconciliation is required.
-        if self.data["phase"] != "built":
-            try:
-                wait(job)
-            except BuildFailedError as exc:
-                self.save(phase="failed", error=str(exc))
-                raise
-            except Exception as exc:
-                self.save(error=str(exc))
-                raise
-            self.save(phase="built")
-        try:
-            report = verify()
-            if not unchanged():
-                msg = "Build inputs changed during execution"
-                raise RuntimeError(msg)  # noqa: TRY301 - persist verification failure
-            signature = output_signature()
-        except Exception as exc:
-            self.save(phase="verification_failed", error=str(exc))
-            raise
-        self.save(phase="complete", output=signature, verification=dict(report), error=None)
-        return "built"

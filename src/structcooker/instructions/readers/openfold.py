@@ -57,7 +57,6 @@ def _map_changed(name: str, path: Path) -> bool:
     return changed
 
 
-
 def load_structure_overrides(manifest: Path) -> dict[str, Path]:
     """Read an OPENFOLD_STRUCTURE_OVERRIDES manifest: ``{original: replacement}``.
 
@@ -193,37 +192,6 @@ def get_openfold_structure_data(structure_path: Path) -> dict[str, Any]:
     with np.load(_structure_path(structure_path), allow_pickle=True) as handle:
         atom_site_dict = {field: handle[field] for field in handle.files}
     return {"atom_site_dict": atom_site_dict, "entry_id": structure_path.parent.name}
-
-
-def get_disordered_template_data(npz_path: Path) -> dict[str, Any]:
-    """Load one disordered template chain (``templates/<id>/<id>_<chain>.npz``).
-
-    Same atom-table schema as ``structure.npz`` (reuses the structure recipe),
-    but the entry id is the file stem (``<id>_<chain>``). The per-folder
-    ``chain_id_to_moltype.npz`` index is skipped (raises so the runner drops it).
-    """
-    if npz_path.name == "chain_id_to_moltype.npz":
-        msg = "moltype index, not a template chain"
-        raise ValueError(msg)
-    out = get_openfold_structure_data(npz_path)
-    out["entry_id"] = npz_path.stem
-    return out
-
-
-def get_disordered_template_group(moltype_path: Path) -> dict[str, Any]:
-    """Load all template chains of one disordered query folder.
-
-    Anchored on the per-folder ``chain_id_to_moltype.npz`` (one per query, so the
-    build key is the query id), this reads every sibling ``<id>_<chain>.npz`` atom
-    table and returns them keyed by file stem (the template hit id).
-    """
-    templates: dict[str, Any] = {}
-    for npz_path in sorted(moltype_path.parent.glob("*.npz")):
-        if npz_path.name == "chain_id_to_moltype.npz":
-            continue
-        with np.load(npz_path, allow_pickle=True) as handle:
-            templates[npz_path.stem] = {field: handle[field] for field in handle.files}
-    return {"templates_atom_site_dict": templates}
 
 
 def get_disordered_template_chain(npz_path: Path) -> dict[str, Any]:

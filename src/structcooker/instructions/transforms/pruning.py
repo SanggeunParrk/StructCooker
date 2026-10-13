@@ -150,11 +150,6 @@ def load_pruned_cifmol(value: dict) -> CIFMolAttached:
     return CIFMolAttached.from_dict(cast("Any", restore_index_table(value)))
 
 
-def convert_to_pruned_cifmol(value: dict) -> dict[str, CIFMolAttached]:
-    """Reader adapter for a pruned DB: one record -> ``{"cifmol": CIFMolAttached}``."""
-    return {"cifmol": load_pruned_cifmol(value)}
-
-
 def _collect(
     container: FeatureContainer,
     level: str,

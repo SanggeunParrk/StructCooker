@@ -17,7 +17,7 @@ The sequences were already searched and the templates already resolved for the w
 byte-for-byte (the values are never decoded), and verifies that every lookup a ``data.yaml`` makes resolves.
 
 The few sequences the PDB-wide DBs do not cover (FoldBench's 3 chromophore-abbreviated entries and a 99-mer) were
-searched from scratch once with :func:`structcooker.instructions.transforms.msa.run_msa_search`; ``--fallback`` points
+searched from scratch once (HHblits, UniRef30 + BFD); ``--fallback`` points
 at a DB that already holds them, so a rebuild does not repeat that search.
 
 Sources are the release tree (``BIOMOL_ROOT``, e.g. ``/data/shared/cssb_data/BioMol_clean``), at the

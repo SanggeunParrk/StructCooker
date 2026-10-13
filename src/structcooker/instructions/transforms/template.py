@@ -5,7 +5,6 @@ import os
 import re
 import subprocess
 import time
-from collections.abc import Callable
 from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -16,7 +15,7 @@ import zstandard
 from biomol.core.index import IndexTable
 
 from structcooker.instructions.readers.io import load_bytes, load_raw_data
-from structcooker.mols import CIFMol, TemplateMol
+from structcooker.mols import CIFMol
 from structcooker.utils.seq_id import seq_id_from_name, seq_id_shard_path
 
 if TYPE_CHECKING:
@@ -277,50 +276,6 @@ def list_afm_msa_wo_lower(
     return items
 
 
-def parse_hmm_query_mapping(hmm_path: Path) -> tuple[dict[int, int], dict[int, int]]:
-    """Parse an HMMER3 .hmm file with 'MAP yes' into query<->HMM index maps.
-
-    Build:
-      1) query_to_hmm: query/MSA column index -> HMM index
-      2) hmm_to_query: HMM index -> query/MSA column index
-
-    Returns
-    -------
-    query_to_hmm, hmm_to_query
-    """
-    query_to_hmm: dict[int, int] = {}
-    hmm_to_query: dict[int, int] = {}
-
-    with hmm_path.open("r", encoding="utf-8") as f:
-        for line in f:
-            s = line.rstrip()
-
-            # node line pattern:
-            # <hmm_idx> <20 emission numbers> <map_idx> <consensus> <RF> <MM> <CS>
-            # example:
-            # 1  2.54915 ... 3.68851      3 l - - -
-            #
-            # capture:
-            #   group(1) = hmm_idx
-            #   group(2) = map_idx (query/MSA column)
-            #   group(3) = consensus residue
-            m = re.match(
-                r"^\s*(\d+)"  # HMM index
-                r"(?:\s+\S+){20}"  # 20 match emission scores
-                r"\s+(\d+)\s+([A-Za-z])"  # MAP index, consensus residue
-                r"(?:\s+\S+){3}\s*$",  # RF MM CS
-                s,
-            )
-            if m:
-                hmm_idx = int(m.group(1)) - 1  # convert to 0-based index
-                query_idx = int(m.group(2)) - 1
-
-                hmm_to_query[hmm_idx] = query_idx
-                query_to_hmm[query_idx] = hmm_idx
-
-    return query_to_hmm, hmm_to_query
-
-
 def extract_sequences(
     hmmsearch_output_path: Path,
     seqid2earliest_date: dict[str, time.struct_time],
@@ -386,68 +341,6 @@ def run_kalign(
             cover += 1
     coverage = cover / len(query_seq)
     return aligned_query_seq, aligned_template_seq, coverage
-
-
-def filter_and_align_template_chain_ids(
-    date_cutoff: str | None = None,
-    day_diff_cutoff: int = 60,
-    min_seq_len: int = 10,
-    min_query_coverage: float = 0.1,
-    max_query_coverage: float = 0.95,
-    topk: int = 20,
-) -> Callable[..., dict[str, tuple[str, str]]]:
-    """Return a function that filters and aligns template chain IDs based on metadata and query date."""
-    date_cutoff_time = (
-        time.strptime(date_cutoff, "%Y-%m-%d") if date_cutoff is not None else None
-    )
-
-    def _worker(
-        query_seq: str,
-        earliest_query_date: time.struct_time,
-        template_chain_ids: list[str],
-        metadata_dict: dict[str, dict],  # already filtered out signal peptide
-    ) -> dict[str, tuple[str, str]]:
-        """Worker function."""
-        align_results = {}
-        for chain_id in template_chain_ids:
-            metadata = metadata_dict.get(chain_id)
-            if metadata is None:
-                msg = f"Metadata not found for chain ID {chain_id}."
-                raise KeyError(msg)
-            deposit_date = metadata.get("deposition_date")
-            seq = metadata.get("sequence")
-            if deposit_date is None or seq is None:
-                msg = f"Deposit date or sequence not found in metadata for chain ID {chain_id}."
-                raise KeyError(msg)
-
-            # 1. Filter by date cutoff
-            if date_cutoff_time is not None and deposit_date > date_cutoff_time:
-                continue
-            # 2. Filter by day difference cutoff
-            day_diff = (
-                time.mktime(deposit_date) - time.mktime(earliest_query_date)
-            ) / (24 * 3600)
-            if day_diff < day_diff_cutoff:
-                continue
-
-            # 3. Filter by sequence length
-            if len(seq) < min_seq_len:
-                continue
-
-            # 4. Filter by query coverage
-            aligned_query_seq, aligned_template_seq, coverage = run_kalign(
-                query_seq=query_seq,
-                template_seq=seq,
-            )
-            if not (min_query_coverage <= coverage <= max_query_coverage):
-                continue
-
-            align_results[chain_id] = (aligned_query_seq, aligned_template_seq)
-            if len(align_results) >= topk:
-                break
-        return align_results
-
-    return _worker
 
 
 def load_cifmol(db_path: Path, pdb_id: str, chain_id: str) -> CIFMol:
@@ -563,26 +456,6 @@ def _within_atom_cap(assemblies: dict) -> dict:
     if not CIFCHAIN_MAX_ATOMS:
         return assemblies
     return {k: a for k, a in assemblies.items() if _atom_count(a) <= CIFCHAIN_MAX_ATOMS}
-
-
-def adapt_cif_record_to_chains(data: dict) -> dict:
-    """Reader adapter for the ``chain/cif_chain`` rebuild (split_entries + explode).
-
-    Splits a decoded cif record (``{assembly_dict, metadata_dict}``) into per-chain
-    sub-entries ``{base_chain: {"biomoldict": biomoldict}}`` -- best-occupancy
-    assembly per chain, via :func:`cif_record_to_chains` -- so the rebuild writes one
-    record per chain keyed ``<pdbid>_<base_chain>`` (Schema C). Assemblies above
-    ``CIFCHAIN_MAX_ATOMS`` are left out (the entry only if all of them are), and an
-    unparsable record is skipped too.
-    """
-    assemblies = _within_atom_cap(data.get("assembly_dict") or {})
-    if not assemblies:
-        return {}
-    try:
-        chains = cif_record_to_chains({**data, "assembly_dict": assemblies})
-    except Exception:  # noqa: BLE001 - skip unparsable records (reported as failed)
-        return {}
-    return {base: {"biomoldict": bd} for base, bd in chains.items()}
 
 
 def extract_backbone_indices_from_cifmol(
@@ -751,47 +624,6 @@ def to_template_mol(
         "index_table": index_table.to_dict(),
         "metadata": metadata,
     }
-
-
-def build_chain_template(
-    file_path: Path,
-    template_metadata_map: dict[str, dict],
-    chain2seqid: dict[str, str],
-    seqid2earliest_date: dict[str, time.struct_time],
-    filtered_seqid2seq: dict[str, str],
-    hmm_dir: Path,
-    cif_db_path: Path,
-    date_cutoff: str = "2021-09-30",
-    day_diff_cutoff: int = 60,
-    topk: int = 20,
-) -> dict:
-    """Build one chain's template mols, keyed by chain instead of seq_id.
-
-    ``file_path`` is the ``{pdbid}_{chain}`` work item. Template hits come from
-    the chain's seq_id hmmsearch output but are filtered against THIS chain's own
-    deposition date (not the sequence's earliest occurrence). Returns
-    ``{hit: template_mol}`` (empty dict if the chain has no usable templates).
-    """
-    chain = Path(file_path).name
-    seq_id = chain2seqid.get(chain)
-    meta = template_metadata_map.get(chain)
-    query_seq = filtered_seqid2seq.get(seq_id) if seq_id else None
-    if seq_id is None or meta is None or query_seq is None:
-        return {}
-    hmm_path = Path(hmm_dir) / seq_id[0] / seq_id[-3:] / f"{seq_id}.out"
-    if not hmm_path.exists():
-        return {}
-    template_chain_ids, _earliest, _q = extract_sequences(
-        hmm_path, seqid2earliest_date, filtered_seqid2seq,
-    )
-    # Drop hits absent from the metadata map (chains not in the current PDB set /
-    # naming mismatches); they carry no date or sequence to align against.
-    template_chain_ids = [h for h in template_chain_ids if h in template_metadata_map]
-    worker = filter_and_align_template_chain_ids(
-        date_cutoff=date_cutoff, day_diff_cutoff=day_diff_cutoff, topk=topk,
-    )
-    align_results = worker(query_seq, meta["deposition_date"], template_chain_ids, template_metadata_map)
-    return load_templates(Path(cif_db_path), align_results)
 
 
 _HMM_HIT_RE = re.compile(
@@ -1025,23 +857,6 @@ def load_templates_from_chain_db(
 
 
 # Unittest functions
-
-
-def length_check(
-    query_seq_id: str,
-    seqid2seq: dict[str, list[str]],
-    templatemol_dict: dict[str, TemplateMol],
-) -> str | None:
-    """Unittest function to check if the length of the query sequence matches the length of the template mol sequences."""
-    query_seq = seqid2seq.get(query_seq_id)
-    if not query_seq:
-        return f"Query sequence for ID {query_seq_id} not found."
-    query_seq = query_seq[0] if isinstance(query_seq, list) else query_seq
-    for full_id, template_mol in templatemol_dict.items():
-        template_seq_len = len(template_mol.residues)
-        if len(query_seq) != template_seq_len:
-            return f"Length mismatch for {full_id}: query length {len(query_seq)} != template length {template_seq_len}"
-    return None
 
 
 def adapt_cif_record_to_chain_inputs(data: dict) -> dict:
