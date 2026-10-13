@@ -1,11 +1,6 @@
 # distillation_long cif — CIFMol from OpenFold3 long-monomer distillation. Schema A. Build.
 #
-# Ports configs/ingest/openfold_structure_long.yaml onto the clean db/ surface:
-# reads each preprocessed structure.npz, rebuilds the residue/chain hierarchy and
-# derives chemistry from the CCD (openfold_structure recipe). Feeds long_cif_attached.
-#
-# The production distillation DBs already
-# exist; full builds must be audited against the supplied inputs.
+# Feeds long_cif_attached.
 #
 # Source: raw/<id>/best_structure_relaxed.pdb[.zst] (downloaded 2026-09-30..10-04), not
 # preprocessed/structure.npz: pLDDT in the B column -> b_factor, C-terminal OXT kept, chain 'A'

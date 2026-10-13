@@ -61,12 +61,10 @@ Run Ray tests and real builds on compute nodes, never the login node. The frozen
 September 10 release passed 112 tests (SLURM job 266534). Older MSA measurements
 apply to their historical implementation, not this recovery's performance claim.
 
-### Superseded old configs deleted (git-recoverable)
-`configs/ingest/cif_pdb_{light,medium,large,large_fast,xlarge,xlarge_fast,huge,monster}`,
-`cif_lmdb`, `cif_lmdb_refactor_test`, `filters/train_filter{,_20260224}`, `ingest/a3m_lmdb`,
-`ingest/ccd_lmdb` (14). Untracked-and-superseded, left for now (no git safety net):
-`cif_pdb_large_retry`, `cif_pdb_smoke`, `metadata/attach_cifpdb_revisit`, `ingest/ccd_lmdb_20260718`.
-`logs/` cleared (5894 files / 393 MB).
+### Retired local trees
+`configs/` (per-run datacooker configs, one per size tier) and `submits/` (their sbatch
+wrappers) were replaced by `db/` and `structcooker build`/`build-all`/`patch`; they were moved
+out of the checkout on 2026-10-13 (`/data/psk6950/StructCooker_archive_20261013/`).
 
 ## 🟡 Multi-stage — belongs to the step-4 pipeline DAG, not a single config
 

@@ -1,8 +1,7 @@
 # distillation_short cif_attached — attach sequence metadata onto the short base CIFMol.
 # Schema B. Rebuild. Now unblocked: the base cif_short already uses the wrapped
 # (assembly_dict/metadata_dict) layout the openfold_structure recipe emits, and the
-# seq_id_map / seq_cluster metadata is on the clean surface. Mirrors
-# configs/metadata/attach_cif_short_revisit. Full builds must include metadata and coverage audits.
+# seq_id_map / seq_cluster metadata is on the clean surface. Full builds must include metadata and coverage audits.
 schema: B
 
 old_env_path: ${p:${oc.env:OUTPUT_ROOT,${oc.env:DATA_ROOT,/data/shared/cssb_data}/BioMol_clean}/lmdb/distillation_short/cif/cif_short.lmdb}
