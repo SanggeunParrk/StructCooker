@@ -55,7 +55,7 @@ raw/
     │   ├── SOURCE.tsv      entity · release batch dir / tar member / generated · used by
     │   └── <last 3>/AF-<n>-msa_v1.a3m.zst
     └── download/           the release as fetched
-        ├── models/         chunk_*.tar  the full complex model release
+        ├── models/         the full model release, partly fetched (1,383 of 4,000 chunks); no build reads it
         ├── msas/           <batch>/     the MSA release (msa/ above are hard links into it)
         ├── homodimer_bundle/            high_conf_homodimers_manuscript_v1.tar.gz + extraction records
         ├── metadata/       homodimer_metadata.csv · model_entity_metadata_mapping.csv
