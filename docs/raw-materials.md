@@ -29,10 +29,10 @@ raw/
 │
 ├── openfold_distillation/                                        OFD — OpenFold3-preview2 distillation
 │   ├── monomer_distillation_sets_v2/   README.md (OpenFold's) · shared/reference_mols/
-│   │   ├── short_monomers/   preprocessed/ 430,420 · raw/ 430,420 · cache.json · cache_lmdb/
-│   │   └── long_monomers/    preprocessed/ 16,099,486 · raw/ 16,099,404 (relaxed models only) · cache.json · cache_lmdb/
-│   ├── rna_distillation_set/            rna_monomer_preprocessed_cache/ 126,780 (no raw)
-│   └── disordered_set/                  structure_files/ · templates/ 28,569 · alignment_arrays/
+│   │   ├── short_monomers/   preprocessed/ 430,418 · raw/ 430,418 · cache.json · cache_lmdb/
+│   │   └── long_monomers/    preprocessed/ 16,099,484 · raw/ 16,099,404 (relaxed models only) · cache.json · cache_lmdb/
+│   ├── rna_distillation_set/            rna_monomer_preprocessed_cache/ 126,778 (no raw)
+│   └── disordered_set/                  structure_files/ · templates/ 28,567 · alignment_arrays/
 │
 ├── teddymer/                                                     TDM — 510,454 TED domain pairs
 │   ├── README.md

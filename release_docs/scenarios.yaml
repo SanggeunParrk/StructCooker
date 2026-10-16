@@ -21,8 +21,8 @@
     - {path: lmdb/pdb/valid/cif_attached_valid_1.lmdb}
     - {path: lmdb/pdb/valid/cif_attached_valid_2.lmdb}
     - {path: metadata/seq_cluster30_PDB.tsv}
-    - {path: lmdb/pdb/msa/a3m_d2k.lmdb, note: "protein MSA, depth <= 2,000 (or a3m_d512 / a3m_d16k / a3m)"}
-    - {path: lmdb/pdb/msa/msa_rna_d2k.lmdb, note: "RNA MSA (or msa_rna_d512 / msa_rna)"}
+    - {path: lmdb/pdb/msa/a3m.lmdb, note: "protein MSA, uncapped depth (or a3m_d16k 153 GB / a3m_d2k 34 GB / a3m_d512 11 GB)"}
+    - {path: lmdb/pdb/msa/msa_rna.lmdb, note: "RNA MSA, uncapped (or msa_rna_d2k / msa_rna_d512)"}
     - {path: lmdb/chain/template/template.lmdb, note: "templates by chain"}
     - {path: lmdb/ccd/biomol_CCD.lmdb, note: "ligand chemistry"}
   optional:
@@ -36,13 +36,13 @@
     - {path: metadata/seq_cluster30_PDB.tsv}
 - id: distillation
   title: PDB plus OpenFold3 distillation
-  when: AF3-style training with the distillation sets; pick the MSA depth to fit the disk
+  when: AF3-style training with the distillation sets (MSAs at depth <= 2,000; pick a lower depth to fit the disk)
   take:
     - {path: lmdb/distillation_short/cif_attached/cif_short_attached.lmdb}
     - {path: lmdb/distillation_short/msa/msa_short_d2k.lmdb, note: "or d512 / d5k / full"}
     - {path: lmdb/distillation_short/template/template_topn_short.lmdb}
     - {path: lmdb/distillation_long/cif_attached/cif_long_attached.lmdb}
-    - {path: lmdb/distillation_long/msa/msa_long_d512.lmdb, note: "or d2k (3.5 TB) / full (18 TB)"}
+    - {path: lmdb/distillation_long/msa/msa_long_d2k.lmdb, note: "or d512 (1.1 TB) / full (18 TB)"}
     - {path: lmdb/distillation_long/template/template_topn_long.lmdb}
     - {path: lmdb/distillation_rna/cif_attached/cif_rna_attached.lmdb}
     - {path: lmdb/distillation_rna/msa/msa_rna_d2k.lmdb, note: "or d512 / d5k / full"}
@@ -64,7 +64,9 @@
     - {path: lmdb/afdb_multimer/template/template_afm.lmdb}
     - {path: metadata/seq_cluster30_TDM.tsv}
     - {path: metadata/seq_cluster30_AFM.tsv}
-  notes: Add everything from "PDB with MSAs and templates".
+  notes: >-
+    Add everything from "PDB with MSAs and templates". Teddymer is CC BY-NC 4.0 (non-commercial
+    use only; licenses.md).
 - id: foldbench
   title: FoldBench inference
   when: predicting the FoldBench targets
