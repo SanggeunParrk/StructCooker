@@ -190,6 +190,7 @@ DB_CODES: dict[str, str] = {
     "OFD": "OpenFold distillation",
     "TDM": "Teddymer",
     "AFM": "AFDB multimer",
+    "P40": "PDB, clustered at 40%",
 }
 
 

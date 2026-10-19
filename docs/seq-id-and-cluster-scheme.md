@@ -24,9 +24,12 @@ Three letters, fixed width, so the code is a slice and ids line up in columns.
 | `OFD` | OpenFold distillation (short / long / rna / disordered) | `metadata/seq_cluster30_OFD.tsv` |
 | `TDM` | Teddymer | `metadata/seq_cluster30_TDM.tsv` |
 | `AFM` | AFDB multimer | `metadata/seq_cluster30_AFM.tsv` |
+| `P40` | PDB at 40% identity (AF3's protein threshold), not in the release DAG | `metadata/seq_cluster40_PDB.tsv` |
 
-All four are clustered the same way: mmseqs2 at 30% identity, coverage 0.8
+The four release codes are clustered the same way: mmseqs2 at 30% identity, coverage 0.8
 (`db/metadata/*_seq_cluster30.yaml`, see [stages](stages.md#sequence-ids-and-clustering)).
+`P40` is the PDB clustered again at 40% (`db/metadata/pdb_seq_cluster40.yaml`, built on its own with
+`structcooker build metadata/pdb_seq_cluster40`): a code per threshold keeps `cP40_` ids from being read as `cPDB_` ones.
 
 `AFD` (AFDB monomer) is deliberately **not** reserved: there is no recipe and no plan. Adding a code later touches nothing that already exists.
 

@@ -1,0 +1,31 @@
+# pdb seq_cluster40 — mmseqs2 clusters at 0.40 identity, over PDB ONLY. MATERIALIZE op.
+#
+# The same procedure as pdb_seq_cluster30 with AF3's protein threshold (SI 2.5.3: proteins at 40%;
+# nucleic acids, peptides < 10 residues and ligands only identical ones share a cluster, which the
+# shared recipe already does). Not part of the release DAG: nothing reads it yet. Build it alone
+# (`structcooker build metadata/pdb_seq_cluster40`) to compare 30% and 40% sampling pools; attaching
+# it to a DB means pointing cif_attached and the validation stages at this table.
+#
+# Clustering is per-DB (docs/seq-id-and-cluster-scheme.md): every id written here is
+# cP40_<rep seq_id>: the code says which threshold made the cluster, so it cannot be mixed up with a cPDB_ one.
+# seq_id stays the one shared space, which is what still allows cross-DB comparison.
+#
+# PDB chains are experimentally determined and concentrated in a few well-studied organisms; their redundancy structure is nothing like a metagenomic prediction set.
+recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40_PDB.tsv}
+
+inputs:
+  db_code: P40
+  tmp_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/tmp/seq_cluster40_PDB}
+  # Shared id space: this DB's sequences must be in the map before clustering runs.
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+  # This DB's own consolidated fasta -- not a union corpus.
+  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cif_pdb.fasta}
+  sabdab_summary_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/sabdab/sabdab_summary_all.tsv}
+  mmseqs2_seq_id: 0.40
+  mmseqs2_cov: 0.8
+  mmseqs2_covmode: "0"
+  mmseqs2_clustermode: "1"
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_clusters
