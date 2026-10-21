@@ -54,6 +54,7 @@ Every command submits SLURM jobs and returns; nothing heavy runs where you type 
 | `structcooker release-docs` | write the release's own docs into `$BIOMOL_ROOT/docs` (Markdown pages + an `index.html` overview) |
 | `structcooker e2e-sample {prepare,run,status,verify} ROOT` | the release DAG on a sample of a few hundred inputs, compared with the release |
 | `structcooker foldbench {keys,build,verify}` | FoldBench inference DBs cut from the release by key |
+| `structcooker interface {annotate,build,finalize,split,validate}` | the PDB interface-unit DB (outside the `build-all` DAG; see [Interface DB](interface-db.md)) |
 
 ## Pages
 
@@ -63,5 +64,6 @@ Every command submits SLURM jobs and returns; nothing heavy runs where you type 
 - [Raw materials](raw-materials.md) — the `materials/{raw,reference,intermediate}` tree.
 - [seq_id and cluster scheme](seq-id-and-cluster-scheme.md) — one id space, per-DB clusters.
 - [FoldBench DBs](foldbench.md) — key-list subsets for FoldBench inference.
+- [Interface DB](interface-db.md) — the PDB cut into units of touching molecules (2..N, waters included), with a date split.
 - [Development](development.md) — tests, cluster settings, code layout, LMDB storage.
 - History — dated reports and superseded guides, kept as records.

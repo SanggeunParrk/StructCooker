@@ -667,5 +667,10 @@ def foldbench_verify(package: Path, out: Path) -> None:
     raise SystemExit(foldbench.main(["verify", str(package), str(out)]))
 
 
+from structcooker.interface.cli import interface_group  # noqa: E402
+
+cli.add_command(interface_group)
+
+
 if __name__ == "__main__":
     main()

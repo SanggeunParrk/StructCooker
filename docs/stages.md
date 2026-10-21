@@ -322,3 +322,10 @@ example after adding teddymer entries); it reads the search databases under `SEQ
 ```bash
 structcooker build teddymer/msa_search
 ```
+
+## Interface units (outside the release DAG)
+
+`lmdb/interface/pdb/interface_pdb.lmdb` is not a `db/` config: it is built by `structcooker interface build`
+from `lmdb/pdb/cif/cif_pdb.lmdb` (waters included, which `cif_pdb_attached` drops) with its own multiprocessing
+driver, because one input record fans out into many self-contained unit records. Rules, schema, split and
+reproduction: [Interface DB](interface-db.md).

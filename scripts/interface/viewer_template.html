@@ -1,0 +1,225 @@
+<title>Interface Unit Viewer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: unit list | 3D stage | facts and controls; stacks to stage, facts, list on a phone.
+   Palette: cool paper greys; one orange reserved for "interface"; water in blue. */
+:root {
+  --bg: #eef0f3; --panel: #ffffff; --ink: #1a2330; --muted: #596779; --line: #d6dce3;
+  --canvas: #fafbfc; --accent: #d95f0a; --accent-soft: #fbe6d6; --water: #3a95e6;
+  --chip-train: #2f7d4f; --chip-valid: #2f6fb0; --chip-hold: #7a5aa6; --chip-none: #7b8794;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141a; --panel: #171e26; --ink: #e5eaf0; --muted: #94a2b2; --line: #28313c;
+    --canvas: #0b1015; --accent: #ff8a2b; --accent-soft: #3a2616; --water: #5db0f5;
+    --chip-train: #5fbf86; --chip-valid: #6fa8e8; --chip-hold: #b499dc; --chip-none: #8896a6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141a; --panel: #171e26; --ink: #e5eaf0; --muted: #94a2b2; --line: #28313c;
+  --canvas: #0b1015; --accent: #ff8a2b; --accent-soft: #3a2616; --water: #5db0f5;
+  --chip-train: #5fbf86; --chip-valid: #6fa8e8; --chip-hold: #b499dc; --chip-none: #8896a6;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.45;
+  padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 24px; margin-bottom: 14px; }
+h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 0; flex: 1 1 320px; min-width: 0; }
+.rel { display: flex; flex-wrap: wrap; gap: 4px 18px; font-family: var(--mono); font-size: 12px; color: var(--muted); width: 100%; }
+.rel b { color: var(--ink); font-weight: 500; }
+.grid { display: grid; grid-template-columns: 250px minmax(0, 1fr) 310px; gap: 14px; align-items: start; }
+@media (max-width: 1000px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  #stage { order: 1; } #panel { order: 2; } #list { order: 3; }
+}
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+#list { padding: 6px; display: flex; flex-direction: column; gap: 2px; max-height: 78vh; overflow-y: auto; }
+#list button { all: unset; box-sizing: border-box; cursor: pointer; padding: 8px 10px; border-radius: 4px; display: grid; gap: 2px; }
+#list button:hover { background: var(--bg); }
+#list button[aria-current="true"] { background: var(--accent-soft); }
+#list button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cat { font-weight: 500; font-size: 13px; }
+.meta { font-family: var(--mono); font-size: 11.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: center; }
+.chip { font-family: var(--mono); font-size: 10.5px; padding: 0 6px; border-radius: 3px; border: 1px solid currentColor; line-height: 16px; }
+.chip.train { color: var(--chip-train); } .chip.valid { color: var(--chip-valid); }
+.chip.test { color: var(--chip-hold); } .chip.none { color: var(--chip-none); }
+#stage { position: relative; overflow: hidden; }
+#viewer { position: relative; width: 100%; height: clamp(380px, 74vh, 760px); background: var(--canvas); }
+#viewer canvas { display: block; }
+#hint { position: absolute; left: 10px; bottom: 8px; font-size: 11.5px; color: var(--muted); pointer-events: none; font-family: var(--mono); }
+#status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); padding: 24px; text-align: center; background: var(--canvas); }
+#panel { padding: 14px; display: grid; gap: 16px; min-width: 0; }
+#panel h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 6px; }
+#title { font-family: var(--mono); font-size: 15px; font-weight: 500; margin: 0; overflow-wrap: anywhere; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; margin: 0; }
+dt { color: var(--muted); } dd { margin: 0; font-family: var(--mono); font-size: 12.5px; text-align: right; }
+.ctl { display: grid; gap: 7px; }
+.ctl label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.ctl select, .ctl button { font: inherit; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; }
+.ctl button { cursor: pointer; } .ctl button:hover { border-color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.nodes { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.nodes li { display: grid; grid-template-columns: 12px 22px minmax(0, 1fr); gap: 8px; align-items: center; }
+.sw { width: 12px; height: 12px; border-radius: 2px; }
+.sw.round { border-radius: 50%; }
+.nodes .ch { font-family: var(--mono); font-weight: 500; }
+.nodes .lb { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.key { display: grid; gap: 5px; color: var(--muted); font-size: 12.5px; }
+.key span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; vertical-align: -1px; border-radius: 50%; background: var(--k); }
+.note { font-size: 12.5px; color: var(--muted); margin: 0; }
+</style>
+
+<div class="top">
+  <h1>Interface Unit Viewer</h1>
+  <p class="sub">PDB bioassemblies cut into units of 2 or more molecules in contact, with the waters around them. Example units, one per kind of interface.</p>
+  <div class="rel" id="rel"></div>
+</div>
+<div class="grid">
+  <nav id="list" class="card" aria-label="Example units"></nav>
+  <section id="stage" class="card">
+    <div id="viewer"></div>
+    <div id="hint">drag to rotate · scroll to zoom · hover for residue</div>
+    <div id="status">Loading structure viewer…</div>
+  </section>
+  <aside id="panel" class="card">
+    <div><h2>Unit</h2><p id="title"></p><div class="meta" id="chips" style="margin-top:4px"></div></div>
+    <div><h2>Facts</h2><dl id="facts"></dl></div>
+    <div class="ctl">
+      <h2>Display</h2>
+      <label>Colour <select id="mode"><option value="chain">by molecule</option><option value="iface">interface in orange</option></select></label>
+      <label>Water <select id="water"><option value="all">all</option><option value="bridge">bridging only</option><option value="off">hidden</option></select></label>
+      <label><input type="checkbox" id="sticks" checked> Interface residues as sticks</label>
+      <label><input type="checkbox" id="bases" checked> Nucleic-acid bases</label>
+      <label><input type="checkbox" id="lig" checked> Ligands and ions</label>
+      <div class="row"><button id="reset" type="button">Reset view</button><button id="spin" type="button" aria-pressed="false">Spin</button></div>
+    </div>
+    <div><h2>Molecules in this unit</h2><ul class="nodes" id="nodes"></ul></div>
+    <div><h2>Key</h2><div class="key">
+      <span style="--k: var(--accent)">interface residue: an atom within 5 Å of another molecule of the unit</span>
+      <span style="--k: var(--water)">water within 4 Å of the unit; larger and darker = bridging two molecules</span></div></div>
+    <p class="note" id="splitnote"></p>
+  </aside>
+</div>
+
+<script type="application/json" id="unit-data">/*DATA*/[]</script>
+<script type="application/json" id="head-data">/*HEAD*/{}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('unit-data').textContent);
+  const HEAD = JSON.parse(document.getElementById('head-data').textContent);
+  const $ = (id) => document.getElementById(id);
+  const PROT = ['#4c78a8', '#59a14f', '#b07aa1', '#76b7b2', '#9c755f', '#86b6e8', '#8cd17d', '#d4a6c8'];
+  const NA = ['#f28e2b', '#e8b04a', '#e15759'];
+  const AB = { H: 'antibody heavy chain', K: 'antibody kappa light chain', L: 'antibody lambda light chain',
+    A: 'TCR alpha', B: 'TCR beta', G: 'TCR gamma', D: 'TCR delta' };
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  let viewer = null, current = null, spinning = false;
+
+  const rel = [];
+  if (HEAD.units) rel.push(`<span><b>${HEAD.units}</b> units</span>`, `<span><b>${HEAD.entries}</b> PDB entries</span>`);
+  if (HEAD.train) rel.push(`<span>train <b>${HEAD.train}</b></span>`, `<span>valid <b>${HEAD.valid}</b></span>`, `<span>test <b>${HEAD.test}</b></span>`);
+  $('rel').innerHTML = rel.join('');
+
+  function nodeColor(u) {
+    let p = 0, n = 0;
+    return u.nodes.map((nd) => nd.kind === 'protein' ? PROT[p++ % PROT.length] : nd.kind === 'na' ? NA[n++ % NA.length] : '#e6c229');
+  }
+  function marks(pdb) {
+    const iface = {}, bridge = [];
+    for (const line of pdb.split('\n')) {
+      const rec = line.slice(0, 6);
+      if (rec !== 'ATOM  ' && rec !== 'HETATM') continue;
+      const ch = line[21], resi = parseInt(line.slice(22, 26), 10), b = parseFloat(line.slice(60, 66));
+      if (ch === 'W') { if (b >= 79) bridge.push(resi); }
+      else if (b >= 99) (iface[ch] = iface[ch] || new Set()).add(resi);
+    }
+    const out = {}; for (const k in iface) out[k] = [...iface[k]];
+    return { iface: out, bridge };
+  }
+
+  function draw(u) {
+    if (!viewer) return;
+    const cols = nodeColor(u), mk = marks(u.pdb);
+    const mode = $('mode').value, water = $('water').value;
+    const accent = css('--accent'), wcol = css('--water');
+    viewer.removeAllModels(); viewer.removeAllLabels();
+    viewer.addModel(u.pdb, 'pdb');
+    u.nodes.forEach((nd, i) => {
+      const sel = { chain: nd.chain }, col = cols[i], ifr = mk.iface[nd.chain] || [];
+      if (nd.kind === 'protein') viewer.setStyle(sel, { cartoon: { color: col } });
+      else if (nd.kind === 'na') viewer.setStyle(sel, $('bases').checked ? { cartoon: { color: col }, stick: { radius: 0.12, color: col } } : { cartoon: { color: col } });
+      else if (!$('lig').checked) viewer.setStyle(sel, {});
+      else if (nd.kind === 'ion') viewer.setStyle(sel, { sphere: { radius: 0.85, colorscheme: 'Jmol' } });
+      else viewer.setStyle(sel, { stick: { radius: 0.22, colorscheme: 'yellowCarbon' } });
+      if (nd.kind === 'protein' || nd.kind === 'na') {
+        if (ifr.length && $('sticks').checked) viewer.addStyle({ chain: nd.chain, resi: ifr }, { stick: { radius: 0.15, color: mode === 'iface' ? accent : col } });
+        if (ifr.length && mode === 'iface') viewer.addStyle({ chain: nd.chain, resi: ifr }, { cartoon: { color: accent } });
+      }
+    });
+    viewer.setStyle({ chain: 'W' }, {});
+    if (water === 'all') viewer.addStyle({ chain: 'W' }, { sphere: { radius: 0.3, color: wcol, opacity: 0.5 } });
+    if (water !== 'off' && mk.bridge.length) viewer.addStyle({ chain: 'W', resi: mk.bridge }, { sphere: { radius: 0.5, color: wcol, opacity: 1 } });
+    viewer.setHoverable({}, true,
+      (atom, v) => { if (!atom.label) atom.label = v.addLabel(`${atom.resn} ${atom.resi} · chain ${atom.chain} · ${atom.atom}`, { position: atom, backgroundColor: '#1a2330', backgroundOpacity: 0.85, fontColor: 'white', fontSize: 12 }); },
+      (atom, v) => { if (atom.label) { v.removeLabel(atom.label); delete atom.label; } });
+    viewer.render();
+  }
+  function frame() { viewer.zoomTo({ chain: 'W', invert: true }); viewer.render(); }
+
+  function info(u) {
+    $('title').textContent = u.id;
+    $('chips').innerHTML = `<span class="chip ${u.split || 'none'}">${u.split || 'unsplit'}</span><span>${u.type}</span>`;
+    const res = u.resolution == null ? 'n/a' : u.resolution.toFixed(2) + ' Å';
+    const facts = [['category', u.category], ['released', u.release_date], ['resolution', res], ['atoms', u.n_atoms.toLocaleString()],
+      ['interface residues', u.n_interface_res.toLocaleString()], ['waters', `${u.n_water.toLocaleString()} (${u.n_bridging.toLocaleString()} bridging)`]];
+    if (u.n_duplex) facts.push(['base-paired strand pairs', u.n_duplex]);
+    $('facts').innerHTML = facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+    const cols = nodeColor(u);
+    $('nodes').innerHTML = u.nodes.map((n, i) => {
+      const what = n.kind === 'ion' ? `ion ${n.label}` : n.kind === 'ligand' ? `ligand ${n.label}` : `${n.kind === 'na' ? 'nucleic acid' : 'protein'}, ${n.label}`;
+      const ab = n.ab ? ` · ${AB[n.ab] || n.ab}` : '';
+      return `<li><span class="sw ${n.kind === 'ion' ? 'round' : ''}" style="background:${cols[i]}"></span><span class="ch">${n.chain}</span><span class="lb">${what}${ab} · PDB chain ${n.auth}</span></li>`;
+    }).join('');
+    const sp = [];
+    if (u.split === 'valid' || u.split === 'test') {
+      sp.push(u.novel_protein === '1' ? 'No protein in this unit has its 30% sequence cluster in the training set.' : 'At least one protein here has its 30% cluster in the training set.');
+      sp.push(u.novel_pair === '1' ? 'The combination of clusters is new.' : 'The same combination of clusters occurs in training.');
+    } else if (u.split === 'train') sp.push('Released before 2021-09-30.');
+    $('splitnote').textContent = sp.join(' ');
+  }
+
+  function select(i) {
+    current = DATA[i]; info(current); draw(current); if (viewer) frame();
+    document.querySelectorAll('#list button').forEach((b, j) => b.setAttribute('aria-current', j === i ? 'true' : 'false'));
+    try { localStorage.setItem('ifviewer.unit', current.id); } catch (e) { /* storage may be blocked */ }
+  }
+
+  $('list').innerHTML = DATA.map((u) => `<button type="button"><span class="cat">${u.category}</span>` +
+    `<span class="meta"><span>${u.id}</span><span class="chip ${u.split || 'none'}">${u.split || 'unsplit'}</span></span></button>`).join('');
+  document.querySelectorAll('#list button').forEach((b, i) => b.addEventListener('click', () => select(i)));
+  ['mode', 'water', 'sticks', 'bases', 'lig'].forEach((id) => $(id).addEventListener('change', () => current && draw(current)));
+  $('reset').addEventListener('click', () => viewer && frame());
+  $('spin').addEventListener('click', () => { if (!viewer) return; spinning = !spinning; viewer.spin(spinning); $('spin').setAttribute('aria-pressed', spinning); });
+
+  function boot() {
+    if (!window.$3Dmol) { $('status').textContent = 'The structure viewer library did not load. Check the connection and reload.'; return; }
+    viewer = $3Dmol.createViewer($('viewer'), { backgroundColor: css('--canvas') });
+    $('status').hidden = true;
+    let start = 0;
+    try { const s = localStorage.getItem('ifviewer.unit'); const k = DATA.findIndex((u) => u.id === s); if (k >= 0) start = k; } catch (e) { /* ignore */ }
+    select(start);
+    const recolor = () => { viewer.setBackgroundColor(css('--canvas')); if (current) draw(current); };
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', recolor);
+    new MutationObserver(recolor).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    window.addEventListener('resize', () => { viewer.resize(); viewer.render(); });
+  }
+  boot();
+})();
+</script>

@@ -1,0 +1,38 @@
+# Interface-unit extraction thresholds. Every significant edge (node pair) seeds a unit; other
+# nodes touching the seed's interface residues join (one hop). Nodes: protein, na, ligand, ion.
+# Water is never a node; it is stored as context around the unit.
+contact:
+  cutoff: 5.0              # heavy-atom distance (A) for a contact
+  min_residues: 5          # polymer-polymer edge: contacting residues on BOTH sides
+  min_ligand_atoms: 3      # polymer-ligand edge: ligand heavy atoms in contact
+  min_ligand_residues: 2   # polymer-ligand edge: contacting polymer residues
+  ion_cutoff: 3.0          # ions: coordination distance (MetalPDB, InterMetalDB), N/O/S donors only
+  min_ion_residues: 1
+unit:
+  max_polymer_chains: 6    # joiners beyond this are dropped and the unit is flagged truncated
+  max_ligands: 4
+  max_ions: 8
+  max_forced_polymer: 10   # antibody partners / duplex strands bypass max_polymer_chains up to here
+  join_min_residues: 3     # a polymer joins if >= this many of ITS residues touch the seed interface
+  allowed_pairs:           # na-na / na-ligand are extension points
+    - [protein, protein]
+    - [protein, na]
+    - [protein, ligand]
+    - [protein, ion]
+    - [na, ion]
+assembly:
+  max_polymer_chains: 60   # larger assemblies (ribosome, capsid) are skipped
+  max_units: 200
+dedup:
+  weight_bucket: 5
+water:
+  near: 4.0                # keep waters within this of any unit atom
+  bridge: 3.5              # bridging = within this of atoms of >= 2 unit nodes
+ligand:
+  exclude_categories: [af3_crystallization_aids, extra_additives, solvent, monovalent_ions, detergents_lipids]   # other ions are nodes
+  min_heavy_atoms: 6       # applies to ligands, not ions
+duplex:                    # dsDNA / dsRNA: strands that base-pair are always bundled
+  min_bp: 4                # base pairs shared by two strands
+  min_hbonds: 2            # base N/O atom pairs within hb_cutoff for one pair
+  hb_cutoff: 3.5
+  c1_range: [8.0, 12.0]    # C1'-C1' distance of a base pair (A)

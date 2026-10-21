@@ -18,6 +18,8 @@ pixi run structcooker build-all --manifest db/MANIFEST_all.yaml --workdir /path/
 - [docs/e2e-build.md](docs/e2e-build.md) — the build runbook: downloads, staging, reference
   inputs, `build-all`, release check, patching.
 - [docs/stages.md](docs/stages.md) — what each stage builds and with which parameters.
+- [docs/interface-db.md](docs/interface-db.md) — the interface-unit DB of the PDB (2..N touching molecules, waters
+  included; train / valid / test by release date), built by `structcooker interface`.
 - [db/STATUS.md](db/STATUS.md) — what the current release holds, its known gaps and checks.
 
 Sequence ids are assigned counters: keep `materials/reference/seq_id_map_seed.tsv` (and the

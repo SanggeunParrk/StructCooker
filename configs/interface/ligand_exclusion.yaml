@@ -1,0 +1,64 @@
+# Ligands that never count as a binding partner. Edit freely; every code is a CCD id.
+# Each category can be switched off in configs/interface/interface.yaml (ligand.exclude_categories).
+
+# AlphaFold 3 SI, Table 9 ("crystallization aids" excluded from training and evaluation).
+# Transcribed from memory of the SI, NOT yet checked against the PDF: verify before release.
+af3_crystallization_aids: [SO4, GOL, EDO, PO4, ACT, PEG, DMS, TRS, PGE, PG4, FMT, EPE, MPD, MES, CD, IOD]
+
+# Our additions: further common crystallisation / cryo / buffer additives (proposal).
+extra_additives:
+  - 1PE   # PEG fragments
+  - 2PE
+  - PE3
+  - PE4
+  - PE5
+  - PE8
+  - P6G
+  - PG0
+  - PGO
+  - 15P
+  - 12P
+  - PEU
+  - IPA   # isopropanol
+  - EOH   # ethanol
+  - MOH   # methanol
+  - ACY   # acetic acid
+  - ACN   # acetonitrile
+  - BU3   # 2,3-butanediol
+  - BTB   # bis-tris
+  - TAM   # tris-like buffer
+  - MRD   # 2-methyl-2,4-pentanediol (R)
+  - CIT   # citrate
+  - FLC   # citrate
+  - TLA   # tartrate
+  - MLI   # malonate
+  - MLA
+  - OXL   # oxalate
+  - BME   # beta-mercaptoethanol
+  - DTT
+  - DTV
+  - EDT   # EDTA
+  - HEZ   # hexanediol
+  - TFA
+  - CAC   # cacodylate
+  - IMD   # imidazole
+  - NH4
+  - SCN
+  - AZI   # azide
+  - PI    # phosphate variants
+  - 2HP
+  - PO3
+  - SO3
+
+# Monatomic ions are graph nodes (kind "ion"), so most are NOT excluded. Weak / unspecific
+# monovalent ions and halides are the exception (in `monovalent_ions`, excluded by default):
+# they sit on protein surfaces everywhere and carry no interface information. Drop that category
+# from ligand.exclude_categories to keep them. IOD and CD are dropped via the AF3 list.
+monovalent_ions: [NA, K, LI, RB, CS, CL, BR, F, I]
+
+# Solvent.
+solvent: [HOH, DOD, WAT, H2O, D2O]
+
+# Detergents / lipids: ambiguous (real membrane-protein partners vs. extraction artefacts).
+# OFF by default in interface.yaml; flip on to drop them.
+detergents_lipids: [3PE, CDL, BOG, LMT, DDM, LDA, DAO, OLC, OLB, OLA, PLM, MYR, STE, C8E, LHG, LMN, CHD, CHT, SDS, HTG, UND, DMU, B3H, NG3, BNG, TWT, 6PL, PC1, PEE, POV, PGW, 12P]

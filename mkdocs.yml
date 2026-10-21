@@ -41,6 +41,7 @@ nav:
   - Raw materials: raw-materials.md
   - seq_id and cluster scheme: seq-id-and-cluster-scheme.md
   - FoldBench DBs: foldbench.md
+  - Interface DB: interface-db.md
   - Development: development.md
   - History:
       - Roadmap: history/roadmap.md
