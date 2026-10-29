@@ -27,6 +27,12 @@ metadata_dict}` (base structures), **B** attached CIFMol, **C** per-chain BioMol
 template mols, **E** `{msa_dict}`, **G** CCD `{chem_comp_dict}`, **H** pruned CIFMol (MPNN),
 **I** valid-1 filtered CIFMol.
 
+**Schema E token alphabet** (`msa_dict["sequences"]["aligned_sequences"]`, uint8; read off the stored records on
+2026-10-29, `scripts/analysis/msa_tokens.py`). Protein: `ARNDCQEGHILKMFPSTWYV` = 0..19, `X` and every other letter = 20.
+RNA: `A` 21, `U` 22, `G` 23, `C` 24, `N`/`X`/any other letter 25. Gap = 31 in both. The RNA order is A U G C, not A G C U;
+a consumer must not assume the second. The 58 RNA MSAs of the FoldBench DB follow it, record by record
+(`scripts/analysis/rna_msa_token_order.py`).
+
 ```bash
 structcooker list                          # every db config: op, schema, target
 structcooker build <group>/<name> --show   # resolved invocation, no submit
