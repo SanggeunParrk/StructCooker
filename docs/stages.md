@@ -49,7 +49,7 @@ flowchart LR
     ofdfa[OFD reference fastas] --> sid
     tdmcif --> tdmfa[teddymer.fasta] --> sid
     afmcif --> afmfa[afm.fasta] --> sid
-    sid --> clu["seq_cluster30_{PDB,OFD,TDM,AFM}"]
+    sid --> clu["seq_cluster40_{PDB,OFD,TDM,AFM}"]
     cif & sid & clu --> att[(cif_attached DBs)]
     att --> trainvalid[(train / valid / mpnn)]
     cif --> chain[(chain/cif_chain)]
@@ -98,7 +98,7 @@ hmmsearch over the PDB polypeptide(L) chains (PDB, teddymer, AFM) or from the Op
 - Attach (`workflows/metadata/attach.py`, metadata recipe `load_sequence_metadata.py`,
   adapter `transforms.cifmol.convert_to_cifmol_dict`, `split_entries: true`) is the same for
   every set; `metadata_input` names the set's FASTA, `seq_id_map.tsv`, its
-  `seq_cluster30_<DB>.tsv` and `db_code`.
+  `seq_cluster40_<DB>.tsv` and `db_code`.
 - `chain/cif_chain`: recipe `exports/cif_chain.py`, adapter
   `transforms.template.adapt_cif_record_to_chain_inputs`, `explode_entries: true`
   (`explode_value_key: biomoldict`). Each chain comes from the best-occupancy model;
@@ -130,9 +130,9 @@ space for every DB, one clustering per DB.
 - Per-DB views of the map: `metadata/teddymer_seq_id_map`, `metadata/afm_seq_id_map`
   (`subset_seq_id_map.py`; fail if a sequence has no id), `metadata/distillation_monomer_seqid`
   (entry → seq_id for the OFD short/long/rna MSA keys), `metadata/afm_msa_seqid`.
-- Clustering: `metadata/{pdb,ofd,teddymer,afm}_seq_cluster30` (`search/seq_cluster.py`,
-  writer `projections.write_clusters`) → `$R/metadata/seq_cluster30_{PDB,OFD,TDM,AFM}.tsv`,
-  ids `c<DB>_<rep seq_id>`. All four: `mmseqs2_seq_id: 0.30`, `mmseqs2_cov: 0.8`,
+- Clustering: `metadata/{pdb,ofd,teddymer,afm}_seq_cluster40` (`search/seq_cluster.py`,
+  writer `projections.write_clusters`) → `$R/metadata/seq_cluster40_{PDB,OFD,TDM,AFM}.tsv`,
+  ids `c<DB>_<rep seq_id>`. All four: `mmseqs2_seq_id: 0.40`, `mmseqs2_cov: 0.8`,
   `mmseqs2_covmode: "0"`, `mmseqs2_clustermode: "1"`, with the SAbDab summary
   (`materials/raw/sabdab/sabdab_summary_all.tsv`) for antibody handling.
 
@@ -277,7 +277,7 @@ domain-domain interface, not two proteins), staged by `scripts/staging/stage_ted
 | Stage | Op / schema | Notes |
 |---|---|---|
 | `teddymer/cif` | build, A | `ingest/teddymer_structure.py`, loader `readers.teddymer.get_teddymer_structure_data`, key `teddymer_entry_key`; bonds derived from the CCD |
-| `metadata/teddymer_fasta` → `teddymer_seq_cluster30` → `teddymer/cif_attached` | extract / materialize / rebuild B | `db_code: TDM` |
+| `metadata/teddymer_fasta` → `teddymer_seq_cluster40` → `teddymer/cif_attached` | extract / materialize / rebuild B | `db_code: TDM` |
 | `teddymer/msa`, `msa_d2k` | build E / rebuild E | `reference/msa_teddymer/P/*/P*/P*.a3m`; cap 2000 |
 | `teddymer/msa_wo_lower` → `teddymer/hmmsearch` | parallel | `_TDM` trees; `load_pending_a3m_list.py` lists only queries without a `.out`, `node_count: 8` |
 | `teddymer/template_candidates` | materialize | `ingest/template_candidates_seqid.py`: per seq_id, `date_cutoff: "2021-09-30"`, `max_candidates: 60`, `n_jobs: 112` |
@@ -300,7 +300,7 @@ heterodimers (`passes_quality_threshold`, mmCIF), staged by
 |---|---|---|
 | `afdb_multimer/homodimer_cif` | build, A | the teddymer PDB reader and recipe, unchanged |
 | `afdb_multimer/heterodimer_cif` | build, A | the PDB path (`ingest/cif.py`, `readers.afdb.get_afm_cif_data`); 6 repaired files substituted through `AFM_CIF_OVERRIDES` |
-| `metadata/afm_*_fasta`, `afm_seq_cluster30`, `afm_seq_id_map` | extract / materialize | one `afm.fasta`; `cAFM_` clusters |
+| `metadata/afm_*_fasta`, `afm_seq_cluster40`, `afm_seq_id_map` | extract / materialize | one `afm.fasta`; `cAFM_` clusters |
 | `afdb_multimer/{homo,hetero}dimer_cif_attached` | rebuild, B | `db_code: AFM` |
 | `metadata/afm_msa_filelist`, `afm_msa_seqid` | materialize | release MSAs in `raw/afdb_multimer/msa/` + the one generated MSA; entity → seq_id (heterodimer chains via `chain_msa.tsv`) |
 | `afdb_multimer/msa`, `msa_d2k` | build E / rebuild E | `key_builder: afm_msa_seqid_key`; `map_size` 1.5 TB / 600 GB |

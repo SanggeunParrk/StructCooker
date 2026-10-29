@@ -12,7 +12,7 @@ metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.
 metadata_input:
   raw_fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/openfold_distillation/fasta/rna.fasta}
   seqid2seq_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30_OFD.tsv}
+  seqcluster_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40_OFD.tsv}
   db_code: OFD
 
 split_entries: true

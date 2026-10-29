@@ -88,5 +88,5 @@ db/
   distillation/   …        # OpenFold distillation (OFD): short / long / rna / disordered
   teddymer/       cif  cif_attached  msa  msa_d2k  msa_wo_lower  hmmsearch  (msa_search: by hand)
   afdb_multimer/  {homo,hetero}dimer_cif(_attached)  msa  msa_d2k
-  metadata/       …        # fasta / seq_id_map (shared) / <db>_seq_cluster30 (per DB)
+  metadata/       …        # fasta / seq_id_map (shared) / <db>_seq_cluster40 (per DB)
 ```

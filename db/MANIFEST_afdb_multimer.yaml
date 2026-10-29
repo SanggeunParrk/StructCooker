@@ -16,9 +16,9 @@ metadata/afm_homodimer_fasta: [afdb_multimer/homodimer_cif]
 metadata/afm_heterodimer_fasta: [afdb_multimer/heterodimer_cif]
 metadata/afm_fasta: [metadata/afm_homodimer_fasta, metadata/afm_heterodimer_fasta]
 metadata/seq_id_map: [metadata/afm_fasta, metadata/cif_fasta]                     # shared; AFM appended last
-metadata/afm_seq_cluster30: [metadata/afm_fasta, metadata/seq_id_map]
-afdb_multimer/homodimer_cif_attached: [afdb_multimer/homodimer_cif, metadata/afm_fasta, metadata/seq_id_map, metadata/afm_seq_cluster30]
-afdb_multimer/heterodimer_cif_attached: [afdb_multimer/heterodimer_cif, metadata/afm_fasta, metadata/seq_id_map, metadata/afm_seq_cluster30]
+metadata/afm_seq_cluster40: [metadata/afm_fasta, metadata/seq_id_map]
+afdb_multimer/homodimer_cif_attached: [afdb_multimer/homodimer_cif, metadata/afm_fasta, metadata/seq_id_map, metadata/afm_seq_cluster40]
+afdb_multimer/heterodimer_cif_attached: [afdb_multimer/heterodimer_cif, metadata/afm_fasta, metadata/seq_id_map, metadata/afm_seq_cluster40]
 metadata/afm_msa_seqid: [metadata/afm_fasta, metadata/seq_id_map]   # + heterodimer/chain_msa.tsv (staged)
 metadata/afm_msa_filelist: []                           # raw release MSAs + intermediate generated one
 afdb_multimer/msa: [metadata/afm_msa_seqid, metadata/afm_msa_filelist]

@@ -15,7 +15,7 @@ metadata_recipe: ${p:src/structcooker/workflows/metadata/load_sequence_metadata.
 metadata_input:
   raw_fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cif_pdb.fasta}
   seqid2seq_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30_PDB.tsv}
+  seqcluster_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40_PDB.tsv}
   db_code: PDB
 
 split_entries: true

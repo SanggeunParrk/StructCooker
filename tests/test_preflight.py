@@ -63,7 +63,7 @@ def test_portable_config_paths(monkeypatch, tmp_path):
                      for p in ("pdb/cif_attached.yaml", "valid/valid1_attach.yaml", "valid/valid2.yaml")]
     cluster_paths.append(configs["metadata/interacting_seq_clusters.yaml"]["inputs"]["seqcluster_path"])
     assert len(set(cluster_paths)) == 1
-    assert cluster_paths[0] == configs["metadata/pdb_seq_cluster30.yaml"]["output_data_path"]
+    assert cluster_paths[0] == configs["metadata/pdb_seq_cluster40.yaml"]["output_data_path"]
     assert preflight.download_hint(mmcif_root(tmp_path / "root"), str(tmp_path / "root")) == "mmcif"
     assert preflight.download_hint(Path("/elsewhere/materials/raw/cif"), str(tmp_path / "root")) is None
 

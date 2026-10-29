@@ -13,7 +13,7 @@ metadata_input:
   # From the PDB-built short_cif (chain 'A'): metadata/ofd_short_fasta.
   raw_fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/ofd_short.fasta}
   seqid2seq_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
-  seqcluster_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30_OFD.tsv}
+  seqcluster_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40_OFD.tsv}
   db_code: OFD
 
 split_entries: true

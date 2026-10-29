@@ -8,7 +8,7 @@
     - {path: lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb, note: "train: released by 2021-09-30, res <= 9 A, <= 300 chains"}
     - {path: lmdb/pdb/valid/cif_attached_valid_1.lmdb, note: "valid: released 2021-09-30 .. 2023-09-30"}
     - {path: lmdb/pdb/valid/cif_attached_valid_2.lmdb, note: "valid1 minus clusters connected to train"}
-    - {path: metadata/seq_cluster30_PDB.tsv, note: "cluster sampling weights"}
+    - {path: metadata/seq_cluster40_PDB.tsv, note: "cluster sampling weights"}
   optional:
     - {path: lmdb/pdb/cif_attached/cif_pdb_attached_train_20260301_res9_chain300.lmdb, note: "or the 2026-03-01 train cut"}
     - {path: lmdb/pdb/cif_attached/cif_pdb_attached.lmdb, note: "every entry, unfiltered"}
@@ -20,7 +20,7 @@
     - {path: lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb}
     - {path: lmdb/pdb/valid/cif_attached_valid_1.lmdb}
     - {path: lmdb/pdb/valid/cif_attached_valid_2.lmdb}
-    - {path: metadata/seq_cluster30_PDB.tsv}
+    - {path: metadata/seq_cluster40_PDB.tsv}
     - {path: lmdb/pdb/msa/a3m.lmdb, note: "protein MSA, uncapped depth (or a3m_d16k 153 GB / a3m_d2k 34 GB / a3m_d512 11 GB)"}
     - {path: lmdb/pdb/msa/msa_rna.lmdb, note: "RNA MSA, uncapped (or msa_rna_d2k / msa_rna_d512)"}
     - {path: lmdb/chain/template/template.lmdb, note: "templates by chain"}
@@ -33,7 +33,7 @@
   when: sequence design on backbones
   take:
     - {path: lmdb/pdb/cif/cif_mpnn_train_20210930_res9_chain300.lmdb, note: "pruned to what MPNN reads"}
-    - {path: metadata/seq_cluster30_PDB.tsv}
+    - {path: metadata/seq_cluster40_PDB.tsv}
 - id: distillation
   title: PDB plus OpenFold3 distillation
   when: AF3-style training with the distillation sets (MSAs at depth <= 2,000; pick a lower depth to fit the disk)
@@ -49,7 +49,7 @@
     - {path: lmdb/distillation_disordered/cif_attached/cif_disordered_attached.lmdb, note: "with chain contacts"}
     - {path: lmdb/distillation_disordered/msa/msa_disordered_d2k.lmdb, note: "or d512 / full"}
     - {path: lmdb/distillation_disordered/template/template_disordered.lmdb}
-    - {path: metadata/seq_cluster30_OFD.tsv}
+    - {path: metadata/seq_cluster40_OFD.tsv}
   notes: Add everything from "PDB with MSAs and templates".
 - id: teddymer-afm
   title: PDB plus Teddymer and AFDB multimer
@@ -62,8 +62,8 @@
     - {path: lmdb/afdb_multimer/cif_attached/cif_afm_heterodimer_attached.lmdb}
     - {path: lmdb/afdb_multimer/msa/msa_afm_d2k.lmdb, note: "or full; shared by homo- and heterodimers"}
     - {path: lmdb/afdb_multimer/template/template_afm.lmdb}
-    - {path: metadata/seq_cluster30_TDM.tsv}
-    - {path: metadata/seq_cluster30_AFM.tsv}
+    - {path: metadata/seq_cluster40_TDM.tsv}
+    - {path: metadata/seq_cluster40_AFM.tsv}
   notes: >-
     Add everything from "PDB with MSAs and templates". Teddymer is CC BY-NC 4.0 (non-commercial
     use only; licenses.md).
@@ -82,10 +82,10 @@
   when: sequence analysis, redundancy filtering, joining databases by sequence
   take:
     - {path: metadata/seq_id_map.tsv, note: "seq_id -> sequence, every database"}
-    - {path: metadata/seq_cluster30_PDB.tsv}
-    - {path: metadata/seq_cluster30_OFD.tsv}
-    - {path: metadata/seq_cluster30_TDM.tsv}
-    - {path: metadata/seq_cluster30_AFM.tsv}
+    - {path: metadata/seq_cluster40_PDB.tsv}
+    - {path: metadata/seq_cluster40_OFD.tsv}
+    - {path: metadata/seq_cluster40_TDM.tsv}
+    - {path: metadata/seq_cluster40_AFM.tsv}
   optional:
     - {path: materials/intermediate/fasta, note: "per-database fastas with chain headers"}
 - id: rebuild

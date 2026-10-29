@@ -61,7 +61,7 @@ Without StructCooker installed, `lmdb` + `zstandard` + the BioMol codec are need
   has the same seq_id in every database, so cross-database joins go through it
   (`metadata/seq_id_map.tsv`: seq_id, sequence).
 - **cluster id** — clustering is per database (30% identity, 80% coverage, MMseqs2):
-  `c{DB}_{seq_id}` with DB = `PDB`, `OFD`, `TDM`, `AFM` (`metadata/seq_cluster30_<DB>.tsv`:
+  `c{DB}_{seq_id}` with DB = `PDB`, `OFD`, `TDM`, `AFM` (`metadata/seq_cluster40_<DB>.tsv`:
   cluster, members).
 - **structure keys** — PDB id (`1abc`), assembly (`1abc_1_1_.`: id, assembly, model,
   altloc), chain (`1abc_A`), OpenFold entry (`MGYP…`, RNA accession), Teddymer

@@ -1,4 +1,4 @@
-# afm seq_cluster30 — mmseqs2 clusters at 0.30 identity, over AFM (AFDB multimer) ONLY.
+# afm seq_cluster40 — mmseqs2 clusters at 0.40 identity, over AFM (AFDB multimer) ONLY.
 # MATERIALIZE op (recipe -> cluster TSV).
 #
 # Clustering is per-DB (docs/seq-id-and-cluster-scheme.md): every id written here is
@@ -7,15 +7,15 @@
 # AFM chains are whole AFDB-predicted proteins from 4,777 proteomes (homodimers) and 46
 # (heterodimers) -- a different population from PDB's experimentally solved chains.
 recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
-output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30_AFM.tsv}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40_AFM.tsv}
 
 inputs:
   db_code: AFM
-  tmp_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/tmp/seq_cluster30_AFM}
+  tmp_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/tmp/seq_cluster40_AFM}
   seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
   fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/afm.fasta}
   sabdab_summary_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/sabdab/sabdab_summary_all.tsv}
-  mmseqs2_seq_id: 0.30
+  mmseqs2_seq_id: 0.40
   mmseqs2_cov: 0.8
   mmseqs2_covmode: "0"
   mmseqs2_clustermode: "1"

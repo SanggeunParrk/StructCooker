@@ -1,4 +1,4 @@
-# teddymer seq_cluster30 — mmseqs2 clusters at 0.30 identity, over TEDDYMER ONLY.
+# teddymer seq_cluster40 — mmseqs2 clusters at 0.40 identity, over TEDDYMER ONLY.
 # MATERIALIZE op (recipe -> cluster TSV). Feeds teddymer/cif_attached.
 #
 # Clustering is per-DB (docs/seq-id-and-cluster-scheme.md): every id written here is
@@ -10,17 +10,17 @@
 # not become redundant with the protein it was cut from -- while hiding the redundancy
 # that matters, which is between teddymer's own domains.
 recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
-output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30_TDM.tsv}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40_TDM.tsv}
 
 inputs:
   db_code: TDM
-  tmp_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/tmp/seq_cluster30_TDM}
+  tmp_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/tmp/seq_cluster40_TDM}
   # Shared id space: teddymer sequences must be in the map before clustering runs.
   seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
   # This DB's own consolidated fasta, projected from teddymer/cif -- not a union corpus.
   fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/teddymer.fasta}
   sabdab_summary_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/sabdab/sabdab_summary_all.tsv}
-  mmseqs2_seq_id: 0.30
+  mmseqs2_seq_id: 0.40
   mmseqs2_cov: 0.8
   mmseqs2_covmode: "0"
   mmseqs2_clustermode: "1"

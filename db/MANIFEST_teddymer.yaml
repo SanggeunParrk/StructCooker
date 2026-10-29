@@ -23,7 +23,7 @@
 #   seq_id is an assigned counter keyed by (molecule-type prefix + sequence), so a separate
 #   teddymer space would reuse the same "P0000..." strings for different sequences and the
 #   two DBs could not be joined. Sharing keeps one meaning per id.
-#   Clustering is per DB (cTDM_<rep seq_id>, metadata/teddymer_seq_cluster30), so adding
+#   Clustering is per DB (cTDM_<rep seq_id>, metadata/teddymer_seq_cluster40), so adding
 #   teddymer moved no PDB/OFD cluster label.
 #
 # MSA + TEMPLATE. The MSAs were searched once (teddymer/msa_search: MMseqs2 vs uniref30_2302,
@@ -39,8 +39,8 @@ teddymer/cif: [ccd/ccd]                       # + the staged selection (see abov
 metadata/teddymer_fasta: [teddymer/cif]
 metadata/seq_id_map: [metadata/teddymer_fasta, metadata/cif_fasta]          # shared id space; teddymer joins it
 metadata/teddymer_seq_id_map: [metadata/teddymer_fasta, metadata/seq_id_map]   # MSA search work list
-metadata/teddymer_seq_cluster30: [metadata/teddymer_fasta, metadata/seq_id_map]
-teddymer/cif_attached: [teddymer/cif, metadata/teddymer_fasta, metadata/seq_id_map, metadata/teddymer_seq_cluster30]
+metadata/teddymer_seq_cluster40: [metadata/teddymer_fasta, metadata/seq_id_map]
+teddymer/cif_attached: [teddymer/cif, metadata/teddymer_fasta, metadata/seq_id_map, metadata/teddymer_seq_cluster40]
 metadata/pdb_polypeptide_L: [metadata/cif_fasta]        # template target; built in MANIFEST.yaml
 teddymer/msa: []
 teddymer/msa_d2k: [teddymer/msa]

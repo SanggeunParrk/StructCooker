@@ -14,7 +14,7 @@ metadata_input:
   raw_fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/teddymer.fasta}
   seqid2seq_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
   # 30%, and teddymer's own clustering (docs/seq-id-and-cluster-scheme.md).
-  seqcluster_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster30_TDM.tsv}
+  seqcluster_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_cluster40_TDM.tsv}
   db_code: TDM
 
 split_entries: true

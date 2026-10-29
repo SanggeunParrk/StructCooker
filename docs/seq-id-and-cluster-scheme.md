@@ -1,7 +1,7 @@
 # Sequence identity and clustering — one id space, per-DB clusters
 
-**Decided 2026-09-23.** Supersedes the single global clustering that produced
-`metadata/seq_cluster30.tsv` / `seq_cluster40.tsv`.
+**Decided 2026-09-23.** Supersedes the single global clustering that produced the old global tables
+(`seq_cluster30.tsv`, deleted 2026-10-29, and `seq_cluster40.tsv`). Since 2026-10-28 every clustering is at 40% only.
 
 ## The rule
 
@@ -20,16 +20,13 @@ Three letters, fixed width, so the code is a slice and ids line up in columns.
 
 | Code | DB | Cluster table |
 |---|---|---|
-| `PDB` | PDB | `metadata/seq_cluster30_PDB.tsv` |
-| `OFD` | OpenFold distillation (short / long / rna / disordered) | `metadata/seq_cluster30_OFD.tsv` |
-| `TDM` | Teddymer | `metadata/seq_cluster30_TDM.tsv` |
-| `AFM` | AFDB multimer | `metadata/seq_cluster30_AFM.tsv` |
-| `P40` | PDB at 40% identity (AF3's protein threshold), not in the release DAG | `metadata/seq_cluster40_PDB.tsv` |
+| `PDB` | PDB | `metadata/seq_cluster40_PDB.tsv` |
+| `OFD` | OpenFold distillation (short / long / rna / disordered) | `metadata/seq_cluster40_OFD.tsv` |
+| `TDM` | Teddymer | `metadata/seq_cluster40_TDM.tsv` |
+| `AFM` | AFDB multimer | `metadata/seq_cluster40_AFM.tsv` |
 
-The four release codes are clustered the same way: mmseqs2 at 30% identity, coverage 0.8
-(`db/metadata/*_seq_cluster30.yaml`, see [stages](stages.md#sequence-ids-and-clustering)).
-`P40` is the PDB clustered again at 40% (`db/metadata/pdb_seq_cluster40.yaml`, built on its own with
-`structcooker build metadata/pdb_seq_cluster40`): a code per threshold keeps `cP40_` ids from being read as `cPDB_` ones.
+The four release codes are clustered the same way: mmseqs2 at 40% identity, coverage 0.8
+(`db/metadata/*_seq_cluster40.yaml`, see [stages](stages.md#sequence-ids-and-clustering)).
 
 `AFD` (AFDB monomer) is deliberately **not** reserved: there is no recipe and no plan. Adding a code later touches nothing that already exists.
 
@@ -82,5 +79,5 @@ both its clustering input and its attach input:
 | `AFM` | `afm.fasta` | extracted from both AFM cif DBs, concatenated (`metadata/afm_fasta`) |
 
 Every attached DB was rebuilt with these cluster ids after the switch from the union
-clustering (`seq_cluster30.tsv` / `seq_cluster40.tsv`); the old layout is described in
+clustering (the old global `seq_cluster30.tsv`, now deleted, and `seq_cluster40.tsv`); the old layout is described in
 [data provenance](history/data-provenance.md).
