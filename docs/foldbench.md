@@ -69,7 +69,7 @@ RNA MSAs differ in depth for most keys, as the release rebuilt them from the san
   re-filter by date. A found key can hold **zero** templates: the recipe (`db/template/template_candidates.yaml`) takes the top 20
   hmmsearch hits released at least 60 days before the query, then drops any hit whose alignment covers more than 95% of the
   query (`max_query_coverage`), so a chain whose every hit is a near-copy ends up with an empty `template_mols`. About 20% of
-  the PDB chains and 33% of the 2022-2026 chains added in 2026 are in that state.
+  of the original chains and 33% of the 17,356 added on 2026-10-29 are in that state.
 - **Template history.** The first 2026-07 template build used a `seqid_to_chains.tsv` older than the chain list, so 17,356
   polypeptide chains (7,065 sequences, incl. 31 FoldBench chains) had no key. They were added on 2026-10-29 with
   `scripts/template_fix/` (phases 1-4 on that subset, then `merge_into_release.py`); the release `template.lmdb` is now
