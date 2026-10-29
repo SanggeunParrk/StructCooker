@@ -7,7 +7,7 @@ drawn. Nucleic acids, peptides and ligands only cluster with identical sequences
 what moves is the protein side.
 
     python cluster_sensitivity.py --items <dir> --out report.md \
-        --map 30pdb=<seq_cluster30_PDB.tsv> --map 40pdb=<seq_cluster40_PDB.tsv> [--map name=<table> ...]
+        --map 40pdb=<seq_cluster40_PDB.tsv> [--map name=<table> ...]
 """
 from __future__ import annotations
 

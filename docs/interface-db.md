@@ -66,7 +66,7 @@ coordinates are not stored; every bioassembly of an entry is processed, and unit
 $BIOMOL_ROOT/lmdb/interface/pdb/
   interface_pdb.lmdb/            shard collection (shards.json + shards/shard_NNN.lmdb), 850,925 records, 153 GB
   interface_pdb.lmdb.meta.json   what release-docs lists
-  manifest.tsv / manifest_full.tsv   one row per unit; _full adds seq_ids and 30% / 40% clusters
+  manifest.tsv / manifest_full.tsv   one row per unit; _full adds seq_ids and 40% clusters
   split.tsv, split_summary.md    date split with leakage flags
   report.md                      counts and distributions
   done.tsv, failed.tsv           per-entry build log (failed.tsv is empty)
@@ -110,10 +110,10 @@ Date based, as in AF3, and per PDB entry (every unit of an entry lands in the sa
 | test | after 2023-01-12, resolution <= 4.5 A | 248,054 | 40,566 |
 | none | no release date, no resolution (NMR), or above the cut | 27,595 | |
 
-valid and test units carry leakage flags against the training set (nothing is dropped): `n_prot_c30_in_train`,
-`novel_protein` (no protein of the unit has its 30% cluster in train), `novel_pair` (the unit's set of clusters
-does not occur in train), `ligands_seen_in_train`. Of the valid units, 6,590 have no protein cluster seen in train and
-20,360 have a new cluster combination; filter on these for a strict evaluation set.
+valid and test units carry leakage flags against the training set (nothing is dropped): `n_prot_c40_in_train`,
+`novel_protein` (no protein of the unit has its 40% cluster in train), `novel_pair` (the unit's set of clusters
+does not occur in train), `ligands_seen_in_train`. Of the valid units, 8,184 have no protein cluster seen in train and
+22,179 have a new cluster combination; filter on these for a strict evaluation set.
 
 ## Reproduce
 

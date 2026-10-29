@@ -17,6 +17,7 @@ No sampling happens here; ``compare_sampling.py`` turns these tables into sampli
 from __future__ import annotations
 
 import argparse
+import json
 import multiprocessing as mp
 import os
 from pathlib import Path
@@ -44,7 +45,9 @@ def _keys(index_tsv: Path) -> list[tuple[str, int]]:
 
 def _init(db: str, out: str) -> None:
     pid = os.getpid()
-    _STATE["env"] = lmdb.open(db, readonly=True, lock=False, readahead=False, max_readers=512)
+    sj = Path(db) / "shards.json"
+    paths = [str(Path(db) / x["path"]) for x in json.loads(sj.read_text())["shards"]] if sj.exists() else [db]
+    _STATE["envs"] = [lmdb.open(p, readonly=True, lock=False, readahead=False, max_readers=512, subdir=Path(p).is_dir()) for p in paths]
     _STATE["chains"] = open(Path(out) / f"chains.{pid}.tsv", "a", buffering=1 << 20)       # noqa: SIM115
     _STATE["ifaces"] = open(Path(out) / f"interfaces.{pid}.tsv", "a", buffering=1 << 20)   # noqa: SIM115
 
@@ -87,11 +90,15 @@ def _assembly(entry: str, asm: str, d: dict, chains_out, ifaces_out) -> tuple[in
 
 
 def _work(keys: list[str]) -> tuple[int, int, int]:
-    env, chains_out, ifaces_out = _STATE["env"], _STATE["chains"], _STATE["ifaces"]
+    envs, chains_out, ifaces_out = _STATE["envs"], _STATE["chains"], _STATE["ifaces"]
     n_asm = n_ch = n_if = 0
     for key in keys:
-        with env.begin() as txn:
-            raw = txn.get(key.encode())
+        raw = None
+        for env in envs:
+            with env.begin() as txn:
+                raw = txn.get(key.encode())
+            if raw is not None:
+                break
         if raw is None:
             continue
         record = from_bytes(bytes(raw))
@@ -112,12 +119,15 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=32)
     ap.add_argument("--limit", type=int, default=0, help="only the N smallest entries (smoke test)")
     ap.add_argument("--chunk", type=int, default=16)
+    ap.add_argument("--part", default="0/1", help="i/n: every n-th entry from i (one job per part, then one --out per part)")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     rows = _keys(Path(str(args.db) + ".index.tsv"))
     if args.limit:
         rows = rows[-args.limit:]
     keys = [k for k, _ in rows]
+    pi, pn = map(int, args.part.split("/"))
+    keys = keys[pi::pn]
     chunks = [keys[i:i + args.chunk] for i in range(0, len(keys), args.chunk)]
     print(f"{len(keys):,} entries in {len(chunks):,} chunks, {args.workers} workers", flush=True)
     tot = [0, 0, 0]

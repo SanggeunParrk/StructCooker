@@ -2,11 +2,11 @@
 
 usage: finalize.py <db_root>
 Reads  <db_root>/manifest.tsv, done.tsv, failed.tsv
-Writes <db_root>/manifest_full.tsv   manifest + node_seq_ids, node_c30, node_c40, cluster keys, method
+Writes <db_root>/manifest_full.tsv   manifest + node_seq_ids, node_c40, cluster_key40, method
        <db_root>/report.md           counts and distributions
 Protein node hashes (md5-16 of "P:<sequence>") are mapped back to sequences through the PDB protein
 FASTA, then to seq_ids by one streaming pass over metadata/seq_id_map.tsv (7.9 GB, all sources), then to
-the 30% / 40% sequence clusters of metadata/seq_cluster30_PDB.tsv and seq_cluster40.tsv.
+the 40% sequence clusters of metadata/seq_cluster40_PDB.tsv.
 """
 import csv
 import hashlib
@@ -55,15 +55,14 @@ with open(ROOT / "metadata/seq_id_map.tsv") as f:
             seq2id[s] = i
 log(f"seq_id found for {len(seq2id)} of {len(seqs)} sequences")
 ids = set(seq2id.values())
-id2c30, id2c40 = {}, {}
-for fn, dst in (("seq_cluster30_PDB.tsv", id2c30), ("seq_cluster40.tsv", id2c40)):
-    with open(ROOT / "metadata" / fn) as f:
-        for line in f:
-            c, _, members = line.rstrip("\n").partition("\t")
-            for m in members.split(","):
-                if m in ids:
-                    dst[m] = c
-log(f"clusters: c30 {len(id2c30)}, c40 {len(id2c40)} of {len(ids)} ids")
+id2c40 = {}
+with open(ROOT / "metadata/seq_cluster40_PDB.tsv") as f:
+    for line in f:
+        c, _, members = line.rstrip("\n").partition("\t")
+        for m in members.split(","):
+            if m in ids:
+                id2c40[m] = c
+log(f"clusters: c40 {len(id2c40)} of {len(ids)} ids")
 h2id = {h: seq2id.get(s) for h, s in hash2seq.items()}
 
 meta = {}
@@ -71,24 +70,23 @@ with open(ROOT / "metadata/cif_metadata.tsv") as f:
     for r in csv.DictReader(f, delimiter="\t"):
         meta.setdefault(r["cif_id"].split("_")[0], r)
 
-cols = list(rows[0]) + ["node_seq_ids", "node_c30", "node_c40", "cluster_key30", "cluster_key40", "n_unmapped_protein",
+cols = list(rows[0]) + ["node_seq_ids", "node_c40", "cluster_key40", "n_unmapped_protein",
                         "including_NA_entry"]
 miss = Counter()
 with open(db / "manifest_full.tsv", "w") as fo:
     fo.write("\t".join(cols) + "\n")
     for r in rows:
-        sid, c30, c40, unm = [], [], [], 0
+        sid, c40, unm = [], [], 0
         for h, k in zip(r["node_hashes"].split("|"), r["node_kinds"].split("|"), strict=True):
             if k != "protein":
-                sid.append(""); c30.append(""); c40.append("")
+                sid.append(""); c40.append("")
                 continue
             i = h2id.get(h)
             if i is None:
                 unm += 1
                 miss["unmapped_protein_nodes"] += 1
-            sid.append(i or ""); c30.append(id2c30.get(i, "") if i else ""); c40.append(id2c40.get(i, "") if i else "")
-        r["node_seq_ids"], r["node_c30"], r["node_c40"] = "|".join(sid), "|".join(c30), "|".join(c40)
-        r["cluster_key30"] = "+".join(sorted(set(x for x in c30 if x)))
+            sid.append(i or ""); c40.append(id2c40.get(i, "") if i else "")
+        r["node_seq_ids"], r["node_c40"] = "|".join(sid), "|".join(c40)
         r["cluster_key40"] = "+".join(sorted(set(x for x in c40 if x)))
         r["n_unmapped_protein"] = unm
         r["including_NA_entry"] = meta.get(r["pdb_id"], {}).get("including_NA", "")
@@ -134,7 +132,7 @@ out += ["## Water", "", f"- units with no water: {sum(1 for r in rows if r['n_wa
         f"- units with >= 1 bridging water: {sum(1 for r in rows if r['n_bridging_water'] != '0'):,}", ""]
 out += ["## Cluster coverage", "", f"- protein nodes without a seq_id: {miss['unmapped_protein_nodes']:,}",
         f"- units with every protein node mapped: {sum(1 for r in rows if str(r['n_unmapped_protein']) == '0'):,}",
-        f"- distinct c30 cluster keys: {len(set(r['cluster_key30'] for r in rows)):,}", ""]
+        f"- distinct c40 cluster keys: {len(set(r['cluster_key40'] for r in rows)):,}", ""]
 ccd, ions = Counter(), Counter()
 for r in rows:
     for k, c in zip(r["node_kinds"].split("|"), r["node_ccd"].split("|"), strict=True):

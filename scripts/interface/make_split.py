@@ -9,9 +9,9 @@ none     no release date / no resolution / resolution above the cut (reason colu
 
 The split is per PDB entry, so all units of an entry share it. valid / test units also carry leakage
 flags against the training set, nothing is dropped:
-  n_prot_c30_in_train   protein nodes whose 30% cluster has a node in a train unit
-  novel_protein         no protein node of the unit has its c30 cluster in train
-  novel_pair            the unit's cluster_key30 (set of c30 clusters) does not occur in train
+  n_prot_c40_in_train   protein nodes whose 40% cluster has a node in a train unit
+  novel_protein         no protein node of the unit has its c40 cluster in train
+  novel_pair            the unit's cluster_key40 (set of c40 clusters) does not occur in train
   ligands_seen_in_train every ligand CCD id of the unit occurs in train
 """
 import csv
@@ -45,22 +45,22 @@ tr_c, tr_pair, tr_lig = set(), set(), set()
 for r in rows:
     if r["split"] != "train":
         continue
-    tr_c.update(c for c in r["node_c30"].split("|") if c)
-    tr_pair.add(r["cluster_key30"])
+    tr_c.update(c for c in r["node_c40"].split("|") if c)
+    tr_pair.add(r["cluster_key40"])
     tr_lig.update(c for k, c in zip(r["node_kinds"].split("|"), r["node_ccd"].split("|"), strict=True) if k == "ligand")
 
-cols = ["unit_id", "pdb_id", "split", "reason", "release_date", "resolution", "type", "n_prot_c30_in_train",
-        "n_protein", "novel_protein", "novel_pair", "ligands_seen_in_train", "cluster_key30"]
+cols = ["unit_id", "pdb_id", "split", "reason", "release_date", "resolution", "type", "n_prot_c40_in_train",
+        "n_protein", "novel_protein", "novel_pair", "ligands_seen_in_train", "cluster_key40"]
 cnt, flags = Counter(), Counter()
 with open(db / "split.tsv", "w") as fo:
     fo.write("\t".join(cols) + "\n")
     for r in rows:
         n_in, novel_p, novel_pair, lig_seen = "", "", "", ""
         if r["split"] in ("valid", "test"):
-            cl = [c for c in r["node_c30"].split("|") if c]
+            cl = [c for c in r["node_c40"].split("|") if c]
             n_in = sum(c in tr_c for c in cl)
             novel_p = int(n_in == 0)
-            novel_pair = int(r["cluster_key30"] not in tr_pair)
+            novel_pair = int(r["cluster_key40"] not in tr_pair)
             ligs = [c for k, c in zip(r["node_kinds"].split("|"), r["node_ccd"].split("|"), strict=True) if k == "ligand"]
             lig_seen = int(all(c in tr_lig for c in ligs)) if ligs else ""
             flags[(r["split"], "novel_protein")] += novel_p
@@ -68,7 +68,7 @@ with open(db / "split.tsv", "w") as fo:
         cnt[r["split"]] += 1
         if r["split"] == "none":
             cnt["none:" + r["reason"]] += 1
-        out = dict(r, n_prot_c30_in_train=n_in, novel_protein=novel_p, novel_pair=novel_pair, ligands_seen_in_train=lig_seen)
+        out = dict(r, n_prot_c40_in_train=n_in, novel_protein=novel_p, novel_pair=novel_pair, ligands_seen_in_train=lig_seen)
         fo.write("\t".join(str(out[c]) for c in cols) + "\n")
 
 ents = {s: len({r["pdb_id"] for r in rows if r["split"] == s}) for s in ("train", "valid", "test")}
