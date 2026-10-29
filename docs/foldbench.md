@@ -43,6 +43,11 @@ structcooker foldbench build  $PKG OUT                                          
 structcooker foldbench verify $PKG OUT
 ```
 
+The built DB lives in the release itself: `OUT = $BIOMOL_ROOT/lmdb/foldbench`, next to `msa_edge.lmdb`, so that
+`lmdb/foldbench/{msa,template,CCD}` is the FoldBench DB on every server that holds the release tree (H100 and cssb:
+`BioMolDB_20261014/lmdb/foldbench/`). The 2026-10-29 build there has 1,568 protein / 58 RNA MSAs (RNA tokens A U G C,
+the release order), 1,910 of 2,395 requested templates (485 are absent from the release) and 956 CCD components.
+
 `build` never replaces an existing DB, reports keys no source holds, and writes `OUT/foldbench_build.json` (requested,
 written, from_fallback, missing, bytes per asset).
 
