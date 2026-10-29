@@ -1,0 +1,507 @@
+<title>Contacts in the Residue Frame</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout: filter row; a 3D view next to three projections; a gallery that compares every residue type; a table view.
+   Colour jobs: one blue ramp for contact counts (sequential), blue-red with a grey middle for enrichment (diverging). */
+:root {
+  --bg: #f4f3f0; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #77766f;
+  --grid: #e9e8e4; --axis: #cfcec8; --accent: #eb6834; --ring: #0b0b0b; --canvas: #fcfcfb;
+  --sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121211; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #96958c;
+    --grid: #2a2a28; --axis: #3b3b38; --accent: #d95926; --ring: #f0efec; --canvas: #141413;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121211; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #96958c;
+  --grid: #2a2a28; --axis: #3b3b38; --accent: #d95926; --ring: #f0efec; --canvas: #141413;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.55;
+  padding-block: 20px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1160px; margin-inline: auto; }
+h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-size: 17px; font-weight: 600; margin: 0 0 4px; text-wrap: balance; }
+h3 { font-size: 13px; font-weight: 600; margin: 0 0 8px; color: var(--ink2); }
+p { margin: 0; }
+.lede { color: var(--ink2); max-width: 74ch; }
+.filters { display: grid; gap: 10px; margin: 18px 0 22px; padding-bottom: 14px; border-bottom: 1px solid var(--axis); }
+.row { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.lab { color: var(--muted); font-size: 12.5px; min-width: 70px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--axis); border-radius: 6px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; background: transparent; color: var(--ink2); border: 0; padding: 4px 11px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--axis); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.seg button:focus-visible, .chip:focus-visible, summary:focus-visible, th button:focus-visible, canvas:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font: inherit; font-family: var(--mono); font-size: 12.5px; background: transparent; color: var(--ink2); border: 1px solid var(--axis); border-radius: 5px; padding: 2px 8px; cursor: pointer; min-width: 36px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.sep { width: 10px; }
+section { margin-top: 30px; }
+.sub { color: var(--ink2); max-width: 78ch; margin-bottom: 14px; }
+.card { background: var(--surface); border: 1px solid var(--grid); border-radius: 6px; padding: 14px; min-width: 0; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.stack { display: grid; gap: 14px; min-width: 0; }
+#view3d { width: 100%; height: 460px; display: block; background: var(--canvas); border-radius: 4px; cursor: grab; touch-action: none; }
+#view3d:active { cursor: grabbing; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin-top: 10px; font-size: 12.5px; color: var(--ink2); }
+.tools label { display: inline-flex; gap: 6px; align-items: center; }
+.tools input[type="range"] { width: 130px; accent-color: var(--ink2); }
+.projs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.projs canvas { width: 100%; aspect-ratio: 1; display: block; background: var(--canvas); border-radius: 3px; }
+.projs figcaption { font-size: 11.5px; color: var(--muted); text-align: center; margin-top: 3px; }
+figure { margin: 0; }
+.btn { font: inherit; font-size: 12.5px; background: transparent; color: var(--ink); border: 1px solid var(--axis); border-radius: 6px; padding: 4px 11px; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.clegend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--ink2); margin-top: 8px; }
+.clegend span { display: inline-flex; align-items: center; gap: 3px; }
+.clegend i { display: inline-block; min-width: 19px; text-align: center; font-style: normal; font-family: var(--mono); font-size: 11.5px; border-radius: 3px; padding: 0 3px; }
+.legend2 { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+.ramp { height: 10px; width: 150px; border-radius: 2px; }
+.gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.tile { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 3px; padding: 4px; border-radius: 5px; border: 1px solid transparent; }
+.tile:hover { background: var(--bg); }
+.tile[aria-pressed="true"] { border-color: var(--ring); }
+.tile:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.tile canvas { width: 100%; aspect-ratio: 1; display: block; background: var(--canvas); border-radius: 3px; }
+.tile .t { font-family: var(--mono); font-size: 12px; color: var(--ink); display: flex; justify-content: space-between; }
+.tile .s { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.note { font-size: 12.5px; color: var(--muted); margin-top: 8px; max-width: 84ch; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; margin: 0; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; font-family: var(--mono); text-align: right; }
+#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--axis); border-radius: 6px;
+  padding: 6px 9px; font-size: 12.5px; box-shadow: 0 2px 10px rgb(0 0 0 / 14%); max-width: 250px; }
+#tip[hidden] { display: none; }
+details { margin-top: 26px; }
+summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.tablewrap { overflow: auto; margin-top: 10px; max-height: 420px; border: 1px solid var(--grid); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { padding: 4px 10px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; font-family: var(--mono); }
+td { font-family: var(--mono); }
+th { position: sticky; top: 0; background: var(--surface); font-weight: 500; color: var(--ink2); }
+th button { all: unset; cursor: pointer; }
+</style>
+
+<main>
+  <h1>Contacts in the Residue Frame</h1>
+  <p class="lede">모든 residue에 backbone frame을 잡고, 그 residue와 닿은(위에서 고른 접촉 정의) 다른 residue의 대표 원자 위치를 frame 안의 좌표로 모았습니다. 같은 종류의 residue를 겹쳐서 "이 종류 주위의 어느 방향에서 무엇이 닿는지"를 3차원 밀도로 봅니다. 2021-09-30 이전 PDB 학습 엔트리 167,912개를 썼고, 같은 서열의 체인 사본은 한 번만 셌습니다.</p>
+
+  <div class="filters" role="group" aria-label="표시 설정">
+    <div class="row"><span class="lab">접촉 정의</span><span class="seg" id="seg-def"><button type="button" data-v="sc" aria-pressed="true">곁사슬끼리 5 Å (단백질만)</button><button type="button" data-v="all" aria-pressed="false">모든 heavy atom 5 Å (핵산 포함)</button></span><span class="lab" id="defnote" style="min-width:0"></span></div>
+    <div class="row"><span class="lab">기준 residue</span><span class="chips" id="refs"></span></div>
+    <div class="row"><span class="lab">닿는 상대</span><span class="chips" id="groups"></span></div>
+    <div class="row">
+      <span class="lab">범위</span>
+      <span class="seg" id="seg-scope"><button type="button" data-v="0" aria-pressed="true">같은 체인 안</button><button type="button" data-v="1" aria-pressed="false">서로 다른 체인 사이</button></span>
+      <span class="lab" style="min-width:0">집계</span>
+      <span class="seg" id="seg-mode"><button type="button" data-v="weighted" aria-pressed="true">가중</button><button type="button" data-v="raw" aria-pressed="false">원시</button></span>
+      <span class="lab" style="min-width:0">색</span>
+      <span class="seg" id="seg-color"><button type="button" data-v="partner" aria-pressed="true">상대 아미노산</button><button type="button" data-v="density" aria-pressed="false">접촉 수</button></span>
+      <span class="lab" style="min-width:0">값</span>
+      <span class="seg" id="seg-value"><button type="button" data-v="count" aria-pressed="true">접촉 수</button><button type="button" data-v="ratio" aria-pressed="false">상대 그룹의 편중 (배율)</button></span>
+    </div>
+  </div>
+
+  <section>
+    <h2 id="head"></h2>
+    <p class="sub" id="sub"></p>
+    <div class="cols">
+      <div class="card">
+        <h3 id="t3d"></h3>
+        <canvas id="view3d" tabindex="0" role="img" aria-label="기준 residue의 frame 안에서 본 접촉 밀도, 끌어서 회전"></canvas>
+        <div class="tools">
+          <label>표시 문턱 <input type="range" id="thr" min="0" max="90" value="30" aria-label="표시 문턱"> <span id="thrv"></span></label>
+          <label><input type="checkbox" id="skel" checked> backbone / Cβ 그리기</label>
+          <button type="button" class="btn" id="std" title="x가 오른쪽, y가 위, z가 화면 쪽: N은 왼쪽 위, Cα는 가운데, C는 오른쪽">N·Cα·C 표준 방향</button>
+          <span>끌어서 회전 · 휠로 확대 · 두 번 눌러 처음 방향 · 점 위에 올리면 값</span>
+        </div>
+        <div class="clegend" id="clegend" hidden></div>
+        <div class="legend2" id="rampbox"><span id="rampmin"></span><span class="ramp" id="ramp"></span><span id="rampmax"></span></div>
+        <p class="note" id="axes"></p>
+      </div>
+      <div class="stack">
+        <div class="card">
+          <h3>세 방향 투영 (나머지 축을 합침)</h3>
+          <div class="projs">
+            <figure><canvas id="pxy" aria-label="x y 투영"></canvas><figcaption>x–y</figcaption></figure>
+            <figure><canvas id="pxz" aria-label="x z 투영"></canvas><figcaption>x–z</figcaption></figure>
+            <figure><canvas id="pyz" aria-label="y z 투영"></canvas><figcaption>y–z</figcaption></figure>
+          </div>
+          <p class="note">가운데 점이 기준 residue의 원점(Cα 또는 C3')이고, 선은 그 residue의 골격입니다. 칸은 2 Å입니다.</p>
+        </div>
+        <div class="card"><h3>이 조합의 수치</h3><dl class="kv" id="kv"></dl></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>종류별로 비교</h2>
+    <p class="sub" id="galsub"></p>
+    <div class="row" style="margin-bottom:10px"><span class="lab">투영</span><span class="seg" id="seg-proj"><button type="button" data-v="xy" aria-pressed="false">x–y</button><button type="button" data-v="xz" aria-pressed="true">x–z</button><button type="button" data-v="yz" aria-pressed="false">y–z</button></span></div>
+    <div class="card"><div class="gal" id="gal"></div>
+      <p class="note">타일마다 자기 최댓값으로 색을 맞췄고 모양만 비교하는 용도입니다. 아래 숫자는 곁사슬 쪽(z&lt;0) 접촉의 비율과 방향 편중입니다(0이면 사방에서 고르게, 1이면 한 방향으로만 닿음).</p></div>
+  </section>
+
+  <details>
+    <summary>표로 보기 (현재 범위·집계·상대 그룹)</summary>
+    <div class="tablewrap"><table id="tbl"></table></div>
+  </details>
+</main>
+<div id="tip" hidden></div>
+
+<script type="application/json" id="data">/*DATA*/null</script>
+<script>
+(function () {
+  const DALL = JSON.parse(document.getElementById('data').textContent);
+  const $ = (id) => document.getElementById(id);
+  let DATA = DALL.sc, NV = DATA.nv, NVOX = NV * NV * NV, REFS = DATA.refs, GROUPS = DATA.groups, BOX = DATA.box, VOX = DATA.vox;
+  const GLABEL = { all: '전체', AVILM: '지방족 소수성 AVILM', FWY: '방향족 FWY', CYS: 'Cys', GP: 'Gly·Pro', STNQ: '극성 STNQ', DE: '산성 DE', KRH: '염기성 KRH', DNA: 'DNA 염기', RNA: 'RNA 염기' };
+  const st = { def: 'sc', color: 'partner', ref: REFS.indexOf('L'), group: 0, scope: 0, mode: 'weighted', value: 'count', proj: 'xz', thr: 30, skel: true, yaw: 0.9, pitch: 0.55, zoom: 1 };
+  const DEF = { yaw: 0.9, pitch: 0.55, zoom: 1 };
+  const fmt = (x, d = 2) => Number(x).toFixed(d);
+  const pct = (x) => (100 * x).toFixed(0) + '%';
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const isDark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; };
+  const cache = {};
+  function decoded(mode) {
+    const ck = st.def + mode;
+    if (!cache[ck]) { const bin = atob(DATA[mode].q), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); cache[ck] = a; }
+    return cache[ck];
+  }
+  const stored = () => DATA.stored || DATA.groups;
+  const slotName = (scope, ref, name) => (scope * REFS.length + ref) * stored().length + stored().indexOf(name);
+  function fieldByName(scope, ref, name, mode) {
+    const s = slotName(scope, ref, name), q = decoded(mode), mx = DATA[mode].max[s], lm = Math.log1p(mx), out = new Float32Array(NVOX), o = s * NVOX;
+    if (mx > 0) for (let i = 0; i < NVOX; i++) { const v = q[o + i]; out[i] = v === 0 ? 0 : Math.expm1(v / 255 * lm); }
+    return out;
+  }
+  function field(scope, ref, group, mode = st.mode) {          // group: index into the displayed groups; classes are sums of stored amino acids
+    const name = GROUPS[group], members = DATA.derive && DATA.derive[name];
+    if (!members) return fieldByName(scope, ref, name, mode);
+    const out = new Float32Array(NVOX);
+    for (const m of members) { const f = fieldByName(scope, ref, m, mode); for (let i = 0; i < NVOX; i++) out[i] += f[i]; }
+    return out;
+  }
+  const totalName = (scope, ref, name, mode) => DATA[mode].total[slotName(scope, ref, name)];
+  function total(scope, ref, group, mode = st.mode) {
+    const name = GROUPS[group], members = DATA.derive && DATA.derive[name];
+    return members ? members.reduce((a, m) => a + totalName(scope, ref, m, mode), 0) : totalName(scope, ref, name, mode);
+  }
+  const centre = (i) => -BOX + (i + 0.5) * VOX;
+
+  /* ---------- colour ---------- */
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, t) => 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',') + ')';
+  const SEQ = ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b'].map(hex);
+  function seq(t) {
+    const stops = isDark() ? SEQ.slice().reverse() : SEQ;
+    const x = Math.max(0, Math.min(1, t)) * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(x));
+    return mix(stops[i], stops[i + 1], x - i);
+  }
+  function div(v) {
+    const mid = hex(isDark() ? '#383835' : '#f0efec'), neg = hex(isDark() ? '#3987e5' : '#2a78d6'), pos = hex(isDark() ? '#e66767' : '#e34948');
+    return v < 0 ? mix(mid, neg, Math.min(1, -v)) : mix(mid, pos, Math.min(1, v));
+  }
+  const onColor = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map(Number); return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55 ? '#0b0b0b' : '#fcfcfb'; };
+  const CLS = { AVILM: ['#eb6834', '#d95926'], FWY: ['#e87ba4', '#d55181'], CYS: ['#eda100', '#c98500'], GP: ['#008300', '#008300'],
+    STNQ: ['#1baf7a', '#199e70'], DE: ['#e34948', '#e66767'], KRH: ['#2a78d6', '#3987e5'], NA: ['#6250d6', '#9085e9'] };
+  const MEMBERS = { AVILM: 'AVILM'.split(''), FWY: 'FWY'.split(''), CYS: ['C'], GP: ['G', 'P'], STNQ: 'STNQ'.split(''), DE: ['D', 'E'], KRH: 'KRH'.split('') };
+  const shade = (base, t) => (t < 0 ? mix(base, [255, 255, 255], -t * 0.42) : mix(base, [0, 0, 0], t * 0.35));
+  function groupColor(name) {                                   // class, DNA / RNA, or one amino acid (class hue, lightness by member)
+    const k = isDark() ? 1 : 0;
+    if (name === 'DNA' || name === 'RNA') return shade(hex(CLS.NA[k]), name === 'DNA' ? -0.4 : 0.4);
+    if (CLS[name]) return mix(hex(CLS[name][k]), hex(CLS[name][k]), 0);
+    for (const c in MEMBERS) { const i = MEMBERS[c].indexOf(name); if (i >= 0) { const n = MEMBERS[c].length; return shade(hex(CLS[c][k]), n > 1 ? (i / (n - 1)) * 2 - 1 : 0); } }
+    return '#888';
+  }
+  const rampCss = (fn, n = 12) => 'linear-gradient(90deg,' + Array.from({ length: n }, (_, i) => fn(i / (n - 1))).join(',') + ')';
+  const tip = $('tip');
+  const showTip = (ev, text) => { tip.textContent = text; tip.hidden = false; tip.style.left = Math.min(innerWidth - 260, ev.clientX + 14) + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; };
+  const hideTip = () => { tip.hidden = true; };
+
+  /* ---------- what to show: per voxel a level (0..1) and a colour ---------- */
+  function currentField() {
+    const g = field(st.scope, st.ref, st.group), all = field(st.scope, st.ref, 0);
+    const ratioOk = st.value === 'ratio' && st.group !== 0;
+    const vals = new Float32Array(NVOX), size = new Float32Array(NVOX), col = new Array(NVOX);
+    let gm = 0, am = 0;
+    for (let i = 0; i < NVOX; i++) { if (g[i] > gm) gm = g[i]; if (all[i] > am) am = all[i]; }
+    let dom = null, domShare = null;
+    if (ratioOk) {
+      const share = total(st.scope, st.ref, st.group) / Math.max(1e-9, total(st.scope, st.ref, 0));
+      const minAll = st.mode === 'raw' ? 30 : 15;
+      for (let i = 0; i < NVOX; i++) {
+        if (all[i] < minAll) { vals[i] = NaN; continue; }
+        const r = Math.max(g[i], 1e-3) / all[i] / share;
+        vals[i] = r; size[i] = Math.log1p(all[i]) / Math.log1p(am);
+        col[i] = div(Math.max(-1, Math.min(1, Math.log2(r) / 2)));
+      }
+    } else if (st.color === 'partner') {
+      const names = DATA.colorGroups, fs = names.map((n) => fieldByName(st.scope, st.ref, n, st.mode)), one = st.group !== 0 ? groupColor(GROUPS[st.group]) : null;
+      dom = new Array(NVOX); domShare = new Float32Array(NVOX);
+      for (let i = 0; i < NVOX; i++) {
+        let best = -1, bv = 0, sum = 0; for (let k = 0; k < fs.length; k++) { const v = fs[k][i]; sum += v; if (v > bv) { bv = v; best = k; } }
+        const l = gm > 0 ? Math.log1p(g[i]) / Math.log1p(gm) : 0; vals[i] = g[i]; size[i] = l;
+        dom[i] = best >= 0 ? names[best] : ''; domShare[i] = sum > 0 ? bv / sum : 0;
+        col[i] = one || (best >= 0 ? groupColor(names[best]) : '#888');
+      }
+    } else {
+      for (let i = 0; i < NVOX; i++) { const l = gm > 0 ? Math.log1p(g[i]) / Math.log1p(gm) : 0; vals[i] = g[i]; size[i] = l; col[i] = seq(l); }
+    }
+    return { g, all, vals, size, col, ratioOk, gm, dom, domShare, partner: !ratioOk && st.color === 'partner' };
+  }
+
+  /* ---------- skeleton ---------- */
+  function skeleton(refIdx = st.ref) {
+    const label = REFS[refIdx], sk = DATA.skeleton;
+    const key = refIdx < 20 ? 'protein' : ('AG'.includes(label[1]) ? 'purine' : 'pyrimidine');
+    let atoms = sk[key].atoms;
+    let bonds = sk[key].bonds;
+    if (label === 'G' && key === 'protein') { atoms = Object.fromEntries(Object.entries(atoms).filter(([k]) => k !== 'CB')); bonds = bonds.filter((b) => b[1] !== 'CB' && b[0] !== 'CB'); }
+    return { atoms, bonds, key };
+  }
+
+  /* ---------- 3D canvas ---------- */
+  const cv = $('view3d'), ctx = cv.getContext('2d');
+  function size3d() {
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return [w, h];
+  }
+  function rot(p) {
+    const cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.pitch), sp = Math.sin(st.pitch);
+    const x1 = p[0] * cy - p[1] * sy, y1 = p[0] * sy + p[1] * cy;          // spin about z
+    return [x1, y1 * cp - p[2] * sp, y1 * sp + p[2] * cp];                  // tilt: screen x, depth, screen up
+  }
+  function draw3d(F) {
+    const [W, H] = size3d(), scale = st.zoom * 0.5 * Math.min(W, H) / (BOX * 1.15);
+    ctx.clearRect(0, 0, W, H);
+    const px = (p) => { const r = rot(p); return [W / 2 + r[0] * scale, H / 2 - r[2] * scale, r[1]]; };
+    ctx.strokeStyle = css('--grid'); ctx.lineWidth = 1;
+    const c = [-BOX, BOX];
+    [[0, 0], [0, 1], [1, 0], [1, 1]].forEach(([a, b]) => {
+      [[[c[a], c[b], -BOX], [c[a], c[b], BOX]], [[c[a], -BOX, c[b]], [c[a], BOX, c[b]]], [[-BOX, c[a], c[b]], [BOX, c[a], c[b]]]].forEach(([p, q]) => {
+        const u = px(p), v = px(q); ctx.beginPath(); ctx.moveTo(u[0], u[1]); ctx.lineTo(v[0], v[1]); ctx.stroke();
+      });
+    });
+    const pts = [];
+    const thr = st.thr / 100;
+    for (let ix = 0; ix < NV; ix++) for (let iy = 0; iy < NV; iy++) for (let iz = 0; iz < NV; iz++) {
+      const i = (ix * NV + iy) * NV + iz; if (!(F.vals[i] > 0) || F.size[i] < thr) continue;
+      const q = px([centre(ix), centre(iy), centre(iz)]); pts.push([q[0], q[1], q[2], i]);
+    }
+    pts.sort((a, b) => b[2] - a[2]);
+    st.dots = [];
+    const dmax = BOX * 1.8;
+    for (const [x, y, d, i] of pts) {
+      const r = (0.18 + 0.82 * F.size[i]) * VOX * 0.62 * scale * (1 + 0.1 * (-d / dmax));
+      ctx.globalAlpha = (0.35 + 0.5 * F.size[i]) * (F.partner && F.domShare ? 0.55 + 0.45 * F.domShare[i] : 1);
+      ctx.fillStyle = F.col[i]; ctx.beginPath(); ctx.arc(x, y, Math.max(1.2, r), 0, 6.2832); ctx.fill();
+      st.dots.push([x, y, Math.max(r, 5), i]);
+    }
+    ctx.globalAlpha = 1;
+    // axes
+    [['x', [6, 0, 0]], ['y', [0, 6, 0]], ['z', [0, 0, 6]]].forEach(([n, p]) => {
+      const o = px([0, 0, 0]), e = px(p); ctx.strokeStyle = css('--ink2'); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(o[0], o[1]); ctx.lineTo(e[0], e[1]); ctx.stroke();
+      ctx.fillStyle = css('--ink2'); ctx.font = '12px ' + css('--mono'); ctx.fillText(n, e[0] + 4, e[1] - 4);
+    });
+    if (st.skel) {
+      const S = skeleton();
+      ctx.strokeStyle = css('--ink'); ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+      S.bonds.forEach(([a, b]) => { const u = px(S.atoms[a]), v = px(S.atoms[b]); ctx.beginPath(); ctx.moveTo(u[0], u[1]); ctx.lineTo(v[0], v[1]); ctx.stroke(); });
+      Object.entries(S.atoms).forEach(([n, p]) => {
+        const u = px(p); ctx.fillStyle = (n === 'CB' || n === 'CA' || n === "C3'") ? css('--accent') : css('--ink'); ctx.beginPath(); ctx.arc(u[0], u[1], n === 'CA' || n === "C3'" ? 4 : 2.6, 0, 6.2832); ctx.fill();
+        if (n === 'CB' || n === 'CA' || n === 'N' || n === 'C') { ctx.fillStyle = css('--ink2'); ctx.font = '11px ' + css('--mono'); ctx.fillText(n, u[0] + 6, u[1] + 4); }
+      });
+    }
+    ctx.fillStyle = css('--muted'); ctx.font = '11px ' + css('--mono'); ctx.fillText(`점 ${pts.length}개 (2 Å 칸)`, 10, H - 10);
+  }
+
+  /* ---------- projections ---------- */
+  const AX = { xy: [0, 1], xz: [0, 2], yz: [1, 2] };
+  function project(vals, which, ratioInfo) {
+    const [a, b] = AX[which], out = new Float32Array(NV * NV), cnt = new Float32Array(NV * NV), den = new Float32Array(NV * NV);
+    for (let ix = 0; ix < NV; ix++) for (let iy = 0; iy < NV; iy++) for (let iz = 0; iz < NV; iz++) {
+      const i = (ix * NV + iy) * NV + iz, idx = [ix, iy, iz], k = idx[b] * NV + idx[a];   // row = vertical axis
+      out[k] += ratioInfo ? ratioInfo.g[i] : vals[i]; den[k] += ratioInfo ? ratioInfo.all[i] : 0; cnt[k] += 1;
+    }
+    return { out, den };
+  }
+  function drawProj(canvas, which, F, tileMode = false, refIdx = st.ref) {
+    const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth || 100;
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(w * dpr);
+    const g = canvas.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, w);
+    const P = project(F.g, which), cell = w / NV;
+    let max = 0; for (const v of P.out) max = Math.max(max, v);
+    let Q = null; if (F.ratioOk && !tileMode) Q = project(F.g, which, { g: F.g, all: F.all });
+    const share = total(st.scope, st.ref, st.group) / Math.max(1e-9, total(st.scope, st.ref, 0));
+    for (let r = 0; r < NV; r++) for (let c = 0; c < NV; c++) {
+      const k = r * NV + c; let colr;
+      if (Q) { if (Q.den[k] < 1) continue; const ratio = Math.max(Q.out[k], 1e-3) / Q.den[k] / share; colr = div(Math.max(-1, Math.min(1, Math.log2(ratio) / 2))); }
+      else { if (P.out[k] <= 0) continue; colr = seq(max > 0 ? Math.log1p(P.out[k]) / Math.log1p(max) : 0); }
+      g.fillStyle = colr; g.fillRect(c * cell, (NV - 1 - r) * cell, cell + 0.5, cell + 0.5);
+    }
+    const S = skeleton(refIdx), [a, b] = AX[which], X = (v) => ((v + BOX) / (2 * BOX)) * w, Y = (v) => w - ((v + BOX) / (2 * BOX)) * w;
+    g.strokeStyle = css('--ink'); g.lineWidth = tileMode ? 1 : 1.6; g.lineCap = 'round';
+    if (!tileMode) S.bonds.forEach(([p, q]) => { g.beginPath(); g.moveTo(X(S.atoms[p][a]), Y(S.atoms[p][b])); g.lineTo(X(S.atoms[q][a]), Y(S.atoms[q][b])); g.stroke(); });
+    g.fillStyle = css('--accent'); g.beginPath(); g.arc(X(0), Y(0), tileMode ? 2 : 3.2, 0, 6.2832); g.fill();
+    const cb = S.atoms.CB || S.atoms["C1'"];
+    if (cb) { g.beginPath(); g.arc(X(cb[a]), Y(cb[b]), tileMode ? 1.8 : 2.6, 0, 6.2832); g.fill(); }
+    if (!tileMode) {
+      canvas.onpointermove = (ev) => {
+        const b2 = canvas.getBoundingClientRect(), c = Math.floor(((ev.clientX - b2.left) / b2.width) * NV), r = NV - 1 - Math.floor(((ev.clientY - b2.top) / b2.height) * NV);
+        if (c < 0 || c >= NV || r < 0 || r >= NV) return hideTip();
+        const k = r * NV + c, n = 'xyz';
+        showTip(ev, `${n[a]} ${fmt(centre(c) - 1, 0)}…${fmt(centre(c) + 1, 0)} Å, ${n[b]} ${fmt(centre(r) - 1, 0)}…${fmt(centre(r) + 1, 0)} Å: ` +
+          (Q && Q.den[k] >= 1 ? '×' + fmt(Math.max(Q.out[k], 1e-3) / Q.den[k] / share, 2) : Math.round(P.out[k]) + ' 접촉'));
+      };
+      canvas.onpointerleave = hideTip;
+    }
+  }
+
+  /* ---------- summaries ---------- */
+  function summary(scope, ref, group, mode) {
+    const g = field(scope, ref, group, mode); let tot = 0, front = 0, sx = 0, sy = 0, sz = 0, w = 0, peak = 0, pi = 0;
+    for (let ix = 0; ix < NV; ix++) for (let iy = 0; iy < NV; iy++) for (let iz = 0; iz < NV; iz++) {
+      const i = (ix * NV + iy) * NV + iz, v = g[i]; if (v <= 0) continue;
+      const x = centre(ix), y = centre(iy), z = centre(iz), d = Math.hypot(x, y, z);
+      tot += v; if (z < 0) front += v;
+      if (d > 1.5) { sx += v * x / d; sy += v * y / d; sz += v * z / d; w += v; }
+      if (v > peak) { peak = v; pi = i; }
+    }
+    const R = w > 0 ? Math.hypot(sx, sy, sz) / w : 0;
+    const iz = pi % NV, iy = Math.floor(pi / NV) % NV, ix = Math.floor(pi / (NV * NV));
+    return { tot, front: tot > 0 ? front / tot : 0, R, peak: [centre(ix), centre(iy), centre(iz)], n: total(scope, ref, group, mode), dir: [sx / (w || 1), sy / (w || 1), sz / (w || 1)] };
+  }
+
+  /* ---------- UI ---------- */
+  function buildChips() {
+    const rc = $('refs'); rc.replaceChildren();
+    REFS.forEach((r, i) => {
+      if (REFS.length > 20 && (i === 20 || i === 24)) { const sp = document.createElement('span'); sp.className = 'sep'; rc.appendChild(sp); }
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = r; b.dataset.i = i; b.setAttribute('aria-pressed', i === st.ref);
+      b.addEventListener('click', () => { st.ref = i; render(); }); rc.appendChild(b);
+    });
+    const gc = $('groups'); gc.replaceChildren();
+    GROUPS.forEach((g, i) => {
+      if (g.length === 1 && (i === 0 || GROUPS[i - 1].length !== 1)) { const sp = document.createElement('span'); sp.className = 'sep'; gc.appendChild(sp); }
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.style.fontFamily = g.length === 1 ? 'var(--mono)' : 'var(--sans)'; b.textContent = GLABEL[g] || g; b.setAttribute('aria-pressed', i === st.group);
+      b.addEventListener('click', () => { st.group = i; render(); }); gc.appendChild(b);
+    });
+  }
+  function seg(id, key, num = false) {
+    const bs = $(id).querySelectorAll('button');
+    bs.forEach((b) => b.addEventListener('click', () => { st[key] = num ? +b.dataset.v : b.dataset.v; bs.forEach((o) => o.setAttribute('aria-pressed', o === b)); render(); }));
+  }
+  function gallery() {
+    const gal = $('gal'); gal.replaceChildren();
+    REFS.forEach((r, i) => {
+      const t = document.createElement('button'); t.type = 'button'; t.className = 'tile'; t.setAttribute('aria-pressed', i === st.ref);
+      const c = document.createElement('canvas'); const head = document.createElement('div'); head.className = 't';
+      const sm = summary(st.scope, i, st.group, st.mode);
+      const n1 = document.createElement('span'); n1.textContent = r; const n2 = document.createElement('span'); n2.style.color = 'var(--muted)'; n2.textContent = sm.n >= 1000 ? (sm.n / 1000 >= 100 ? Math.round(sm.n / 1000) + 'k' : fmt(sm.n / 1000, 0) + 'k') : Math.round(sm.n);
+      head.append(n1, n2);
+      const s = document.createElement('div'); s.className = 's'; s.textContent = `z<0 ${pct(sm.front)} · R ${fmt(sm.R)}`;
+      t.append(c, head, s); t.addEventListener('click', () => { st.ref = i; render(); }); gal.appendChild(t);
+      const g = field(st.scope, i, st.group); drawProj(c, st.proj, { g, all: g, ratioOk: false }, true, i);
+    });
+  }
+  function table() {
+    const t = $('tbl'); t.replaceChildren();
+    const head = t.createTHead().insertRow(); ['residue', '접촉 수', 'z<0 비율', '방향 편중 R', '최고 밀도 위치 x,y,z (Å)'].forEach((h) => { const th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
+    const body = t.createTBody();
+    REFS.forEach((r, i) => { const s = summary(st.scope, i, st.group, st.mode), tr = body.insertRow(); [r, Math.round(s.n).toLocaleString(), pct(s.front), fmt(s.R, 3), s.peak.map((v) => fmt(v, 0)).join(', ')].forEach((v) => { tr.insertCell().textContent = v; }); });
+  }
+  function texts(F) {
+    const label = REFS[st.ref], sm = summary(st.scope, st.ref, st.group, st.mode), all = summary(st.scope, st.ref, 0, st.mode);
+    const scopeN = st.scope === 0 ? '같은 체인 안' : '서로 다른 체인 사이', gname = GLABEL[GROUPS[st.group]] || GROUPS[st.group];
+    const rs = REFS.map((r, i) => [r, summary(st.scope, i, st.group, st.mode).R]).sort((a, b) => b[1] - a[1]);
+    $('head').textContent = `${label} 주위: ${scopeN}, ${gname} 접촉의 ${pct(sm.front)}가 z<0 쪽에 있고 방향 편중은 ${fmt(sm.R, 2)}입니다`;
+    $('sub').textContent = `접촉 ${Math.round(sm.n).toLocaleString()}개. 가장 밀도가 높은 칸은 (${sm.peak.map((v) => fmt(v, 0)).join(', ')}) Å 부근입니다. 같은 범위와 상대 그룹에서 방향 편중이 가장 큰 기준 residue는 ${rs.slice(0, 3).map((x) => x[0] + ' ' + fmt(x[1], 2)).join(', ')}이고 가장 작은 것은 ${rs.slice(-3).reverse().map((x) => x[0] + ' ' + fmt(x[1], 2)).join(', ')}입니다.`;
+    $('t3d').textContent = `${label} frame 안의 ${gname} 접촉 밀도 (${scopeN})`;
+    $('axes').textContent = REFS.indexOf(label) < 20
+      ? 'frame 축: 원점은 Cα, x는 Cα→C 방향, N은 x–y 평면 위에 있고 z는 그 평면에 수직입니다. Cβ는 (−0.5, −0.8, −1.2) Å이라 곁사슬은 z<0 쪽을 향합니다.'
+      : "frame 축: 원점은 C3', x는 C3'→C1' 방향, C4'는 x–y 평면 위에 있고 z는 그 평면에 수직입니다. 염기는 C1'에 붙어 x 쪽으로 뻗습니다.";
+    $('galsub').textContent = `${scopeN}, ${gname} 접촉을 기준 residue ${REFS.length}종에서 비교합니다. 타일을 누르면 위의 3D 보기가 그 종류로 바뀝니다.`;
+    const rows = [['접촉 수 (선택한 상대)', Math.round(sm.n).toLocaleString()], ['접촉 수 (모든 상대)', Math.round(all.n).toLocaleString()],
+      ['선택한 상대의 비중', pct(sm.n / Math.max(1, all.n))], ['곁사슬 쪽 (z<0) 비율', pct(sm.front)], ['방향 편중 R', fmt(sm.R, 3)],
+      ['평균 접촉 방향 (x, y, z)', sm.dir.map((v) => fmt(v, 2)).join(', ')], ['최고 밀도 칸 (Å)', sm.peak.map((v) => fmt(v, 0)).join(', ')]];
+    $('kv').replaceChildren(...rows.flatMap(([k, v]) => { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; return [dt, dd]; }));
+    const ratio = F.ratioOk;
+    $('ramp').style.background = ratio ? rampCss((t) => div(t * 2 - 1)) : rampCss((t) => seq(t));
+    $('rampmin').textContent = ratio ? '×0.25 (드묾)' : '접촉 적음'; $('rampmax').textContent = ratio ? '×4 (몰림)' : '접촉 많음 (로그 눈금)';
+    $('thrv').textContent = st.thr + '%';
+    const lg = $('clegend'), usePartner = F.partner;
+    lg.hidden = !usePartner; $('rampbox').hidden = usePartner;
+    if (usePartner) {
+      const mk = (txt, name) => { const i = document.createElement('i'); i.textContent = txt; const c = groupColor(name); i.style.background = c; i.style.color = onColor(c); return i; };
+      const items = [];
+      if (DATA.derive && Object.keys(DATA.derive).length) Object.keys(MEMBERS).forEach((c) => { const sp = document.createElement('span'); sp.append((GLABEL[c] || c) + ' '); MEMBERS[c].forEach((l) => sp.appendChild(mk(l, l))); items.push(sp); });
+      else DATA.colorGroups.forEach((c) => { const sp = document.createElement('span'); sp.append(mk(c === 'DNA' || c === 'RNA' ? c : '  ', c), ' ' + (GLABEL[c] || c)); items.push(sp); });
+      const h = document.createElement('span'); h.textContent = st.group !== 0 ? '선택한 상대 하나만 그 색으로 칠합니다.' : '색 = 그 칸에서 가장 많이 닿는 상대, 점 크기 = 접촉 수, 흐린 점 = 여러 종류가 섞인 칸.'; items.push(h);
+      lg.replaceChildren(...items);
+    }
+    if (st.value === 'ratio' && st.group === 0) $('axes').textContent += ' (상대 그룹이 "전체"일 때는 편중 배율이 없어 접촉 수를 보여 줍니다.)';
+  }
+  function setDef(key) {
+    const lab = REFS[st.ref], gname = GROUPS[st.group];
+    st.def = key; DATA = DALL[key]; NV = DATA.nv; NVOX = NV * NV * NV; REFS = DATA.refs; GROUPS = DATA.groups; BOX = DATA.box; VOX = DATA.vox;
+    st.ref = Math.max(0, REFS.indexOf(lab) >= 0 ? REFS.indexOf(lab) : REFS.indexOf('L')); st.group = Math.max(0, GROUPS.indexOf(gname));
+    buildChips();
+  }
+  function render() {
+    $('defnote').textContent = DATA.definition;
+    document.querySelectorAll('#refs .chip').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.i === st.ref));
+    document.querySelectorAll('#groups .chip').forEach((b, i) => b.setAttribute('aria-pressed', i === st.group));
+    const F = currentField(); st.F = F;
+    texts(F); draw3d(F); ['xy', 'xz', 'yz'].forEach((w) => drawProj($('p' + w), w, F)); gallery(); table();
+  }
+  $('seg-def').querySelectorAll('button').forEach((b, _, bs) => b.addEventListener('click', () => { bs.forEach((o) => o.setAttribute('aria-pressed', o === b)); setDef(b.dataset.v); render(); }));
+  seg('seg-scope', 'scope', true); seg('seg-color', 'color'); seg('seg-mode', 'mode'); seg('seg-value', 'value'); seg('seg-proj', 'proj');
+  $('thr').addEventListener('input', () => { st.thr = +$('thr').value; $('thrv').textContent = st.thr + '%'; draw3d(st.F); });
+  $('skel').addEventListener('change', () => { st.skel = $('skel').checked; draw3d(st.F); });
+  function hover(ev) {
+    if (!st.dots || !st.F) return hideTip();
+    const b = cv.getBoundingClientRect(), mx = ev.clientX - b.left, my = ev.clientY - b.top;
+    let best = null, bd = 1e9;
+    for (let k = st.dots.length - 1; k >= 0; k--) { const [x, y, r, i] = st.dots[k]; const d = Math.hypot(x - mx, y - my); if (d <= r + 3 && d < bd) { bd = d; best = i; } }
+    if (best == null) return hideTip();
+    const F = st.F, iz = best % NV, iy = Math.floor(best / NV) % NV, ix = Math.floor(best / (NV * NV));
+    showTip(ev, `(${fmt(centre(ix), 0)}, ${fmt(centre(iy), 0)}, ${fmt(centre(iz), 0)}) Å · 접촉 ${Math.round(F.g[best])}개` +
+      (F.ratioOk ? ` · 편중 ×${fmt(F.vals[best], 2)}` : '') + (F.partner && F.dom && F.dom[best] ? ` · 가장 많은 상대 ${F.dom[best]} (${pct(F.domShare[best])})` : ''));
+  }
+  cv.addEventListener('pointerleave', hideTip);
+  function animateTo(t) {
+    const from = { yaw: st.yaw, pitch: st.pitch, zoom: st.zoom }, dy = Math.atan2(Math.sin(t.yaw - from.yaw), Math.cos(t.yaw - from.yaw)), t0 = performance.now(), T = 380;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / T), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      st.yaw = from.yaw + dy * e; st.pitch = from.pitch + (t.pitch - from.pitch) * e; st.zoom = from.zoom + (t.zoom - from.zoom) * e;
+      draw3d(st.F); if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  $('std').addEventListener('click', () => animateTo({ yaw: 0, pitch: Math.PI / 2, zoom: 1.25 }));   // x right, y up, z towards the viewer
+  let drag = null;
+  cv.addEventListener('pointerdown', (ev) => { drag = [ev.clientX, ev.clientY]; cv.setPointerCapture(ev.pointerId); });
+  cv.addEventListener('pointermove', (ev) => { if (!drag) { hover(ev); return; } hideTip(); st.yaw += (ev.clientX - drag[0]) * 0.01; st.pitch = Math.max(-1.5708, Math.min(1.5708, st.pitch + (ev.clientY - drag[1]) * 0.01)); drag = [ev.clientX, ev.clientY]; draw3d(st.F); });
+  cv.addEventListener('pointerup', () => { drag = null; });
+  cv.addEventListener('wheel', (ev) => { ev.preventDefault(); st.zoom = Math.max(0.5, Math.min(3, st.zoom * (ev.deltaY < 0 ? 1.1 : 0.9))); draw3d(st.F); }, { passive: false });
+  cv.addEventListener('dblclick', () => { Object.assign(st, DEF); draw3d(st.F); });
+  cv.addEventListener('keydown', (ev) => { const k = { ArrowLeft: [-0.1, 0], ArrowRight: [0.1, 0], ArrowUp: [0, -0.1], ArrowDown: [0, 0.1] }[ev.key]; if (!k) return; ev.preventDefault(); st.yaw += k[0]; st.pitch = Math.max(-1.5708, Math.min(1.5708, st.pitch + k[1])); draw3d(st.F); });
+  window.addEventListener('resize', () => st.F && render());
+  buildChips(); render();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>

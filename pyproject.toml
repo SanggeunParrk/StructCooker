@@ -84,6 +84,8 @@ hmmer = "==3.3.2"
 anarci = "*"
 cd-hit = "*"
 mmseqs2 = "*"   # protein sequence clustering (seq_cluster); cd-hit is for antibodies
+foldseek = "*"   # structure clustering (design training DB)
+dssp = "*"   # reference secondary-structure assignment (mkdssp), used to check structcooker.design.ss
 
 
 [tool.hatch.metadata]
