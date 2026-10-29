@@ -46,7 +46,7 @@ structcooker foldbench verify $PKG OUT
 The built DB lives in the release itself: `OUT = $BIOMOL_ROOT/lmdb/foldbench`, next to `msa_edge.lmdb`, so that
 `lmdb/foldbench/{msa,template,CCD}` is the FoldBench DB on every server that holds the release tree (H100 and cssb:
 `BioMolDB_20261014/lmdb/foldbench/`). The 2026-10-29 build there has 1,568 protein / 58 RNA MSAs (RNA tokens A U G C,
-the release order), 1,910 of 2,395 requested templates (485 are absent from the release) and 956 CCD components.
+the release order), 1,941 of 2,395 requested templates (454 are absent from the release, all DNA/RNA chains: protein templates are only built for polypeptide chains) and 956 CCD components.
 
 `build` never replaces an existing DB, reports keys no source holds, and writes `OUT/foldbench_build.json` (requested,
 written, from_fallback, missing, bytes per asset).
@@ -66,4 +66,12 @@ RNA MSAs differ in depth for most keys, as the release rebuilt them from the san
   removed) and are kept in `lmdb/foldbench/msa_edge.lmdb`, which `build` uses as its fallback.
 - **DNA** has no MSA (matching AF3): `D` / `N` / `Q` keys are expected to be absent and are counted separately by `verify`.
 - **Templates** are limited by the cutoff the full-release template DB was built with (2021-09-30); this command does not
-  re-filter by date.
+  re-filter by date. A found key can hold **zero** templates: the recipe (`db/template/template_candidates.yaml`) takes the top 20
+  hmmsearch hits released at least 60 days before the query, then drops any hit whose alignment covers more than 95% of the
+  query (`max_query_coverage`), so a chain whose every hit is a near-copy ends up with an empty `template_mols`. About 20% of
+  the PDB chains and 33% of the 2022-2026 chains added in 2026 are in that state.
+- **Template history.** The first 2026-07 template build used a `seqid_to_chains.tsv` older than the chain list, so 17,356
+  polypeptide chains (7,065 sequences, incl. 31 FoldBench chains) had no key. They were added on 2026-10-29 with
+  `scripts/template_fix/` (phases 1-4 on that subset, then `merge_into_release.py`); the release `template.lmdb` is now
+  1,025,284 chains and `seqid_template_mols.lmdb` 178,611 sequences. 118 sequences (1,614 chains, 97 with an MSA) never got an
+  hmmsearch output in either build and still have no templates.
