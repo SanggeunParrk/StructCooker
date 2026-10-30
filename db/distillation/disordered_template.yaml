@@ -5,9 +5,10 @@
 schema: D
 
 env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_disordered/template/template_disordered.lmdb}
-file_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/openfold_distillation/disordered_set/protein_tmpl_filelist.txt}
-# Its lines are relative to the OpenFold download (datacooker resolves them against data_dir).
-data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/openfold_distillation}
+file_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/worklists/disordered_template_chains.txt}
+# One line per chain id of the structure (<id>/<id>_<chain id>.npz), relative to data_dir: the links disordered_template_links made
+# to the label-named template files. The key is the link's stem, <id>_<chain id>, what a consumer derives from the structure.
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/openfold_distillation/disordered_template_links}
 
 recipe: ${p:src/structcooker/workflows/ingest/openfold_template_disordered.py}
 key_builder: structcooker.instructions.readers.openfold.openfold_chain_key

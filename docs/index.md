@@ -4,7 +4,7 @@ StructCooker builds the **BioMol** database set — structures, MSAs, templates,
 validation sets as LMDBs, plus the sequence-id and cluster tables — from downloaded sources:
 the PDB, the CCD, the OpenFold3 distillation sets, teddymer and the AFDB multimer release.
 Every database is one declarative config, `db/<group>/<name>.yaml`; the whole release is the
-94-stage DAG in `db/MANIFEST_all.yaml`, built on SLURM by one command.
+95-stage DAG in `db/MANIFEST_all.yaml`, built on SLURM by one command.
 
 StructCooker is the biomolecular layer on top of
 [DataCooker](https://CSSB-SNU.github.io/DataCooker/), which provides the generic engine:

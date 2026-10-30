@@ -1,0 +1,10 @@
+# distillation_disordered template links — one link per (template file, chain id of its structure). MATERIALIZE op.
+# The OpenFold disordered set names templates by label chain (1a0e_A.npz); cif_disordered numbers its chains (1a0e_1, 1a0e_11),
+# several per label for copies. The template build reads these links so its keys are the structure's chain ids.
+recipe_path: ${p:src/structcooker/workflows/exports/disordered_template_links.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/worklists/disordered_template_chains.txt}
+inputs:
+  structure_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/openfold_distillation/disordered_set/structure_files}
+  template_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/openfold_distillation/disordered_set/templates}
+  out_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/openfold_distillation/disordered_template_links}
+  out_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/worklists/disordered_template_chains.txt}

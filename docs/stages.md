@@ -262,9 +262,12 @@ RNA has no templates (the set ships none).
   (`worklists/distillation_monomer_seqid.tsv`), so they share the PDB MSA key space and hold
   one record per unique sequence (`duplicate_input_policy: first_path`). Disordered MSAs:
   `openfold_disordered_seqid_key` via `DISORDERED_SEQID_MAP`; disordered templates:
-  `openfold_chain_key`. The disordered MSA and template stages read the work lists in
-  `materials/reference/openfold_distillation/disordered_set/` (`msa_filelist.txt`,
-  `protein_tmpl_filelist.txt`), whose lines are relative to `data_dir`.
+  `openfold_chain_key` over the links of `distillation/disordered_template_links`. The template files are named by label
+  letter (`1a0c_A.npz`) and cover the crystal's asymmetric unit (1a0o: A-H, four copies of each entity), while
+  `cif_disordered` numbers its chains and keeps one copy per entity (`1a0o_1`, `1a0o_2`). So that stage links, for every
+  structure chain (`structure_files/<id>/<id>.npz`), the template file of the chain's own label or else the first file of
+  the same entity, as `<id>_<chain id>`; a chain with neither gets no key, and the template build keys by the link's name. The disordered MSA stage reads the work list in
+  `materials/reference/openfold_distillation/disordered_set/` (`msa_filelist.txt`), whose lines are relative to `data_dir`.
 - **MSA payloads.** The reader returns every source in the npz (protein: one; RNA:
   `rnacentral_hits` / `nt_hits` / `rfam_hits`) keyed by source name; `inputs.a3m_type` is
   `protein` or `rna`. 840 `alignment.npz` files are empty or corrupt in the release (long
@@ -335,3 +338,20 @@ structcooker build teddymer/msa_search
 from `lmdb/pdb/cif/cif_pdb.lmdb` (waters included, which `cif_pdb_attached` drops) with its own multiprocessing
 driver, because one input record fans out into many self-contained unit records. Rules, schema, split and
 reproduction: [Interface DB](interface-db.md).
+
+
+## Template key contracts
+
+A template lookup that finds nothing is silent: the model trains without templates. `structcooker release-check`
+therefore samples structure records of every set, derives each protein chain's template key and requires the key in the
+template DB (`structcooker/key_contracts.py`, report section `key_contracts`; a rate under 90% fails the check).
+
+| set | structure DB | template DB | key of a chain |
+|---|---|---|---|
+| PDB | `pdb/cif_attached/cif_pdb_attached` | `chain/template/template` | `{record}_{chain id without copy suffix}` (`101m_A`) |
+| disordered | `distillation_disordered/cif_attached/...` | `distillation_disordered/template/template_disordered` | `{record}_{chain id}` (`1a0c_1`; the file of the chain's label, else of its entity) |
+| short, long | `distillation_{short,long}/cif_attached/...` | `template_topn_{short,long}` | `{record}` (`MGYP...`) |
+| Teddymer, AFM | `teddymer/...`, `afdb_multimer/...` | `template_teddymer`, `template_afm` | the chain's `seq_id` (`P...`) |
+
+A new template DB or key rule is added to `CONTRACTS` in the same change. The 2026-10 release had disordered templates keyed
+by label letter, so no chain found its template until the contract check existed.

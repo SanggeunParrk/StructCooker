@@ -42,7 +42,7 @@ valid2 617 · cif_chain 4,162,929 chains · CCD 50,782 components (+ inference C
 ## Checks (2026-10-13)
 
 - `structcooker release-check`: every stage present, self-contained and consistent.
-- `structcooker e2e-sample`: a sample of every source rebuilds, through all 94 stages,
+- `structcooker e2e-sample`: a sample of every source rebuilds, through all 95 stages,
   record-for-record identical to this release for every structure, MSA and CCD record.
 
 ## Recent changes

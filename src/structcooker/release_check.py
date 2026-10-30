@@ -7,7 +7,9 @@ For each stage in the release DAG:
   directories), its entry count must equal ``.meta.json`` and the ``.index.tsv`` rows, and
   a seeded sample of records must decode and pass the schema / structure / MSA checks the
   build verification applies;
-* a file or directory output must exist and be non-empty.
+* a file or directory output must exist and be non-empty;
+* every template DB must be reachable from its structure DB: sampled protein chains derive their template key
+  by the rule in :mod:`structcooker.key_contracts` and find it (a keying mismatch is silent in training).
 
 Run through ``structcooker release-check`` (a SLURM job); the report goes to
 ``<BIOMOL_ROOT>/release_check.json``.
@@ -111,8 +113,13 @@ def run(manifest: Path, out: Path) -> dict[str, Any]:
             else:
                 jobs.append(pool.submit(check_files, name, [str(p) for p in preflight.output_paths(cfg)]))
         reports = [j.result() for j in jobs]
+    from structcooker import key_contracts
+    from structcooker.paths import biomol_root
+
+    contracts = key_contracts.check_all(biomol_root() / "lmdb")
     result = {"stages": len(reports), "with_problems": sum(bool(r["problems"]) for r in reports),
-              "reports": sorted(reports, key=lambda r: r["stage"])}
+              "reports": sorted(reports, key=lambda r: r["stage"]),
+              "key_contracts": contracts, "key_contracts_failed": sum(bool(c["problems"]) for c in contracts)}
     out.write_text(json.dumps(result, indent=1))
     return result
 
@@ -127,8 +134,13 @@ def main() -> None:
         mark = "OK  " if not r["problems"] else "FAIL"
         detail = f"{r.get('entries', '')} entries, {r.get('sampled', 0)} sampled" if "entries" in r else ""
         print(f"{mark} {r['stage']:42} {detail}  {'; '.join(r['problems'])}")
-    print(f"{result['stages']} stages, {result['with_problems']} with problems -> {out}")
-    if result["with_problems"]:
+    for c in result["key_contracts"]:
+        mark = "OK  " if not c["problems"] else "FAIL"
+        print(f"{mark} key contract {c['contract']:16} {c.get('hit', 0)}/{c.get('chains', 0)} chains find their template  "
+              f"{'; '.join(c['problems'])}")
+    print(f"{result['stages']} stages, {result['with_problems']} with problems, "
+          f"{result['key_contracts_failed']} key contracts failed -> {out}")
+    if result["with_problems"] or result["key_contracts_failed"]:
         sys.exit(1)
 
 

@@ -4,7 +4,7 @@ StructCooker builds the **BioMol** database set — the structure, MSA, template
 validation LMDBs used to train structure-prediction models — from downloaded sources (PDB,
 CCD, OpenFold3 distillation, teddymer, AFDB multimer), on the
 [DataCooker](https://CSSB-SNU.github.io/DataCooker/) engine. Every database is one config,
-`db/<group>/<name>.yaml`; the release is the 94-stage DAG in `db/MANIFEST_all.yaml`, built on
+`db/<group>/<name>.yaml`; the release is the 95-stage DAG in `db/MANIFEST_all.yaml`, built on
 SLURM by `structcooker build-all`.
 
 ```bash

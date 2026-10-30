@@ -34,6 +34,7 @@ distillation/disordered_contacts: [distillation/disordered_cif_attached]
 distillation/disordered_msa: []
 distillation/disordered_msa_d2k: [distillation/disordered_msa]
 distillation/disordered_msa_d512: [distillation/disordered_msa]
-distillation/disordered_template: [ccd/ccd]
+distillation/disordered_template: [ccd/ccd, distillation/disordered_template_links]
+distillation/disordered_template_links: []
 metadata/distillation_monomer_seqid: [metadata/seq_id_map]   # entry -> seq_id keys of the short/long/rna MSA DBs
 metadata/ofd_long_recovered_fasta: [metadata/ofd_long_fasta]   # 14 recovered long sequences; seq_id_map reads it last
