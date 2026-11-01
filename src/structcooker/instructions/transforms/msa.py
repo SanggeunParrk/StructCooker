@@ -75,6 +75,10 @@ def parse_sequence(
     if not raw_sequences:
         msg = "MSA must contain a query sequence."
         raise ValueError(msg)
+    if a3m_type.lower() == "rna":
+        # RNA has no thymine: a T is a DNA letter for U (the OpenFold RNA alignments write some queries, e.g. tRNAs, that way)
+        # and would otherwise fall into the "other" token, masking every U of the query row.
+        raw_sequences = [seq.replace("T", "U") for seq in raw_sequences]
     query_sequence = raw_sequences[0]
     length = len(query_sequence.translate(table))
     if not length:

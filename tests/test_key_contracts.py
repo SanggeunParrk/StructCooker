@@ -73,3 +73,35 @@ def test_disordered_links_chain_without_a_template_gets_no_key(tmp_path):
     _disordered_entry(tmp_path, "1abc", [("1", "A", "1"), ("2", "B", "2")], {"A": "1"})
     _links(tmp_path)
     assert _listed(tmp_path) == ["1abc/1abc_1.npz"]
+
+
+def test_rna_msa_t_is_u():
+    from structcooker.instructions.transforms.msa import parse_sequence
+
+    out = parse_sequence(["GAUT", "GA-T", "GAUU"], a3m_type="rna")
+    assert "".join(out["query_sequence"]) == "GAUU"
+    assert out["aligned_sequences"][0].tolist() == [23, 21, 22, 22]  # G A U U, no "other" token
+    assert out["aligned_sequences"][1].tolist() == [23, 21, 31, 22]
+    protein = parse_sequence(["MKT"], a3m_type="protein")
+    assert "".join(protein["query_sequence"]) == "MKT"  # proteins keep their T (threonine)
+
+
+def test_rna_openfold_msa_features_t_is_u():
+    import numpy as np
+
+    from structcooker.instructions.transforms.openfold import build_msa_features
+
+    msa = np.array([list("GAUT"), list("GAUU")])
+    out = build_msa_features(msa, np.zeros(msa.shape, dtype=np.int32), a3m_type="rna")
+    assert "".join(out["query_sequence"]) == "GAUU"
+    assert out["aligned_sequences"][0].tolist() == [23, 21, 22, 22]
+    assert out["aligned_sequences"][1].tolist() == [23, 21, 22, 22]
+
+
+def test_msa_alphabet_follows_the_search_sources():
+    from structcooker.instructions.transforms.openfold import resolve_a3m_type
+
+    assert resolve_a3m_type({"rnacentral_hits": {}, "rfam_hits": {}}, "protein") == "rna"
+    assert resolve_a3m_type({"nucleotide_collection_hits": {}}, "protein") == "rna"
+    assert resolve_a3m_type({"mmseqs_colabfold": {}}, "protein") == "protein"
+    assert resolve_a3m_type({"mmseqs_colabfold": {}}, None) == "protein"

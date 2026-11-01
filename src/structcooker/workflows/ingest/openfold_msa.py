@@ -7,6 +7,7 @@ from structcooker.instructions.transforms.openfold import (
     cap_msa_depth,
     merge_msa_sources,
     parse_openfold_msa_headers,
+    resolve_a3m_type,
 )
 
 """Build an OpenFold3 distillation MSA Cooker.
@@ -19,6 +20,12 @@ resulting ``msa_dict`` matches the schema of the existing a3m LMDB
 """
 
 msa_recipe = RecipeBook()
+
+msa_recipe.add(
+    targets=(("record_a3m_type", str),),
+    instruction=resolve_a3m_type,
+    inputs={"kwargs": {"msa_sources": ("msa_sources", dict), "a3m_type": ("a3m_type", str | None)}},
+)
 
 msa_recipe.add(
     targets=(
@@ -55,7 +62,7 @@ msa_recipe.add(
         "kwargs": {
             "msa": ("msa", np.ndarray),
             "deletion_matrix": ("deletion_matrix", np.ndarray),
-            "a3m_type": ("a3m_type", str | None),
+            "a3m_type": ("record_a3m_type", str),
         },
     },
 )

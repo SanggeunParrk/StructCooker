@@ -32,6 +32,13 @@ template mols, **E** `{msa_dict}`, **G** CCD `{chem_comp_dict}`, **H** pruned CI
 RNA: `A` 21, `U` 22, `G` 23, `C` 24, `N`/`X`/any other letter 25. Gap = 31 in both. The RNA order is A U G C, not A G C U;
 a consumer must not assume the second. The 58 RNA MSAs of the FoldBench DB follow it, record by record
 (`scripts/analysis/rna_msa_token_order.py`).
+An RNA alignment has no `T`: it reads as `U` (22), in the query and in every row. The OpenFold RNA alignments write some queries
+(2,787 of 126,751 OFD RNA records, tRNAs among them) with `T` for every `U`; before 2026-11-01 those query rows were all 25.
+The alphabet of an OpenFold alignment follows its search sources: a file with `rnacentral_hits` / `nucleotide_collection_hits` /
+`rfam_hits` is RNA whatever the config says (the disordered set mixes both; 97 of its RNA records had been tokenised as protein).
+Two disordered RNA ids (`R…097592` from 6azt_B, `R…214729` from 5fn4_E) were searched by OpenFold as proteins
+(`uniref90_hits`, one row) and keep protein tokens. `scripts/analysis/msa_audit.py` checks shapes, row 0, tokens, the query against
+`seq_id_map` and the depth caps; `msa_chain_length_audit.py` checks the MSA length against the chain's.
 
 ```bash
 structcooker list                          # every db config: op, schema, target
