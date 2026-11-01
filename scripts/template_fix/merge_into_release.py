@@ -2,7 +2,7 @@
 
     python merge_into_release.py DELTA_ROOT RELEASE_ROOT [--apply]
 
-A chain key already in the release is left alone. A seq_id already in the release (its older chains were built, the new ones
+A chain key already in the release is left alone unless its record holds no template and the new one does (``--replace-empty``). A seq_id already in the release (its older chains were built, the new ones
 were not) gets the union of the old and the new template mols, so Phase 4 can be re-run from the release's seq_id DB. Chain keys are written the way the release has them
 (pdb id lower-case, chain id as is), values are copied byte for byte. The ``.index.tsv`` and ``.meta.json`` next to each DB
 are rewritten from the merged sizes; the old pair is kept as ``*.pre_template_fix``.
@@ -68,7 +68,13 @@ def union_value(old: bytes, new: bytes) -> bytes:
     return to_bytes({"template_mols": mols, "template_ids": list(mols)})
 
 
-def merge(delta: Path, rel: Path, name: str, keyfn, apply: bool, union: bool = False) -> dict:
+def is_empty(value: bytes) -> bool:
+    from structcooker.instructions.transforms.codecs import from_bytes
+
+    return not from_bytes(value).get("template_mols")
+
+
+def merge(delta: Path, rel: Path, name: str, keyfn, apply: bool, union: bool = False, replace_empty: bool = False) -> dict:
     src = lmdb.open(str(delta / f"{name}.lmdb"), readonly=True, lock=False, readahead=False)
     dst = lmdb.open(str(rel / f"{name}.lmdb"), map_size=int(300e9), readahead=False, metasync=True, sync=True)
     sizes = read_index(rel / f"{name}.lmdb.index.tsv")
@@ -96,6 +102,14 @@ def merge(delta: Path, rel: Path, name: str, keyfn, apply: bool, union: bool = F
                             flush()
                 else:
                     skipped += 1
+                continue
+            if old is not None and replace_empty and is_empty(bytes(old)) and not is_empty(bytes(v)):
+                merged += 1
+                sizes[nk.decode()] = len(v)
+                if apply:
+                    batch.append((nk, bytes(v)))
+                    if len(batch) >= 2000:
+                        flush()
                 continue
             if old is not None or nk.decode() in sizes:
                 skipped += 1
@@ -125,9 +139,10 @@ def merge(delta: Path, rel: Path, name: str, keyfn, apply: bool, union: bool = F
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("delta"), ap.add_argument("release"), ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--replace-empty", action="store_true", help="replace release chain records that hold no template")
     a = ap.parse_args()
     d, r = Path(a.delta) / "lmdb/chain/template", Path(a.release) / "lmdb/chain/template"
-    out = [merge(d, r, "seqid_template_mols", lambda k: k, a.apply, union=True), merge(d, r, "template", chain_key, a.apply)]
+    out = [merge(d, r, "seqid_template_mols", lambda k: k, a.apply, union=True), merge(d, r, "template", chain_key, a.apply, replace_empty=a.replace_empty)]
     print(json.dumps(out, indent=1))
     return 0
 

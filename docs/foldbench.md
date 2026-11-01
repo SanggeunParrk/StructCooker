@@ -73,5 +73,6 @@ RNA MSAs differ in depth for most keys, as the release rebuilt them from the san
 - **Template history.** The first 2026-07 template build used a `seqid_to_chains.tsv` older than the chain list, so 17,356
   polypeptide chains (7,065 sequences, incl. 31 FoldBench chains) had no key. They were added on 2026-10-29 with
   `scripts/template_fix/` (phases 1-4 on that subset, then `merge_into_release.py`); the release `template.lmdb` is now
-  1,025,284 chains and `seqid_template_mols.lmdb` 178,611 sequences. 118 sequences (1,614 chains, 97 with an MSA) never got an
-  hmmsearch output in either build and still have no templates.
+  1,025,284 chains and `seqid_template_mols.lmdb` 178,611 sequences. 118 sequences (1,614 chains, counting the older chains of the same sequences) never got an
+  hmmsearch output in either build and have no templates: 102 are peptides of at most 10 residues (hmmbuild cannot build a
+  profile from them, and a template must have at least 10 residues), the other 16 have no PDB MSA to build a profile from.
