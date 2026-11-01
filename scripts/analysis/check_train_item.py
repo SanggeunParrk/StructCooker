@@ -3,7 +3,7 @@
 usage: check_train_item.py train_item.tsv [--n 2000] [--seed 0]
 Per source, N random rows. Hard failures (MiniWorld would raise): record missing in the cif DB, assembly key missing,
 chain id missing. Soft misses (MiniWorld falls back to a query-only MSA / empty template): protein chain's seq_id missing in
-the MSA DB, template key {record}_{label} missing.
+the MSA DB, template key missing ({record}_{label}; the bare {record} for the monomer sources, as MiniWorld's chain_template_key).
 """
 import argparse
 import json
@@ -89,7 +89,8 @@ def main():
                     continue
                 c["protein_chains"] += 1
                 c["msa_hit"] += get(msa, seq[j]) is not None
-                c["tpl_hit"] += get(tpl, f"{rec_id}_{ch.rsplit('_', 1)[0]}") is not None
+                key = rec_id if s in ("protein_monomer", "short_protein_monomer") else f"{rec_id}_{ch.rsplit('_', 1)[0]}"
+                c["tpl_hit"] += get(tpl, key) is not None
             c["ok_rows"] += ok
         print(f"{s}: rows {len(rs)}  hard-ok {c['ok_rows']}  no_record {c['no_record']} no_assembly {c['no_assembly']} no_chain {c['no_chain']}  "
               f"protein chains {c['protein_chains']}  msa hit {c['msa_hit']}  template hit {c['tpl_hit']}", flush=True)
