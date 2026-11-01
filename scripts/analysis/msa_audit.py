@@ -20,7 +20,7 @@ from structcooker.instructions.transforms.codecs import from_bytes
 
 L = Path("/data/shared/cssb_data/BioMol_clean/lmdb")
 SEQ_ID_MAP = "/data/shared/cssb_data/BioMol_clean/metadata/seq_id_map.tsv"
-PROT = {c: i for i, c in enumerate("ARNDCQEGHILKMFPSTWYV")}
+PROT = {c: i for i, c in enumerate("ARNDCQEGHILKMFPSTWYV")} | {"U": 4}  # selenocysteine is encoded as Cys
 RNA = {"A": 21, "U": 22, "G": 23, "C": 24}
 
 # (name, path, molecule, cap, full DB it is a cap of)
@@ -59,6 +59,7 @@ def record(txn, key):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--keys", type=int, default=200)
+    ap.add_argument("--only", nargs="*", help="names of the DBs to check (default all)")
     a = ap.parse_args()
     sample, queries = {}, {}
     for name, path, mol, cap, full in DBS:
@@ -74,6 +75,8 @@ def main() -> None:
     for name, path, mol, cap, full in DBS:
         envs[name] = open_env(str(L / f"{path}.lmdb"), readonly=True, lock=False, readahead=False)
     for name, path, mol, cap, full in DBS:
+        if a.only and name not in a.only:
+            continue
         bad = {"shape": 0, "row0": 0, "token": 0, "query": 0, "cap": 0, "prefix": 0}
         no_query = n = 0
         ex = []
@@ -87,6 +90,7 @@ def main() -> None:
                     ex.append((key, "in index, not in DB"))
                     continue
                 n += 1
+                kmol = "R" if key.startswith("R") else "P"  # the disordered set holds both molecules under one config
                 s = m["sequences"]
                 q, al, de, pr = s["query_sequence"], np.asarray(s["aligned_sequences"]), np.asarray(s["deletions"]), s["profile"]
                 length = len(q)
@@ -95,10 +99,10 @@ def main() -> None:
                     bad["shape"] += 1
                     ex.append((key, f"shapes {al.shape} {de.shape} {pr.shape} q{length}"))
                     continue
-                if not np.array_equal(al[0], encode(q, mol)):
+                if not np.array_equal(al[0], encode(q, kmol)):
                     bad["row0"] += 1
-                    ex.append((key, "row 0 is not the query"))
-                allowed = set(range(20)) | {20, 31} if mol == "P" else {21, 22, 23, 24, 25, 31}
+                    ex.append((key, f"row 0 is not the query: {al[0][:12].tolist()} vs {''.join(map(str, q))[:12]}"))
+                allowed = set(range(20)) | {20, 31} if kmol == "P" else {21, 22, 23, 24, 25, 31}
                 if not set(np.unique(al).tolist()) <= allowed:
                     bad["token"] += 1
                     ex.append((key, f"tokens {sorted(set(np.unique(al).tolist()) - allowed)[:5]}"))
@@ -119,7 +123,7 @@ def main() -> None:
                         if not np.array_equal(al[:k], fal[:k]):
                             bad["prefix"] += 1
                             ex.append((key, "rows are not the first rows of the full record"))
-        print(f"{name:16} keys={n} bad={ {k: v for k, v in bad.items() if v} or 'none'} no_seq_id_map_entry={no_query} ex={ex[:3]}", flush=True)
+        print(f"{name:16} keys={n} bad={ {k: v for k, v in bad.items() if v} or 'none'} no_seq_id_map_entry={no_query} ex={[e for e in ex if 'query differs' not in e[1]][:4]}", flush=True)
 
 
 if __name__ == "__main__":
