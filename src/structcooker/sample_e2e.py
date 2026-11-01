@@ -52,7 +52,7 @@ ROOT_OVERRIDES = (
     "OPENFOLD_STRUCTURE_OVERRIDES", "AFM_CIF_OVERRIDES",
 )
 DEFAULT_COUNTS = {"pdb": 30, "ofd_short": 20, "ofd_long": 20, "ofd_rna": 20, "ofd_disordered": 20,
-                  "ofd_disordered_templates": 20, "teddymer": 20, "afm_homodimer": 20, "afm_heterodimer": 20}
+                  "teddymer": 20, "afm_homodimer": 20, "afm_heterodimer": 20}
 # Random PDB picks above this size are skipped (a capsid's attached record is tens of GB).
 PDB_MAX_BYTES = 2_000_000
 # Published PDB-derived DBs: a couple of their entries are put in the sample so every
@@ -270,13 +270,13 @@ class Sampler:
         (s_work / "msa_filelist.txt").write_text("".join(f"{s}\n" for s in msa_lines))
         (s_work / "msa_stem_seqid.tsv").write_text(
             "".join("\t".join(r) + "\n" for r in tsv_rows(work / "msa_stem_seqid.tsv") if ours(r[0])))
-        templates = pick((s for s in (work / "protein_tmpl_filelist.txt").read_text().splitlines() if s),
-                         self.counts["ofd_disordered_templates"])
-        (s_work / "protein_tmpl_filelist.txt").write_text("".join(f"{s}\n" for s in templates))
-        # The lists name files relative to the OpenFold download: link the listed ones in.
-        for line in [*msa_lines, *templates]:
+        # The MSA list names files relative to the OpenFold download: link the listed ones in.
+        for line in msa_lines:
             link(ofd_raw / line, s_ofd_raw / line)
-        self.report["ofd_disordered"] = {"entries": sorted(dis), "msas": len(msa_lines), "templates": len(templates)}
+        # Templates are linked per chain of the structure (disordered_template_links reads structure_files and templates
+        # of the same entries), so the sample takes every template file of the sampled entries.
+        templates = sum(link_tree(ofd_raw / "disordered_set/templates" / i, s_ofd_raw / "disordered_set/templates" / i) for i in dis)
+        self.report["ofd_disordered"] = {"entries": sorted(dis), "msas": len(msa_lines), "templates": templates}
 
     # -- teddymer ---------------------------------------------------------------------
     def teddymer(self) -> None:

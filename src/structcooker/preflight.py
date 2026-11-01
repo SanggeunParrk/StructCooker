@@ -38,7 +38,9 @@ _SIDE_OUTPUT_KEYS = frozenset({"output_dir", "hmm_output_dir"})   # + any `out_*
 _NON_INPUT_KEYS = frozenset(
     # done_dir: the resume marker tree, which is this node's own output (hmm_output_dir).
     # work_dir: a search's scratch (mmseqs), rewritten while the stage runs.
-    {"tmp_dir", "work_dir", "output_dir", "hmm_output_dir", "done_dir", "out_path", "old_seq_id_map_path"},
+    # relative_to: the base a written list's lines are made relative to (afm_msa_filelist: ``materials``); it is not read, and
+    # as an input it would fingerprint the whole tree other stages are writing into.
+    {"tmp_dir", "work_dir", "output_dir", "hmm_output_dir", "done_dir", "out_path", "old_seq_id_map_path", "relative_to"},
 )
 
 # External binaries the recipes shell out to (name -> optional/licensed).

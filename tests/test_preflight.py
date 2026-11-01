@@ -26,6 +26,11 @@ def test_nested_and_top_level_inputs(tmp_path):
     }
 
 
+def test_relative_to_base_is_not_an_input(tmp_path):
+    cfg = {"inputs": {"sources": [{"dir": tmp_path / "raw", "glob": "*.zst"}], "relative_to": tmp_path / "materials"}}
+    assert preflight.input_paths(cfg) == [tmp_path / "raw"]
+
+
 def test_dependency_validation(tmp_path):
     configs = {
         "producer": {"env_path": tmp_path / "db"},
