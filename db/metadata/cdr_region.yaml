@@ -1,4 +1,4 @@
-# cdr_region — CDR1-3 positions of every antibody sequence of ab_seq.fasta, as a CSV. MATERIALIZE op.
+# cdr_region — CDR1-3 positions of every antibody sequence of ab_seq.fasta, as a CSV in metadata/. MATERIALIZE op.
 #
 #   seqid,cdr1_start,cdr1_end,cdr2_start,cdr2_end,cdr3_start,cdr3_end
 #
@@ -11,13 +11,13 @@
 # finds no domain in (or a domain with no residue in any CDR) are listed in cdr_region_failed.txt by seqid and have no row;
 # a CDR missing from a truncated chain is an empty cell.
 recipe_path: ${p:src/structcooker/workflows/exports/cdr_region.py}
-output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region.csv}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/cdr_region.csv}
 inputs:
   fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/ab_seq.fasta}
   seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
-  out_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region.csv}
-  failed_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region_failed.txt}
-  extra_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region_extra_domains.csv}
+  out_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/cdr_region.csv}
+  out_failed: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/cdr_region_failed.txt}
+  out_extra: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/cdr_region_extra_domains.csv}
   scheme: chothia
   batch_size: 2000
   ncpu: 8

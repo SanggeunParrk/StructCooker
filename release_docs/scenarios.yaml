@@ -87,6 +87,7 @@
     - {path: metadata/seq_cluster40_TDM.tsv}
     - {path: metadata/seq_cluster40_AFM.tsv}
   optional:
+    - {path: metadata/cdr_region.csv, note: "CDR1-3 start/end of the antibody sequences (seqid, 0-based, end exclusive; Chothia)"}
     - {path: materials/intermediate/fasta, note: "per-database fastas with chain headers"}
 - id: rebuild
   title: Rebuilding or extending (new PDB entries, a fixed recipe)

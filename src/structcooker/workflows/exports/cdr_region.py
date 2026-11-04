@@ -14,8 +14,8 @@ recipe.step(
         "scheme": ("scheme", str),
         "batch_size": ("batch_size", int),
         "ncpu": ("ncpu", int),
-        "failed_path": ("failed_path", str),
-        "extra_path": ("extra_path", str),
+        "failed_path": ("out_failed", str),
+        "extra_path": ("out_extra", str),
     },
 )
 RECIPE = recipe

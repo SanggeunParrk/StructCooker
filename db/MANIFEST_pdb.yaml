@@ -10,6 +10,8 @@ metadata/pdb_seq_cluster40: [metadata/seq_id_map, metadata/cif_fasta]  # + SabDa
 metadata/interacting_seq_ids: [pdb/cif_attached]
 metadata/interacting_seq_clusters: [metadata/interacting_seq_ids, metadata/pdb_seq_cluster40]
 metadata/pdb_polypeptide_L: [metadata/cif_fasta]
+metadata/ab_seq: [metadata/cif_fasta]  # + SabDab (external)
+metadata/cdr_region: [metadata/ab_seq, metadata/seq_id_map]
 metadata/template_chain_filelist: [metadata/cif_fasta]
 pdb/cif_attached: [pdb/cif, metadata/seq_id_map, metadata/pdb_seq_cluster40]
 chain/cif_chain: [pdb/cif]

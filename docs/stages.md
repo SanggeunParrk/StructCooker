@@ -1,7 +1,7 @@
 # Stages — what each DB is built from
 
 Every output of the release is one stage, one `db/<group>/<name>.yaml`, and the release is
-the DAG of all 94 of them in `db/MANIFEST_all.yaml`. This page goes through it data set by
+the DAG of all 96 of them in `db/MANIFEST_all.yaml`. This page goes through it data set by
 data set: what the stages do, which recipe and reader they use, and the parameters that
 decide the result (quoted from the configs). How to run the whole DAG is the
 [end-to-end build](e2e-build.md); where the inputs live is [raw materials](raw-materials.md).
@@ -151,8 +151,8 @@ space for every DB, one clustering per DB.
 
 ### Antibody sequences and their CDRs
 
-Two stages outside the release DAG, built on their own (`structcooker build metadata/ab_seq`, then
-`metadata/cdr_region`; they read and write `materials/intermediate/fasta/`):
+Two release stages (PDB set): `metadata/ab_seq` reads `cif_fasta`, `metadata/cdr_region` reads `ab_seq` and `seq_id_map`. `ab_seq.fasta`
+is in `materials/intermediate/fasta/`; the CSV and its two side files are released tables in `metadata/`:
 
 - `metadata/ab_seq` (`exports/ab_seq.py`) → `ab_seq.fasta`: the records of `cif_pdb.fasta` whose sequence is a
   SAbDab heavy or light chain (matched on PDB id and author chain id), headers unchanged. It is the rule the

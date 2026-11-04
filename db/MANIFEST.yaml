@@ -30,6 +30,8 @@ metadata/pdb_seq_cluster40: [metadata/seq_id_map, metadata/cif_fasta]  # + SabDa
 metadata/interacting_seq_ids: [pdb/cif_attached]
 metadata/interacting_seq_clusters: [metadata/interacting_seq_ids, metadata/pdb_seq_cluster40]
 metadata/pdb_polypeptide_L: [metadata/cif_fasta]                       # hmmsearch template DB
+metadata/ab_seq: [metadata/cif_fasta]                                    # antibody records of the PDB fasta (+ SabDab)
+metadata/cdr_region: [metadata/ab_seq, metadata/seq_id_map]              # CDR1-3 positions per antibody seq_id
 metadata/template_chain_filelist: [metadata/cif_fasta]                 # protein-chain work list
 metadata/seqid_template_filelist: [template/template_candidates]       # = keys of seqid_to_chains
 
