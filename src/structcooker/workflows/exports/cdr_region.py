@@ -1,20 +1,21 @@
-"""Recipe: the CDR residues of the antibody chains of a fasta (``cdr_region.fasta``)."""
+"""Recipe: the CDR positions of the antibody sequences of a fasta (``cdr_region.csv``)."""
 from datacooker import RecipeBook
 
-from structcooker.instructions.transforms.antibody_fasta import extract_cdr_regions
+from structcooker.instructions.transforms.antibody_fasta import extract_cdr_table
 
 recipe = RecipeBook()
 recipe.step(
     outputs=(("status", str),),
-    instruction=extract_cdr_regions,
+    instruction=extract_cdr_table,
     kwargs={
         "fasta_path": ("fasta_path", str),
+        "seq_id_map_path": ("seq_id_map_path", str),
         "out_path": ("out_path", str),
-        "cdrs": ("cdrs", list),
         "scheme": ("scheme", str),
         "batch_size": ("batch_size", int),
         "ncpu": ("ncpu", int),
         "failed_path": ("failed_path", str),
+        "extra_path": ("extra_path", str),
     },
 )
 RECIPE = recipe

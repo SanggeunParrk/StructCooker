@@ -1,16 +1,23 @@
-# cdr_region — the CDR residues of every record of ab_seq.fasta. MATERIALIZE op.
+# cdr_region — CDR1-3 positions of every antibody sequence of ab_seq.fasta, as a CSV. MATERIALIZE op.
 #
-# Each distinct sequence is numbered once with ANARCI (Chothia, heavy / kappa / lambda); one record per chain and
-# CDR, `>` + the chain's header + ` | CDR:H3`. Extents are sequence.chotia_map (L1 24-34, L2 50-56, L3 89-97,
-# H1 26-32, H2 50-65, H3 95-102; insertion codes included). A chain ANARCI cannot number is listed in
-# cdr_region_failed.txt next to the fasta and has no record.
+#   seqid,cdr1_start,cdr1_end,cdr2_start,cdr2_end,cdr3_start,cdr3_end
+#
+# One row per distinct sequence (seqid from metadata/seq_id_map), sorted. CDRn is H1/H2/H3 of a heavy domain and
+# L1/L2/L3 of a light one. Positions are 0-based with the end exclusive, on the sequence as the fasta holds it
+# (X included): the CDR is sequence[start:end]. Each sequence is numbered once with ANARCI (Chothia, H / K / L);
+# extents are sequence.chotia_map (L1 24-34, L2 50-56, L3 89-97, H1 26-32, H2 50-65, H3 95-102; insertion codes
+# included). A sequence with several antibody domains (scFv, tandem) gets its first, N-terminal one in the CSV; the
+# others are in cdr_region_extra_domains.csv (seqid, domain, chain_type, then the same columns). Sequences ANARCI
+# finds no domain in (or a domain with no residue in any CDR) are listed in cdr_region_failed.txt by seqid and have no row;
+# a CDR missing from a truncated chain is an empty cell.
 recipe_path: ${p:src/structcooker/workflows/exports/cdr_region.py}
-output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region.fasta}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region.csv}
 inputs:
   fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/ab_seq.fasta}
-  out_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region.fasta}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+  out_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region.csv}
   failed_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region_failed.txt}
-  cdrs: [H1, H2, H3, L1, L2, L3]
+  extra_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region_extra_domains.csv}
   scheme: chothia
   batch_size: 2000
   ncpu: 8

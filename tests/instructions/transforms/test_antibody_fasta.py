@@ -1,9 +1,9 @@
-"""ab_seq / cdr_region: the SAbDab antibody rule on a fasta, and Chothia CDRs from ANARCI."""
+"""ab_seq / cdr_region: the SAbDab antibody rule on a fasta, and Chothia CDR positions from ANARCI."""
 import pytest
 
 from structcooker.instructions.transforms.antibody_fasta import (
-    cdr_regions_of,
-    extract_cdr_regions,
+    cdr_spans_of,
+    extract_cdr_table,
     filter_fasta_antibody,
     read_fasta,
 )
@@ -23,7 +23,7 @@ def _fasta(path, records):
 
 def _summary(path, rows):
     header = "pdb\tHchain\tLchain\tmodel\n"
-    path.write_text(header + "".join(f"{p}\t{h}\t{l}\t0\n" for p, h, l in rows))
+    path.write_text(header + "".join(f"{p}\t{h}\t{light}\t0\n" for p, h, light in rows))
 
 
 def test_filter_keeps_every_record_of_a_sabdab_sequence(tmp_path):
@@ -51,45 +51,59 @@ def test_filter_needs_the_polypeptide_l_record_of_the_listed_chain(tmp_path):
     assert (tmp_path / "ab.fasta").read_text() == ""
 
 
-def test_cdr_regions_select_by_chain_type_and_name_a_second_domain():
-    numbered = [(i, aa) for i, aa in zip(range(20, 40), "ABCDEFGHIJKLMNOPQRST", strict=True)]
-    # scFv: a heavy domain then a light one, then a second heavy domain
-    domains = [("H", numbered), ("L", numbered), ("H", numbered)]
-    ranges = {"H1": [26, 27], "H2": [38, 39], "H3": [99], "L1": [30]}
-    regions = dict(cdr_regions_of(domains, cdrs=("H1", "H2", "H3", "L1"), ranges=ranges))
-    assert regions == {"H1": "GH", "H2": "ST", "L1": "K", "H1.2": "GH", "H2.2": "ST"}
-    assert "H3" not in regions                       # no residue 99: the CDR is left out
+def test_cdr_spans_are_first_and_last_position_and_none_for_an_absent_cdr():
+    residues = [(i, 100 + i) for i in range(20, 40)]                  # Chothia number i sits at position 100 + i
+    ranges = {"H1": [26, 27], "H2": [38, 39], "H3": [99]}
+    assert cdr_spans_of(("H", residues), ranges) == [(126, 128), (138, 140), None]
 
 
-def test_anarci_chothia_cdrs_of_trastuzumab(tmp_path):
-    _fasta(tmp_path / "ab.fasta", [("1N8Z_B_. | polypeptide(L) | Auth:B", VH), ("1N8Z_A_. | polypeptide(L) | Auth:A", VL)])
-    extract_cdr_regions(tmp_path / "ab.fasta", tmp_path / "cdr.fasta", batch_size=1, ncpu=1)
-    got = {(h.split("|")[0].strip(), h.split("CDR:")[1]): s for h, s in read_fasta(tmp_path / "cdr.fasta")}
-    expected = {("1N8Z_B_.", c): CDRS[c] for c in ("H1", "H2", "H3")} | {("1N8Z_A_.", c): CDRS[c] for c in ("L1", "L2", "L3")}
-    assert got == expected
+def _write_map(path, sequences):
+    path.write_text("".join(f"{i}\t{s}\n" for i, s in sequences))
 
 
-def test_extract_writes_one_record_per_chain_and_cdr_and_lists_failures(tmp_path):
-    records = [
-        ("1N8Z_B_. | polypeptide(L) | Auth:B", VH),
-        ("1N8Z_B_A | polypeptide(L) | Auth:B", VH),            # the same sequence under another altloc
-        ("1N8Z_A_. | polypeptide(L) | Auth:A", VL),
-        ("9XXX_A_. | polypeptide(L) | Auth:A", OTHER),         # ANARCI finds no antibody domain
-    ]
-    _fasta(tmp_path / "ab.fasta", records)
-    message = extract_cdr_regions(tmp_path / "ab.fasta", tmp_path / "cdr.fasta", cdrs=["H3", "L3"], batch_size=2, ncpu=1,
-                                  failed_path=tmp_path / "failed.txt")
-    out = list(read_fasta(tmp_path / "cdr.fasta"))
-    assert out == [
-        ("1N8Z_B_. | polypeptide(L) | Auth:B | CDR:H3", CDRS["H3"]),
-        ("1N8Z_B_A | polypeptide(L) | Auth:B | CDR:H3", CDRS["H3"]),
-        ("1N8Z_A_. | polypeptide(L) | Auth:A | CDR:L3", CDRS["L3"]),
-    ]
-    assert (tmp_path / "failed.txt").read_text() == "9XXX_A_. | polypeptide(L) | Auth:A\n"
-    assert "3 of 4 chains" in message
+def _rows(path):
+    return [line.split(",") for line in path.read_text().splitlines()]
 
 
-def test_unknown_cdr_name_is_refused(tmp_path):
+def test_cdr_table_positions_slice_the_cdrs_out_of_the_sequence(tmp_path):
+    tagged = "XXMGSSHHHH" + VH                                    # a tag with X residues in front: positions must map back
+    _fasta(tmp_path / "ab.fasta", [("1N8Z_B_. | polypeptide(L) | Auth:B", VH), ("1N8Z_B_A | polypeptide(L) | Auth:B", VH),
+                                   ("1N8Z_A_. | polypeptide(L) | Auth:A", VL), ("2TAG_A_. | polypeptide(L) | Auth:A", tagged),
+                                   ("9XXX_A_. | polypeptide(L) | Auth:A", OTHER)])
+    _write_map(tmp_path / "map.tsv", [("P00000000000000000007", VH), ("P00000000000000000003", VL),
+                                      ("P00000000000000000011", tagged), ("P00000000000000000013", OTHER),
+                                      ("R00000000000000000001", "ACGU"), ("Q00000000000000000002", VH)])
+    message = extract_cdr_table(tmp_path / "ab.fasta", tmp_path / "map.tsv", tmp_path / "cdr.csv", batch_size=2, ncpu=1,
+                                failed_path=tmp_path / "failed.txt", extra_path=tmp_path / "extra.csv")
+    rows = _rows(tmp_path / "cdr.csv")
+    assert rows[0] == ["seqid", "cdr1_start", "cdr1_end", "cdr2_start", "cdr2_end", "cdr3_start", "cdr3_end"]
+    assert [r[0] for r in rows[1:]] == ["P00000000000000000003", "P00000000000000000007", "P00000000000000000011"]   # sorted, once each
+    by_id = {r[0]: [int(x) for x in r[1:]] for r in rows[1:]}
+    sequences = {"P00000000000000000003": (VL, "L"), "P00000000000000000007": (VH, "H"), "P00000000000000000011": (tagged, "H")}
+    for seq_id, (sequence, region) in sequences.items():
+        spans = by_id[seq_id]
+        got = [sequence[spans[2 * k] : spans[2 * k + 1]] for k in range(3)]
+        assert got == [CDRS[f"{region}{n}"] for n in (1, 2, 3)], seq_id
+    assert (tmp_path / "failed.txt").read_text() == "P00000000000000000013\n"
+    assert _rows(tmp_path / "extra.csv") == [["seqid", "domain", "chain_type", *rows[0][1:]]]
+    assert "3 sequences of 4" in message
+
+
+def test_a_second_domain_goes_to_the_extra_file(tmp_path):
+    scfv = VH + "GGGGSGGGGSGGGGS" + VL
+    _fasta(tmp_path / "ab.fasta", [("3SCF_A_. | polypeptide(L) | Auth:A", scfv)])
+    _write_map(tmp_path / "map.tsv", [("P00000000000000000005", scfv)])
+    extract_cdr_table(tmp_path / "ab.fasta", tmp_path / "map.tsv", tmp_path / "cdr.csv", ncpu=1, extra_path=tmp_path / "extra.csv")
+    first = [int(x) for x in _rows(tmp_path / "cdr.csv")[1][1:]]
+    assert [scfv[first[2 * k] : first[2 * k + 1]] for k in range(3)] == [CDRS["H1"], CDRS["H2"], CDRS["H3"]]
+    extra = _rows(tmp_path / "extra.csv")[1]
+    assert extra[:3] == ["P00000000000000000005", "2", "L"]
+    second = [int(x) for x in extra[3:]]
+    assert [scfv[second[2 * k] : second[2 * k + 1]] for k in range(3)] == [CDRS["L1"], CDRS["L2"], CDRS["L3"]]
+
+
+def test_a_sequence_without_a_seq_id_is_refused(tmp_path):
     _fasta(tmp_path / "ab.fasta", [("1N8Z_B_. | polypeptide(L) | Auth:B", VH)])
-    with pytest.raises(ValueError, match="unknown CDR names"):
-        extract_cdr_regions(tmp_path / "ab.fasta", tmp_path / "cdr.fasta", cdrs=["H4"])
+    _write_map(tmp_path / "map.tsv", [("P00000000000000000003", VL)])
+    with pytest.raises(ValueError, match="no seq_id"):
+        extract_cdr_table(tmp_path / "ab.fasta", tmp_path / "map.tsv", tmp_path / "cdr.csv", ncpu=1)
