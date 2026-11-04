@@ -149,6 +149,22 @@ space for every DB, one clustering per DB.
   `mmseqs2_covmode: "0"`, `mmseqs2_clustermode: "1"`, with the SAbDab summary
   (`materials/raw/sabdab/sabdab_summary_all.tsv`) for antibody handling.
 
+### Antibody sequences and their CDRs
+
+Two stages outside the release DAG, built on their own (`structcooker build metadata/ab_seq`, then
+`metadata/cdr_region`; they read and write `materials/intermediate/fasta/`):
+
+- `metadata/ab_seq` (`exports/ab_seq.py`) → `ab_seq.fasta`: the records of `cif_pdb.fasta` whose sequence is a
+  SAbDab heavy or light chain (matched on PDB id and author chain id), headers unchanged. It is the rule the
+  clustering splits antibodies with, so its 11,306 distinct sequences are that group.
+- `metadata/cdr_region` (`exports/cdr_region.py`) → `cdr_region.fasta`: ANARCI (Chothia, H / K / L) numbers each distinct
+  sequence once; one record per chain and CDR, `>` + the chain's header + ` | CDR:H3`. Extents are
+  `sequence.chotia_map` (L1 24-34, L2 50-56, L3 89-97, H1 26-32, H2 50-65, H3 95-102, insertion codes included), so H2
+  is the Kabat extent, wider than Chothia's 52-56. A second domain of the same type in a chain (scFv, tandem) is named
+  `H3.2`. Chains ANARCI cannot number are listed in `cdr_region_failed.txt`: SAbDab's chain columns also match some
+  non-antibody sequences (beta-2 microglobulin, hemagglutinin), which clustering already routes back to the protein
+  clusters.
+
 ## MSAs
 
 The PDB alignments are a supplied input (`materials/reference/msa`, HHblits, searched once);

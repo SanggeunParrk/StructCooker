@@ -1,0 +1,11 @@
+# ab_seq — the antibody records of the PDB fasta, in the fasta's own format. MATERIALIZE op.
+#
+# An antibody sequence is one that SAbDab lists as the heavy or light chain of an entry (matched on PDB id and
+# author chain id) -- the rule metadata/pdb_seq_cluster40 splits antibodies with; every record carrying such a
+# sequence is kept, headers unchanged. Feeds metadata/cdr_region.
+recipe_path: ${p:src/structcooker/workflows/exports/ab_seq.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/ab_seq.fasta}
+inputs:
+  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cif_pdb.fasta}
+  sabdab_summary_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/sabdab/sabdab_summary_all.tsv}
+  out_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/ab_seq.fasta}

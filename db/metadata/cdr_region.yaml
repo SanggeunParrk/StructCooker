@@ -1,0 +1,16 @@
+# cdr_region — the CDR residues of every record of ab_seq.fasta. MATERIALIZE op.
+#
+# Each distinct sequence is numbered once with ANARCI (Chothia, heavy / kappa / lambda); one record per chain and
+# CDR, `>` + the chain's header + ` | CDR:H3`. Extents are sequence.chotia_map (L1 24-34, L2 50-56, L3 89-97,
+# H1 26-32, H2 50-65, H3 95-102; insertion codes included). A chain ANARCI cannot number is listed in
+# cdr_region_failed.txt next to the fasta and has no record.
+recipe_path: ${p:src/structcooker/workflows/exports/cdr_region.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region.fasta}
+inputs:
+  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/ab_seq.fasta}
+  out_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region.fasta}
+  failed_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cdr_region_failed.txt}
+  cdrs: [H1, H2, H3, L1, L2, L3]
+  scheme: chothia
+  batch_size: 2000
+  ncpu: 8
