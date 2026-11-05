@@ -2,7 +2,7 @@ from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.cifmol import convert_to_cifmol_dict
 from structcooker.instructions.transforms.sequence import build_fasta
-from structcooker.mols import CIFMol
+from structcooker.instructions.mols import CIFMol
 
 """Build a CIFMol->fasta Cooker."""
 

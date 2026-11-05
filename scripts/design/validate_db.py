@@ -13,9 +13,9 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
 from build_stats import shard_paths  # noqa: E402
-from structcooker.design.ss import secondary_structure  # noqa: E402
+from structcooker.instructions.design.ss import secondary_structure  # noqa: E402
 from structcooker.instructions.transforms.codecs import from_bytes  # noqa: E402
-from structcooker.mols import CIFMolAttached  # noqa: E402
+from structcooker.instructions.mols import CIFMolAttached  # noqa: E402
 
 ap = argparse.ArgumentParser()
 ap.add_argument("dir")

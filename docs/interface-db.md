@@ -5,7 +5,7 @@ stored with all their heavy-atom coordinates **and the surrounding waters**. A u
 for models that need "a binder and its target" (antibody + antigen, protein + dsDNA, protein +
 ligand + ions, ...). Voxelisation or cropping is left to the consumer.
 
-Code: `src/structcooker/interface/` · thresholds: `configs/interface/` · scripts: `scripts/interface/` ·
+Code: `src/structcooker/instructions/interface/` · thresholds: `db_configs/interface/params/` · scripts: `scripts/interface/` ·
 tests: `tests/interface/` · commands: `structcooker interface`. Outside the `build-all` DAG: one input record fans out
 into many unit records, so it has its own driver.
 
@@ -22,7 +22,7 @@ A **node** is one of
 
 Water is never a node.
 
-**Edges** (all thresholds in `configs/interface/interface.yaml`):
+**Edges** (all thresholds in `db_configs/interface/params/interface.yaml`):
 
 - polymer-polymer: heavy atoms < 5.0 A apart, and >= 5 contacting residues on *both* sides
 - protein-ligand: >= 3 ligand heavy atoms within 5.0 A and >= 2 contacting polymer residues
@@ -46,7 +46,7 @@ and repeated assemblies), assemblies with more than 60 polymer chains are skippe
   base N/O pairs within 3.5 A; mismatches, wobble, Hoogsteen count; DNA, RNA and hybrids alike). A unit that holds
   a strand gets every strand it base-pairs with, whether or not the partner touches the protein.
 
-**Ligand exclusion** (`configs/interface/ligand_exclusion.yaml`, categories switched in the config): the AF3
+**Ligand exclusion** (`db_configs/interface/params/ligand_exclusion.yaml`, categories switched in the config): the AF3
 crystallisation aids (SO4, GOL, EDO, PO4, ACT, PEG, DMS, TRS, PGE, PG4, FMT, EPE, MPD, MES, CD, IOD; transcribed
 from the AF3 SI from memory, not yet checked against the PDF), further common additives, water, monovalent
 ions / halides, detergents and lipids. Other ions are nodes. Ligands below 6 heavy atoms are dropped.
@@ -77,7 +77,7 @@ Key = `<pdb>_<assembly>_<model>_<index>` (e.g. `1tsr_1_1_0`). Values use the rep
 (`codecs.to_bytes`: zstd + numpy arrays). Records are self-contained: no lookup into `cif_pdb` is needed.
 
 ```python
-from structcooker.interface.db import InterfaceDB
+from structcooker.instructions.interface.db import InterfaceDB
 db = InterfaceDB("/data/shared/cssb_data/BioMol_clean/lmdb/interface/pdb")
 rec = db.get("1tsr_1_1_0")        # pass shard=<manifest shard> to skip the search over shards
 rec["meta"], rec["nodes"], rec["atoms"], rec["residues"], rec["edges"], rec["duplex"], rec["water"]
@@ -127,7 +127,7 @@ pixi run python scripts/interface/export_unit.py $BIOMOL_ROOT/lmdb/interface/pdb
 ```
 
 The commands only sbatch (`--dry-run` prints the command); logs go to `logs/interface/`. Thresholds live in
-`configs/interface/`; change them and rebuild into a new directory (a finalized directory refuses `build`). Before a
+`db_configs/interface/params/`; change them and rebuild into a new directory (a finalized directory refuses `build`). Before a
 full build try `scripts/interface/build_db.py --limit 300 --out <scratch>`. Peak memory is ~16x the compressed record
 (5j7v, 1.3 GB, needs 21 GB), which is why the tiers use 104 / 24 / 3 workers. `scripts/interface/run_stats.py` and
 `run_sample.py` are the sampling tools used to choose the thresholds; `make_viewer.py` builds a 3D viewer page of

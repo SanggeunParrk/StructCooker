@@ -1,6 +1,6 @@
 """structcooker CLI — declarative, planning-first BioMol DB builds.
 
-One BioMol DB = one ``db/**/<name>.yaml`` = a datacooker *engine config*
+One BioMol DB = one ``db_configs/**/<name>.yaml`` = a datacooker *engine config*
 (recipe / reader / writer + source + target) plus a single ``schema:`` tag.
 
 ``structcooker build <name>`` hands the config to ``datacooker pipeline``, which
@@ -8,7 +8,7 @@ sizes the items, snake-balances them across nodes, and submits shard arrays → 
 index, all afterok-chained. Within-node memory is **Ray's** admission control (the
 engine's only fan-out backend), not a predicted budget, so no human tunes n_jobs /
 mem / chunk / shards. The ``schema:`` tag records each DB's value type and its (now
-advisory) expansion factor E from :mod:`structcooker.schemas`.
+advisory) expansion factor E from :mod:`structcooker.build.schemas`.
 
 The ``schema:`` key is a structcooker concept, not a datacooker one, so build/rebuild
 must not see it: we materialize a schema-stripped ``engine.yaml`` in the workdir and
@@ -26,17 +26,17 @@ import click
 from datacooker.config import load_config
 from omegaconf import OmegaConf
 
-from structcooker import preflight, schemas, workflow_ops
-from structcooker.cluster import NODE_CORES, NODE_MEM_GB
+from structcooker.build import preflight, schemas, workflow_ops
+from structcooker.build.cluster import NODE_CORES, NODE_MEM_GB
 from structcooker.paths import biomol_root, seq_db_root
 
 REPO = Path(__file__).resolve().parents[2]          # StructCooker/
-DB_ROOT = REPO / "db"
+DB_ROOT = REPO / "db_configs"
 PIPELINE_CLI = [sys.executable, "-u", "-m", "datacooker.cli.lmdb", "pipeline"]
 _SCHEMA_LINE = re.compile(r"^\s*schema\s*:.*$", re.MULTILINE)
 # Inputs a release build may fail on, per stage, each with its reason and SHA256: the PDB
 # entries the parser cannot map and the OpenFold alignment.npz files that are empty or
-# corrupt in the release (db/release-exceptions.json).
+# corrupt in the release (db_configs/release-exceptions.json).
 RELEASE_EXCEPTIONS = DB_ROOT / "release-exceptions.json"
 
 
@@ -78,7 +78,7 @@ def _write_engine_yaml(db_path: Path, workdir: Path) -> Path:
 
 
 def _op_of(cfg: dict) -> str:
-    """:func:`structcooker.workflow_ops.op_of`, as a CLI error."""
+    """:func:`structcooker.build.workflow_ops.op_of`, as a CLI error."""
     try:
         return workflow_ops.op_of(cfg)
     except ValueError as exc:
@@ -92,9 +92,11 @@ def cli() -> None:
 
 @cli.command("list")
 def list_dbs() -> None:
-    """List every db/*.yaml with its inferred op, schema, and target."""
+    """List every db_configs/*.yaml with its inferred op, schema, and target."""
     rows: list[tuple[str, str, str, str]] = []
     for f in sorted(DB_ROOT.rglob("*.yaml")):
+        if "params" in f.relative_to(DB_ROOT).parts:  # parameter tables of a DB (db_configs/<db>/params/), not an engine config
+            continue
         if f.name.startswith("MANIFEST"):
             continue
         try:
@@ -117,7 +119,7 @@ def list_dbs() -> None:
 
 
 def _manifest_names(manifest: Path | None) -> list[str]:
-    """Return the node names declared in the manifest (default db/MANIFEST_all.yaml)."""
+    """Return the node names declared in the manifest (default db_configs/MANIFEST_all.yaml)."""
     man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST_all.yaml"
     if not man_path.exists():
         msg = f"no manifest at {man_path}"
@@ -131,7 +133,7 @@ def _manifest_names(manifest: Path | None) -> list[str]:
 
 @cli.command("inspect")
 @click.option("--manifest", type=click.Path(path_type=Path), default=None,
-              help="DB dependency manifest (default: db/MANIFEST_all.yaml, the whole release).")
+              help="DB dependency manifest (default: db_configs/MANIFEST_all.yaml, the whole release).")
 @click.option("--strict", is_flag=True,
               help="Exit nonzero for missing inputs or invalid manifest dependencies.")
 @click.argument("name", required=False)
@@ -202,7 +204,7 @@ def download_cmd(target: str, yes: bool) -> None:
     ``seq_id_map`` seed is NOT here -- it is the Hugging Face dataset ``biomol/seq-id-map``
     (see the README); omit it for a fresh id space.
     """
-    from structcooker import downloads
+    from structcooker.build import downloads
 
     root = biomol_root()
     try:
@@ -378,7 +380,7 @@ def patch(name: str, keys: Path | None, files: Path | None, workdir: Path | None
               help="Print the resolved schema/E + datacooker invocation and exit.")
 def build(name: str, workdir: Path | None, dry_run: bool,
           depends_on: str, show: bool) -> None:
-    """Plan + build the DB named by its db/*.yaml (op auto-inferred).
+    """Plan + build the DB named by its db_configs/*.yaml (op auto-inferred).
 
     build / rebuild run the planning-first LMDB pipeline; materialize / extract
     (projection ops that write a TSV/fasta, not an LMDB) run through
@@ -408,7 +410,7 @@ def build(name: str, workdir: Path | None, dry_run: bool,
 
 @cli.command("build-all")
 @click.option("--manifest", type=click.Path(path_type=Path), default=None,
-              help="DB dependency manifest (default: db/MANIFEST_all.yaml, the whole release).")
+              help="DB dependency manifest (default: db_configs/MANIFEST_all.yaml, the whole release).")
 @click.option("--workdir", type=click.Path(path_type=Path), default=None,
               help="Parent scratch dir (each DB gets a <workdir>/<name> subdir).")
 @click.option("--dry-run", is_flag=True, help="Plan + write scripts, do not sbatch.")
@@ -417,7 +419,7 @@ def build(name: str, workdir: Path | None, dry_run: bool,
 def build_all(manifest: Path | None, workdir: Path | None,
               dry_run: bool, force: bool) -> None:
     """Submit or resume verified release stages through finite native SLURM jobs."""
-    from structcooker.release import start
+    from structcooker.release.dag import start
 
     man_path = Path(manifest) if manifest else DB_ROOT / "MANIFEST_all.yaml"
     if dry_run:
@@ -459,7 +461,7 @@ def release_check(manifest: Path) -> None:
 
     out_root = biomol_root()
     execu = SlurmExecutor(workdir=REPO / "logs" / "release_check", repo=REPO)
-    job = execu.run_once(name="release_check", argv=[sys.executable, "-u", "-m", "structcooker.release_check",
+    job = execu.run_once(name="release_check", argv=[sys.executable, "-u", "-m", "structcooker.release.check",
                                                        str(manifest.resolve()), str(out_root / "release_check.json")],
                          mem_gb=256, cores=16).job_id
     click.echo(f"release-check job {job}; report -> {out_root / 'release_check.json'}")
@@ -474,7 +476,7 @@ def release_docs(manifest: Path) -> None:
     The database list, the scenario sizes and the check summary are generated from the tree
     (configs, .meta.json, data.mdb sizes, release_check.json); rerun after a build or a move.
     """
-    from structcooker import release_docs as docs
+    from structcooker.release import docs as docs
 
     for path in docs.write(biomol_root(), manifest.resolve()):
         click.echo(f"wrote {path}")
@@ -485,7 +487,7 @@ def e2e_sample() -> None:
     """Sampled end-to-end check: the release DAG on a few hundred inputs.
 
     prepare (SLURM job) -> run (build-all on the sample) -> status -> verify (SLURM job).
-    See structcooker.sample_e2e and docs/e2e-build.md.
+    See structcooker.release.sample_e2e and docs/e2e-build.md.
     """
 
 
@@ -493,7 +495,7 @@ def _sample_job(root: Path, name: str, argv: list[str], mem_gb: int) -> str:
     from datacooker.executors.slurm import SlurmExecutor
 
     execu = SlurmExecutor(workdir=root / "jobs" / name, repo=REPO)
-    return execu.run_once(name=f"e2e_{name}", argv=[sys.executable, "-u", "-m", "structcooker.sample_e2e", *argv],
+    return execu.run_once(name=f"e2e_{name}", argv=[sys.executable, "-u", "-m", "structcooker.release.sample_e2e", *argv],
                           mem_gb=mem_gb, cores=8).job_id
 
 
@@ -505,7 +507,7 @@ def e2e_sample_prepare(root: Path, counts: tuple[str, ...]) -> None:
     """Pick the sample and build ROOT, a small BIOMOL_ROOT."""
     import json
 
-    from structcooker.sample_e2e import DEFAULT_COUNTS
+    from structcooker.release.sample_e2e import DEFAULT_COUNTS
 
     sizes = {}
     for item in counts:
@@ -529,8 +531,8 @@ def e2e_sample_prepare(root: Path, counts: tuple[str, ...]) -> None:
               show_default=True)
 def e2e_sample_run(root: Path, manifest: Path) -> None:
     """build-all on the sample (ROOT/run), with every path confined to ROOT."""
-    from structcooker.release import start
-    from structcooker.sample_e2e import escaping_paths, sample_environment
+    from structcooker.release.dag import start
+    from structcooker.release.sample_e2e import escaping_paths, sample_environment
 
     root = root.resolve()
     if not (root / "sample.json").exists():
@@ -611,7 +613,7 @@ def foldbench_keys(package: Path, out: Path | None) -> None:
     import json
     from dataclasses import asdict
 
-    from structcooker import foldbench
+    from structcooker.release import foldbench
 
     keys = foldbench.load_keys(package)
     click.echo(json.dumps(keys.counts()))
@@ -646,13 +648,13 @@ def foldbench_build(package: Path, out: Path, release: Path | None, ccd: Path | 
     for f in fallback:
         argv += ["--fallback", str(f.resolve())]
     if local:
-        from structcooker import foldbench
+        from structcooker.release import foldbench
 
         raise SystemExit(foldbench.main(argv))
     from datacooker.executors.slurm import SlurmExecutor
 
     execu = SlurmExecutor(workdir=REPO / "logs" / "foldbench", repo=REPO)
-    job = execu.run_once(name="foldbench_build", argv=[sys.executable, "-u", "-m", "structcooker.foldbench", *argv],
+    job = execu.run_once(name="foldbench_build", argv=[sys.executable, "-u", "-m", "structcooker.release.foldbench", *argv],
                          mem_gb=32, cores=4).job_id
     click.echo(f"foldbench build job {job}; report -> {out / 'foldbench_build.json'}")
 
@@ -662,12 +664,12 @@ def foldbench_build(package: Path, out: Path, release: Path | None, ccd: Path | 
 @click.argument("out", type=click.Path(exists=True, path_type=Path))
 def foldbench_verify(package: Path, out: Path) -> None:
     """Check every a3m_key / template lookup in the package's data.yaml resolves in OUT, and decode a sample."""
-    from structcooker import foldbench
+    from structcooker.release import foldbench
 
     raise SystemExit(foldbench.main(["verify", str(package), str(out)]))
 
 
-from structcooker.interface.cli import interface_group  # noqa: E402
+from structcooker.instructions.interface.cli import interface_group  # noqa: E402
 
 cli.add_command(interface_group)
 

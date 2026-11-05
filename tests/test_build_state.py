@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from structcooker.build_state import (
+from structcooker.build.build_state import (
     Fingerprints,
     exclusive,
 )
@@ -48,7 +48,7 @@ def test_fingerprints_detect_nested_content_changes_and_ignore_lmdb_locks(tmp_pa
 
 
 def test_code_snapshot_is_immutable_and_captures_new_version(tmp_path):
-    from structcooker.release import snapshot
+    from structcooker.release.dag import snapshot
 
     repo = tmp_path / "repo"
     source = repo / "src/package/module.py"
@@ -72,7 +72,7 @@ def test_resolved_hooks_and_relative_recipes_are_frozen(tmp_path):
     from pathlib import Path
 
     from structcooker.instructions.readers.cif import get_cif_data
-    from structcooker.release import freeze_config
+    from structcooker.release.dag import freeze_config
 
     repo = tmp_path / "repo"
     frozen = tmp_path / "frozen"
@@ -83,7 +83,7 @@ def test_resolved_hooks_and_relative_recipes_are_frozen(tmp_path):
 
 
 def test_output_ownership_survives_driver_lock_release(tmp_path):
-    from structcooker.build_state import claim_output, exclusive
+    from structcooker.build.build_state import claim_output, exclusive
 
     output = tmp_path / "db"
     state = tmp_path / "run1/state.json"
@@ -100,7 +100,7 @@ def test_engine_yaml_preserves_nested_path_types(tmp_path):
     from datacooker.config import load_config
     from omegaconf import OmegaConf
 
-    from structcooker.release import encode_engine_paths, freeze_config
+    from structcooker.release.dag import encode_engine_paths, freeze_config
 
     cfg = {"metadata_input": {"tsv": tmp_path / "reference.tsv",
                               "paths": [tmp_path / "other.tsv"]}}
@@ -115,7 +115,7 @@ def test_exclusive_waits_when_asked(tmp_path):
     import threading
     import time
 
-    from structcooker.build_state import exclusive
+    from structcooker.build.build_state import exclusive
 
     lock = tmp_path / "dispatch.lock"
     entered = []
@@ -137,7 +137,7 @@ def test_exclusive_waits_when_asked(tmp_path):
 
 
 def test_directory_fingerprint_is_content_keyed_and_rejects_dir_symlinks(tmp_path):
-    from structcooker.build_state import Fingerprints
+    from structcooker.build.build_state import Fingerprints
 
     root = tmp_path / "msa"
     (root / "P" / "001").mkdir(parents=True)

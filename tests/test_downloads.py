@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from structcooker import downloads
+from structcooker.build import downloads
 from structcooker.paths import mmcif_root
 
 

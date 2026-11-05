@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from structcooker.interface.db import InterfaceDB
+from structcooker.instructions.interface.db import InterfaceDB
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean")) / "lmdb/interface/pdb"
 rows = []

@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from structcooker.build_state import Fingerprints
-from structcooker.build_verify import verify_output
+from structcooker.build.build_state import Fingerprints
+from structcooker.build.build_verify import verify_output
 
 
 def test_native_failure_ledger_and_verified_coverage(tmp_path):

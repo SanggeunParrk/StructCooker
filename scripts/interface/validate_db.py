@@ -11,8 +11,8 @@ from pathlib import Path
 
 import numpy as np
 
-from structcooker.interface.config import load_config
-from structcooker.interface.db import InterfaceDB
+from structcooker.instructions.interface.config import load_config
+from structcooker.instructions.interface.db import InterfaceDB
 
 root, n, seed = sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 300, int(sys.argv[3]) if len(sys.argv) > 3 else 0
 cfg = load_config()

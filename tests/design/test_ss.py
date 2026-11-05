@@ -1,6 +1,6 @@
 import numpy as np
 
-from structcooker.design.ss import assign8, max_run, to_three
+from structcooker.instructions.design.ss import assign8, max_run, to_three
 
 
 def build(phi, psi, n):

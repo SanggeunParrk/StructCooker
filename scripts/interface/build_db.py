@@ -25,15 +25,15 @@ from structcooker.instructions.transforms.codecs import (  # noqa: E402
     from_bytes,
     to_bytes,
 )
-from structcooker.interface.antibody import AntibodyClassifier  # noqa: E402
-from structcooker.interface.config import load_config  # noqa: E402
-from structcooker.interface.pipeline import extract_units  # noqa: E402
-from structcooker.interface.record import (  # noqa: E402
+from structcooker.instructions.interface.antibody import AntibodyClassifier  # noqa: E402
+from structcooker.instructions.interface.config import load_config  # noqa: E402
+from structcooker.instructions.interface.pipeline import extract_units  # noqa: E402
+from structcooker.instructions.interface.record import (  # noqa: E402
     asm_fields,
     manifest_row,
     unit_to_record,
 )
-from structcooker.mols import CIFMol  # noqa: E402
+from structcooker.instructions.mols import CIFMol  # noqa: E402
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 CFG = AB = ENV_IN = ENV_OUT = None

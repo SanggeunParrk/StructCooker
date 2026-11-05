@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, cast
 
-from structcooker.mols import CIFMol, CIFMolAttached, TemplateMol
+from structcooker.instructions.mols import CIFMol, CIFMolAttached, TemplateMol
 
 if TYPE_CHECKING:
     from biomol.core.types import BioMolDict

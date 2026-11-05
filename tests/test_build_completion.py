@@ -8,7 +8,7 @@ cli_module = importlib.import_module("structcooker.cli")
 
 @pytest.mark.parametrize("failed", [False, True])
 def test_build_all_uses_verified_native_release(monkeypatch, tmp_path, failed):
-    from structcooker import release
+    from structcooker.release import dag as release
 
     manifest = tmp_path / "manifest.yaml"
     manifest.write_text("ccd/ccd: []\n")
@@ -31,7 +31,7 @@ def test_build_all_uses_verified_native_release(monkeypatch, tmp_path, failed):
 
 
 def test_dry_run_does_not_submit(monkeypatch, tmp_path):
-    from structcooker import release
+    from structcooker.release import dag as release
 
     manifest = tmp_path / "manifest.yaml"
     manifest.write_text("ccd/ccd: []\n")

@@ -24,7 +24,7 @@ from biomol.core.feature import EdgeFeature, NodeFeature
 from biomol.enums import StructureLevel
 from biomol.exceptions import FeatureKeyError
 
-from structcooker.mols import CIFMolAttached
+from structcooker.instructions.mols import CIFMolAttached
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from biomol.core.container import FeatureContainer
     from biomol.core.feature import Feature
 
-    from structcooker.mols import CIFMol
+    from structcooker.instructions.mols import CIFMol
 
 _LEVELS: dict[str, StructureLevel] = {
     "atoms": StructureLevel.ATOM,

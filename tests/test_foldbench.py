@@ -3,7 +3,7 @@ import json
 import lmdb
 import pytest
 
-from structcooker import foldbench as fb
+from structcooker.release import foldbench as fb
 
 
 def make_db(path, items):

@@ -1,7 +1,7 @@
 """Search the fragment-pair DB with the 7-mer pairs of one query structure (sbatch only).
 
 usage: search_query.py --pdb 9yc5 --roles A_1:antigen,B_1:H,C_1:L --db DIR --out DIR --k 7 [--assembly 1] [--topk N] [--same-kind]
-The query's pairs are extracted exactly as the DB was built (structcooker.fragdb.extract). For every query pair the DB entries are scored
+The query's pairs are extracted exactly as the DB was built (structcooker.instructions.fragdb.extract). For every query pair the DB entries are scored
 by sequence identity over the 14 positions (both orders of the two fragments are tried), the best ``topk`` are compared with the query
 by frame RMSD: both pairs are expressed in the frame of the first fragment's centre residue, so no superposition is needed. RMSD is over
 all stored atoms (N CA C O CB of 14 residues) and, separately, over the second fragment only (its placement relative to the first).
@@ -19,10 +19,10 @@ from pathlib import Path
 import lmdb
 import numpy as np
 
-from structcooker.fragdb.extract import extract_pairs
+from structcooker.instructions.fragdb.extract import extract_pairs
 from structcooker.instructions.transforms.codecs import from_bytes
-from structcooker.mols import CIFMolAttached
-from structcooker.potential.pairs import AA
+from structcooker.instructions.mols import CIFMolAttached
+from structcooker.instructions.potential.pairs import AA
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 K, MID, MINID = 7, 3, 8

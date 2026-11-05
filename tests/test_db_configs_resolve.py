@@ -1,6 +1,6 @@
-"""Every db/*.yaml must point at code that exists: recipe files and dotted hooks.
+"""Every db_configs/*.yaml must point at code that exists: recipe files and dotted hooks.
 
-The end-to-end build (db/MANIFEST_all.yaml) runs every one of these configs; a recipe path or
+The end-to-end build (db_configs/MANIFEST_all.yaml) runs every one of these configs; a recipe path or
 reader/writer hook that no longer resolves would otherwise surface only when its stage runs,
 possibly days into a build.
 """
@@ -12,7 +12,7 @@ import pytest
 from datacooker.config import load_config
 
 REPO = Path(__file__).resolve().parents[1]
-DB = REPO / "db"
+DB = REPO / "db_configs"
 CONFIGS = sorted(p for p in DB.rglob("*.yaml") if not p.name.startswith("MANIFEST"))
 _DOTTED = re.compile(r"^structcooker(\.[A-Za-z_][A-Za-z0-9_]*)+$")
 

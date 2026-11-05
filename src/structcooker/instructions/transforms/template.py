@@ -15,7 +15,7 @@ import zstandard
 from biomol.core.index import IndexTable
 
 from structcooker.instructions.readers.io import load_bytes, load_raw_data
-from structcooker.mols import CIFMol
+from structcooker.instructions.mols import CIFMol
 from structcooker.utils.seq_id import seq_id_from_name, seq_id_shard_path
 
 if TYPE_CHECKING:

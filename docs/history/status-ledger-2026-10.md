@@ -1,12 +1,12 @@
-# db/ migration ledger and release notes (to 2026-10-13)
+# db_configs/ migration ledger and release notes (to 2026-10-13)
 
-> Historical record. The current status is `db/STATUS.md`.
+> Historical record. The current status is `db_configs/STATUS.md`.
 
 Historical migration notes below do not establish current output correctness.
 For the September 10 recovery, production comparisons, and final build status,
 see [the recovery report](recovery-2026-09-10.md).
 
-Every non-distillation BioMol DB and the status of its declarative `db/*.yaml`.
+Every non-distillation BioMol DB and the status of its declarative `db_configs/*.yaml`.
 CIF reproduction also requires the explicit historical CCD reference described in
 [the recovery report](recovery-2026-09-10.md); a missing or incompatible
 definition raises an error instead of dropping observed atoms.
@@ -41,7 +41,7 @@ size measurements and for why its `index_table` must be read through
 ### MSA depth-cap bypass absorbed (was a 🔴 row)
 `scripts/maintenance/lightweight_msa.py` + `build_msa_long_d2k.sh` are replaced by the
 `workflows/exports/cap_msa_depth.py` rebuild recipe (+ `adapt_msa_for_cap` adapter):
-`db/msa/a3m_{d16k,d2k,d512}.yaml` differ only in `parameters.max_depth`. Verified on
+`db_configs/msa/a3m_{d16k,d2k,d512}.yaml` differ only in `parameters.max_depth`. Verified on
 a3m_d16k (178,249 keys, key-set complete, deep records capped to 16000, standard-frame
 output). The recipe caps `msa_dict` in place; the adapter renames the input so the
 same-named output does not silently return the *uncapped* record.
@@ -65,7 +65,7 @@ apply to their historical implementation, not this recovery's performance claim.
 
 ### Retired local trees
 `configs/` (per-run datacooker configs, one per size tier) and `submits/` (their sbatch
-wrappers) were replaced by `db/` and `structcooker build`/`build-all`/`patch`; they were moved
+wrappers) were replaced by `db_configs/` and `structcooker build`/`build-all`/`patch`; they were moved
 out of the checkout on 2026-10-13 (`/data/psk6950/StructCooker_archive_20261013/`).
 
 ## 🟡 Multi-stage — belongs to the step-4 pipeline DAG, not a single config
@@ -79,7 +79,7 @@ out of the checkout on 2026-10-13 (`/data/psk6950/StructCooker_archive_20261013/
 `structcooker build` now auto-infers **materialize** (recipe → TSV/fasta) and
 **extract** (LMDB → TSV) ops alongside build/rebuild, routed to
 `datacooker.cli.workflow` as a single afterok-chainable job. The PDB metadata chain
-is ported under `db/metadata/`:
+is ported under `db_configs/metadata/`:
 
 | config | op | notes |
 |---|---|---|
@@ -114,7 +114,7 @@ parallel ops: `metadata/pdb_polypeptide_L` (L-chain fasta = hmmsearch template D
 
 ## PDB reproduction — configuration coverage
 
-Every step from raw mmCIF to the training/validation DBs is a `db/**` config; nothing
+Every step from raw mmCIF to the training/validation DBs is a `db_configs/**` config; nothing
 runs off a legacy script. What is *not* reproduced here (by design, provided like the
 raw mmCIF/CCD downloads): the external-tool / raw inputs — **SabDab** (antibody summary),
 **SignalP** outputs, and the raw per-chain **a3m** MSAs. The legacy `rekey_seq_id_db.py`
@@ -124,7 +124,7 @@ reproduction step.
 
 ### Historical manual mmCIF fixes
 
-The source session recorded 53 PDB entries (`db/pdb/manual_cif_fixes.txt`) that failed
+The source session recorded 53 PDB entries (`db_configs/pdb/manual_cif_fixes.txt`) that failed
 with its wwPDB snapshot — mostly NMR ensembles whose non-polymer ligand is re-numbered per model,
 breaking the atom→scheme match (verified on `1ai0`: `IPH` at `auth_seq` 22 in some models,
 31 in others, vs a single scheme number). The production build substituted an older
@@ -144,7 +144,7 @@ snapshot. See the recovery report for the actual comparison scope, CCD compatibi
 references, deliberate source differences, and final build status.
 
 The OpenFold3 distillation sets. **Recipes exist** (`workflows/ingest/openfold_*`);
-configs are ported onto the clean `db/distillation/` surface (env-var paths, schema tag,
+configs are ported onto the clean `db_configs/distillation/` surface (env-var paths, schema tag,
 ops knobs dropped — same shape as long_cif). Production stores the *downstream* DBs
 (`cif_*_attached`, capped `msa_*_{d2k,d512,d5k}`, `template_topn_*`/`_disordered`), so the
 full chain is base → derived.
@@ -176,7 +176,7 @@ Submission is not completion; terminal coverage and validation reports decide st
 
 ## Release status — 2026-10-07
 
-End to end: `structcooker build-all --manifest db/MANIFEST_all.yaml` (94 stages; downloads,
+End to end: `structcooker build-all --manifest db_configs/MANIFEST_all.yaml` (94 stages; downloads,
 staging and reference inputs in [docs/e2e-build.md](../e2e-build.md)).
 
 | set | cif / cif_attached (structures) | msa (+ caps) (unique sequences) | template (unique sequences with ≥ 1 candidate) | b_factor |

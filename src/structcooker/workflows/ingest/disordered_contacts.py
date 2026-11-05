@@ -19,7 +19,7 @@ from biomol.enums import StructureLevel
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.geometry import chain_contacts_grid
-from structcooker.mols import CIFMolAttached
+from structcooker.instructions.mols import CIFMolAttached
 
 if TYPE_CHECKING:
     from biomol.core.types import BioMolDict

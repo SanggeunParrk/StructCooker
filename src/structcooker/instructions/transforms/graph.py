@@ -10,7 +10,7 @@ from structcooker.instructions.transforms.sequence import (
     extract_sequence_from_cifmol,
     filter_water,
 )
-from structcooker.mols import CIFMol
+from structcooker.instructions.mols import CIFMol
 from structcooker.utils.mapping import cluster_id, mol_type_map
 
 InputType = TypeVar("InputType", str, int, float)

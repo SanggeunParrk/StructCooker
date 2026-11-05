@@ -8,7 +8,7 @@ from structcooker.instructions.transforms.msa_mmseqs import run_mmseqs_msa_searc
 
 One work item = one chunk of queries sharing a single search against uniref30_2302.
 Contrast ``msa_search_hhblits``, where one item is one sequence because that is how
-HHblits works. Output is ``<seq_id>.a3m`` in the sharded layout db/msa/a3m.yaml ingests,
+HHblits works. Output is ``<seq_id>.a3m`` in the sharded layout db_configs/msa/a3m.yaml ingests,
 so the two paths are interchangeable downstream.
 """
 

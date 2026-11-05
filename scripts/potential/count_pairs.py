@@ -24,8 +24,8 @@ import lmdb  # noqa: E402
 import numpy as np  # noqa: E402
 
 from structcooker.instructions.transforms.codecs import from_bytes  # noqa: E402
-from structcooker.mols import CIFMolAttached  # noqa: E402
-from structcooker.potential import pairs  # noqa: E402
+from structcooker.instructions.mols import CIFMolAttached  # noqa: E402
+from structcooker.instructions.potential import pairs  # noqa: E402
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 DB = ROOT / "lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb"

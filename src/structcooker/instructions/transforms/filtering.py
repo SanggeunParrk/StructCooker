@@ -5,7 +5,7 @@ import networkx as nx
 import numpy as np
 
 from structcooker.instructions.transforms.sequence import extract_sequence_from_cifmol
-from structcooker.mols import CIFMol, CIFMolAttached
+from structcooker.instructions.mols import CIFMol, CIFMolAttached
 from structcooker.utils.mapping import mol_type_map, polymer_cluster_types
 
 

@@ -4,7 +4,7 @@ from structcooker.instructions.transforms.cifmol import (
     convert_to_cifmol_attached_transformed,
 )
 from structcooker.instructions.transforms.sequence import build_fasta
-from structcooker.mols import CIFMolAttached
+from structcooker.instructions.mols import CIFMolAttached
 
 """Build a CIFMolAttached->fasta Cooker.
 

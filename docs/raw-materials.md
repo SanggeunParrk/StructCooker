@@ -15,7 +15,7 @@ The shared UniRef30/MMseqs2 search databases are not part of the tree; they sit 
 
 Every staged source directory carries a `README.md` (what it is, why this subset) and a
 `SOURCE.tsv` (where each file came from, its size). The layout below is the contract the
-`db/*.yaml` configs rely on; a README in the directory itself is the detailed record.
+`db_configs/*.yaml` configs rely on; a README in the directory itself is the detailed record.
 
 ## `materials/raw/` — source data
 

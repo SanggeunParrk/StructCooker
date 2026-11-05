@@ -8,7 +8,7 @@ import numpy as np
 from biomol.core import NodeFeature
 
 from structcooker.instructions.transforms.sequence import filter_water
-from structcooker.mols import CIFMol, CIFMolAttached
+from structcooker.instructions.mols import CIFMol, CIFMolAttached
 from structcooker.utils.mapping import cluster_id, mol_type_map
 
 _SEQMETA_SEP = "\t"  # separates seq_id and cluster in an LmdbDict value

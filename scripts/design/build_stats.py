@@ -22,10 +22,10 @@ for v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
 import lmdb  # noqa: E402
 import numpy as np  # noqa: E402
 
-from structcooker.design.export import CHAIN_LETTERS, backbone_pdb_text, n_protein_chains  # noqa: E402
-from structcooker.design.ss import secondary_structure  # noqa: E402
+from structcooker.instructions.design.export import CHAIN_LETTERS, backbone_pdb_text, n_protein_chains  # noqa: E402
+from structcooker.instructions.design.ss import secondary_structure  # noqa: E402
 from structcooker.instructions.transforms.codecs import from_bytes  # noqa: E402
-from structcooker.mols import CIFMolAttached  # noqa: E402
+from structcooker.instructions.mols import CIFMolAttached  # noqa: E402
 
 
 def first_models(rec):

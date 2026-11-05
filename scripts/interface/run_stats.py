@@ -16,11 +16,11 @@ import numpy as np
 
 from structcooker.instructions.readers.lmdb import read_lmdb
 from structcooker.instructions.transforms.cifmol import convert_to_cifmol_dict
-from structcooker.interface.adapt import pick_alt_keys
-from structcooker.interface.antibody import AntibodyClassifier
-from structcooker.interface.config import load_config
-from structcooker.interface.detect import select_waters
-from structcooker.interface.pipeline import extract_units
+from structcooker.instructions.interface.adapt import pick_alt_keys
+from structcooker.instructions.interface.antibody import AntibodyClassifier
+from structcooker.instructions.interface.config import load_config
+from structcooker.instructions.interface.detect import select_waters
+from structcooker.instructions.interface.pipeline import extract_units
 
 db, index, n, seed, out = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), Path(sys.argv[5])
 max_mb = float(sys.argv[6]) if len(sys.argv) > 6 else 200

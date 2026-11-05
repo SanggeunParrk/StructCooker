@@ -3,7 +3,7 @@
 Declares the *Transform* graph that turns the raw CIF chemical-component tables
 (`_chem_comp`, `_chem_comp_atom`, `_chem_comp_bond`) into the parsed
 `chem_comp_dict`. The Read (loader) and Write (serializer) boundaries are not
-part of the recipe; they are configured in `configs/ingest/ccd_lmdb.yaml`.
+part of the recipe; they are configured in `db_configs/ccd/ccd.yaml`.
 """
 
 from datacooker import RecipeBook

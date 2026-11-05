@@ -3,7 +3,7 @@
 !!! note "Historical record"
     Moved here on 2026-10-13 and kept as written. Commands it names may since have been removed (`pdb-build`, `pdb-status`, `release-build`, `fix-cif`); the current guide is the [end-to-end build](../e2e-build.md).
 
-One command turns [`db/MANIFEST.yaml`](https://github.com/SanggeunParrk/StructCooker/blob/main/db/MANIFEST.yaml) into a datacooker
+One command turns [`db_configs/MANIFEST.yaml`](https://github.com/SanggeunParrk/StructCooker/blob/main/db/MANIFEST.yaml) into a datacooker
 meta-recipe: **31 database configs**, topologically sorted, each dispatched by the op
 class `structcooker build` infers from its config, and SLURM-chained with `afterok` so a
 node only starts once its upstreams exit 0. Already-built outputs are skipped.
@@ -13,7 +13,7 @@ node only starts once its upstreams exit 0. Already-built outputs are skipped.
 > (its source, `docs/build-all-dag.html`, was removed on 2026-10-13).
 
 - **31** db nodes · **5** op classes · **3** deliverables · `afterok` chaining
-- Source of truth: `db/MANIFEST.yaml` · op inference: `src/structcooker/cli.py:_op_of`
+- Source of truth: `db_configs/MANIFEST.yaml` · op inference: `src/structcooker/cli.py:_op_of`
 - Run `structcooker inspect` before `structcooker build-all`.
 
 ## 1. The dependency graph

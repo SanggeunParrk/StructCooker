@@ -20,11 +20,11 @@ pixi run --frozen structcooker release-build --run-dir /path/to/run-state
 ```
 
 Inspect input availability first with `structcooker preflight --help` and the
-manifest-specific options. `db/MANIFEST_distillation.yaml` declares all configured
+manifest-specific options. `db_configs/MANIFEST_distillation.yaml` declares all configured
 CIF, attached CIF, contacts, MSA depth variants and template stages. It assumes the
 reference artifacts already exist; it does not download the raw archive or create
-CCD/chain reference databases. For PDB use `--manifest db/MANIFEST_pdb.yaml
---policy db/pdb-exceptions.json` with the same command.
+CCD/chain reference databases. For PDB use `--manifest db_configs/MANIFEST_pdb.yaml
+--policy db_configs/pdb-exceptions.json` with the same command.
 
 Repeat the exact command with the same roots, code, lock and run directory to
 resume. Active recorded jobs are retained. Terminal attempts reuse worker shards

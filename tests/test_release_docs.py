@@ -5,7 +5,7 @@ import lmdb
 import yaml
 from datacooker.lmdb.sharded import publish_shards
 
-from structcooker import release_docs
+from structcooker.release import docs as release_docs
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -33,13 +33,13 @@ def test_every_scenario_path_is_a_release_path(monkeypatch, tmp_path):
     """Scenario paths name configured outputs, the out-of-DAG DBs, or materials/ directories."""
     from datacooker.config import load_config
 
-    from structcooker import preflight
+    from structcooker.build import preflight
 
     monkeypatch.setenv("BIOMOL_ROOT", str(tmp_path))
     outputs = set()
-    for name in yaml.safe_load((REPO / "db/MANIFEST_all.yaml").read_text()):
+    for name in yaml.safe_load((REPO / "db_configs/MANIFEST_all.yaml").read_text()):
         outputs |= {p.relative_to(tmp_path).as_posix()
-                    for p in preflight.output_paths(load_config(REPO / "db" / f"{name}.yaml"))}
+                    for p in preflight.output_paths(load_config(REPO / "db_configs" / f"{name}.yaml"))}
     extra = {"lmdb/ccd/ccd_inference.lmdb", "lmdb/foldbench/msa_edge.lmdb"}
     for item in yaml.safe_load((REPO / "release_docs/scenarios.yaml").read_text()):
         for entry in [*(item.get("take") or []), *(item.get("optional") or [])]:

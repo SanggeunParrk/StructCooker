@@ -17,7 +17,7 @@ import numpy as np
 from datacooker.lmdb.sharded import open_env
 
 from structcooker.instructions.transforms.codecs import from_bytes
-from structcooker.key_contracts import CONTRACTS, RULES
+from structcooker.release.key_contracts import CONTRACTS, RULES
 
 ROOT = Path("/data/shared/cssb_data/BioMol_clean/lmdb")
 

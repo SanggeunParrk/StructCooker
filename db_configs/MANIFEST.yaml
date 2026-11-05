@@ -1,0 +1,65 @@
+# The BioMol db set as a dependency DAG.
+#
+# `structcooker build-all` turns this into a datacooker meta-recipe: it topologically
+# sorts the nodes, threads each config's terminal job id into its dependents as
+# `--depends-on`, and skips any output already present. build/rebuild nodes run the
+# planning-first pipeline; materialize/extract (metadata projection) nodes run the
+# workflow runner -- both afterok-chainable, dispatched by op.
+#
+# Each entry: <db name> : [<upstream db name>, ...]. Only nodes whose full upstream is
+# itself on the clean surface are listed; template Phase 1/2 (hmm pipeline), signalp,
+# and the RNA-a3m / SabDab raw inputs are provided externally (see db_configs/STATUS.md), so
+# nodes needing them are annotated but their external inputs are not DAG nodes.
+
+# ---- roots (raw inputs) ----
+ccd/ccd: []
+msa/a3m: []
+msa/msa_rna: []                                   # RNA a3m is a provided intermediate
+
+# ---- PDB cif ----
+pdb/cif: [ccd/ccd]                                # cif build reads the ccd DB for bond graphs
+
+# ---- metadata (projection ops off cif) ----
+metadata/cif_fasta: [pdb/cif]
+metadata/cif_metadata: [pdb/cif]
+metadata/seq_id_map: [metadata/cif_fasta]         # + optional reference seed (materials/reference/seq_id_map_seed.tsv) to match production
+# seq_id_map is SHARED across DBs (docs/seq-id-and-cluster-scheme.md): its config also reads the
+# OFD fastas (supplied), metadata/teddymer_fasta, metadata/afm_fasta and ofd_long_recovered.fasta,
+# in that order. Those producers live in MANIFEST_teddymer / MANIFEST_afdb_multimer.
+metadata/pdb_seq_cluster40: [metadata/seq_id_map, metadata/cif_fasta]  # + SabDab (external)
+metadata/interacting_seq_ids: [pdb/cif_attached]
+metadata/interacting_seq_clusters: [metadata/interacting_seq_ids, metadata/pdb_seq_cluster40]
+metadata/pdb_polypeptide_L: [metadata/cif_fasta]                       # hmmsearch template DB
+metadata/ab_seq: [metadata/cif_fasta]                                    # antibody records of the PDB fasta (+ SabDab)
+metadata/cdr_region: [metadata/ab_seq, metadata/seq_id_map]              # CDR1-3 positions per antibody seq_id
+metadata/template_chain_filelist: [metadata/cif_fasta]                 # protein-chain work list
+metadata/seqid_template_filelist: [template/template_candidates]       # = keys of seqid_to_chains
+
+# ---- attach + chain ----
+pdb/cif_attached: [pdb/cif, metadata/seq_id_map, metadata/pdb_seq_cluster40]
+chain/cif_chain: [pdb/cif]
+
+# ---- msa depth caps ----
+msa/a3m_d16k: [msa/a3m]
+msa/a3m_d2k: [msa/a3m]
+msa/a3m_d512: [msa/a3m]
+
+# ---- templates (full hmm pipeline, now absorbed) ----
+template/msa_wo_lower: []                                               # a3m insertion-strip (raw a3m files)
+template/hmmsearch: [template/msa_wo_lower, metadata/pdb_polypeptide_L]  # Phase 0 (parallel)
+template/template_candidates: [template/hmmsearch, metadata/template_chain_filelist, metadata/seq_id_map, metadata/cif_fasta, metadata/cif_metadata]  # Phase 1/2
+template/template_seqs: [template/template_candidates, metadata/seq_id_map, metadata/cif_fasta]
+template/seqid_template_mols: [chain/cif_chain, template/template_seqs, metadata/seqid_template_filelist]   # Phase 3
+template/chain_template: [template/seqid_template_mols, template/template_candidates]                       # Phase 4
+
+# ---- training views ----
+train/train_20210930: [pdb/cif_attached]
+train/train_20260301: [pdb/cif_attached]
+train/train_20210930_mpnn: [train/train_20210930]
+
+# ---- validation (multi-stage; signalp is external) ----
+valid/valid1: [pdb/cif, metadata/seq_id_map]
+valid/valid1_attach: [valid/valid1, metadata/seq_id_map, metadata/pdb_seq_cluster40]
+metadata/valid_1_fasta: [valid/valid1]                                 # valid2 dedup fasta (our DB, header-consistent)
+metadata/train_fasta: [train/train_20210930]                           # valid2 dedup fasta (our DB, header-consistent)
+valid/valid2: [valid/valid1_attach, metadata/pdb_seq_cluster40, metadata/interacting_seq_clusters, metadata/train_fasta, metadata/valid_1_fasta]

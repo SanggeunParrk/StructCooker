@@ -46,7 +46,7 @@ Projection은 출력 파일 존재만 확인한다.
 ## P1 — 숨은 메타데이터 입력과 프로세스 캐시
 
 근거: `src/structcooker/instructions/readers/openfold.py:42`, `:57`, `:90`,
-`src/structcooker/preflight.py:74`, `src/structcooker/production.py:168`.
+`src/structcooker/build/preflight.py:74`, `src/structcooker/production.py:168`.
 
 서열-ID map과 구조 복구 manifest가 환경변수를 통해 reader 내부에서 선택되지만 해당
 경로는 현재 YAML 입력 선언에 포함되지 않는다. 실제 `long_msa.yaml`에 대한

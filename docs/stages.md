@@ -1,7 +1,7 @@
 # Stages — what each DB is built from
 
-Every output of the release is one stage, one `db/<group>/<name>.yaml`, and the release is
-the DAG of all 96 of them in `db/MANIFEST_all.yaml`. This page goes through it data set by
+Every output of the release is one stage, one `db_configs/<group>/<name>.yaml`, and the release is
+the DAG of all 96 of them in `db_configs/MANIFEST_all.yaml`. This page goes through it data set by
 data set: what the stages do, which recipe and reader they use, and the parameters that
 decide the result (quoted from the configs). How to run the whole DAG is the
 [end-to-end build](e2e-build.md); where the inputs live is [raw materials](raw-materials.md).
@@ -21,7 +21,7 @@ inferred from which keys it sets (`workflow_ops.op_of`):
 | `materialize` | `recipe_path` + `output_data_path` | one workflow job (128 GB, 8 cores; a full node if `inputs.n_jobs` asks for it) | FASTA / TSV / work list |
 | `parallel` | `split_recipe_path` + `recipe_path` | one full-node job, or an N-task array with `node_count: N` | files |
 
-LMDB stages carry a `schema:` tag (value type, see `src/structcooker/schemas.py`); it is
+LMDB stages carry a `schema:` tag (value type, see `src/structcooker/build/schemas.py`); it is
 stripped before the config reaches DataCooker. Schemas in use: **A** `{assembly_dict,
 metadata_dict}` (base structures), **B** attached CIFMol, **C** per-chain BioMol, **D**
 template mols, **E** `{msa_dict}`, **G** CCD `{chem_comp_dict}`, **H** pruned CIFMol (MPNN),
@@ -107,7 +107,7 @@ hmmsearch over the PDB polypeptide(L) chains (PDB, teddymer, AFM) or from the Op
   from the current CCD; a missing definition fails instead of dropping atoms).
   `test_run: false`: a truncated or empty mirror file is counted as failed instead of
   aborting a shard; the five PDB entries the parser cannot map are listed in
-  `db/release-exceptions.json`.
+  `db_configs/release-exceptions.json`.
 - Attach (`workflows/metadata/attach.py`, metadata recipe `load_sequence_metadata.py`,
   adapter `transforms.cifmol.convert_to_cifmol_dict`, `split_entries: true`) is the same for
   every set; `metadata_input` names the set's FASTA, `seq_id_map.tsv`, its
@@ -297,7 +297,7 @@ RNA has no templates (the set ships none).
 - **MSA payloads.** The reader returns every source in the npz (protein: one; RNA:
   `rnacentral_hits` / `nt_hits` / `rfam_hits`) keyed by source name; `inputs.a3m_type` is
   `protein` or `rna`. 840 `alignment.npz` files are empty or corrupt in the release (long
-  667, short 173) and are listed in `db/release-exceptions.json`.
+  667, short 173) and are listed in `db_configs/release-exceptions.json`.
 - **Templates.** `openfold_template_topn` ranks each entry's hits by query coverage (from
   `idx_map` alone), decodes them best-first from `chain/cif_chain` and stops at `max_keep`.
   The long set reads 14 recovered `structure.npz` through `OPENFOLD_STRUCTURE_OVERRIDES`
@@ -347,7 +347,7 @@ record, keeping the first.
 
 ## Outside the release DAG
 
-`db/teddymer/msa_search.yaml` (parallel, `search/msa_search_mmseqs.py`) is the MMseqs2 search
+`db_configs/teddymer/msa_search.yaml` (parallel, `search/msa_search_mmseqs.py`) is the MMseqs2 search
 that produced the teddymer MSAs. Run it by hand, only for sequences that have none (for
 example after adding teddymer entries); it reads the search databases under `SEQ_DB_ROOT`
 (`uniref30/2302/msadb/uniref30_2302`, `tools/mmseqs/bin/mmseqs`) and writes
@@ -360,7 +360,7 @@ structcooker build teddymer/msa_search
 
 ## Interface units (outside the release DAG)
 
-`lmdb/interface/pdb/interface_pdb.lmdb` is not a `db/` config: it is built by `structcooker interface build`
+`lmdb/interface/pdb/interface_pdb.lmdb` is not a `db_configs/` config: it is built by `structcooker interface build`
 from `lmdb/pdb/cif/cif_pdb.lmdb` (waters included, which `cif_pdb_attached` drops) with its own multiprocessing
 driver, because one input record fans out into many self-contained unit records. Rules, schema, split and
 reproduction: [Interface DB](interface-db.md).

@@ -1,6 +1,6 @@
 import numpy as np
 
-from structcooker.fragdb.extract import virtual_cb
+from structcooker.instructions.fragdb.extract import virtual_cb
 
 
 def test_virtual_cb_matches_the_af2_ideal_geometry():

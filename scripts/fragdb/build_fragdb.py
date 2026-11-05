@@ -3,7 +3,7 @@
 usage: build_fragdb.py --out DIR [--k 7] [--workers 56] [--limit N] [--seed 0] [--flush 2000000]
 Source: $BIOMOL_ROOT/lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb (first assembly of each entry).
 Each worker handles a fixed share of the entries and writes parts DIR/part_<worker>_<n>/<field>.npy; see
-structcooker.fragdb.extract for the content of a pair. ``pdb`` is the 4-character id packed into a uint32
+structcooker.instructions.fragdb.extract for the content of a pair. ``pdb`` is the 4-character id packed into a uint32
 (little endian: ``int.to_bytes(4, 'little').decode()``), ``assembly`` its number, ``date`` days since 1970-01-01. Release date and resolution come from metadata/cif_metadata.tsv.
 """
 import argparse
@@ -23,9 +23,9 @@ from pathlib import Path  # noqa: E402
 import lmdb  # noqa: E402
 import numpy as np  # noqa: E402
 
-from structcooker.fragdb.extract import extract_pairs  # noqa: E402
+from structcooker.instructions.fragdb.extract import extract_pairs  # noqa: E402
 from structcooker.instructions.transforms.codecs import from_bytes  # noqa: E402
-from structcooker.mols import CIFMolAttached  # noqa: E402
+from structcooker.instructions.mols import CIFMolAttached  # noqa: E402
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 DB = ROOT / "lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb"

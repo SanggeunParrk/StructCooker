@@ -1285,7 +1285,7 @@ def get_struct_oper(
     return output_dict
 
 
-def _apply_RT(  # noqa: N802  # name referenced by dotted-path in db/*.yaml configs
+def _apply_RT(  # noqa: N802  # name referenced by dotted-path in db_configs/*.yaml configs
     atom_container: FeatureContainer,
     matrix: NDArray,
     vector: NDArray,

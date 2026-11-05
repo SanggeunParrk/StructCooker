@@ -14,10 +14,10 @@ from pathlib import Path
 import lmdb
 import numpy as np
 
-from structcooker.design.export import write_backbone_pdb
-from structcooker.design.ss import secondary_structure
+from structcooker.instructions.design.export import write_backbone_pdb
+from structcooker.instructions.design.ss import secondary_structure
 from structcooker.instructions.transforms.codecs import from_bytes
-from structcooker.mols import CIFMolAttached
+from structcooker.instructions.mols import CIFMolAttached
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 DB = ROOT / "lmdb/distillation_short/cif_attached/cif_short_attached.lmdb"

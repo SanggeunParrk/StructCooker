@@ -26,7 +26,7 @@ Three letters, fixed width, so the code is a slice and ids line up in columns.
 | `AFM` | AFDB multimer | `metadata/seq_cluster40_AFM.tsv` |
 
 The four release codes are clustered the same way: mmseqs2 at 40% identity, coverage 0.8
-(`db/metadata/*_seq_cluster40.yaml`, see [stages](stages.md#sequence-ids-and-clustering)).
+(`db_configs/metadata/*_seq_cluster40.yaml`, see [stages](stages.md#sequence-ids-and-clustering)).
 
 `AFD` (AFDB monomer) is deliberately **not** reserved: there is no recipe and no plan. Adding a code later touches nothing that already exists.
 
@@ -62,7 +62,7 @@ sequence also appears in PDB, compare seq_ids, not clusters.
 `seq_id` is a running counter per molecule type (`instructions/transforms/sequence.py:
 build_seq_id_map`), seeded from `materials/reference/seq_id_map_seed.tsv` so existing ids
 survive a rebuild; sequences not in the seed are appended in the order of
-`db/metadata/seq_id_map.yaml`'s `fasta_paths`, which is why a new DB goes last. The molecule
+`db_configs/metadata/seq_id_map.yaml`'s `fasta_paths`, which is why a new DB goes last. The molecule
 type letter (`P`/`R`/`D`/...) is the first character of the id, and so the first character
 after `_` in a cluster id.
 

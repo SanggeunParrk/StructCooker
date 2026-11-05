@@ -66,7 +66,7 @@ RNA MSAs differ in depth for most keys, as the release rebuilt them from the san
   removed) and are kept in `lmdb/foldbench/msa_edge.lmdb`, which `build` uses as its fallback.
 - **DNA** has no MSA (matching AF3): `D` / `N` / `Q` keys are expected to be absent and are counted separately by `verify`.
 - **Templates** are limited by the cutoff the full-release template DB was built with (2021-09-30); this command does not
-  re-filter by date. A found key can hold **zero** templates: the recipe (`db/template/template_candidates.yaml`) takes the top 20
+  re-filter by date. A found key can hold **zero** templates: the recipe (`db_configs/template/template_candidates.yaml`) takes the top 20
   hmmsearch hits released at least 60 days before the query, then drops any hit whose alignment covers more than 95% of the
   query (`max_query_coverage`), so a chain whose every hit is a near-copy ends up with an empty `template_mols`. About 20% of
   the original chains and 33% of the 17,356 added on 2026-10-29 are in that state.

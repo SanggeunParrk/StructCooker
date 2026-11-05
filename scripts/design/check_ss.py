@@ -1,4 +1,4 @@
-"""Compare structcooker.design.ss with mkdssp on a sample of PDB items (sbatch only).
+"""Compare structcooker.instructions.design.ss with mkdssp on a sample of PDB items (sbatch only).
 
 usage: check_ss.py --n 100 [--seed 0] [--work DIR]
 Writes N/CA/C/O of every protein residue as a PDB file, runs ``mkdssp`` (legacy output) and compares the three-state codes.
@@ -13,10 +13,10 @@ from pathlib import Path
 import lmdb
 import numpy as np
 
-from structcooker.design.export import write_backbone_pdb
-from structcooker.design.ss import secondary_structure
+from structcooker.instructions.design.export import write_backbone_pdb
+from structcooker.instructions.design.ss import secondary_structure
 from structcooker.instructions.transforms.codecs import from_bytes
-from structcooker.mols import CIFMolAttached
+from structcooker.instructions.mols import CIFMolAttached
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 DB = ROOT / "lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb"

@@ -5,7 +5,7 @@ from click.testing import CliRunner
 from datacooker.config import load_config
 from omegaconf import OmegaConf
 
-from structcooker import preflight
+from structcooker.build import preflight
 from structcooker.cli import DB_ROOT, cli
 from structcooker.paths import distillation_root, mmcif_root
 

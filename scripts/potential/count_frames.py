@@ -4,7 +4,7 @@ usage: count_frames.py --out DIR [--workers 56] [--limit N] [--max-mb 1e6] [--se
                        [--sidechain]
 Definition A contacts (heavy atoms within 5 A) of the training set; the partner's representative atom is placed in the
 frame of the other residue. A grid of 1 A voxels over +-14 A, indexed [scope, reference type, partner type, x, y, z]
-(see structcooker.potential.pairs.count_frame_contacts). Each worker takes a fixed share of the entries and writes
+(see structcooker.instructions.potential.pairs.count_frame_contacts). Each worker takes a fixed share of the entries and writes
 DIR/part_NNN.npz; the parts are summed into DIR/frames.npz (non-zero cells only: idx, val, widx, wval).
 """
 import argparse
@@ -23,8 +23,8 @@ import lmdb  # noqa: E402
 import numpy as np  # noqa: E402
 
 from structcooker.instructions.transforms.codecs import from_bytes  # noqa: E402
-from structcooker.mols import CIFMolAttached  # noqa: E402
-from structcooker.potential import pairs  # noqa: E402
+from structcooker.instructions.mols import CIFMolAttached  # noqa: E402
+from structcooker.instructions.potential import pairs  # noqa: E402
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 DB = ROOT / "lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb"

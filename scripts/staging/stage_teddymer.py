@@ -1,7 +1,7 @@
-"""Copy the Teddymer selection into materials/raw, the tree db/teddymer/cif builds from.
+"""Copy the Teddymer selection into materials/raw, the tree db_configs/teddymer/cif builds from.
 
 Teddymer ships 10,089,503 dimer PDBs in two flat directories under a personal scratch
-path. We build 510,454 of them (see db/MANIFEST_teddymer.yaml for why), so this copies
+path. We build 510,454 of them (see db_configs/MANIFEST_teddymer.yaml for why), so this copies
 exactly that set into the shared materials tree alongside the other raw inputs -- real
 files, so the build no longer depends on the scratch copy surviving.
 
@@ -95,7 +95,7 @@ def stage(teddymer_root: Path, out_dir: Path) -> tuple[int, int]:
 def _write_readme(out_dir: Path, teddymer_root: Path, selected: int) -> None:
     """Leave the folder able to explain itself without this script."""
     (out_dir / "README.md").write_text(
-        f"""# teddymer — raw input for db/teddymer/cif
+        f"""# teddymer — raw input for db_configs/teddymer/cif
 
 {selected:,} TED domain-pair structures, copied by
 `scripts/staging/stage_teddymer.py` from `{teddymer_root}`.
@@ -115,7 +115,7 @@ singleton). Interface quality is published only for non-singleton cluster
 representatives, so only those can be filtered. The source paper's filter --
 InterfaceLength > {MIN_INTERFACE_LENGTH:.0f}, AvgIntPAE < {MAX_INTERFACE_PAE:.0f},
 AvgIntPlddt > {MIN_INTERFACE_PLDDT:.0f} -- leaves {selected:,} of them.
-See db/MANIFEST_teddymer.yaml for the sets that were measured and rejected.
+See db_configs/MANIFEST_teddymer.yaml for the sets that were measured and rejected.
 
 ## Layout
 

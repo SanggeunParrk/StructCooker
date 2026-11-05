@@ -17,7 +17,7 @@ from biomol.core import EdgeFeature, FeatureContainer, NodeFeature
 from biomol.core.index import IndexTable
 
 from structcooker.instructions.readers.lmdb import read_lmdb
-from structcooker.mols import CIFMol
+from structcooker.instructions.mols import CIFMol
 
 if TYPE_CHECKING:
     from biomol.core.types import BioMolDict

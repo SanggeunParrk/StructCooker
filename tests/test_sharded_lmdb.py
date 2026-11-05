@@ -10,7 +10,7 @@ from datacooker.lmdb.core import (
 from datacooker.lmdb.index import scan_sizes, write_index
 from datacooker.lmdb.sharded import open_env, publish_shards, should_merge
 
-from structcooker.build_state import Fingerprints
+from structcooker.build.build_state import Fingerprints
 
 
 def make_db(path, items):

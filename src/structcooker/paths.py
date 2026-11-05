@@ -27,10 +27,10 @@ def seq_db_root() -> Path:
 
 
 def mmcif_root(root: str | Path) -> Path:
-    """The mmCIF mirror, matching db/pdb/cif.yaml."""
+    """The mmCIF mirror, matching db_configs/pdb/cif.yaml."""
     return Path(root) / "materials/raw/cif"
 
 
 def distillation_root(root: str | Path) -> Path:
-    """The OpenFold distillation download, matching db/distillation."""
+    """The OpenFold distillation download, matching db_configs/distillation."""
     return Path(root) / "materials/raw/openfold_distillation"

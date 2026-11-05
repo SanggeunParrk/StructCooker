@@ -1,4 +1,4 @@
-from structcooker.potential import pairs
+from structcooker.instructions.potential import pairs
 
 
 def test_type_table_is_28_plus_unknowns():

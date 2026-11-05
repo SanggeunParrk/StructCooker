@@ -11,7 +11,7 @@ from datacooker.conditions import output_absent
 from datacooker.config.runtime import canonical_inputs
 from datacooker.lmdb import core
 
-from structcooker import preflight, schemas
+from structcooker.build import preflight, schemas
 from structcooker.instructions.readers import openfold
 from structcooker.instructions.transforms import template
 

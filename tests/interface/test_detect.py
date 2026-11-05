@@ -1,6 +1,6 @@
 import numpy as np
 
-from structcooker.interface.detect import (
+from structcooker.instructions.interface.detect import (
     ContactCfg,
     UnitCfg,
     dedup,
@@ -8,7 +8,7 @@ from structcooker.interface.detect import (
     inter_node_pairs,
     select_waters,
 )
-from structcooker.interface.ligands import is_binding_ligand, load_excluded
+from structcooker.instructions.interface.ligands import is_binding_ligand, load_excluded
 
 
 def _chain(x0, n=10, y=0.0, z=0.0):
@@ -173,7 +173,7 @@ def _helix_strands(n_bp):
 
 
 def test_find_duplex_counts_base_pairs():
-    from structcooker.interface.duplex import find_duplex
+    from structcooker.instructions.interface.duplex import find_duplex
 
     names, xyz, res, strand = _helix_strands(8)
     code = np.where(strand == 0, "A", "T")
@@ -185,7 +185,7 @@ def test_find_duplex_counts_base_pairs():
 
 
 def test_find_duplex_ignores_stacked_chains():
-    from structcooker.interface.duplex import find_duplex
+    from structcooker.instructions.interface.duplex import find_duplex
 
     names, xyz, res, strand = _helix_strands(8)
     xyz[strand == 1, 1] -= 6.5   # strand B 3.9 A from strand A in y: stacked, C1' too close

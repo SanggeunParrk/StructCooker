@@ -4,7 +4,7 @@ import json
 import lmdb
 from datacooker.lmdb.sharded import publish_shards
 
-from structcooker import release_check
+from structcooker.release import check as release_check
 from structcooker.instructions.transforms.codecs import to_bytes
 
 

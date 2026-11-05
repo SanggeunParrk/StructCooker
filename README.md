@@ -4,14 +4,14 @@ StructCooker builds the **BioMol** database set — the structure, MSA, template
 validation LMDBs used to train structure-prediction models — from downloaded sources (PDB,
 CCD, OpenFold3 distillation, teddymer, AFDB multimer), on the
 [DataCooker](https://CSSB-SNU.github.io/DataCooker/) engine. Every database is one config,
-`db/<group>/<name>.yaml`; the release is the 95-stage DAG in `db/MANIFEST_all.yaml`, built on
+`db_configs/<group>/<name>.yaml`; the release is the 95-stage DAG in `db_configs/MANIFEST_all.yaml`, built on
 SLURM by `structcooker build-all`.
 
 ```bash
 git clone --recursive <repo-url> && cd StructCooker && pixi install
 source scripts/cluster/cssb.env       # BIOMOL_ROOT and SLURM settings (copy it for another cluster)
-pixi run structcooker inspect --strict --manifest db/MANIFEST_all.yaml
-pixi run structcooker build-all --manifest db/MANIFEST_all.yaml --workdir /path/to/run
+pixi run structcooker inspect --strict --manifest db_configs/MANIFEST_all.yaml
+pixi run structcooker build-all --manifest db_configs/MANIFEST_all.yaml --workdir /path/to/run
 ```
 
 - [docs/index.md](docs/index.md) — what it is, install, quick start, every command.
@@ -20,7 +20,7 @@ pixi run structcooker build-all --manifest db/MANIFEST_all.yaml --workdir /path/
 - [docs/stages.md](docs/stages.md) — what each stage builds and with which parameters.
 - [docs/interface-db.md](docs/interface-db.md) — the interface-unit DB of the PDB (2..N touching molecules, waters
   included; train / valid / test by release date), built by `structcooker interface`.
-- [db/STATUS.md](db/STATUS.md) — what the current release holds, its known gaps and checks.
+- [db_configs/STATUS.md](db_configs/STATUS.md) — what the current release holds, its known gaps and checks.
 
 Sequence ids are assigned counters: keep `materials/reference/seq_id_map_seed.tsv` (and the
 other supplied reference inputs, [docs/e2e-build.md §3](docs/e2e-build.md#3-reference-inputs))

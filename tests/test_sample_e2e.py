@@ -7,7 +7,7 @@ import numpy as np
 import yaml
 from datacooker.config import load_config
 
-from structcooker import sample_e2e
+from structcooker.release import sample_e2e
 from structcooker.instructions.transforms.codecs import to_bytes
 
 REPO = Path(__file__).resolve().parents[1]
@@ -56,7 +56,7 @@ def test_sample_environment_confines_every_config(tmp_path, monkeypatch):
     monkeypatch.delenv("MONOMER_SEQID_MAP")
     for key in ("BIOMOL_ROOT", "STRUCTCOOKER_MAX_NODES"):
         monkeypatch.setenv(key, env[key])
-    graph = yaml.safe_load((REPO / "db/MANIFEST_all.yaml").read_text())
+    graph = yaml.safe_load((REPO / "db_configs/MANIFEST_all.yaml").read_text())
     configs = {n: load_config(_resolve_db(n)) for n in graph}
     assert sample_e2e.escaping_paths(configs, tmp_path) == []
 

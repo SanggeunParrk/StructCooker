@@ -13,7 +13,7 @@ legacy scripts or hand-written sbatch.
 
 ## Guiding principle
 
-> **One artifact = one `db/*.yaml`, built by `structcooker build <name>` on the
+> **One artifact = one `db_configs/*.yaml`, built by `structcooker build <name>` on the
 > datacooker Ray engine.** No `configs/` legacy, no `scripts/` one-offs, no manual
 > `sbatch` (`configs/`, `submits/` and the one-off scripts were retired on 2026-10-13). A reader reproduces any BioMol DB by reading its config.
 
@@ -133,7 +133,7 @@ src/structcooker/
   instructions/{readers,transforms,writers}/   # transform primitives (KEEP)
   workflows/exports/*.py                        # datacooker RECIPE modules
   cli.py                                         # `structcooker build|list`
-db/**/*.yaml                                     # THE public build interface (expand to all)
+db_configs/**/*.yaml                                     # THE public build interface (expand to all)
 libs/datacooker/                                 # engine (Ray-only)
 docs/                                            # mkdocs
 ```
@@ -148,7 +148,7 @@ script directory kept.
   shard→merge, cluster executor, planner reduced to node-count + even split).
   Unblocks the template key-list builds.
 - **Phase 1 — #1 complete.** Port the 🔴 rows (chain, template P2–P4, msa_rna,
-  resources, edge_node) to recipes + `db/` configs; declare `seq_cluster` and the
+  resources, edge_node) to recipes + `db_configs/` configs; declare `seq_cluster` and the
   `valid` 2-stage DAG. Outcome: the whole `pdb/`+`chain/`+`train/`+`metadata/` tree
   reproducible from `structcooker build`.
 - **Phase 2 — #2 distillation.** A download/ingest workflow for the OpenFold sets +

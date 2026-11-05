@@ -7,7 +7,7 @@ jobs; the commands below only submit them, so they are safe on a login node.
 
 ```
 download (§1)  ->  stage (scripts/staging, §2)  ->  reference inputs in place (§3)
-    ->  structcooker build-all --manifest db/MANIFEST_all.yaml --workdir RUN  (§4)
+    ->  structcooker build-all --manifest db_configs/MANIFEST_all.yaml --workdir RUN  (§4)
     ->  release-check, release-docs (§5)
 ```
 
@@ -64,7 +64,7 @@ self-consistent but not identical to this release.
 
 | Input | Location | Fixes |
 |---|---|---|
-| seq_id seed | `seq_id_map_seed.tsv` | this release's seq_id_map (all DBs); a rebuild keeps every id, and new sequences are appended in `db/metadata/seq_id_map.yaml` order |
+| seq_id seed | `seq_id_map_seed.tsv` | this release's seq_id_map (all DBs); a rebuild keeps every id, and new sequences are appended in `db_configs/metadata/seq_id_map.yaml` order |
 | OFD reference fastas | `openfold_distillation/fasta/{short,long,rna,disordered}.fasta` | the OFD sequence set seq_id_map and OFD clustering run over |
 | PDB MSAs | `msa/` | PDB a3m DBs and the PDB template search |
 | Teddymer MSAs | `msa_teddymer/` | teddymer MSA DBs and template search (MMseqs2, searched once; `teddymer/msa_search` is run by hand for new sequences only) |
@@ -77,18 +77,18 @@ self-consistent but not identical to this release.
 
 ```bash
 source scripts/cluster/cssb.env                                    # BIOMOL_ROOT, SLURM settings
-structcooker inspect --strict --manifest db/MANIFEST_all.yaml      # every input present, DAG closed
-structcooker build-all --manifest db/MANIFEST_all.yaml --workdir <run dir>
+structcooker inspect --strict --manifest db_configs/MANIFEST_all.yaml      # every input present, DAG closed
+structcooker build-all --manifest db_configs/MANIFEST_all.yaml --workdir <run dir>
 ```
 
-`--manifest` defaults to `db/MANIFEST_all.yaml`, the whole release; a per-set manifest builds
+`--manifest` defaults to `db_configs/MANIFEST_all.yaml`, the whole release; a per-set manifest builds
 that set alone. `--dry-run` validates the DAG and submits nothing. The command returns once the ready
 stages are submitted; there is no resident controller. `<run dir>/summary.json` shows each
 stage's phase, and `complete: true` there is what marks the release built.
 
 **What a stage does.** On its first invocation `build-all` freezes the release definition
 into the run dir: a snapshot of `src/`, `libs/datacooker/src`, `pyproject.toml` and
-`pixi.lock`, every stage config with its paths resolved, and `db/release-exceptions.json`.
+`pixi.lock`, every stage config with its paths resolved, and `db_configs/release-exceptions.json`.
 Every job runs that snapshot. Each stage then runs as finite SLURM jobs:
 
 1. a **plan** job fingerprints the stage's inputs (raw payloads, file lists, reader maps),
@@ -112,7 +112,7 @@ submission whose outcome cannot be established (no job id recorded) fails closed
 resubmitted; inspect the stage's `<run dir>/nodes/<stage>/` and its attempt logs. Do not
 delete the run dir or shard directories behind a published collection.
 
-**Failures.** A stage may fail only on inputs listed in `db/release-exceptions.json`, each by
+**Failures.** A stage may fail only on inputs listed in `db_configs/release-exceptions.json`, each by
 exact key with its reason and SHA256 (verification rechecks the hash): the 5 PDB entries the
 parser cannot map, and 840 OpenFold `alignment.npz` files that are empty or corrupt in the
 release (OFD long 667, short 173; the MSA DBs lack those sequences). Any other failed record
@@ -121,9 +121,9 @@ stage, except where a config sets `duplicate_input_policy: first_path` (the OFD 
 short/long cif stages, the AFM MSA): the lexicographically first path is kept and the choice
 recorded in the attempt's `input-selection.json`.
 
-`db/MANIFEST_all.yaml` is the union of the per-set manifests (`MANIFEST.yaml`,
+`db_configs/MANIFEST_all.yaml` is the union of the per-set manifests (`MANIFEST.yaml`,
 `MANIFEST_{pdb,distillation,teddymer,afdb_multimer,msa,cifcore*}.yaml`); regenerate it after
-editing one (`python -c 'from structcooker.manifests import write; write()'`, enforced by a
+editing one (`python -c 'from structcooker.release.manifests import write; write()'`, enforced by a
 test). Each set's manifest still builds that set alone. What each stage builds is in
 [stages](stages.md).
 
@@ -152,13 +152,13 @@ with `.meta.json` and `.index.tsv`, and a sample of 200 records per DB decoding 
 build's checks. `release-docs` writes the release's own README, provenance and licences
 (copied from `release_docs/`), the database list, the what-to-copy scenarios with this tree's
 sizes (`release_docs/scenarios.yaml`) and a summary of `release_check.json`. Both default to
-`db/MANIFEST_all.yaml`; rerun them after a build, a patch or a move.
+`db_configs/MANIFEST_all.yaml`; rerun them after a build, a patch or a move.
 
 ## 6. Sampled end-to-end check
 
 A full build is days and terabytes. To check that the release DAG still builds end to
 end after a change, run every stage on a sample of a few hundred inputs instead
-(`structcooker.sample_e2e`). All four commands are login-node safe: `prepare` and `verify`
+(`structcooker.release.sample_e2e`). All four commands are login-node safe: `prepare` and `verify`
 submit SLURM jobs, and `run` submits stage jobs the way `build-all` does.
 
 ```bash
@@ -175,7 +175,7 @@ disordered (plus 20 disordered template chains), teddymer, and AFM homo- and het
 selection is a seeded hash order, so the same production data gives the same sample.
 On top of that random selection, the sample also includes these cases on purpose:
 
-- the accepted PDB failures (`pdb/cif` in `db/release-exceptions.json`)
+- the accepted PDB failures (`pdb/cif` in `db_configs/release-exceptions.json`)
 - two manually fixed mmCIFs
 - two entries from each published PDB-derived DB (train, valid1/2, mpnn, chain), so every filter has something to keep
 - the six repaired AFM heterodimers

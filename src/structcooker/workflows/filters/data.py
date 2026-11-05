@@ -9,7 +9,7 @@ from structcooker.instructions.transforms.filtering import (
     filter_signalp_by_sequence,
 )
 from structcooker.instructions.transforms.sequence import filter_water
-from structcooker.mols import CIFMol
+from structcooker.instructions.mols import CIFMol
 
 """Rebuild a CIF lmdb to train AF3"""
 

@@ -8,7 +8,7 @@ within the contact cutoff of another node, 20 water (80 bridging), 0 the rest. I
 import sys
 from pathlib import Path
 
-from structcooker.interface.db import InterfaceDB
+from structcooker.instructions.interface.db import InterfaceDB
 
 ELEM = {"protein": "ATOM", "na": "ATOM"}
 

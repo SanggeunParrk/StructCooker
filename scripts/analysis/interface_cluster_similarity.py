@@ -41,8 +41,8 @@ from Bio.Align import substitution_matrices  # noqa: E402
 sys.path.insert(0, str(Path(__file__).parents[1] / "design"))
 from build_stats import shard_paths  # noqa: E402
 from structcooker.instructions.transforms.codecs import from_bytes  # noqa: E402
-from structcooker.mols import CIFMolAttached  # noqa: E402
-from structcooker.potential.pairs import AA, TYPES, representative_atoms, residue_types  # noqa: E402
+from structcooker.instructions.mols import CIFMolAttached  # noqa: E402
+from structcooker.instructions.potential.pairs import AA, TYPES, representative_atoms, residue_types  # noqa: E402
 
 KINDS = ("protein_protein", "protein_na", "antibody_antigen")
 CONTACT = 8.0

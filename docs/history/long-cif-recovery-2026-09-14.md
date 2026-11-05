@@ -104,11 +104,11 @@ Resolution: the recovery version is superseded for seq_id purposes.
 
 - The 14 records (the bytes after the supplied file's end in the recovered `long.fasta`;
   prefix verified byte-identical) are `BioMol_clean/materials/raw/fasta/ofd_long_recovered.fasta`,
-  appended **last** in `db/metadata/seq_id_map.yaml` so no earlier ID moves.
+  appended **last** in `db_configs/metadata/seq_id_map.yaml` so no earlier ID moves.
 - They received `P00000000000019613388`–`P00000000000019613401`. Verified (job 274028):
   19,613,276 existing IDs kept, 0 changed, 0 lost, 14 new, all 14 equal to the recovered sequences.
   Pre-change map: `metadata/seq_id_map.before_long14.tsv`.
-- `db/distillation/long_cif_attached.yaml` reads the recovered `long.fasta` (supplied + 14).
+- `db_configs/distillation/long_cif_attached.yaml` reads the recovered `long.fasta` (supplied + 14).
   They are not in `seq_cluster30_OFD.tsv`, so they take the singleton fallback `cOFD_<seq_id>`,
   as in the September 14 recovery. The 16,099,470-record attached DB is kept in
   `lmdb/distillation_long/cif/_superseded_20260926/`; rebuild jobs 274029–274031.

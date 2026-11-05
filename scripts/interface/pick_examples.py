@@ -10,7 +10,7 @@ import json
 import sys
 from pathlib import Path
 
-from structcooker.interface.db import InterfaceDB
+from structcooker.instructions.interface.db import InterfaceDB
 
 root, out = Path(sys.argv[1]), sys.argv[2]
 rows = list(csv.DictReader(open(root / "manifest_full.tsv"), delimiter="\t"))

@@ -5,7 +5,7 @@ usage: build_db.py --db SRC --items items.tsv --out DIR --source NAME [--workers
 Every item whose ``pass`` column in items.tsv (summarize.py) is 1 is copied from the source shard collection unchanged
 (``{assembly key: {"cifmol_attached_dict": ...}}``) with these keys added to the CIFMolAttached ``metadata``:
 ``source``, ``length`` (residues with a complete backbone), ``mean_plddt``, ``ss_helix`` / ``ss_strand`` / ``ss_coil`` (fractions of
-the assessed residues, structcooker.design.ss), ``ss_max_coil_run``, ``fs_cluster`` (id of the foldseek representative),
+the assessed residues, structcooker.instructions.design.ss), ``ss_max_coil_run``, ``fs_cluster`` (id of the foldseek representative),
 ``fs_cluster_size`` (members of that cluster in the source, passing or not). Worker w writes DIR/<name>.lmdb/shards/shard_<w>.lmdb and
 DIR/manifest_<w>.tsv; --finalize writes shards.json, the meta file and manifest.tsv.
 """

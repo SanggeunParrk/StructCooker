@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from structcooker import workflow_ops
-from structcooker.build_verify import verify_output
+from structcooker.build import workflow_ops
+from structcooker.build.build_verify import verify_output
 
 
 class FakeExecutor:

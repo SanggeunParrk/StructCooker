@@ -2,7 +2,7 @@
 
 How this tree came to be, and what differs from a from-scratch build. Per-database counts
 are in [databases.md](databases.md); the full build history is in StructCooker
-(`db/STATUS.md`, `docs/history/`).
+(`db_configs/STATUS.md`, `docs/history/`).
 
 ## Sources
 
@@ -36,7 +36,7 @@ These cannot be derived from the downloads; each pins part of the result to the 
   Templates are restricted to hits released by 2021-09-30.
 - **Failed inputs**: 5 PDB entries the parser cannot map and 840 OpenFold `alignment.npz`
   files that are empty or corrupt in the release (long 667, short 173) are absent from
-  their databases (StructCooker `db/release-exceptions.json`).
+  their databases (StructCooker `db_configs/release-exceptions.json`).
 - **OFD long**: 80 entries have no model in the OpenFold release; 14 entries whose
   `structure.npz` is truncated use recovered copies (`materials/intermediate/openfold_distillation/long_recovered`).
 - **AFDB heterodimers**: 6 mmCIFs whose `_entity_poly` contradicts `_entity_poly_seq` are

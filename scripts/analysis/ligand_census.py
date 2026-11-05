@@ -62,7 +62,7 @@ def main():
     ap.add_argument("--every", type=int, default=1)
     a = ap.parse_args()
     root = Path(__file__).resolve().parents[2]
-    tab = yaml.safe_load((root / "configs/interface/af3_si_tables.yaml").read_text())
+    tab = yaml.safe_load((root / "db_db_configs/interface/params/params/af3_si_tables.yaml").read_text())
     t9 = {str(c).upper() for c in tab["table9_crystallization_aids"]}
     t10 = {str(c).upper() for c in tab["table10_ligand_exclusion_list"]}
     index = next(Path(a.db).glob("*.index.tsv"), None) or Path(str(a.db) + ".index.tsv")

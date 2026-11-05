@@ -8,7 +8,7 @@ publish immutable shard collections. Verified readers, indexing and content
 fingerprints support both formats. Existing completed PDB outputs are retained.
 
 Use `structcooker pdb-build` for the PDB CIF and supplied-MSA dependency graph in
-`db/MANIFEST_pdb.yaml`. This entry point adds durable state and mandatory validation
+`db_configs/MANIFEST_pdb.yaml`. This entry point adds durable state and mandatory validation
 to native DataCooker SLURM jobs. `build` and `build-all` retain their older semantics;
 their existing-output checks do not provide these guarantees.
 
@@ -65,7 +65,7 @@ parents pass verification. A nonzero exit is not a completed build.
   failures. Raw ingest keys must match the planned inputs after approved exclusions.
   A filtered rebuild may intentionally remove records; its write/skip counts are
   accounted for. Scientific selection correctness also relies on recipe tests.
-- Only the five exact raw CIF inputs in `db/pdb-exceptions.json` may fail. Each
+- Only the five exact raw CIF inputs in `db_configs/pdb-exceptions.json` may fail. Each
   waiver includes a source-content SHA256 and explanation. New failures stop the
   build. Do not add exceptions solely to obtain a green run.
 - TSV/FASTA projections currently require declared, nonempty outputs and content
@@ -109,9 +109,9 @@ and submitted real isolated native jobs. It builds two actual PDB CIF entries, t
 CCD fixtures and a small protein MSA with a depth-capped derivative. It interrupts
 the CLI, confirms job-ID reuse, confirms unchanged-stage reuse, then changes only
 the MSA input and checks downstream invalidation. It temporarily uses
-`db/_production_acceptance`; run only one acceptance instance at a time.
+`db_configs/_production_acceptance`; run only one acceptance instance at a time.
 Run the repository-wide tests after acceptance finishes, since their configuration
-portability checks enumerate every YAML under `db/`.
+portability checks enumerate every YAML under `db_configs/`.
 For a current end-to-end check use `structcooker e2e-sample` ([end-to-end build](../e2e-build.md)).
 
 This acceptance test is not a fresh full-scale rerun of the complete PDB snapshot.

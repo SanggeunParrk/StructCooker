@@ -23,14 +23,14 @@ sbatch -p cpu-short --qos=cpu-short-q -c 8 --mem=32g -o logs/tests/datacooker_%j
 
 Both use temporary data under `tests/fixtures/` and never touch a release tree. Check each
 job's terminal state and the pytest summary line; a successful submission is not a passed
-test. Tests also keep `db/MANIFEST_all.yaml` equal to the union of the per-set manifests and
-every `db/` config resolvable.
+test. Tests also keep `db_configs/MANIFEST_all.yaml` equal to the union of the per-set manifests and
+every `db_configs/` config resolvable.
 
 To check configs without submitting anything:
 
 ```bash
-pixi run structcooker inspect --strict --manifest db/MANIFEST_all.yaml
-pixi run structcooker build-all --manifest db/MANIFEST_all.yaml --dry-run
+pixi run structcooker inspect --strict --manifest db_configs/MANIFEST_all.yaml
+pixi run structcooker build-all --manifest db_configs/MANIFEST_all.yaml --dry-run
 ```
 
 `inspect` checks nested and list inputs, CCD inputs, supplied model choices, duplicate output
@@ -56,33 +56,35 @@ submitting shell's environment), or copy it for another cluster.
 ## Code layout
 
 ```
-db/                         one config per stage; MANIFEST_*.yaml (per set) and MANIFEST_all.yaml (release)
-db/release-exceptions.json  inputs a release stage may fail on: key, reason, SHA256
+db_configs/                         one config per DB, in a folder per set: db_configs/<group>/<name>.yaml
+db_configs/MANIFEST_*.yaml          the release DAG (per set) and MANIFEST_all.yaml (the whole release)
+db_configs/release-exceptions.json  inputs a release stage may fail on: key, reason, SHA256
+db_configs/<group>/params/          parameter tables of a DB (not engine configs; `structcooker list` skips them), e.g. interface/params/
 src/structcooker/
   cli.py                    the `structcooker` commands
-  release.py                build-all: frozen definition, plan / verify jobs per stage, resume
-  build_verify.py           full output verification before a stage releases its dependents
-  build_state.py            fingerprints, output claims, locks
-  preflight.py              inspect: input and output paths of a config, dependency errors
-  workflow_ops.py           op inference and the SLURM job for workflow ops
-  release_check.py          release-check
-  release_docs.py           release-docs (pages from release_docs/)
-  sample_e2e.py             e2e-sample
-  foldbench.py              foldbench
-  schemas.py                schema tags: value type and expansion factor
-  paths.py, cluster.py      BIOMOL_ROOT / SEQ_DB_ROOT, node size from the environment
-  manifests.py              MANIFEST_all.yaml = union of the per-set manifests
-  downloads.py              structcooker download
-  mols/                     CIFMol, CIFMolAttached, TemplateMol
-  instructions/readers/     loaders and key builders: cif, a3m, openfold, teddymer, afdb, lmdb
-  instructions/transforms/  adapters, codecs, msa, template, pruning, ...
+  paths.py                  BIOMOL_ROOT / SEQ_DB_ROOT
+  build/                    build machinery: build_state (fingerprints, output claims, locks), build_verify (full output
+                            verification), preflight (input/output paths, dependency errors), workflow_ops (op inference and the
+                            SLURM job), schemas (value type and expansion factor), downloads, cluster (node size)
+  release/                  release level: dag (build-all: frozen definition, plan / verify jobs per stage, resume), check
+                            (release-check), docs (release-docs, pages from release_docs/), manifests (MANIFEST_all.yaml = the
+                            union of the per-set manifests), key_contracts, sample_e2e (e2e-sample), foldbench
+  instructions/readers/     loaders and key builders: cif, a3m, openfold, teddymer, afdb, lmdb, asd, abag
+  instructions/transforms/  adapters, codecs, msa, template, pruning, sequence, ...
   instructions/writers/     projections: FASTA / TSV materializers
+  instructions/mols/        CIFMol, CIFMolAttached, TemplateMol
+  instructions/interface/   the interface-unit DB (detect, duplex, adapt, ...; its parameters are db_configs/interface/params/)
+  instructions/design/, fragdb/, potential/   the design set, the fragment DB, the potential frames and pairs
   workflows/                recipes: ingest/, metadata/, search/, filters/, exports/
+  utils/                    seq_id and DB-code helpers
 libs/datacooker/            the engine (submodule)
 scripts/cluster/cssb.env    this cluster's settings
 scripts/staging/            raw-input staging (e2e-build §2), build_inference_ccd.py, consolidate_shards.py
 release_docs/               hand-written release pages and scenarios.yaml
 ```
+
+The engine has two layers, **instructions** (the functions) and **workflows** (the recipes a config points at with `recipe_path`); everything else in `src/structcooker/` is the machinery
+around them. A config is `db_configs/<group>/<name>.yaml`; nothing about a DB is configured anywhere else.
 
 `logs/` keeps job logs and recovery evidence; nothing in a build imports from it.
 

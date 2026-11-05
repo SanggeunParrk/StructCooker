@@ -1,7 +1,7 @@
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.pruning import select_features
-from structcooker.mols import CIFMolAttached
+from structcooker.instructions.mols import CIFMolAttached
 
 """Prune a CIFMol DB down to the features an MPNN reads.
 

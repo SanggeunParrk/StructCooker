@@ -5,8 +5,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from structcooker import release
-from structcooker.build_state import write_json
+from structcooker.release import dag as release
+from structcooker.build.build_state import write_json
 
 
 def fixture_run(tmp_path):

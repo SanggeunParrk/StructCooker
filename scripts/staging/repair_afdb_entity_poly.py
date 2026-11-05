@@ -19,7 +19,7 @@ reads the same); every other line is byte-identical.
 The raw release files are not touched. Repaired copies are written to
 ``materials/intermediate/afdb_multimer/heterodimer/repaired/cif/<last 3>/`` with
 ``ENTITY_POLY_REPAIRS.tsv`` (every change) and ``overrides.json`` ({raw path under raw/afdb_multimer: repaired path under repaired/}),
-which db/afdb_multimer/heterodimer_cif.yaml passes to the reader as AFM_CIF_OVERRIDES.
+which db_configs/afdb_multimer/heterodimer_cif.yaml passes to the reader as AFM_CIF_OVERRIDES.
 
 Usage:
     python scripts/staging/repair_afdb_entity_poly.py [--list bad.tsv] [--dry-run]

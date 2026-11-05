@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from structcooker import key_contracts
+from structcooker.release import key_contracts
 from structcooker.instructions.transforms import filelists
 
 

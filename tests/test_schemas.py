@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from structcooker.schemas import get
+from structcooker.build.schemas import get
 
 
 def filtered_record():
@@ -35,7 +35,7 @@ def test_filtered_schema_rejects_other_wrappers(value):
 
 def test_ccd_component_without_atoms_is_valid():
     # UNL (unknown ligand) has no atoms in the CCD; the build stores chem_comp_dict None.
-    from structcooker import schemas as s
+    from structcooker.build import schemas as s
 
     assert s.get("G").validate({"chem_comp_dict": None}) == []
     assert s.get("G").validate({"chem_comp_dict": "x"}) == ["chem_comp_dict not a dict"]

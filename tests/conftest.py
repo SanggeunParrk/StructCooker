@@ -22,7 +22,7 @@ def built_ccd_lmdb(tmp_path: Path) -> Path:
     """Build a tiny CCD LMDB from the bundled fixtures and return its path.
 
     Uses the real ingest recipe + reader/writer (the same ones
-    `configs/ingest/ccd_lmdb.yaml` wires), so this exercises build -> store
+    `db_configs/ccd/ccd.yaml` wires), so this exercises build -> store
     end-to-end on a handful of components.
     """
     if not DB_AVAILABLE:

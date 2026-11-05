@@ -82,6 +82,32 @@ def write_clusters(
             f.write(f"{cluster_id(data['db_code'], rep_seq_hash)}\t{members}\n")
 
 
+def write_asd_pairs(data: dict, output_path: Path) -> None:
+    """Write the ASD pair table: ``antigen_seq_id, heavy_seq_id, light_seq_id, datasets`` (light may be empty)."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w") as f:
+        f.write("antigen_seq_id\theavy_seq_id\tlight_seq_id\tdatasets\n")
+        for row in data["pairs"]:
+            f.write("\t".join(row) + "\n")
+
+
+def write_asd_pairs_chains(data: dict, output_path: Path) -> None:
+    """Write the ASD pair table with chain status: antigen, heavy, light seq_id, the recovered light sequence (if any), status, source, datasets."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w") as f:
+        f.write("antigen_seq_id\theavy_seq_id\tlight_seq_id\tlight_sequence\tchain_status\tlight_source\tdatasets\n")
+        for row in data["pairs"]:
+            f.write("\t".join(row) + "\n")
+
+
+def write_header_rows(data: dict, output_path: Path) -> None:
+    """Write ``data["rows"]`` as a TSV; its first row is the header."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w") as f:
+        for row in data["rows"]:
+            f.write("\t".join(row) + "\n")
+
+
 def write_filtered_seq_ids(
     data: dict[str, dict[str, set[tuple[str, str]]]],
     output_path: Path,
