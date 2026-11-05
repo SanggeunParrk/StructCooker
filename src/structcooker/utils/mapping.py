@@ -190,6 +190,9 @@ DB_CODES: dict[str, str] = {
     "OFD": "OpenFold distillation",
     "TDM": "Teddymer",
     "AFM": "AFDB multimer",
+    # Antibody-antigen distillation set (docs/abag_distillation/): ASD + AbRank + POISK; antigens and antibodies are clustered apart
+    "ABG": "antibody-antigen set, antigens",
+    "ABA": "antibody-antigen set, antibodies",
 }
 
 

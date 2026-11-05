@@ -1,0 +1,11 @@
+# abag/ag_msa_wo_lower — the antigen a3m with lowercase (insertion) columns stripped. PARALLEL op (per a3m file).
+# hmmbuild needs a fixed-width alignment, so this is the input of abag/ag_hmmsearch, not the raw a3m.
+# Its own _ASD_AG tree, so a PDB or teddymer hmmsearch cannot pick these queries up.
+split_recipe_path: ${p:src/structcooker/workflows/search/load_a3m_list.py}
+recipe_path: ${p:src/structcooker/workflows/filters/a3m_cleanup.py}
+inputs:
+  data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/msa/ag}
+  output_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/intermediate/msa_wo_lower_AG}
+  output_pattern: ".a3m"
+n_jobs: -1
+test_run: false

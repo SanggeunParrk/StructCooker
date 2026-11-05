@@ -1,0 +1,13 @@
+# abag/final_antigen_fasta -- the antigens of the kept pairs (pairs_basic.tsv, keep == 1) as a FASTA. MATERIALIZE op.
+# Same header as abag/antigen_fasta, so a chain keeps its header; only the antigens the final pair table uses are in it.
+recipe_path: ${p:src/structcooker/workflows/metadata/abag_final_fasta.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/fasta/antigen.fasta}
+
+inputs:
+  pairs_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/pairs/pairs_basic.tsv}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/metadata/seq_id_map.tsv}
+  chain_set: antigen
+  antigen_keep_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/ag_keep.txt}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta_dict

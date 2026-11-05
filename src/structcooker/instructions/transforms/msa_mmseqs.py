@@ -60,7 +60,13 @@ def run_mmseqs_msa_search(
     mmseqs_bin: Path,
     threads: int = 8,
 ) -> dict[str, int]:
-    """Search one chunk and unpack an a3m per seq_id. Returns counts."""
+    """Search one chunk and unpack an a3m per seq_id. Returns counts.
+
+    ``expandaln`` dies with SIGSEGV now and then, and not because of any one query: the
+    same sequences pass in smaller batches (25 failed together, five batches of five all
+    passed). Raising the memory limit does nothing. So a failed chunk is split in four and
+    each part retried, down to a single query; only a query that fails alone raises.
+    """
     # Per chunk, because the scratch is wiped on entry: a shared directory would let
     # concurrent chunks delete each other's databases mid-search.
     work_dir = Path(work_dir) / f"chunk_{chunk_index:05d}"
@@ -73,7 +79,45 @@ def run_mmseqs_msa_search(
     ]
     if not pending:
         return {"queries": len(chunk), "searched": 0, "written": 0}
+    written, retried = _search_with_retry(pending, work_dir, output_dir, db_uniref, mmseqs_bin, threads)
+    return {"queries": len(chunk), "searched": len(pending), "written": written, "retried_parts": retried}
 
+
+def _search_with_retry(
+    pending: list[tuple[str, str]],
+    work_dir: Path,
+    output_dir: Path,
+    db_uniref: Path,
+    mmseqs_bin: Path,
+    threads: int,
+) -> tuple[int, int]:
+    """``_search_chunk``; on a failure split ``pending`` in four and retry each part. Returns (written, parts retried)."""
+    try:
+        return _search_chunk(pending, work_dir, output_dir, db_uniref, mmseqs_bin, threads), 0
+    except RuntimeError as exc:
+        if len(pending) == 1:
+            raise
+        shutil.rmtree(work_dir, ignore_errors=True)  # the failed batch's scratch; the parts get their own
+        print(f"[msa_search] {len(pending)} queries failed ({str(exc)[:200]}); retrying in 4 parts")  # noqa: T201
+        size = -(-len(pending) // 4)
+        written = retried = 0
+        for i in range(0, len(pending), size):
+            w, r = _search_with_retry(pending[i : i + size], work_dir / f"part_{i // size}", output_dir, db_uniref, mmseqs_bin, threads)
+            written += w
+            retried += r + 1
+        shutil.rmtree(work_dir, ignore_errors=True)
+        return written, retried
+
+
+def _search_chunk(
+    pending: list[tuple[str, str]],
+    work_dir: Path,
+    output_dir: Path,
+    db_uniref: Path,
+    mmseqs_bin: Path,
+    threads: int,
+) -> int:
+    """Search ``pending`` in one batch and move an a3m per seq_id into ``output_dir``. Returns how many were written."""
     if work_dir.exists():
         shutil.rmtree(work_dir)  # a partial previous attempt must not be reused
     fasta = write_chunk_fasta(pending, work_dir)
@@ -127,9 +171,9 @@ def run_mmseqs_msa_search(
         shutil.move(str(src), str(dst))
         written += 1
     shutil.rmtree(work_dir, ignore_errors=True)
-    return {"queries": len(chunk), "searched": len(pending), "written": written}
+    return written
 
 
 def _a3m_path(output_dir: Path, seqid: str) -> Path:
-    """Return the a3m path, in the layout the HHblits path and db/msa/a3m.yaml use."""
+    """Return the a3m path, in the layout the HHblits path and db_configs/msa/a3m.yaml use."""
     return seq_id_shard_path(Path(output_dir), seqid) / seqid / f"{seqid}.a3m"

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASD 증류 쌍 구축</title>
+<style>
+/* layout: one reading column; flow diagram, then six evidence cards (bars as flex rows with a table twin), then decisions */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10);
+  --accent: #2a78d6; --mid: #86b6ef; --rest: #b9b8b0; --warn: #c2410c;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+    --accent: #3987e5; --mid: #1c5cab; --rest: #4a4a46; --warn: #ec835a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+  --accent: #3987e5; --mid: #1c5cab; --rest: #4a4a46; --warn: #ec835a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font); line-height: 1.5; }
+main { max-width: 920px; margin: 0 auto; padding: 28px 16px 56px; display: flex; flex-direction: column; gap: 20px; }
+h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+h2 { font-size: 16px; margin: 0 0 2px; text-wrap: balance; }
+p { margin: 0; color: var(--ink2); max-width: 70ch; }
+code { font-size: 12.5px; background: var(--grid); padding: 1px 5px; border-radius: 4px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile, .card { background: var(--surface); border: 1px solid var(--ring); border-radius: 12px; }
+.tile { padding: 12px 14px; border-radius: 10px; }
+.tile .v { font-size: 26px; font-weight: 600; line-height: 1.15; }
+.tile .l { font-size: 12.5px; color: var(--ink2); margin-top: 2px; }
+.card { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.sub { font-size: 13px; color: var(--ink2); max-width: 78ch; }
+.flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 22px; }
+.step { border: 1px solid var(--ring); border-radius: 10px; padding: 10px 11px; background: var(--surface); position: relative; display: flex; flex-direction: column; gap: 6px; }
+.step:not(:last-child)::after { content: "→"; position: absolute; right: -19px; top: 14px; color: var(--muted); font-size: 18px; }
+.step h3 { margin: 0; font-size: 13px; }
+.step .n { color: var(--accent); font-weight: 700; margin-right: 4px; }
+.step ul { margin: 0; padding-left: 16px; font-size: 12px; color: var(--ink2); display: flex; flex-direction: column; gap: 3px; }
+@media (max-width: 760px) { .flow { grid-template-columns: 1fr; } .step:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -22px; } }
+.row { display: grid; grid-template-columns: 190px 1fr 96px; align-items: center; gap: 10px; font-size: 12.5px; }
+.row .lab { color: var(--ink2); text-align: right; }
+.row .val { font-variant-numeric: tabular-nums; color: var(--ink); }
+.track { height: 20px; display: flex; gap: 2px; border-radius: 4px; }
+.seg { height: 100%; min-width: 0; border-radius: 4px; cursor: default; }
+.seg:hover, .seg:focus { opacity: .72; outline: none; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+details summary { cursor: pointer; font-size: 13px; color: var(--ink2); }
+.tw { overflow-x: auto; margin-top: 8px; }
+table { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+th, td { text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--ink2); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--ring); box-shadow: 0 4px 16px rgba(0,0,0,.18); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; display: none; max-width: 260px; }
+#tip b { font-size: 14px; display: block; }
+#tip span { color: var(--ink2); }
+.note { font-size: 12.5px; color: var(--muted); max-width: 78ch; }
+@media (max-width: 560px) { .row { grid-template-columns: 1fr; gap: 3px; } .row .lab { text-align: left; } }
+</style>
+</head>
+<body>
+<main>
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>ASD 항체-항원 증류 쌍: 무엇을 어떻게 했나</h1>
+    <p>ASD v2.0, AbRank, POISK 세 출처의 1,609,255행에서 시작해 결합·사슬·구조 필터를 거쳐 <b>607,342쌍</b>을 남겼고, 이 쌍의 항원 14,751개의 MSA와 템플릿(두 버전)을 검색하는 중입니다. 아래는 각 단계와 그 근거입니다. 단계는 <code>db_configs/abag/</code>의 레시피이고 문서와 실행 방법은 <code>agab_distillation/</code>에 있습니다.</p>
+  </header>
+
+  <section class="tiles" id="tiles" aria-label="요약"></section>
+
+  <section class="card">
+    <h2>전체 흐름</h2>
+    <div class="flow">
+      <div class="step"><h3><span class="n">1</span>원본 데이터</h3><ul>
+        <li>ASD v2.0 (1,177,819행)</li><li>AbRank (342,362행)</li><li>POISK (89,074행)</li><li>AntiBinder: 경쇄 복구, SAbDab + PDB: 실험 구조</li></ul></div>
+      <div class="step"><h3><span class="n">2</span>서열·ID·클러스터</h3><ul>
+        <li><code>antigen_fasta</code> 21,592개</li><li><code>antibody_fasta</code> 96만 개</li><li><code>seq_id_map</code>: 기존 ID 유지</li><li>클러스터는 필터 뒤 최종 사슬로</li></ul></div>
+      <div class="step"><h3><span class="n">3</span>항원 MSA·템플릿</h3><ul>
+        <li><code>ag_worklist</code>: 쌍의 항원 14,751개</li><li><code>ag_msa_search</code>: 새 8,753개</li><li><code>ag_hmmsearch</code> → 템플릿 두 버전</li><li>2021-09-30 이전, 2026-02-18 이전</li></ul></div>
+      <div class="step"><h3><span class="n">4</span>쌍 필터</h3><ul>
+        <li><code>pairs_binding</code>: Kd ≤ 1 µM, 세 출처</li><li><code>pairs_chains</code>: 경쇄 상태·복구</li><li><code>pairs_basic</code>: 중복·폴리프로틴·구조(100% 동일)</li></ul></div>
+      <div class="step"><h3><span class="n">5</span>결과</h3><ul>
+        <li><code>pairs_basic.tsv</code></li><li><code>keep = 1</code>: 607,342쌍</li><li>다음: 항원 필터, 최종 seq_id·클러스터, 항체 MSA·템플릿</li></ul></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div><h2>1. 행에서 쌍까지, 그리고 필터 4개</h2><div class="sub">세 출처의 행에서 같은 (중쇄, 경쇄, 항원) 조합을 하나로 합치고 결합 기준을 적용하면 677,817쌍이고, 그 뒤 필터 4개를 거칩니다. 항원 MSA·템플릿 필터는 검색이 끝난 뒤 적용합니다.</div></div>
+    <div id="funnel" role="img" aria-label="필터 깔때기"></div>
+    <details><summary>표로 보기</summary><div class="tw" id="t1"></div></details>
+  </section>
+
+  <section class="card">
+    <div><h2>2. 결합 판정: 데이터셋마다 척도가 달라 행마다 판정한다</h2><div class="sub">ASD에서 행 수가 많은 12개 데이터셋(AbRank와 POISK의 규칙은 아래 결정 표). 규칙은 <code>affinity_type</code>별입니다. Kd ≤ 1 µM, alphaseq 점수 ≤ 3.0(log10 Kd nM), 라벨형은 결합 라벨(buzz는 FACS high 구간), 단위가 모호한 것은 판정하지 않습니다.</div></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>결합</span><span><i style="background:var(--rest)"></i>비결합</span><span><i style="background:var(--mid)"></i>판정 불가</span></div>
+    <div id="verdict" role="img" aria-label="데이터셋별 결합 판정"></div>
+    <details><summary>표로 보기</summary><div class="tw" id="t2"></div></details>
+  </section>
+
+  <section class="card">
+    <div><h2>3. 경쇄: 짝이 맞는지 정답(SAbDab)으로 쟀다</h2><div class="sub">SAbDab(결정 구조의 실제 H/L 짝)에서 중쇄가 일치하는 쌍의 경쇄 일치율입니다. POISK의 단일 후보로 경쇄를 채우면 약 14%가 틀려서, 채움은 AntiBinder에서만 하기로 했습니다.</div></div>
+    <div id="gold" role="img" aria-label="SAbDab 일치율"></div>
+    <details><summary>표로 보기</summary><div class="tw" id="t3"></div></details>
+  </section>
+
+  <section class="card">
+    <div><h2>4. 경쇄 상태: 중쇄만 있던 쌍의 3분의 1이 복구됐다</h2><div class="sub">쌍 676,517개의 상태(세 출처). 복구 3종은 AntiBinder에서, 미해결과 모호는 기본 선택에서 뺍니다. 미해결은 거의 ASD patents입니다.</div></div>
+    <div id="chain" role="img" aria-label="경쇄 상태별 쌍 수"></div>
+    <details><summary>표로 보기</summary><div class="tw" id="t4"></div></details>
+  </section>
+
+  <section class="card">
+    <div><h2>5. 실험 구조: 부모의 구조는 변이체를 지우지 않는다</h2><div class="sub">중쇄·경쇄·항원이 모두 100% 동일한 PDB 복합체가 있는 쌍만 제거합니다(2,231쌍). 한 잔기만 달라도 남습니다. PDB에서 온 데이터셋 2,146쌍 중 2,107쌍(98.2%)이 걸렸고, 변이체 라이브러리 buzz·alphaseq는 하나도 걸리지 않았습니다.</div></div>
+    <div id="struct" role="img" aria-label="구조 필터 검증"></div>
+    <details><summary>표로 보기</summary><div class="tw" id="t5"></div></details>
+  </section>
+
+  <section class="card">
+    <div><h2>6. 남은 쌍의 구성</h2><div class="sub">쌍이 여러 데이터셋에 걸치면 각각 한 번씩 셉니다. 출처는 ASD 484,207쌍, AbRank 122,984쌍, POISK 10,593쌍입니다. buzz, alphaseq, abbd, AbRank AlphaSeq는 변이체 라이브러리로 클러스터당 상한이 필요합니다.</div></div>
+    <div id="kept" role="img" aria-label="데이터셋별 남은 쌍"></div>
+    <details><summary>표로 보기</summary><div class="tw" id="t6"></div></details>
+  </section>
+
+  <section class="card">
+    <div><h2>7. 다음: 항원 MSA·템플릿, 최종 서열·클러스터</h2><div class="sub">쌍의 항원 14,751개 중 이전에 검색한 5,998개를 뺀 8,753개의 MSA를 검색하고 있습니다(MMseqs2, UniRef30). 템플릿은 같은 hmmsearch 결과에서 2021-09-30 이전과 2026-02-18 이전 두 버전으로 만듭니다. 검색이 끝나면 MSA 깊이 50 이하이면서 2021 템플릿이 없는 항원을 빼고, 남은 쌍의 사슬로 FASTA, seq_id, 클러스터(항원 40%, 항체 CDR 0.9·1.0)를 만들어 최종 쌍 표를 완성합니다.</div></div>
+  </section>
+
+  <section class="card">
+    <h2>결정과 근거</h2>
+    <div class="tw" id="decisions"></div>
+    <p class="note">아직 하지 않은 것: 복구한 경쇄의 seq_id 부여, 클러스터링과 클러스터당 상한, 항체 MSA·템플릿, AbRank·POISK를 쌍 단계에 포함하는 것, 라이선스 확인(ASD, AbRank는 비상업), 복구 쌍의 2체인 대 3체인 ipTM 비교.</p>
+  </section>
+</main>
+<div id="tip" role="status"></div>
+<script id="data" type="application/json">{"verdict": [{"d": "buzz", "rows": 524346, "no_chain": 0, "ag_out": 0, "yes": 172149, "no": 352197, "none": 0}, {"d": "alphaseq", "rows": 198703, "no_chain": 0, "ag_out": 0, "yes": 133509, "no": 56965, "none": 8229}, {"d": "patents", "rows": 190484, "no_chain": 66231, "ag_out": 2158, "yes": 122095, "no": 0, "none": 0}, {"d": "abbd", "rows": 155853, "no_chain": 0, "ag_out": 17585, "yes": 134802, "no": 14, "none": 3452}, {"d": "hiv", "rows": 48008, "no_chain": 0, "ag_out": 0, "yes": 25300, "no": 22708, "none": 0}, {"d": "covid-19", "rows": 27301, "no_chain": 0, "ag_out": 0, "yes": 13458, "no": 13843, "none": 0}, {"d": "literature", "rows": 8226, "no_chain": 154, "ag_out": 304, "yes": 7768, "no": 0, "none": 0}, {"d": "flab_koenig2017", "rows": 4275, "no_chain": 0, "ag_out": 0, "yes": 4275, "no": 0, "none": 0}, {"d": "met", "rows": 4000, "no_chain": 0, "ag_out": 0, "yes": 1516, "no": 2484, "none": 0}, {"d": "genbank", "rows": 2989, "no_chain": 288, "ag_out": 104, "yes": 2597, "no": 0, "none": 0}, {"d": "biomap", "rows": 2725, "no_chain": 0, "ag_out": 118, "yes": 2343, "no": 264, "none": 0}, {"d": "structures-antibodies", "rows": 2711, "no_chain": 0, "ag_out": 15, "yes": 2696, "no": 0, "none": 0}], "kept": [["asd:buzz", 172149], ["asd:alphaseq", 128973], ["asd:abbd", 85446], ["abrank:AlphaSeq", 71342], ["asd:patents", 59340], ["abrank:CATNAP", 28833], ["abrank:RBD-escape", 20433], ["asd:covid-19", 13040], ["asd:hiv", 12004], ["poisk:Conventional", 9549], ["asd:literature", 7403], ["asd:flab_koenig2017", 4275], ["abrank:AbCoV", 1291], ["abrank:AbSci", 742]], "n_keep": 463762, "funnel": [{"label": "세 출처의 행", "n": 1609255, "pair": false, "note": "ASD 1,177,819 + AbRank 342,362 + POISK 89,074"}, {"label": "쌍: 서열 3개 조합", "n": 677817, "pair": true, "note": "중쇄·항원이 있고 항원 10~3000aa, Kd ≤ 1 µM(출처별 규칙)이며 결합·비결합이 엇갈리지 않는 (중쇄, 경쇄, 항원) 조합"}, {"label": "1. 중복 합치기", "n": 676517, "pair": true, "note": "경쇄를 채운 뒤 겹친 1,300쌍을 합침"}, {"label": "2. 쓸 수 있는 경쇄 상태", "n": 609793, "pair": true, "note": "중쇄만 있고 복구 못 한 66,724쌍 제거"}, {"label": "3. 폴리프로틴 제거", "n": 609573, "pair": true, "note": "항원 이름이 polyprotein, ORF1a/1ab, pp1a/1ab, gag-pol: 220쌍"}, {"label": "4. 실험 구조 제거", "n": 607342, "pair": true, "note": "중쇄·경쇄·항원이 모두 100% 동일한 PDB 복합체가 있는 2,231쌍 (부모만 있으면 유지)"}], "gold": [{"label": "ASD structures-antibodies (대조군)", "n": 1518, "ok": 1515}, {"label": "ASD literature", "n": 1617, "ok": 1574}, {"label": "AntiBinder covid-19", "n": 382, "ok": 362}, {"label": "ASD patents", "n": 1828, "ok": 1586}, {"label": "POISK, 중쇄당 경쇄 1개", "n": 629, "ok": 542}, {"label": "POISK로 채울 중쇄만 쌍", "n": 7248, "ok": 6203}], "chain": [{"label": "경쇄 있음", "n": 412781, "use": true, "filled": false}, {"label": "VHH", "n": 92331, "use": true, "filled": false}, {"label": "scFv", "n": 78680, "use": true, "filled": false}, {"label": "covid 복구", "n": 13040, "use": true, "filled": true}, {"label": "hiv 복구", "n": 12040, "use": true, "filled": true}, {"label": "biomap 복구", "n": 921, "use": true, "filled": true}, {"label": "미해결", "n": 66431, "use": false, "filled": false}, {"label": "모호", "n": 293, "use": false, "filled": false}], "struct": [{"label": "structures-* (PDB에서 온 ASD 데이터셋)", "n": 2146, "flag": 2107}, {"label": "buzz (변이체 라이브러리)", "n": 172149, "flag": 0}, {"label": "alphaseq (변이체 라이브러리)", "n": 128973, "flag": 0}, {"label": "전체 쌍", "n": 676517, "flag": 2231}], "n_antigens": 14751, "filled": 25997, "decisions": [["결합 기준", "Kd ≤ 1 µM. 척도가 다른 타입은 출처마다, 행마다 판정", "ASD는 친화도 DB가 아니라 문자열이 타입마다 다름. 약한 결합(1~10 µM)은 구조 예측 입력으로 모호함"], ["단위가 모호한 것", "flab_warszawski2019 등은 판정하지 않고 제외", "라벨이 값과 맞지 않아 추측으로 판정하지 않음 (agab_distillation/affinity-filter.md)"], ["buzz", "FACS high 구간만 결합 (h)", "논문이 high를 결합자, medium·low를 비결합자로 정의. h=high는 비율(32.8%)로 추정한 해석"], ["S1 (target_pdb 제거)", "끔", "ASD target_pdb는 부모의 구조라 이 항체의 구조 여부를 말하지 않음"], ["경쇄 복구", "AntiBinder만 사용. POISK로는 채우지 않음", "SAbDab 정답 대비 POISK 단일 후보의 약 14%가 불일치, AntiBinder covid는 94.8% 일치"], ["복구 못 한 중쇄만 쌍", "기본 선택에서 제외", "틀린 경쇄는 존재하지 않는 결합면을 학습시킴. 열로 남겨서 되돌릴 수 있음"], ["폴리프로틴", "항원 이름으로 제거, 3000aa 초과는 항원 필터에서 제외", "여러 산물로 잘려 접히는 단위가 아님"], ["실험 구조", "중쇄·경쇄·항원이 모두 100% 동일한 PDB 복합체가 있을 때만 제거", "부모의 구조가 있다고 변이체를 지우면 buzz·alphaseq가 사라짐. 느슨한 기준(포함 관계)은 4,616쌍을 지우는데 같은 항체의 다른 구성체까지 포함. 대조군 98.2%"], ["중복", "서열 3개 조합 기준으로 합침", "변이체는 다른 쌍. 클러스터 중복은 다음 단계의 클러스터당 상한으로"], ["확장된 데이터", "ASD + AbRank + POISK를 한 파이프라인(abag)으로", "ASD만으로는 항원 9,985개, 셋을 합치면 21,592개. 이름도 asd가 아닌 abag로 바꿈"], ["AbRank 규칙", "Kd 열만 Kd로 판정, 측정된 IC50 ≤ 10 µg/mL는 결합, escape는 판정 없음", "IC50은 중화 농도, escape는 변이의 결합 손실이라 Kd가 아님. 중쇄·경쇄가 뒤바뀐 행은 FR4로 바로잡음"], ["POISK 규칙", "친화도 텍스트가 없으면 특허가 보고한 결합자, Kd 라벨 값은 1 µM 기준, CONTRADICTED는 제외", "ASD patents의 bool=1과 같은 지위. 라벨 없는 농도는 판정하지 않음"], ["항원 MSA·템플릿", "최종 쌍의 항원 14,751개 중 새 8,753개를 검색, 템플릿은 두 버전", "2021-09-30(AF3 기준)과 2026-02-18(PDB 스냅샷의 최신)을 같은 hmmsearch 결과에서 각각 뽑음"]], "final": [["항원 (40% 클러스터)", "5,878", "2,738", "2,738"], ["중쇄", "402,374", "201,990", "81,093"], ["경쇄 (복구한 4,360 포함)", "13,713", "7,712", "6,749"], ["항원 40% × 중쇄 클러스터", "", "224,194", "102,564"], ["항원 100% × 중쇄 클러스터", "", "252,161", "129,706"]]}</script>
+<script>
+const D = JSON.parse(document.getElementById('data').textContent);
+const fmt = n => n.toLocaleString('en-US');
+const pct = (x, d = 1) => (x * 100).toFixed(d) + '%';
+const tip = document.getElementById('tip');
+function showTip(ev, title, lines) {
+  tip.replaceChildren();
+  const b = document.createElement('b'); b.textContent = title; tip.appendChild(b);
+  for (const l of lines) { const s = document.createElement('span'); s.textContent = l; tip.appendChild(s); tip.appendChild(document.createElement('br')); }
+  tip.style.display = 'block';
+  const r = tip.getBoundingClientRect();
+  let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - 14;
+  tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+}
+const hideTip = () => { tip.style.display = 'none'; };
+function hook(node, title, lines) {
+  node.tabIndex = 0;
+  node.addEventListener('pointermove', ev => showTip(ev, title, lines)); node.addEventListener('pointerleave', hideTip);
+  node.addEventListener('focus', () => { const r = node.getBoundingClientRect(); showTip({ clientX: r.left + r.width / 2, clientY: r.top }, title, lines); }); node.addEventListener('blur', hideTip);
+}
+function mk(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function mkTable(host, head, rows, numCols = []) {
+  const t = mk('table'), thead = mk('thead'), tr = mk('tr');
+  head.forEach((h, i) => tr.appendChild(mk('th', numCols.includes(i) ? 'num' : '', h)));
+  thead.appendChild(tr); t.appendChild(thead);
+  const tb = mk('tbody');
+  rows.forEach(r => { const row = mk('tr'); r.forEach((c, i) => row.appendChild(mk('td', numCols.includes(i) ? 'num' : '', c))); tb.appendChild(row); });
+  t.appendChild(tb); host.appendChild(t);
+}
+/* a row of bars: segments [{v, color, name}], scaled to max */
+function barRows(host, items, max, valueText) {
+  items.forEach(it => {
+    const row = mk('div', 'row'); row.appendChild(mk('div', 'lab', it.label));
+    const track = mk('div', 'track'), scale = max === 'row' ? it.segs.reduce((a, s) => a + s.v, 0) : max;
+    it.segs.forEach(s => {
+      if (s.v <= 0) return;
+      const seg = mk('div', 'seg'); seg.style.width = (s.v / scale * 100) + '%'; seg.style.background = s.color;
+      hook(seg, fmt(s.v), [it.label, s.name]); track.appendChild(seg);
+    });
+    row.appendChild(track); row.appendChild(mk('div', 'val', valueText(it))); host.appendChild(row);
+  });
+}
+const ACC = 'var(--accent)', MID = 'var(--mid)', REST = 'var(--rest)';
+
+/* tiles */
+[[fmt(D.funnel[0].n), '세 출처의 행'], [fmt(D.funnel[D.funnel.length - 1].n), '남은 쌍 (keep = 1)'], [pct(D.funnel[D.funnel.length - 1].n / D.funnel[0].n), '행 대비'],
+ [fmt(D.n_antigens), '쌍의 항원 (필터 전)'], [fmt(D.filled), 'AntiBinder로 복구한 경쇄']].forEach(([v, l]) => {
+  const d = mk('div', 'tile'); d.append(mk('div', 'v', v), mk('div', 'l', l)); document.getElementById('tiles').appendChild(d);
+});
+
+/* funnel */
+(function () {
+  const host = document.getElementById('funnel'), max = D.funnel[0].n;
+  host.style.display = 'flex'; host.style.flexDirection = 'column'; host.style.gap = '6px';
+  D.funnel.forEach((s, i) => {
+    const row = mk('div', 'row'); row.appendChild(mk('div', 'lab', s.label));
+    const track = mk('div', 'track'), seg = mk('div', 'seg');
+    seg.style.width = (s.n / max * 100) + '%'; seg.style.background = i === D.funnel.length - 1 ? ACC : (s.pair ? MID : REST);
+    hook(seg, fmt(s.n), [s.label, s.note]); track.appendChild(seg); row.appendChild(track);
+    row.appendChild(mk('div', 'val', fmt(s.n))); host.appendChild(row);
+  });
+  const lg = mk('div', 'legend'); lg.style.marginTop = '6px';
+  [['var(--rest)', '행 단위'], ['var(--mid)', '쌍 단위 (조합 하나가 한 쌍)'], ['var(--accent)', '결과']].forEach(([c, t]) => { const s = mk('span'); const i = mk('i'); i.style.background = c; s.append(i, document.createTextNode(t)); lg.appendChild(s); });
+  host.appendChild(lg);
+  mkTable(document.getElementById('t1'), ['단계', '남은 수', '이 단계에서 빠진 수', '설명'],
+    D.funnel.map((s, i) => [s.label, fmt(s.n), i ? fmt(D.funnel[i - 1].n - s.n) : '', s.note]), [1, 2]);
+})();
+
+/* verdict */
+(function () {
+  const items = D.verdict.map(v => ({ label: v.d, segs: [{ v: v.yes, color: ACC, name: '결합' }, { v: v.no, color: REST, name: '비결합' }, { v: v.none + v.no_chain + v.ag_out, color: MID, name: '판정 불가 · 중쇄 없음 · 항원 제외' }], total: v.rows, yes: v.yes }));
+  barRows(document.getElementById('verdict'), items, Math.max(...D.verdict.map(v => v.rows)), it => fmt(it.total) + '행');
+  document.getElementById('verdict').style.display = 'flex'; document.getElementById('verdict').style.flexDirection = 'column'; document.getElementById('verdict').style.gap = '6px';
+  mkTable(document.getElementById('t2'), ['데이터셋', '행', '결합', '비결합', '판정 불가', '중쇄 없음', '항원 제외'],
+    D.verdict.map(v => [v.d, fmt(v.rows), fmt(v.yes), fmt(v.no), fmt(v.none), fmt(v.no_chain), fmt(v.ag_out)]), [1, 2, 3, 4, 5, 6]);
+})();
+
+/* gold */
+(function () {
+  const host = document.getElementById('gold'); host.style.display = 'flex'; host.style.flexDirection = 'column'; host.style.gap = '6px';
+  barRows(host, D.gold.map(g => ({ label: g.label, segs: [{ v: g.ok, color: ACC, name: '정답과 일치' }, { v: g.n - g.ok, color: REST, name: '불일치' }], g })), 'row', it => pct(it.g.ok / it.g.n) + ' (' + fmt(it.g.n) + ')');
+  mkTable(document.getElementById('t3'), ['쌍', '중쇄가 SAbDab에 있음', '일치', '일치율'], D.gold.map(g => [g.label, fmt(g.n), fmt(g.ok), pct(g.ok / g.n)]), [1, 2, 3]);
+})();
+
+/* chain status */
+(function () {
+  const host = document.getElementById('chain'); host.style.display = 'flex'; host.style.flexDirection = 'column'; host.style.gap = '6px';
+  const max = Math.max(...D.chain.map(c => c.n));
+  barRows(host, D.chain.map(c => ({ label: c.label, segs: [{ v: c.n, color: c.use ? (c.filled ? ACC : MID) : REST, name: c.use ? '기본 선택에 포함' : '기본 선택에서 제외' }], c })), max, it => fmt(it.c.n));
+  const lg = mk('div', 'legend'); lg.style.marginTop = '6px';
+  [['var(--accent)', 'AntiBinder로 복구'], ['var(--mid)', '그대로 사용'], ['var(--rest)', '제외']].forEach(([c, t]) => { const s = mk('span'); const i = mk('i'); i.style.background = c; s.append(i, document.createTextNode(t)); lg.appendChild(s); });
+  host.appendChild(lg);
+  mkTable(document.getElementById('t4'), ['상태', '쌍', '기본 선택'], D.chain.map(c => [c.label, fmt(c.n), c.use ? '포함' : '제외']), [1]);
+})();
+
+/* structure */
+(function () {
+  const host = document.getElementById('struct'); host.style.display = 'flex'; host.style.flexDirection = 'column'; host.style.gap = '6px';
+  barRows(host, D.struct.map(s => ({ label: s.label, segs: [{ v: s.flag, color: ACC, name: '구조 있음으로 제거' }, { v: s.n - s.flag, color: REST, name: '유지' }], s })), 'row', it => fmt(it.s.flag) + ' / ' + fmt(it.s.n));
+  mkTable(document.getElementById('t5'), ['쌍의 종류', '쌍', '구조 있음으로 제거', '비율'], D.struct.map(s => [s.label, fmt(s.n), fmt(s.flag), pct(s.flag / s.n)]), [1, 2, 3]);
+})();
+
+/* kept */
+(function () {
+  const host = document.getElementById('kept'); host.style.display = 'flex'; host.style.flexDirection = 'column'; host.style.gap = '6px';
+  const max = D.kept[0][1];
+  barRows(host, D.kept.map(k => ({ label: k[0], segs: [{ v: k[1], color: ACC, name: '남은 쌍' }], k })), max, it => fmt(it.k[1]));
+  mkTable(document.getElementById('t6'), ['데이터셋', '남은 쌍'], D.kept.map(k => [k[0], fmt(k[1])]), [1]);
+})();
+
+/* decisions */
+mkTable(document.getElementById('decisions'), ['무엇', '결정', '근거'], D.decisions);
+</script>
+</body>
+</html>

@@ -85,7 +85,8 @@ anarci = "*"
 cd-hit = "*"
 mmseqs2 = "*"   # protein sequence clustering (seq_cluster); cd-hit is for antibodies
 foldseek = "*"   # structure clustering (design training DB)
-dssp = "*"   # reference secondary-structure assignment (mkdssp), used to check structcooker.design.ss
+dssp = "*"   # reference secondary-structure assignment (mkdssp), used to check structcooker.instructions.design.ss
+pyarrow = ">=26.0.0,<27"
 
 
 [tool.hatch.metadata]

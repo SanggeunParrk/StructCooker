@@ -1,0 +1,23 @@
+# abag/ag_template_20210930 -- seq_id -> up to 20 template mols for the antigens, templates released up to 2021-09-30. Schema D. KEYED build.
+schema: D
+
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/lmdb/template/template_ag_20210930.lmdb}
+file_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/template_AG_20210930/seqid_template_filelist.txt}
+keyed: true
+
+recipe: ${p:src/structcooker/workflows/ingest/seqid_template_mols_topk.py}
+key_builder: structcooker.instructions.readers.openfold.openfold_chain_key
+
+metadata_recipe: ${p:src/structcooker/workflows/metadata/load_template_seqs.py}
+metadata_input:
+  seqid_seq_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/seq_id_map_AG.tsv}
+  chain_seq_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/template_AG_20210930/chain_to_seq.tsv}
+
+inputs:
+  reduced_hmm_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/intermediate/hmm_reduced_AG_20210930}
+  cif_chain_db_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/chain/cif/cif_chain.lmdb}
+  max_keep: 20
+  allow_missing_chains: true
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

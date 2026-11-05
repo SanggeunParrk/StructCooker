@@ -7,7 +7,7 @@ from typing import TypeVar
 import numpy as np
 from anarci import run_anarci
 
-from structcooker.mols import CIFMol, CIFMolAttached
+from structcooker.instructions.mols import CIFMol, CIFMolAttached
 from structcooker.utils.mapping import mol_type_map
 
 
@@ -402,13 +402,24 @@ def fasta_new_sequences(fasta_path: Path, base_fasta_path: Path) -> dict[str, st
     return out
 
 
-def subset_seq_id_map(fasta_path: Path, seq_id_map_path: Path) -> dict[str, str]:
+def subset_seq_id_map(
+    fasta_path: Path,
+    seq_id_map_path: Path,
+    min_length: int | None = None,
+    max_length: int | None = None,
+) -> dict[str, str]:
     """Return the rows of the shared seq_id_map whose sequence occurs in one DB's fasta.
 
     seq_id is one space across DBs, so a DB's own work list (e.g. which sequences need an
-    MSA) is this subset, not a separately numbered map.
+    MSA) is this subset, not a separately numbered map. ``min_length`` / ``max_length``
+    (inclusive) keep only sequences of that length: a work list for a search that is
+    meaningless for a peptide and too costly for a polyprotein.
     """
-    wanted = set(load_fasta(Path(fasta_path)).values())
+    wanted = {
+        sequence
+        for sequence in load_fasta(Path(fasta_path)).values()
+        if (min_length is None or len(sequence) >= min_length) and (max_length is None or len(sequence) <= max_length)
+    }
     subset: dict[str, str] = {}
     with Path(seq_id_map_path).open() as handle:
         for line in handle:
@@ -527,6 +538,49 @@ def separate_sequences(
     return fasta_path_dict
 
 
+def separate_antibody_sequences(
+    tmp_dir: Path,
+    seq_id_map_path: Path,
+    fasta_path: Path,
+) -> dict[str, Path]:
+    """``separate_sequences`` for a DB whose fasta holds only antibody chains (ASD's ASB).
+
+    The role comes from the header, ``Auth:H`` (heavy) or ``Auth:L`` (light), instead of a SAbDab
+    chain list: ASD has no PDB chain ids. A sequence that is both heavy and light somewhere is a heavy.
+    Writes the same per-type fastas as ``separate_sequences`` (the other types empty), so the clustering
+    steps after it do not change.
+    """
+    fasta_dict = load_fasta(fasta_path)
+    role_of: dict[str, str] = {}
+    for header, sequence in fasta_dict.items():
+        auth = header.split("Auth:")[1].strip()
+        if auth not in ("H", "L"):
+            msg = f"{fasta_path}: antibody header without Auth:H/L: {header}"
+            raise ValueError(msg)
+        if role_of.get(sequence) != "antibody_H":
+            role_of[sequence] = "antibody_H" if auth == "H" else "antibody_L"
+    seq_id_dict = {}
+    with seq_id_map_path.open("r") as f:
+        for _line in f:
+            seq_id, sequence = _line.rstrip("\n").split("\t")
+            if sequence in role_of:
+                seq_id_dict[seq_id] = sequence
+    missing = len(role_of) - len(seq_id_dict)
+    if missing:
+        msg = f"{missing} sequences of {fasta_path} have no seq_id in {seq_id_map_path}"
+        raise ValueError(msg)
+    fasta_tmp_dir = tmp_dir / "fasta"
+    fasta_tmp_dir.mkdir(parents=True, exist_ok=True)
+    fasta_path_dict = {}
+    for etype in ("antibody_H", "antibody_L", "protein", "peptide", "protein_D", "nucleotide", "ligand"):
+        fasta_path_dict[etype] = fasta_tmp_dir / f"{etype}.fasta"
+        with fasta_path_dict[etype].open("w") as f:
+            for seq_id, sequence in seq_id_dict.items():
+                if role_of[sequence] == etype:
+                    f.write(f">{seq_id}\n{sequence}\n")
+    return fasta_path_dict
+
+
 chotia_map = {
     "L1": list(range(24, 34 + 1)),
     "L2": list(range(50, 56 + 1)),
@@ -554,12 +608,35 @@ def _extract_H3L3_sequence(cdr_type: str, sequence: str) -> str:  # noqa: N802 (
     return output.replace("-", "")
 
 
+def _extract_H3L3_batch(cdr_type: str, sequences: list[str], ncpu: int) -> list[str]:  # noqa: N802
+    """``_extract_H3L3_sequence`` for many sequences in one ANARCI call ("" where no domain is found)."""
+    chotia_idx = set(chotia_map[cdr_type])
+    queries = [(str(i), sequence) for i, sequence in enumerate(sequences) if sequence]
+    numbering = run_anarci(queries, scheme="chothia", ncpu=ncpu)[1] if queries else []
+    found = {int(name): domains for (name, _), domains in zip(queries, numbering, strict=True)}
+    output = []
+    for i in range(len(sequences)):
+        domains = found.get(i)
+        if domains is None:
+            output.append("")
+            continue
+        residues = domains[0][0]
+        output.append("".join(aa for (idx, _), aa in residues if idx in chotia_idx).replace("-", ""))
+    return output
+
+
 def extract_H3L3_sequence(  # noqa: N802 (referenced by dotted-path)
     full_fasta: Path,
     output_fasta: Path,
     cdr_type: str,
+    batch_size: int | None = None,
+    ncpu: int = 16,
 ) -> list[str]:
-    """Extract H3 or L3 sequences from full antibody sequences in a fasta file."""
+    """Extract H3 or L3 sequences from full antibody sequences in a fasta file.
+
+    ``batch_size`` sends that many sequences per ANARCI call (the default, one call per sequence,
+    is what the PDB-sized sets use; a set of hundreds of thousands needs batches).
+    """
     # if light chain only, get L3
     Ab_chain = {}
     with full_fasta.open("r") as f:
@@ -575,9 +652,19 @@ def extract_H3L3_sequence(  # noqa: N802 (referenced by dotted-path)
 
     H3L3_chain = {}
     failed_seq_ids = []
-    for seq_id, sequence in Ab_chain.items():
-        wo_unknown_sequence = sequence.replace("X", "")
-        H3L3_sequence = _extract_H3L3_sequence(cdr_type, wo_unknown_sequence)
+    if batch_size is None:
+        H3L3_sequences = {
+            seq_id: _extract_H3L3_sequence(cdr_type, sequence.replace("X", "")) for seq_id, sequence in Ab_chain.items()
+        }
+    else:
+        ids = list(Ab_chain)
+        H3L3_sequences = {}
+        for start in range(0, len(ids), batch_size):
+            chunk = ids[start : start + batch_size]
+            H3L3_sequences.update(
+                zip(chunk, _extract_H3L3_batch(cdr_type, [Ab_chain[i].replace("X", "") for i in chunk], ncpu), strict=True),
+            )
+    for seq_id, H3L3_sequence in H3L3_sequences.items():
         if len(H3L3_sequence) == 0:
             failed_seq_ids.append(seq_id)
             continue
@@ -598,8 +685,11 @@ def run_CDHIT(  # noqa: N802 (referenced by dotted-path)
     """
     Run CD-HIT to cluster sequences.
 
-    Other parameters are set to recommended values for antibody clustering.
+    Other parameters are set to recommended values for antibody clustering. At ``seq_id`` 1.0 the length and the
+    coverage cutoffs are 1.0 too: cd-hit's identity is over the shorter sequence, so with the 0.8 cutoffs a CDR that is
+    a piece of a longer one would join it at "100%"; this way only identical sequences share a cluster.
     """
+    cutoff = 1.0 if seq_id >= 1.0 else 0.8
     if not any(line.startswith(">") for line in Path(input_fasta).open()):
         # No antibody chain of this type in the build: an empty cluster file, as cd-hit
         # rejects an empty input.
@@ -607,7 +697,7 @@ def run_CDHIT(  # noqa: N802 (referenced by dotted-path)
         return
     subprocess.run(  # noqa: S603
         ["cd-hit", "-i", str(input_fasta), "-o", str(output_path), "-c", str(seq_id), "-n", "2",  # noqa: S607
-         "-M", "256000", "-d", "0", "-T", "0", "-l", "1", "-s", "0.8", "-aL", "0.8", "-aS", "0.8", "-g", "1"],
+         "-M", "256000", "-d", "0", "-T", "0", "-l", "1", "-s", str(cutoff), "-aL", str(cutoff), "-aS", str(cutoff), "-g", "1"],
         check=True,
     )
 
@@ -638,8 +728,14 @@ def parse_cdhit_cluster(
 def antibody_cluster(
     tmp_dir: Path,
     fasta_path_dict: dict[str, Path],
+    anarci_batch_size: int | None = None,
+    anarci_ncpu: int = 16,
+    h3_identity: float = 0.9,
+    l3_identity: float = 0.9,
 ) -> tuple[dict[str, list[str]], set[str]]:
-    """Cluster antibody sequences using CD-HIT."""
+    """Cluster antibody sequences using CD-HIT (``anarci_batch_size``: see ``extract_H3L3_sequence``).
+
+    CDR-H3 is clustered at ``h3_identity``, CDR-L3 at ``l3_identity`` (1.0: identical CDRs only)."""
     ab_heavy_fasta_path = fasta_path_dict["antibody_H"]
     ab_light_fasta_path = fasta_path_dict["antibody_L"]
     ab_H3_fasta_path = tmp_dir / "fasta" / "antibody_H3.fasta"
@@ -662,23 +758,27 @@ def antibody_cluster(
         ab_heavy_fasta_path,
         ab_H3_fasta_path,
         cdr_type="H3",
+        batch_size=anarci_batch_size,
+        ncpu=anarci_ncpu,
     )
     failed_L3 = extract_H3L3_sequence(
         ab_light_fasta_path,
         ab_L3_fasta_path,
         cdr_type="L3",
+        batch_size=anarci_batch_size,
+        ncpu=anarci_ncpu,
     )
     ab_H_clustered_path = tmp_dir / "cdhit_ab_H_clustered.dat"
     ab_L_clustered_path = tmp_dir / "cdhit_ab_L_clustered.dat"
-    run_CDHIT(ab_H3_fasta_path, ab_H_clustered_path)
-    run_CDHIT(ab_L3_fasta_path, ab_L_clustered_path)
+    run_CDHIT(ab_H3_fasta_path, ab_H_clustered_path, seq_id=h3_identity)
+    run_CDHIT(ab_L3_fasta_path, ab_L_clustered_path, seq_id=l3_identity)
     ab_H_cluster_output = tmp_dir / "cdhit_ab_H_clustered.dat.clstr"
     ab_L_cluster_output = tmp_dir / "cdhit_ab_L_clustered.dat.clstr"
     ab_H_cluster_dict = parse_cdhit_cluster(ab_H_cluster_output)
     ab_L_cluster_dict = parse_cdhit_cluster(ab_L_cluster_output)
     ab_cluster_dict = {**ab_H_cluster_dict, **ab_L_cluster_dict}
     # psk 20251103 : 이유는 모르겠지만, 씹히는 애들이 있음 (CDHIT에서)
-    output_ab = [x for v in ab_cluster_dict.values() for x in v]
+    output_ab = {x for v in ab_cluster_dict.values() for x in v}  # a set: this is a lookup per antibody
     for ab_id in ab_seq_id_list:
         if ab_id not in output_ab:
             ab_cluster_dict[ab_id.replace("P", "A")] = [ab_id]

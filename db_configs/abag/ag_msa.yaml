@@ -1,0 +1,17 @@
+# abag/ag_msa — per-sequence MSA of the ASD antigens from .a3m files. Schema E. Build.
+# Mirror of db_configs/teddymer/msa.yaml: keys are seq_ids (the a3m file stem) -- the key space of the PDB's MSA DB,
+# since seq_id is shared across DBs (docs/seq-id-and-cluster-scheme.md). Lineage: MMseqs2 against
+# uniref30_2302 alone (abag/ag_msa_search), the same as teddymer and the AFDB complex set.
+schema: E
+
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/lmdb/msa/msa_ag.lmdb}
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/msa/ag}
+file_pattern: "P/*/P*/P*.a3m"
+
+recipe: ${p:src/structcooker/workflows/ingest/a3m.py}
+
+reader:
+  loader: structcooker.instructions.readers.a3m.get_a3m_data
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

@@ -1,0 +1,22 @@
+# abag/final_antibody_seq_cluster_cdr90 -- clusters of the antibodies of the kept pairs (recovered light chains included), DB code ABA. MATERIALIZE op.
+# CDR-H3 (heavy) and CDR-L3 (light), Chothia / ANARCI, CD-HIT at 0.9 (as abag/antibody_seq_cluster40); a chain ANARCI cannot number falls back to mmseqs2 at 0.40.
+# On the final antibodies only: ids are cABA_<rep seq_id> of this subset. The role (heavy / light) is read from the fasta headers.
+recipe_path: ${p:src/structcooker/workflows/search/seq_cluster_antibody.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/metadata/seq_cluster_cdr90_ABA.tsv}
+
+inputs:
+  db_code: ABA
+  tmp_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/tmp/final_seq_cluster_cdr90_ABA}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/metadata/seq_id_map.tsv}
+  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/fasta/antibody.fasta}
+  anarci_batch_size: 5000
+  anarci_ncpu: 8
+  h3_identity: 0.9
+  l3_identity: 0.9
+  mmseqs2_seq_id: 0.40
+  mmseqs2_cov: 0.8
+  mmseqs2_covmode: "0"
+  mmseqs2_clustermode: "1"
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_clusters

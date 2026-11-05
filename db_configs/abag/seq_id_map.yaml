@@ -1,0 +1,19 @@
+# abag/seq_id_map -- seq_id of every chain sequence of ASD, AbRank and POISK (antigens and antibodies). MATERIALIZE op.
+# One id space with the release: the seed is the release's metadata/seq_id_map.tsv plus abag/seed/seq_id_map_asd.tsv (the ids the earlier ASD-only run handed out), so a
+# sequence the release holds (a PDB chain, a SAbDab antibody) keeps its release id, an ASD sequence its ASD id, and a new one continues the counter above both.
+# The output holds only these sequences and goes to $BIOMOL_ROOT/abag/, so the release's map is not rewritten. When the release map is next rebuilt,
+# abag_antigen.fasta and abag_antibody.fasta go last in fasta_paths (the ids then come out the same).
+recipe_path: ${p:src/structcooker/workflows/metadata/abag_seq_id_map.py}
+
+inputs:
+  fasta_paths:
+    - ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/abag_antigen.fasta}
+    - ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/abag_antibody.fasta}
+  old_seq_id_map_paths:
+    - ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/seq_id_map.tsv}
+    - ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/seed/seq_id_map_asd.tsv}
+
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/metadata/seq_id_map.tsv}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_seq_id_map

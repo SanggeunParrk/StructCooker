@@ -1,0 +1,13 @@
+# abag/antigen_fasta -- the distinct antigen sequences of ASD, AbRank and POISK (every usable row) as one FASTA. MATERIALIZE op.
+# Header ABAGT_<sha1[:12]> | polypeptide(L) | Auth:A. It feeds abag/seq_id_map; the antigens of the kept pairs are searched later (abag/ag_worklist).
+recipe_path: ${p:src/structcooker/workflows/metadata/abag_fasta.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/abag_antigen.fasta}
+
+inputs:
+  asd_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/asd/v2.0}
+  abrank_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/abrank/AbRank_dataset_updated_v2.csv}
+  poisk_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/poisk/zenodo_19883049/poisk_dataset.csv}
+  chain_set: antigen
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta_dict

@@ -3,8 +3,8 @@
 StructCooker builds the **BioMol** database set — structures, MSAs, templates, training and
 validation sets as LMDBs, plus the sequence-id and cluster tables — from downloaded sources:
 the PDB, the CCD, the OpenFold3 distillation sets, teddymer and the AFDB multimer release.
-Every database is one declarative config, `db/<group>/<name>.yaml`; the whole release is the
-95-stage DAG in `db/MANIFEST_all.yaml`, built on SLURM by one command.
+Every database is one declarative config, `db_configs/<group>/<name>.yaml`; the whole release is the
+95-stage DAG in `db_configs/MANIFEST_all.yaml`, built on SLURM by one command.
 
 StructCooker is the biomolecular layer on top of
 [DataCooker](https://CSSB-SNU.github.io/DataCooker/), which provides the generic engine:
@@ -32,8 +32,8 @@ Everything hangs off one root, `BIOMOL_ROOT`; inputs must already be in place un
 
 ```bash
 source scripts/cluster/cssb.env       # BIOMOL_ROOT and the SLURM settings; elsewhere, copy and edit it
-pixi run structcooker inspect --strict --manifest db/MANIFEST_all.yaml
-pixi run structcooker build-all --manifest db/MANIFEST_all.yaml --workdir /path/to/run   # rerun to resume
+pixi run structcooker inspect --strict --manifest db_configs/MANIFEST_all.yaml
+pixi run structcooker build-all --manifest db_configs/MANIFEST_all.yaml --workdir /path/to/run   # rerun to resume
 pixi run structcooker release-check   # after summary.json says complete: true
 pixi run structcooker release-docs
 ```
@@ -44,7 +44,7 @@ Every command submits SLURM jobs and returns; nothing heavy runs where you type 
 
 | Command | Does |
 |---|---|
-| `structcooker list` | every `db/` config with its op, schema and target |
+| `structcooker list` | every `db_configs/` config with its op, schema and target |
 | `structcooker inspect [--strict] [--manifest M] [NAME]` | preflight: external inputs present, manifest dependencies closed |
 | `structcooker download {ccd,sabdab,mmcif,openfold}` | fetch a raw input into `materials/raw` (`mmcif` needs `--yes`; `openfold` prints instructions) |
 | `structcooker build NAME [--show/--dry-run]` | build one stage on its own (op inferred from the config) |
@@ -64,6 +64,7 @@ Every command submits SLURM jobs and returns; nothing heavy runs where you type 
 - [Raw materials](raw-materials.md) — the `materials/{raw,reference,intermediate}` tree.
 - [seq_id and cluster scheme](seq-id-and-cluster-scheme.md) — one id space, per-DB clusters.
 - [FoldBench DBs](foldbench.md) — key-list subsets for FoldBench inference.
+- [Antibody-antigen set](abag_distillation/README.md) — the antibody-antigen self-distillation pairs from ASD, AbRank and POISK: recipe, filters, an [overview page](abag_distillation/overview.html).
 - [Interface DB](interface-db.md) — the PDB cut into units of touching molecules (2..N, waters included), with a date split.
 - [Development](development.md) — tests, cluster settings, code layout, LMDB storage.
 - History — dated reports and superseded guides, kept as records.

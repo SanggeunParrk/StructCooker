@@ -1,0 +1,13 @@
+# abag/antibody_fasta -- the distinct heavy and light chain sequences of ASD, AbRank and POISK (every usable row) as one FASTA. MATERIALIZE op.
+# Header ABAGH_ / ABAGL_<sha1[:12]> | polypeptide(L) | Auth:H / Auth:L; a VHH or scFv is a heavy chain.
+recipe_path: ${p:src/structcooker/workflows/metadata/abag_fasta.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/abag_antibody.fasta}
+
+inputs:
+  asd_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/asd/v2.0}
+  abrank_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/abrank/AbRank_dataset_updated_v2.csv}
+  poisk_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/poisk/zenodo_19883049/poisk_dataset.csv}
+  chain_set: antibody
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta_dict

@@ -1,0 +1,15 @@
+# abag/pairs_chains -- the pair table of abag/pairs_binding with the chain status of each pair. MATERIALIZE op.
+# paired_original / scfv / vhh as the sources have them; a pair with a heavy chain only gets its light chain from the AntiBinder raw tables (the original source
+# of ASD's covid-19, hiv and biomap rows) when they give exactly one: filled_covid / filled_hiv / filled_biomap. Two or more -> ambiguous, none ->
+# unresolved, neither filled. POISK is NOT used to fill (docs/abag_distillation/light-chain-pairing.md: 14% of its unique candidates disagree with SAbDab).
+# A filled light chain is a new sequence: light_seq_id is empty and light_sequence holds it until the final seq_id stage takes it up.
+recipe_path: ${p:src/structcooker/workflows/metadata/abag_pairs_chains.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/pairs/pairs_chains.tsv}
+
+inputs:
+  pairs_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/pairs/pairs_binding.tsv}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/metadata/seq_id_map.tsv}
+  antibinder_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/antibinder/repo/datasets/raw_data}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_header_rows

@@ -1,0 +1,23 @@
+# abag/ag_hmmsearch — template Phase 0 for the ASD antigens: hmmbuild (query a3m -> HMM) + hmmsearch (HMM vs the PDB
+# polypeptide(L) chains, the target of the PDB and teddymer paths). PARALLEL op.
+# Idempotent: an existing HMM / .out is skipped, and only queries without a finished .out are listed, so an
+# interrupted run resumes and the remainder spreads evenly over the nodes.
+#
+# Queries are whole antigens (or the regions UniProt cuts them to), so a hit is a PDB chain that matches the antigen;
+# the coverage filter of abag/ag_template decides whether it is usable.
+split_recipe_path: ${p:src/structcooker/workflows/search/load_pending_a3m_list.py}
+recipe_path: ${p:src/structcooker/workflows/search/hmmsearch.py}
+
+inputs:
+  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/pdb_polypeptide_L.fasta}
+  data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/intermediate/msa_wo_lower_AG}
+  output_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/intermediate/hmm_AG}
+  hmm_output_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/intermediate/hmm_output_AG}
+  output_pattern: ".hmm"
+  done_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/intermediate/hmm_output_AG}
+  done_suffix: ".out"
+
+n_jobs: -1
+# Fan out as an 8-task array, one whole node each (structcooker build; items split by key).
+node_count: 8
+test_run: false

@@ -1,0 +1,25 @@
+# abag/ag_msa_search — MSA of every ASD antigen on the work list: MMseqs2 (CPU), batched per chunk.
+# Same search as db_configs/teddymer/msa_search.yaml and the AFDB complex set: ColabFold-style (search -> expandaln ->
+# align -> result2msa) against UniRef30 2302 alone, no metagenomic database (--use-env 0). The antigens are
+# searched even when the PDB already holds an HHblits MSA of the same sequence, so that all of them come from one
+# lineage. Output is <seq_id>.a3m under $BIOMOL_ROOT/asd/msa/ag/, the layout abag/ag_msa ingests.
+#
+# chunk_size 300: expandaln dies with SIGSEGV on a batch now and then, and a smaller batch is what avoids it
+# (the search retries a failed batch in four parts, down to one query). Antigens are long (median ~850 aa), so
+# a chunk costs far more than a teddymer domain chunk of the same size.
+inputs:
+  db_uniref: ${p:${oc.env:SEQ_DB_ROOT,/data/shared/cssb_data/seq_db}/uniref30/2302/msadb/uniref30_2302}
+  mmseqs_bin: ${p:${oc.env:SEQ_DB_ROOT,/data/shared/cssb_data/seq_db}/tools/mmseqs/bin/mmseqs}
+  threads: 28
+  chunk_size: 300
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/seq_id_map_AG.tsv}
+  work_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/tmp/mmseqs_ag}
+  output_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/msa/ag/}
+split_recipe_path: ${p:src/structcooker/workflows/metadata/load_protein_sequence_chunks.py}
+recipe_path: ${p:src/structcooker/workflows/search/msa_search_mmseqs.py}
+# 4 chunks x 28 threads = 112 CPUs per node. Few, fat processes on purpose: --db-load-mode 2 mmaps the
+# 226 GB uniref30_2302 index, which they share through the page cache.
+n_jobs: 4
+# Fan out as an 8-task array, one whole node each (structcooker build; items split by key).
+node_count: 8
+test_run: false

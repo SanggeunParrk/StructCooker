@@ -42,6 +42,13 @@ nav:
   - seq_id and cluster scheme: seq-id-and-cluster-scheme.md
   - FoldBench DBs: foldbench.md
   - Interface DB: interface-db.md
+  - Antibody-antigen set (abag_distillation):
+      - Overview: abag_distillation/README.md
+      - Recipe: abag_distillation/RECIPE.md
+      - Sources, sequences, MSA, templates: abag_distillation/sources.md
+      - Binding filter (Kd <= 1 uM): abag_distillation/affinity-filter.md
+      - Heavy-light pairing: abag_distillation/light-chain-pairing.md
+      - Basic pair filters: abag_distillation/pair-filters.md
   - Development: development.md
   - History:
       - Roadmap: history/roadmap.md
@@ -58,4 +65,4 @@ nav:
       - 2026-09-15 distillation follow-up: history/distillation-followup-2026-09-15.md
       - 2026-09-17 reproducibility review: history/reproducibility-review-2026-09-17.md
       - RNA MSA sanitized exceptions: history/rna_msa_sanitized_exceptions.md
-      - db/ ledger and release notes (to 2026-10-13): history/status-ledger-2026-10.md
+      - db_configs/ ledger and release notes (to 2026-10-13): history/status-ledger-2026-10.md

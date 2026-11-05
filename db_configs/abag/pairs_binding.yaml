@@ -1,0 +1,17 @@
+# abag/pairs_binding -- the antibody-antigen pairs of ASD, AbRank and POISK that bind with Kd <= 1 uM, as seq_ids. MATERIALIZE op.
+# S2 (heavy chain and antigen present, A-Z), antigen 10-3000 aa, S3 (distinct heavy/light/antigen sequence triples), the binding filter per source
+# (instructions/readers/asd_binding.py, abag_binding.py). Columns: antigen_seq_id, heavy_seq_id, light_seq_id, nanobody, scfv, datasets (source:dataset), names.
+# No S1 (ASD target_pdb is the parent's structure) and no MSA filter yet: the experimental-structure rule is abag/pairs_basic, the MSA rule comes after the search.
+recipe_path: ${p:src/structcooker/workflows/metadata/abag_pairs.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/pairs/pairs_binding.tsv}
+
+inputs:
+  asd_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/asd/v2.0}
+  abrank_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/abrank/AbRank_dataset_updated_v2.csv}
+  poisk_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/poisk/zenodo_19883049/poisk_dataset.csv}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/metadata/seq_id_map.tsv}
+  min_antigen: 10
+  max_antigen: 3000
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_header_rows

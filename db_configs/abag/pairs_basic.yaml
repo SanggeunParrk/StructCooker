@@ -1,0 +1,16 @@
+# abag/pairs_basic -- the pairs with the basic filters as columns and a keep flag. MATERIALIZE op.
+# Duplicates merged (a recovered light chain a source also holds), polyprotein (a target name), pdb_structure (a SAbDab entry whose heavy chain, light chain and
+# antigen are all IDENTICAL to this pair's: the same seq_id for every chain; structure_match: contained would also accept constant domains and antigen
+# fragments), keep. docs/abag_distillation/pair-filters.md.
+recipe_path: ${p:src/structcooker/workflows/metadata/abag_pairs_basic.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/pairs/pairs_basic.tsv}
+
+inputs:
+  pairs_chains_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/pairs/pairs_chains.tsv}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/metadata/seq_id_map.tsv}
+  sabdab_summary_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/sabdab/sabdab_summary_all.tsv}
+  structure_match: exact
+  pdb_fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cif_pdb.fasta}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_header_rows

@@ -1,0 +1,19 @@
+# abag/ag_template_candidates_2026 -- template Phase 1/2 for the antigens: per seq_id candidates from the abag/ag_hmmsearch output. MATERIALIZE op; the outputs
+# are side effects, output_data_path is the done marker.
+# As db_configs/teddymer/template_candidates.yaml: an antigen has no release date of its own, so the one rule is the global template cutoff, here 2026-02-18 (the newest release in the PDB snapshot (2026-02-18));
+# candidates are per seq_id, up to 60 date-passing hits in e-value order (no E-value threshold) so Phase 3 can backfill the ones its coverage filter drops.
+# Two versions of the templates are searched: 20210930 and 2026 (the same hmmsearch output, two cutoffs).
+recipe_path: ${p:src/structcooker/workflows/ingest/template_candidates_seqid.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/template_AG_2026/seqid_to_templates.tsv}
+inputs:
+  seq_ids_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/seq_id_map_AG.tsv}
+  pdb_dates: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/cif_metadata.tsv}
+  hmm_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/intermediate/hmm_output_AG}
+  cif_fasta: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/cif_pdb.fasta}
+  out_seqid_templates: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/template_AG_2026/seqid_to_templates.tsv}
+  out_seqid_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/template_AG_2026/seqid_template_filelist.txt}
+  out_chain_seq: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/template_AG_2026/chain_to_seq.tsv}
+  out_reduced_hmm_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/intermediate/hmm_reduced_AG_2026}
+  date_cutoff: "2026-02-18"
+  max_candidates: 60
+  n_jobs: 112

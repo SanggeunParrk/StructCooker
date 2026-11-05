@@ -1,0 +1,16 @@
+# abag/final_seq_id_map -- seq_id of every chain of the kept pairs. MATERIALIZE op.
+# Seeded with abag/metadata/seq_id_map.tsv (which is seeded with the release map), so every chain that was already numbered keeps its id and
+# the recovered light chains (new sequences) continue the counter above the highest id of either map. The output holds only these chains
+# and goes to abag/final/. When the release map is next rebuilt, the final fastas go after the two ASD fastas (ids come out the same).
+recipe_path: ${p:src/structcooker/workflows/metadata/seq_id_map.py}
+
+inputs:
+  fasta_paths:
+    - ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/fasta/antigen.fasta}
+    - ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/fasta/antibody.fasta}
+  old_seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/metadata/seq_id_map.tsv}
+
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/metadata/seq_id_map.tsv}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_seq_id_map

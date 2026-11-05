@@ -1,0 +1,18 @@
+# abag/final_antigen_seq_cluster40 -- clusters of the antigens of the kept pairs, DB code ABG. MATERIALIZE op.
+# mmseqs2 at 0.40 identity, coverage 0.8 (as abag/antigen_seq_cluster40), on the final antigens only: ids are cABG_<rep seq_id> of this subset.
+recipe_path: ${p:src/structcooker/workflows/search/seq_cluster.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/metadata/seq_cluster40_ABG.tsv}
+
+inputs:
+  db_code: ABG
+  tmp_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/tmp/final_seq_cluster40_ABG}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/metadata/seq_id_map.tsv}
+  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/fasta/antigen.fasta}
+  sabdab_summary_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/sabdab/sabdab_summary_all.tsv}
+  mmseqs2_seq_id: 0.40
+  mmseqs2_cov: 0.8
+  mmseqs2_covmode: "0"
+  mmseqs2_clustermode: "1"
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_clusters

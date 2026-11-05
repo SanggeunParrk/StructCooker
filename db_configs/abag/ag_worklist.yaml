@@ -1,0 +1,12 @@
+# abag/ag_worklist -- the antigens the MSA and template searches run on: the antigens of the kept pairs (abag/pairs_basic, keep == 1). MATERIALIZE op.
+# Rows of seq_id <TAB> sequence. Antigens searched before (the ASD ones, 9,809) are in it too: the MSA search skips an a3m that exists, the template stages
+# redo the cheap part. The antigens are 10..3000 aa already (abag/pairs_binding).
+recipe_path: ${p:src/structcooker/workflows/metadata/abag_ag_worklist.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/seq_id_map_AG.tsv}
+
+inputs:
+  pairs_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/pairs/pairs_basic.tsv}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/metadata/seq_id_map.tsv}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_seq_id_map

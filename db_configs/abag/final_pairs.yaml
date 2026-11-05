@@ -1,0 +1,16 @@
+# abag/final_pairs -- the final pair table: the kept pairs with a seq_id for every chain (recovered light chains included) and a cluster for every chain. MATERIALIZE op.
+# Antigen clusters at 40% (mmseqs2), antibody clusters on the CDRs at 0.9 and at 1.0; all on the final chains only.
+recipe_path: ${p:src/structcooker/workflows/metadata/abag_final_pairs.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/pairs_final.tsv}
+
+inputs:
+  antigen_keep_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/ag_keep.txt}
+  pairs_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/pairs/pairs_basic.tsv}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/metadata/seq_id_map.tsv}
+  antigen_cluster_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/metadata/seq_cluster40_ABG.tsv}
+  antibody_cluster_paths:
+    cdr100: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/metadata/seq_cluster_cdr100_ABA.tsv}
+    cdr90: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/metadata/seq_cluster_cdr90_ABA.tsv}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_header_rows

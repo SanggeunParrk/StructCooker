@@ -1,0 +1,13 @@
+# abag/final_antibody_fasta -- the heavy and light chains of the kept pairs, recovered light chains included (pairs_basic.tsv, keep == 1) as a FASTA. MATERIALIZE op.
+# Same header as abag/antigen_fasta, so a chain keeps its header; only the chains the final pair table uses are in it.
+recipe_path: ${p:src/structcooker/workflows/metadata/abag_final_fasta.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/final/fasta/antibody.fasta}
+
+inputs:
+  pairs_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/pairs/pairs_basic.tsv}
+  seq_id_map_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/metadata/seq_id_map.tsv}
+  chain_set: antibody
+  antigen_keep_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/abag/worklists/ag_keep.txt}
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_fasta_dict
