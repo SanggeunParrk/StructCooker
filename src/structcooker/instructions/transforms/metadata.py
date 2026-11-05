@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import cast
 
 import numpy as np
-from biomol.core import NodeFeature
 
 from structcooker.instructions.mols import CIFMol, CIFMolAttached
 from structcooker.instructions.transforms.sequence import filter_water
@@ -178,6 +177,8 @@ def parse_signalp(signalp_path: Path) -> tuple[int, int] | None:
     with signalp_path.open("r", encoding="utf-8") as f:
         lines = f.readlines()
 
+    if len(lines) < 2:  # a header and no prediction: no signal peptide
+        return None
     result = lines[1].split("\t")
     return int(result[3]) - 1, int(result[4]) - 1
 
@@ -263,10 +264,6 @@ def attach_metadata(
         seqid, seqcluster = seq_metadata_map[cif_key]
         seq_id_list.append(seqid)
         seq_cluster_list.append(seqcluster)
-    seq_id_list = np.array(seq_id_list)
-    seq_cluster_list = np.array(seq_cluster_list)
-    seq_id_list = NodeFeature(seq_id_list)
-    seq_cluster_list = NodeFeature(seq_cluster_list)
     cifmol_dict = cifmol.to_dict()
     cifmol_dict["chains"]["nodes"]["seq_id"] = {
         "value": np.array(seq_id_list, dtype=str),

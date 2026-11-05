@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 from structcooker.utils.mapping import cluster_id, cluster_maps
 
@@ -71,7 +72,7 @@ def write_metadata(
 
 
 def write_clusters(
-    data: dict[str, dict[str, list[str]]],
+    data: dict[str, Any],
     output_path: Path,
 ) -> None:
     """Write one DB's cluster TSV: ``c{DB}_{rep seq_id}<TAB>member,member,...``."""
@@ -165,6 +166,15 @@ def convert_to_type(
     return mol_types
 
 
+def cluster_mol_type(cluster_rep: str) -> str:
+    """Return the molecule type of a cluster id ``c{DB}_{seq_id}`` (the seq_id starts with its type letter).
+
+    A legacy id without a DB code (``c{type letter}...``) reads its type at index 1.
+    """
+    letter = cluster_rep.partition("_")[2][:1] if "_" in cluster_rep else cluster_rep[1]
+    return convert_to_type(letter)
+
+
 def write_statistics(
     data: dict[str, dict],
     output_path: Path,
@@ -182,11 +192,11 @@ def write_statistics(
     monomer_stats = {}
     interface_stats = {}
     for cluster_rep in whole_monomer_clusters:
-        mol_type = convert_to_type(cluster_rep[1])
+        mol_type = cluster_mol_type(cluster_rep)
         monomer_stats[mol_type] = monomer_stats.get(mol_type, 0) + 1
     for src_rep, dst_rep in whole_interface_clusters:
-        src_type = convert_to_type(src_rep[1])
-        dst_type = convert_to_type(dst_rep[1])
+        src_type = cluster_mol_type(src_rep)
+        dst_type = cluster_mol_type(dst_rep)
         type_pair = tuple(sorted([src_type, dst_type]))
         interface_stats[type_pair] = interface_stats.get(type_pair, 0) + 1
     output_path.parent.mkdir(parents=True, exist_ok=True)
