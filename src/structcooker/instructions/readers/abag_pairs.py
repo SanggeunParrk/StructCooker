@@ -8,7 +8,15 @@ from .asd_binding import pair_binds
 
 MIN_ANTIGEN = 10  # a peptide under 10 aa has no alignment worth searching
 MAX_ANTIGEN = 3000  # longer ones are polyproteins and giant single chains (and what an MSA search costs most for)
-HEADER = ("antigen_seq_id", "heavy_seq_id", "light_seq_id", "nanobody", "scfv", "datasets", "names")
+HEADER = (
+    "antigen_seq_id",
+    "heavy_seq_id",
+    "light_seq_id",
+    "nanobody",
+    "scfv",
+    "datasets",
+    "names",
+)
 
 
 def load_abag_pairs(
@@ -46,8 +54,15 @@ def load_abag_pairs(
         yes = [r for r in rows if r.verdict]
         datasets = ",".join(sorted({f"{r.source}:{r.dataset}" for r in yes}))
         names = ";".join(sorted({r.name for r in yes if r.name}))[:300]
-        out.append((
-            id_of[antigen], id_of[heavy], id_of[light] if light else "", str(int(any(r.nanobody for r in rows))),
-            str(int(any(r.scfv for r in rows))), datasets, names,
-        ))
+        out.append(
+            (
+                id_of[antigen],
+                id_of[heavy],
+                id_of[light] if light else "",
+                str(int(any(r.nanobody for r in rows))),
+                str(int(any(r.scfv for r in rows))),
+                datasets,
+                names,
+            )
+        )
     return [out[0], *sorted(out[1:])]

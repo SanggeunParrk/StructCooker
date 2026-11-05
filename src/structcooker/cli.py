@@ -14,6 +14,7 @@ The ``schema:`` key is a structcooker concept, not a datacooker one, so build/re
 must not see it: we materialize a schema-stripped ``engine.yaml`` in the workdir and
 hand *that* to the pipeline, passing the schema + E along as ``--schema/--expansion``.
 """
+
 from __future__ import annotations
 
 import os
@@ -30,7 +31,7 @@ from structcooker.build import preflight, schemas, workflow_ops
 from structcooker.build.cluster import NODE_CORES, NODE_MEM_GB
 from structcooker.paths import biomol_root, seq_db_root
 
-REPO = Path(__file__).resolve().parents[2]          # StructCooker/
+REPO = Path(__file__).resolve().parents[2]  # StructCooker/
 DB_ROOT = REPO / "db_configs"
 PIPELINE_CLI = [sys.executable, "-u", "-m", "datacooker.cli.lmdb", "pipeline"]
 _SCHEMA_LINE = re.compile(r"^\s*schema\s*:.*$", re.MULTILINE)
@@ -64,7 +65,7 @@ def _schema_of(cfg: dict, db_path: Path) -> str:
     if schema is None:
         msg = f"{db_path} has no `schema:` (need one of {sorted(schemas.SCHEMAS)})"
         raise click.ClickException(msg)
-    schemas.get(str(schema))            # validates the name
+    schemas.get(str(schema))  # validates the name
     return str(schema)
 
 
@@ -95,21 +96,30 @@ def list_dbs() -> None:
     """List every db_configs/*.yaml with its inferred op, schema, and target."""
     rows: list[tuple[str, str, str, str]] = []
     for f in sorted(DB_ROOT.rglob("*.yaml")):
-        if "params" in f.relative_to(DB_ROOT).parts:  # parameter tables of a DB (db_configs/<db>/params/), not an engine config
+        if (
+            "params" in f.relative_to(DB_ROOT).parts
+        ):  # parameter tables of a DB (db_configs/<db>/params/), not an engine config
             continue
         if f.name.startswith("MANIFEST"):
             continue
         try:
             cfg = load_config(f)
-        except Exception as exc:                       # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             rows.append((str(f.relative_to(DB_ROOT)), "ERR", str(exc)[:32], ""))
             continue
         try:
             op = _op_of(cfg)
         except click.ClickException:
             op = "?"
-        target = cfg.get("new_env_path") or cfg.get("env_path") or cfg.get("output_data_path") or "?"
-        rows.append((str(f.relative_to(DB_ROOT)), op, str(cfg.get("schema", "-")), str(target)))
+        target = (
+            cfg.get("new_env_path")
+            or cfg.get("env_path")
+            or cfg.get("output_data_path")
+            or "?"
+        )
+        rows.append(
+            (str(f.relative_to(DB_ROOT)), op, str(cfg.get("schema", "-")), str(target))
+        )
     if not rows:
         click.echo(f"(no db configs under {DB_ROOT})")
         return
@@ -132,10 +142,17 @@ def _manifest_names(manifest: Path | None) -> list[str]:
 
 
 @cli.command("inspect")
-@click.option("--manifest", type=click.Path(path_type=Path), default=None,
-              help="DB dependency manifest (default: db_configs/MANIFEST_all.yaml, the whole release).")
-@click.option("--strict", is_flag=True,
-              help="Exit nonzero for missing inputs or invalid manifest dependencies.")
+@click.option(
+    "--manifest",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="DB dependency manifest (default: db_configs/MANIFEST_all.yaml, the whole release).",
+)
+@click.option(
+    "--strict",
+    is_flag=True,
+    help="Exit nonzero for missing inputs or invalid manifest dependencies.",
+)
 @click.argument("name", required=False)
 def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
     """Preflight: check every build-all node's external inputs are already in place.
@@ -149,10 +166,19 @@ def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
     names = [name] if name else _manifest_names(manifest)
     configs = {n: load_config(_resolve_db(n)) for n in names}
     reports = preflight.inspect(configs)
-    dependencies = {} if name else OmegaConf.to_container(
-        OmegaConf.load(manifest or DB_ROOT / "MANIFEST_all.yaml"), resolve=True,
+    dependencies = (
+        {}
+        if name
+        else OmegaConf.to_container(
+            OmegaConf.load(manifest or DB_ROOT / "MANIFEST_all.yaml"),
+            resolve=True,
+        )
     )
-    deps_map = {str(k): [str(d) for d in (v or [])] for k, v in dependencies.items()} if isinstance(dependencies, dict) else {}
+    deps_map = (
+        {str(k): [str(d) for d in (v or [])] for k, v in dependencies.items()}
+        if isinstance(dependencies, dict)
+        else {}
+    )
     errors = preflight.dependency_errors(configs, deps_map)
 
     env = preflight.check_env()
@@ -160,9 +186,13 @@ def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
     click.echo(f"  BIOMOL_ROOT = {env['BIOMOL_ROOT'] or f'(unset -> {root})'}")
     click.echo(f"  SEQ_DB_ROOT = {env['SEQ_DB_ROOT'] or f'(unset -> {seq_db_root()})'}")
     seed = root / "materials" / "reference" / "seq_id_map_seed.tsv"
-    click.echo(f"  seq_id seed = {'present -> match production' if seed.exists() else 'absent -> fresh id space'}  ({seed})")
+    click.echo(
+        f"  seq_id seed = {'present -> match production' if seed.exists() else 'absent -> fresh id space'}  ({seed})"
+    )
 
-    click.echo("[tools available for optional workflows; not all are needed by every node]")
+    click.echo(
+        "[tools available for optional workflows; not all are needed by every node]"
+    )
     for tool, found, optional in preflight.check_tools():
         mark = "OK     " if found else ("--     " if optional else "MISSING")
         note = "  (optional, licensed)" if optional and not found else ""
@@ -179,12 +209,18 @@ def inspect_cmd(manifest: Path | None, strict: bool, name: str | None) -> None:
 
     missing = preflight.missing_externals(reports, str(root))
     ready = sum(1 for r in reports if r.ready)
-    click.echo(f"[summary] {ready}/{len(reports)} nodes ready; "
-               f"{len(missing)} distinct external inputs missing")
+    click.echo(
+        f"[summary] {ready}/{len(reports)} nodes ready; "
+        f"{len(missing)} distinct external inputs missing"
+    )
     if missing:
         click.echo("[missing external inputs -- provide before build-all]")
         for path, hint in sorted(missing.items()):
-            action = f"structcooker download {hint}" if hint else "provide (tool output / lab-supplied)"
+            action = (
+                f"structcooker download {hint}"
+                if hint
+                else "provide (tool output / lab-supplied)"
+            )
             click.echo(f"  {path}\n      -> {action}")
     for error in errors:
         click.echo(f"[invalid dependency] {error}")
@@ -247,12 +283,24 @@ def _submit_pipeline(
     expansion = schemas.expansion(schema)
     op = "rebuild" if cfg.get("old_env_path") else "build"
     wd = Path(workdir) if workdir else REPO / "logs" / "pipeline" / Path(name).name
-    click.echo(f"[structcooker] {db_path.relative_to(REPO)}  op={op}  "
-               f"schema={schema}  E={expansion}"
-               + (f"  afterok={','.join(depends_on)}" if depends_on else ""))
+    click.echo(
+        f"[structcooker] {db_path.relative_to(REPO)}  op={op}  "
+        f"schema={schema}  E={expansion}"
+        + (f"  afterok={','.join(depends_on)}" if depends_on else "")
+    )
     engine = _write_engine_yaml(db_path, wd)
-    argv = [*PIPELINE_CLI, str(engine), "--workdir", str(wd),
-            "--schema", schema, "--expansion", str(expansion), "--repo", str(REPO)]
+    argv = [
+        *PIPELINE_CLI,
+        str(engine),
+        "--workdir",
+        str(wd),
+        "--schema",
+        schema,
+        "--expansion",
+        str(expansion),
+        "--repo",
+        str(REPO),
+    ]
     if depends_on:
         argv += ["--depends-on", ",".join(depends_on)]
     if dry_run:
@@ -270,7 +318,9 @@ def _submit_pipeline(
         # A clean pipeline always emits PIPELINE_TERMINAL_JOB. Missing it means the
         # output format drifted -- fail loud rather than let build-all treat this as
         # "skipped" and submit dependents with no afterok (silent out-of-order run).
-        msg = f"{name}: pipeline exited 0 but emitted no terminal job id (format drift?)"
+        msg = (
+            f"{name}: pipeline exited 0 but emitted no terminal job id (format drift?)"
+        )
         raise click.ClickException(msg)
     return job_id
 
@@ -299,25 +349,52 @@ def _submit_workflow(
         cfg = load_config(db_path)
     target = cfg.get("output_data_path")
     wd = Path(workdir) if workdir else REPO / "logs" / "workflow" / Path(name).name
-    click.echo(f"[structcooker] {db_path.relative_to(REPO)}  op={op}  -> {target}"
-               + (f"  afterok={','.join(depends_on)}" if depends_on else ""))
+    click.echo(
+        f"[structcooker] {db_path.relative_to(REPO)}  op={op}  -> {target}"
+        + (f"  afterok={','.join(depends_on)}" if depends_on else "")
+    )
     execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
     return workflow_ops.submit(execu, Path(name).name, op, db_path, cfg, depends_on)
 
 
 @cli.command("patch")
 @click.argument("name")
-@click.option("--keys", "keys", type=click.Path(exists=True, path_type=Path), default=None,
-              help="Keys to rebuild, one per line (a rebuild op, e.g. *_cif_attached).")
-@click.option("--files", "files", type=click.Path(exists=True, path_type=Path), default=None,
-              help="Input files to build, one per line (a build op, e.g. *_cif).")
-@click.option("--workdir", type=click.Path(path_type=Path), default=None,
-              help="Scratch for the patch scripts (default: logs/patch/<name>/<stamp>).")
-@click.option("--nodes", type=int, default=1, show_default=True,
-              help="Build the patch as an N-task array, one whole node each.")
+@click.option(
+    "--keys",
+    "keys",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Keys to rebuild, one per line (a rebuild op, e.g. *_cif_attached).",
+)
+@click.option(
+    "--files",
+    "files",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Input files to build, one per line (a build op, e.g. *_cif).",
+)
+@click.option(
+    "--workdir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Scratch for the patch scripts (default: logs/patch/<name>/<stamp>).",
+)
+@click.option(
+    "--nodes",
+    type=int,
+    default=1,
+    show_default=True,
+    help="Build the patch as an N-task array, one whole node each.",
+)
 @click.option("--dry-run", is_flag=True, help="Write the scripts, do not sbatch.")
-def patch(name: str, keys: Path | None, files: Path | None, workdir: Path | None,
-          nodes: int, dry_run: bool) -> None:
+def patch(
+    name: str,
+    keys: Path | None,
+    files: Path | None,
+    workdir: Path | None,
+    nodes: int,
+    dry_run: bool,
+) -> None:
     """Rebuild only some records of an already published DB and swap them in.
 
     For records that were built wrong or are missing, when rebuilding the whole DB is not
@@ -344,24 +421,59 @@ def patch(name: str, keys: Path | None, files: Path | None, workdir: Path | None
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # noqa: DTZ005
     wd = Path(workdir) if workdir else REPO / "logs" / "patch" / Path(name).name / stamp
     engine = _write_engine_yaml(db_path, wd)
-    out = target.parent / f".{target.stem}.build" / f"patch_{stamp}" / f"{target.stem}_patch.lmdb"
+    out = (
+        target.parent
+        / f".{target.stem}.build"
+        / f"patch_{stamp}"
+        / f"{target.stem}_patch.lmdb"
+    )
     lmdb_cli = [sys.executable, "-u", "-m", "datacooker.cli.lmdb"]
-    build = [*lmdb_cli, op, str(engine), "--key-list" if keys else "--file-list", str(keys or files),
-             "--output", str(out), "--n-jobs", str(NODE_CORES)]
+    build = [
+        *lmdb_cli,
+        op,
+        str(engine),
+        "--key-list" if keys else "--file-list",
+        str(keys or files),
+        "--output",
+        str(out),
+        "--n-jobs",
+        str(NODE_CORES),
+    ]
     execu = SlurmExecutor(workdir=wd, repo=REPO, submit=not dry_run)
     if nodes > 1:
         # Each task builds its key-hash slice into <out stem>_shard<i>; all are applied at once.
-        b = execu.run_tier_shards(name=f"{target.stem}_patch_build", n_shards=nodes, mem_gb=NODE_MEM_GB, cores=NODE_CORES,
-                                  argv_for_shard=lambda i: [*build, "--shard-idx", str(i), "--n-shards", str(nodes)])
+        b = execu.run_tier_shards(
+            name=f"{target.stem}_patch_build",
+            n_shards=nodes,
+            mem_gb=NODE_MEM_GB,
+            cores=NODE_CORES,
+            argv_for_shard=lambda i: [
+                *build,
+                "--shard-idx",
+                str(i),
+                "--n-shards",
+                str(nodes),
+            ],
+        )
         outs = [out.with_name(f"{out.stem}_shard{i}{out.suffix}") for i in range(nodes)]
     else:
-        b = execu.run_once(name=f"{target.stem}_patch_build", argv=build, mem_gb=NODE_MEM_GB, cores=NODE_CORES)
+        b = execu.run_once(
+            name=f"{target.stem}_patch_build",
+            argv=build,
+            mem_gb=NODE_MEM_GB,
+            cores=NODE_CORES,
+        )
         outs = [out]
     apply = [*lmdb_cli, "patch", "--target", str(target)]
     for o in outs:
         apply += ["--patch", str(o)]
-    a = execu.run_once(name=f"{target.stem}_patch_apply", argv=apply, mem_gb=64, cores=8,
-                       depends_on=(b.job_id,))
+    a = execu.run_once(
+        name=f"{target.stem}_patch_apply",
+        argv=apply,
+        mem_gb=64,
+        cores=8,
+        depends_on=(b.job_id,),
+    )
     # The apply step also rewrites the index from the old rows plus the patch's sizes;
     # a full re-index of a multi-TB DB reads every value (hours) for no new information.
     click.echo(f"[patch] {name}: build {b.job_id} -> apply+index {a.job_id}  ({out})")
@@ -370,16 +482,28 @@ def patch(name: str, keys: Path | None, files: Path | None, workdir: Path | None
 
 @cli.command("build")
 @click.argument("name")
-@click.option("--workdir", type=click.Path(path_type=Path), default=None,
-              help="Scratch for shard item-lists + sbatch scripts "
-                   "(default: logs/pipeline/<name>).")
+@click.option(
+    "--workdir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Scratch for shard item-lists + sbatch scripts "
+    "(default: logs/pipeline/<name>).",
+)
 @click.option("--dry-run", is_flag=True, help="Plan + write scripts, do not sbatch.")
-@click.option("--depends-on", "depends_on", default="",
-              help="Comma-separated upstream job ids to afterok-wait on.")
-@click.option("--show", is_flag=True,
-              help="Print the resolved schema/E + datacooker invocation and exit.")
-def build(name: str, workdir: Path | None, dry_run: bool,
-          depends_on: str, show: bool) -> None:
+@click.option(
+    "--depends-on",
+    "depends_on",
+    default="",
+    help="Comma-separated upstream job ids to afterok-wait on.",
+)
+@click.option(
+    "--show",
+    is_flag=True,
+    help="Print the resolved schema/E + datacooker invocation and exit.",
+)
+def build(
+    name: str, workdir: Path | None, dry_run: bool, depends_on: str, show: bool
+) -> None:
     """Plan + build the DB named by its db_configs/*.yaml (op auto-inferred).
 
     build / rebuild run the planning-first LMDB pipeline; materialize / extract
@@ -392,32 +516,59 @@ def build(name: str, workdir: Path | None, dry_run: bool,
     deps = tuple(d for d in depends_on.split(",") if d.strip())
     if op in workflow_ops.WORKFLOW_CMD:
         if show:
-            argv = [*workflow_ops.WORKFLOW_CLI, workflow_ops.WORKFLOW_CMD[op], str(db_path)]
+            argv = [
+                *workflow_ops.WORKFLOW_CLI,
+                workflow_ops.WORKFLOW_CMD[op],
+                str(db_path),
+            ]
             click.echo(f"  op={op} -> {' '.join(argv)}")
             return
-        _submit_workflow(name, workdir, op=op, dry_run=dry_run, depends_on=deps, cfg=cfg)
+        _submit_workflow(
+            name, workdir, op=op, dry_run=dry_run, depends_on=deps, cfg=cfg
+        )
         return
     if show:
         schema = _schema_of(cfg, db_path)
         wd = Path(workdir) if workdir else REPO / "logs" / "pipeline" / Path(name).name
-        argv = [*PIPELINE_CLI, str(wd / "engine.yaml"), "--workdir", str(wd),
-                "--schema", schema, "--expansion", str(schemas.expansion(schema)),
-                "--repo", str(REPO)]
+        argv = [
+            *PIPELINE_CLI,
+            str(wd / "engine.yaml"),
+            "--workdir",
+            str(wd),
+            "--schema",
+            schema,
+            "--expansion",
+            str(schemas.expansion(schema)),
+            "--repo",
+            str(REPO),
+        ]
         click.echo("  (engine.yaml materialized on real build)\n  " + " ".join(argv))
         return
     _submit_pipeline(name, workdir, dry_run=dry_run, depends_on=deps, cfg=cfg)
 
 
 @cli.command("build-all")
-@click.option("--manifest", type=click.Path(path_type=Path), default=None,
-              help="DB dependency manifest (default: db_configs/MANIFEST_all.yaml, the whole release).")
-@click.option("--workdir", type=click.Path(path_type=Path), default=None,
-              help="Parent scratch dir (each DB gets a <workdir>/<name> subdir).")
+@click.option(
+    "--manifest",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="DB dependency manifest (default: db_configs/MANIFEST_all.yaml, the whole release).",
+)
+@click.option(
+    "--workdir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Parent scratch dir (each DB gets a <workdir>/<name> subdir).",
+)
 @click.option("--dry-run", is_flag=True, help="Plan + write scripts, do not sbatch.")
-@click.option("--force", is_flag=True,
-              help="Rebuild every node, even ones already built (drops the skip).")
-def build_all(manifest: Path | None, workdir: Path | None,
-              dry_run: bool, force: bool) -> None:
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Rebuild every node, even ones already built (drops the skip).",
+)
+def build_all(
+    manifest: Path | None, workdir: Path | None, dry_run: bool, force: bool
+) -> None:
     """Submit or resume verified release stages through finite native SLURM jobs."""
     from structcooker.release.dag import start
 
@@ -444,12 +595,18 @@ def build_all(manifest: Path | None, workdir: Path | None,
         start(REPO, man_path, workdir.resolve(), RELEASE_EXCEPTIONS)
     except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
         raise click.ClickException(str(exc)) from exc
-    click.echo(f"Release jobs submitted/resumed; inspect {workdir / 'summary.json'} for verified completion")
+    click.echo(
+        f"Release jobs submitted/resumed; inspect {workdir / 'summary.json'} for verified completion"
+    )
 
 
 @cli.command("release-check")
-@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_all.yaml",
-              show_default=True)
+@click.option(
+    "--manifest",
+    type=click.Path(exists=True, path_type=Path),
+    default=DB_ROOT / "MANIFEST_all.yaml",
+    show_default=True,
+)
 def release_check(manifest: Path) -> None:
     """Check a release tree is complete and self-contained (SLURM job).
 
@@ -461,15 +618,29 @@ def release_check(manifest: Path) -> None:
 
     out_root = biomol_root()
     execu = SlurmExecutor(workdir=REPO / "logs" / "release_check", repo=REPO)
-    job = execu.run_once(name="release_check", argv=[sys.executable, "-u", "-m", "structcooker.release.check",
-                                                       str(manifest.resolve()), str(out_root / "release_check.json")],
-                         mem_gb=256, cores=16).job_id
+    job = execu.run_once(
+        name="release_check",
+        argv=[
+            sys.executable,
+            "-u",
+            "-m",
+            "structcooker.release.check",
+            str(manifest.resolve()),
+            str(out_root / "release_check.json"),
+        ],
+        mem_gb=256,
+        cores=16,
+    ).job_id
     click.echo(f"release-check job {job}; report -> {out_root / 'release_check.json'}")
 
 
 @cli.command("release-docs")
-@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_all.yaml",
-              show_default=True)
+@click.option(
+    "--manifest",
+    type=click.Path(exists=True, path_type=Path),
+    default=DB_ROOT / "MANIFEST_all.yaml",
+    show_default=True,
+)
 def release_docs(manifest: Path) -> None:
     """Write BIOMOL_ROOT/docs: README, provenance, databases, what-to-copy scenarios, check, index.html.
 
@@ -495,14 +666,23 @@ def _sample_job(root: Path, name: str, argv: list[str], mem_gb: int) -> str:
     from datacooker.executors.slurm import SlurmExecutor
 
     execu = SlurmExecutor(workdir=root / "jobs" / name, repo=REPO)
-    return execu.run_once(name=f"e2e_{name}", argv=[sys.executable, "-u", "-m", "structcooker.release.sample_e2e", *argv],
-                          mem_gb=mem_gb, cores=8).job_id
+    return execu.run_once(
+        name=f"e2e_{name}",
+        argv=[sys.executable, "-u", "-m", "structcooker.release.sample_e2e", *argv],
+        mem_gb=mem_gb,
+        cores=8,
+    ).job_id
 
 
 @e2e_sample.command("prepare")
 @click.argument("root", type=click.Path(path_type=Path))
-@click.option("--count", "counts", multiple=True, metavar="SOURCE=N",
-              help="Sample size per source, e.g. --count pdb=50 (sources: see sample_e2e.DEFAULT_COUNTS).")
+@click.option(
+    "--count",
+    "counts",
+    multiple=True,
+    metavar="SOURCE=N",
+    help="Sample size per source, e.g. --count pdb=50 (sources: see sample_e2e.DEFAULT_COUNTS).",
+)
 def e2e_sample_prepare(root: Path, counts: tuple[str, ...]) -> None:
     """Pick the sample and build ROOT, a small BIOMOL_ROOT."""
     import json
@@ -527,8 +707,12 @@ def e2e_sample_prepare(root: Path, counts: tuple[str, ...]) -> None:
 
 @e2e_sample.command("run")
 @click.argument("root", type=click.Path(exists=True, path_type=Path))
-@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_all.yaml",
-              show_default=True)
+@click.option(
+    "--manifest",
+    type=click.Path(exists=True, path_type=Path),
+    default=DB_ROOT / "MANIFEST_all.yaml",
+    show_default=True,
+)
 def e2e_sample_run(root: Path, manifest: Path) -> None:
     """build-all on the sample (ROOT/run), with every path confined to ROOT."""
     from structcooker.release.dag import start
@@ -544,7 +728,9 @@ def e2e_sample_run(root: Path, manifest: Path) -> None:
     names = _manifest_names(manifest)
     bad = escaping_paths({n: load_config(_resolve_db(n)) for n in names}, root)
     if bad:
-        raise click.ClickException("paths outside the sample root:\n  " + "\n  ".join(bad))
+        raise click.ClickException(
+            "paths outside the sample root:\n  " + "\n  ".join(bad)
+        )
     try:
         start(REPO, manifest, root / "run", RELEASE_EXCEPTIONS)
     except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError) as exc:
@@ -552,7 +738,15 @@ def e2e_sample_run(root: Path, manifest: Path) -> None:
     click.echo(f"sample build submitted/resumed; structcooker e2e-sample status {root}")
 
 
-_FAILED_JOB_STATES = {"FAILED", "CANCELLED", "TIMEOUT", "OUT_OF_MEMORY", "NODE_FAIL", "BOOT_FAIL", "DEADLINE"}
+_FAILED_JOB_STATES = {
+    "FAILED",
+    "CANCELLED",
+    "TIMEOUT",
+    "OUT_OF_MEMORY",
+    "NODE_FAIL",
+    "BOOT_FAIL",
+    "DEADLINE",
+}
 
 
 @e2e_sample.command("status")
@@ -567,31 +761,57 @@ def e2e_sample_status(root: Path) -> None:
         msg = f"no build under {root / 'run'} yet"
         raise click.ClickException(msg)
     phases = json.loads(summary_path.read_text())["nodes"]
-    states = {name: json.loads((root / "run" / "nodes" / name / "state.json").read_text())
-              for name, phase in phases.items() if phase not in {"complete", "waiting"}}
+    states = {
+        name: json.loads((root / "run" / "nodes" / name / "state.json").read_text())
+        for name, phase in phases.items()
+        if phase not in {"complete", "waiting"}
+    }
     for name, state in states.items():
         # A stage whose work job failed keeps a verifier that can never start; the phase
         # stays "submitted" until `run` reconciles it.
         if phases[name] == "submitted" and state.get("attempt"):
-            jobs = [p.read_text().strip() for p in Path(state["attempt"]).rglob("*.job-id")]
-            shown = subprocess.run(["sacct", "-n", "-P", "-o", "State", "-j", ",".join(jobs)],  # noqa: S603, S607
-                                   capture_output=True, text=True, check=False).stdout if jobs else ""
+            jobs = [
+                p.read_text().strip() for p in Path(state["attempt"]).rglob("*.job-id")
+            ]
+            shown = (
+                subprocess.run(
+                    ["sacct", "-n", "-P", "-o", "State", "-j", ",".join(jobs)],  # noqa: S603, S607
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                ).stdout
+                if jobs
+                else ""
+            )
             if any(s.split()[0] in _FAILED_JOB_STATES for s in shown.split("\n") if s):
                 phases[name] = "stalled"
-                state["error"] = "a job failed; see the attempt logs, fix, then rerun `e2e-sample run`"
-    click.echo("  ".join(f"{p}={n}" for p, n in sorted(Counter(phases.values()).items())))
+                state["error"] = (
+                    "a job failed; see the attempt logs, fix, then rerun `e2e-sample run`"
+                )
+    click.echo(
+        "  ".join(f"{p}={n}" for p, n in sorted(Counter(phases.values()).items()))
+    )
     for name, state in sorted(states.items()):
         click.echo(f"  {phases[name]:<20} {name}  {(state.get('error') or '')[:160]}")
 
 
 @e2e_sample.command("verify")
 @click.argument("root", type=click.Path(exists=True, path_type=Path))
-@click.option("--manifest", type=click.Path(exists=True, path_type=Path), default=DB_ROOT / "MANIFEST_all.yaml",
-              show_default=True)
+@click.option(
+    "--manifest",
+    type=click.Path(exists=True, path_type=Path),
+    default=DB_ROOT / "MANIFEST_all.yaml",
+    show_default=True,
+)
 def e2e_sample_verify(root: Path, manifest: Path) -> None:
     """Compare every sampled output with the release (SLURM job; report in ROOT/verify.json)."""
     root = root.resolve()
-    job = _sample_job(root, "verify", ["verify", str(root), str(root / "run"), str(manifest.resolve())], 128)
+    job = _sample_job(
+        root,
+        "verify",
+        ["verify", str(root), str(root / "run"), str(manifest.resolve())],
+        128,
+    )
     click.echo(f"verify job {job}; report -> {root / 'verify.json'}")
 
 
@@ -607,7 +827,12 @@ def foldbench_group() -> None:
 
 @foldbench_group.command("keys")
 @click.argument("package", type=click.Path(exists=True, path_type=Path))
-@click.option("--out", type=click.Path(path_type=Path), default=None, help="Also write the key lists as JSON.")
+@click.option(
+    "--out",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Also write the key lists as JSON.",
+)
 def foldbench_keys(package: Path, out: Path | None) -> None:
     """Count (and save) the protein / RNA / template / CCD keys a FoldBench package looks up."""
     import json
@@ -624,16 +849,38 @@ def foldbench_keys(package: Path, out: Path | None) -> None:
 @foldbench_group.command("build")
 @click.argument("package", type=click.Path(exists=True, path_type=Path))
 @click.argument("out", type=click.Path(path_type=Path))
-@click.option("--release", type=click.Path(exists=True, path_type=Path), default=None,
-              help="Release tree to cut from (default: BIOMOL_ROOT).")
-@click.option("--ccd", type=click.Path(exists=True, path_type=Path), default=None,
-              help="Inference CCD LMDB (default: RELEASE/lmdb/ccd/ccd_inference.lmdb, "
-                   "scripts/staging/build_inference_ccd.py).")
-@click.option("--fallback", type=click.Path(exists=True, path_type=Path), multiple=True,
-              help="DB holding the from-scratch (edge) MSAs (default: RELEASE/lmdb/foldbench/msa_edge.lmdb).")
-@click.option("--local", is_flag=True, help="Run here instead of as a SLURM job (a few thousand key reads).")
-def foldbench_build(package: Path, out: Path, release: Path | None, ccd: Path | None, fallback: tuple[Path, ...],
-                    local: bool) -> None:
+@click.option(
+    "--release",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Release tree to cut from (default: BIOMOL_ROOT).",
+)
+@click.option(
+    "--ccd",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Inference CCD LMDB (default: RELEASE/lmdb/ccd/ccd_inference.lmdb, "
+    "scripts/staging/build_inference_ccd.py).",
+)
+@click.option(
+    "--fallback",
+    type=click.Path(exists=True, path_type=Path),
+    multiple=True,
+    help="DB holding the from-scratch (edge) MSAs (default: RELEASE/lmdb/foldbench/msa_edge.lmdb).",
+)
+@click.option(
+    "--local",
+    is_flag=True,
+    help="Run here instead of as a SLURM job (a few thousand key reads).",
+)
+def foldbench_build(
+    package: Path,
+    out: Path,
+    release: Path | None,
+    ccd: Path | None,
+    fallback: tuple[Path, ...],
+    local: bool,
+) -> None:
     """Cut the FoldBench MSA / template / CCD LMDBs under OUT (never replaces an existing DB)."""
     if release is None:
         release = biomol_root()
@@ -642,7 +889,13 @@ def foldbench_build(package: Path, out: Path, release: Path | None, ccd: Path | 
         ccd = release / "lmdb" / "ccd" / "ccd_inference.lmdb"
     if not fallback and (release / "lmdb" / "foldbench" / "msa_edge.lmdb").is_dir():
         fallback = (release / "lmdb" / "foldbench" / "msa_edge.lmdb",)
-    argv = ["build", str(package.resolve()), str(out.resolve()), "--release", str(release.resolve())]
+    argv = [
+        "build",
+        str(package.resolve()),
+        str(out.resolve()),
+        "--release",
+        str(release.resolve()),
+    ]
     if ccd is not None:
         argv += ["--ccd", str(ccd.resolve())]
     for f in fallback:
@@ -654,8 +907,12 @@ def foldbench_build(package: Path, out: Path, release: Path | None, ccd: Path | 
     from datacooker.executors.slurm import SlurmExecutor
 
     execu = SlurmExecutor(workdir=REPO / "logs" / "foldbench", repo=REPO)
-    job = execu.run_once(name="foldbench_build", argv=[sys.executable, "-u", "-m", "structcooker.release.foldbench", *argv],
-                         mem_gb=32, cores=4).job_id
+    job = execu.run_once(
+        name="foldbench_build",
+        argv=[sys.executable, "-u", "-m", "structcooker.release.foldbench", *argv],
+        mem_gb=32,
+        cores=4,
+    ).job_id
     click.echo(f"foldbench build job {job}; report -> {out / 'foldbench_build.json'}")
 
 

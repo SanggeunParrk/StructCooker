@@ -1,4 +1,5 @@
 """Recipe: column-0 keys of a TSV as a one-per-line list (e.g. seq_ids)."""
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.filelists import tsv_key_list

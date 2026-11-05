@@ -14,6 +14,7 @@ For each stage in the release DAG:
 Run through ``structcooker release-check`` (a SLURM job); the report goes to
 ``<BIOMOL_ROOT>/release_check.json``.
 """
+
 from __future__ import annotations
 
 import json
@@ -40,21 +41,33 @@ def _files_outside(target: Path) -> list[str]:
     return [p for p in paths if not p.startswith(root + os.sep)]
 
 
-def check_lmdb(name: str, target: str, schema: str, max_depth: int | None) -> dict[str, Any]:
+def check_lmdb(
+    name: str, target: str, schema: str, max_depth: int | None
+) -> dict[str, Any]:
     from datacooker.lmdb.sharded import open_env
 
     from structcooker.build.build_verify import _check_records
 
     path = Path(target)
-    report: dict[str, Any] = {"stage": name, "path": target, "schema": schema, "problems": []}
+    report: dict[str, Any] = {
+        "stage": name,
+        "path": target,
+        "schema": schema,
+        "problems": [],
+    }
     problems = report["problems"]
     if not path.exists():
         problems.append("missing")
         return report
     outside = _files_outside(path)
     if outside:
-        problems.append(f"{len(outside)} shard(s) outside its directory, e.g. {outside[0]}")
-    with open_env(target, readonly=True, lock=False, readahead=False) as env, env.begin() as txn:
+        problems.append(
+            f"{len(outside)} shard(s) outside its directory, e.g. {outside[0]}"
+        )
+    with (
+        open_env(target, readonly=True, lock=False, readahead=False) as env,
+        env.begin() as txn,
+    ):
         report["entries"] = txn.stat()["entries"]
     meta_path, index_path = Path(target + ".meta.json"), Path(target + ".index.tsv")
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
@@ -67,10 +80,17 @@ def check_lmdb(name: str, target: str, schema: str, max_depth: int | None) -> di
                     keys.append(key)
                     sizes.append(int(size))
     if meta.get("entries") != report["entries"]:
-        problems.append(f"meta.json entries {meta.get('entries')} != {report['entries']}")
-    if sizes and (meta.get("total_bytes"), meta.get("max_bytes")) != (sum(sizes), max(sizes)):
-        problems.append(f"meta.json bytes {meta.get('total_bytes')}/{meta.get('max_bytes')} "
-                        f"!= index {sum(sizes)}/{max(sizes)}")
+        problems.append(
+            f"meta.json entries {meta.get('entries')} != {report['entries']}"
+        )
+    if sizes and (meta.get("total_bytes"), meta.get("max_bytes")) != (
+        sum(sizes),
+        max(sizes),
+    ):
+        problems.append(
+            f"meta.json bytes {meta.get('total_bytes')}/{meta.get('max_bytes')} "
+            f"!= index {sum(sizes)}/{max(sizes)}"
+        )
     if len(keys) != report["entries"]:
         problems.append(f"index rows {len(keys)} != {report['entries']}")
     if meta.get("schema") and meta["schema"] != schema:
@@ -109,17 +129,29 @@ def run(manifest: Path, out: Path) -> dict[str, Any]:
             target = cfg.get("new_env_path") or cfg.get("env_path")
             if target:
                 depth = (cfg.get("parameters") or {}).get("max_depth")
-                jobs.append(pool.submit(check_lmdb, name, str(target), str(cfg["schema"]), depth))
+                jobs.append(
+                    pool.submit(
+                        check_lmdb, name, str(target), str(cfg["schema"]), depth
+                    )
+                )
             else:
-                jobs.append(pool.submit(check_files, name, [str(p) for p in preflight.output_paths(cfg)]))
+                jobs.append(
+                    pool.submit(
+                        check_files, name, [str(p) for p in preflight.output_paths(cfg)]
+                    )
+                )
         reports = [j.result() for j in jobs]
-    from structcooker.release import key_contracts
     from structcooker.paths import biomol_root
+    from structcooker.release import key_contracts
 
     contracts = key_contracts.check_all(biomol_root() / "lmdb")
-    result = {"stages": len(reports), "with_problems": sum(bool(r["problems"]) for r in reports),
-              "reports": sorted(reports, key=lambda r: r["stage"]),
-              "key_contracts": contracts, "key_contracts_failed": sum(bool(c["problems"]) for c in contracts)}
+    result = {
+        "stages": len(reports),
+        "with_problems": sum(bool(r["problems"]) for r in reports),
+        "reports": sorted(reports, key=lambda r: r["stage"]),
+        "key_contracts": contracts,
+        "key_contracts_failed": sum(bool(c["problems"]) for c in contracts),
+    }
     out.write_text(json.dumps(result, indent=1))
     return result
 
@@ -132,14 +164,22 @@ def main() -> None:
     result = run(manifest, out)
     for r in result["reports"]:
         mark = "OK  " if not r["problems"] else "FAIL"
-        detail = f"{r.get('entries', '')} entries, {r.get('sampled', 0)} sampled" if "entries" in r else ""
+        detail = (
+            f"{r.get('entries', '')} entries, {r.get('sampled', 0)} sampled"
+            if "entries" in r
+            else ""
+        )
         print(f"{mark} {r['stage']:42} {detail}  {'; '.join(r['problems'])}")
     for c in result["key_contracts"]:
         mark = "OK  " if not c["problems"] else "FAIL"
-        print(f"{mark} key contract {c['contract']:16} {c.get('hit', 0)}/{c.get('chains', 0)} chains find their template  "
-              f"{'; '.join(c['problems'])}")
-    print(f"{result['stages']} stages, {result['with_problems']} with problems, "
-          f"{result['key_contracts_failed']} key contracts failed -> {out}")
+        print(
+            f"{mark} key contract {c['contract']:16} {c.get('hit', 0)}/{c.get('chains', 0)} chains find their template  "
+            f"{'; '.join(c['problems'])}"
+        )
+    print(
+        f"{result['stages']} stages, {result['with_problems']} with problems, "
+        f"{result['key_contracts_failed']} key contracts failed -> {out}"
+    )
     if result["with_problems"] or result["key_contracts_failed"]:
         sys.exit(1)
 

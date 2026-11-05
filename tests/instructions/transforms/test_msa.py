@@ -23,7 +23,9 @@ def test_insertions_and_profile_match_independent_calculation():
     classes = ResidueMapping().MAX_INDEX + 1
     reference = np.eye(classes, dtype=np.int32)[aligned].mean(axis=0).astype(np.float32)
     np.testing.assert_array_equal(result["profile"], reference)
-    deletion_mean = (2 * np.arctan(expected.astype(np.float32) / 3) / np.pi).mean(axis=0)
+    deletion_mean = (2 * np.arctan(expected.astype(np.float32) / 3) / np.pi).mean(
+        axis=0
+    )
     np.testing.assert_array_equal(result["deletion_mean"], deletion_mean)
 
 
@@ -40,10 +42,20 @@ def test_invalid_alignment_fails_clearly(rows):
 
 
 def test_header_rows_do_not_inherit_previous_hit():
-    headers = ["query", "UniRef100_ABC protein Tax=Homo sapiens TaxID=9606 RepID=ABC_HUMAN", "SRR4029434_2280741", "other_hit"]
+    headers = [
+        "query",
+        "UniRef100_ABC protein Tax=Homo sapiens TaxID=9606 RepID=ABC_HUMAN",
+        "SRR4029434_2280741",
+        "other_hit",
+    ]
     result = parse_headers(headers)
     assert result["database"].tolist() == [b"query", b"uniref100", b"bfd", b"bfd"]
-    assert result["database_id"].tolist() == [b"query", b"ABC", b"SRR4029434_2280741", b"other_hit"]
+    assert result["database_id"].tolist() == [
+        b"query",
+        b"ABC",
+        b"SRR4029434_2280741",
+        b"other_hit",
+    ]
     assert result["species"].tolist() == [b"query", b"Homo sapiens", b"N/A", b"N/A"]
 
 
@@ -57,8 +69,15 @@ def test_reader_handles_blank_lines_and_wrapped_sequences(tmp_path):
 
 def test_native_cap_recipe_preserves_query_and_recomputes_statistics():
     rows = ["ACD", "AaCD", "---"]
-    source = {"sequences": parse_sequence(rows), "headers": parse_headers(["q", "hit1", "hit2"])}
-    result = execute(CAP_RECIPE, {**adapt_msa_for_cap({"msa_dict": source}), "max_depth": 2}, targets=["msa_dict"])["msa_dict"]
+    source = {
+        "sequences": parse_sequence(rows),
+        "headers": parse_headers(["q", "hit1", "hit2"]),
+    }
+    result = execute(
+        CAP_RECIPE,
+        {**adapt_msa_for_cap({"msa_dict": source}), "max_depth": 2},
+        targets=["msa_dict"],
+    )["msa_dict"]
     reference = parse_sequence(rows[:2])
     for key, value in reference.items():
         np.testing.assert_array_equal(result["sequences"][key], value)
@@ -72,10 +91,15 @@ def test_cap_cannot_drop_query(depth):
         cap_msa_dict({}, depth)
 
 
-@pytest.mark.parametrize(("kind", "rows"), [("protein", ["ACD", "AaC-D".replace("-", "")]), ("rna", ["ACGU", "AaCGU"])])
+@pytest.mark.parametrize(
+    ("kind", "rows"),
+    [("protein", ["ACD", "AaC-D".replace("-", "")]), ("rna", ["ACGU", "AaCGU"])],
+)
 def test_openfold_features_match_a3m(kind, rows):
     parsed = parse_sequence(rows, kind)
-    matrix = np.array([list("".join(c for c in row if not c.islower())) for row in rows])
+    matrix = np.array(
+        [list("".join(c for c in row if not c.islower())) for row in rows]
+    )
     direct = build_msa_features(matrix, parsed["deletions"], kind)
     for key, value in parsed.items():
         np.testing.assert_array_equal(direct[key], value)

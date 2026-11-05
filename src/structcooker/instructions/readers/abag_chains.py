@@ -25,18 +25,37 @@ class AntiBinderIndex:
         csv.field_size_limit(10**9)
         root = Path(raw_data_dir)
         self.covid: dict[tuple[str, str], set[str]] = {}
-        for row in csv.DictReader((root / "COVID-19/CoV-AbDab_only_sars2_filter.csv").open(newline="", encoding="utf-8-sig")):
-            heavy, light, antigen = _normalize(row["Heavy"]), _normalize(row["Light"]), _normalize(row["antigen"])
+        for row in csv.DictReader(
+            (root / "COVID-19/CoV-AbDab_only_sars2_filter.csv").open(
+                newline="", encoding="utf-8-sig"
+            )
+        ):
+            heavy, light, antigen = (
+                _normalize(row["Heavy"]),
+                _normalize(row["Light"]),
+                _normalize(row["antigen"]),
+            )
             if heavy and light and antigen:
                 self.covid.setdefault((heavy, antigen), set()).add(light)
         self.hiv: dict[str, set[str]] = {}
-        for row in csv.DictReader((root / "HIV/dataset_hiv_cls.csv").open(newline="", encoding="utf-8-sig")):
-            antibody, antigen = _normalize(row["antibody"]), _normalize(row["virus_seq"])
+        for row in csv.DictReader(
+            (root / "HIV/dataset_hiv_cls.csv").open(newline="", encoding="utf-8-sig")
+        ):
+            antibody, antigen = (
+                _normalize(row["antibody"]),
+                _normalize(row["virus_seq"]),
+            )
             if antibody and antigen:
                 self.hiv.setdefault(antigen, set()).add(antibody)
         self.biomap: dict[tuple[str, str], set[str]] = {}
-        for row in csv.DictReader((root / "BioMap/biomap.csv").open(newline="", encoding="utf-8-sig")):
-            first, second, antigen = _normalize(row["antibody_seq_a"]), _normalize(row["antibody_seq_b"]), _normalize(row["antigen_seq"])
+        for row in csv.DictReader(
+            (root / "BioMap/biomap.csv").open(newline="", encoding="utf-8-sig")
+        ):
+            first, second, antigen = (
+                _normalize(row["antibody_seq_a"]),
+                _normalize(row["antibody_seq_b"]),
+                _normalize(row["antigen_seq"]),
+            )
             if first and second and antigen:
                 self.biomap.setdefault((first, antigen), set()).add(second)
                 self.biomap.setdefault((second, antigen), set()).add(first)
@@ -45,14 +64,26 @@ class AntiBinderIndex:
         """The light chains each source gives for this heavy chain and antigen: ``{source: {light, ...}}``, empty sources left out."""
         found = {
             "covid": set(self.covid.get((heavy, antigen), ())),
-            "hiv": {antibody[len(heavy):] for antibody in self.hiv.get(antigen, ())
-                    if antibody.startswith(heavy) and len(antibody) - len(heavy) >= _MIN_LIGHT},
+            "hiv": {
+                antibody[len(heavy) :]
+                for antibody in self.hiv.get(antigen, ())
+                if antibody.startswith(heavy)
+                and len(antibody) - len(heavy) >= _MIN_LIGHT
+            },
             "biomap": set(self.biomap.get((heavy, antigen), ())),
         }
         return {source: lights for source, lights in found.items() if lights}
 
 
-def classify_chains(heavy: str, light: str, *, nanobody: bool, scfv: bool, antibinder: AntiBinderIndex, antigen: str) -> tuple[str, str, str]:
+def classify_chains(
+    heavy: str,
+    light: str,
+    *,
+    nanobody: bool,
+    scfv: bool,
+    antibinder: AntiBinderIndex,
+    antigen: str,
+) -> tuple[str, str, str]:
     """``(chain_status, light_source, light_sequence)`` of one pair. The rules, in order (SelfDistillation, Paired-set-build, 3):
 
     ``paired_original`` ASD holds a light chain; ``scfv`` the scfv flag or a ``(G{3,5}S){2,}`` linker in the heavy chain; ``vhh`` the nanobody flag;
@@ -90,11 +121,29 @@ def load_pair_chains(
         seq_id, text = line.rstrip("\n").split("\t")
         sequence[seq_id] = text
     index = AntiBinderIndex(antibinder_dir)
-    out: list[tuple[str, ...]] = [("antigen_seq_id", "heavy_seq_id", "light_seq_id", "light_sequence", "chain_status", "light_source", "datasets", "names")]
+    out: list[tuple[str, ...]] = [
+        (
+            "antigen_seq_id",
+            "heavy_seq_id",
+            "light_seq_id",
+            "light_sequence",
+            "chain_status",
+            "light_source",
+            "datasets",
+            "names",
+        )
+    ]
     for line in list(Path(pairs_path).open())[1:]:
-        antigen, heavy, light, nanobody, scfv, datasets, names = line.rstrip("\n").split("\t")
+        antigen, heavy, light, nanobody, scfv, datasets, names = line.rstrip(
+            "\n"
+        ).split("\t")
         status, source, filled = classify_chains(
-            sequence[heavy], sequence[light] if light else "", nanobody=nanobody == "1", scfv=scfv == "1", antibinder=index, antigen=sequence[antigen],
+            sequence[heavy],
+            sequence[light] if light else "",
+            nanobody=nanobody == "1",
+            scfv=scfv == "1",
+            antibinder=index,
+            antigen=sequence[antigen],
         )
         out.append((antigen, heavy, light, filled, status, source, datasets, names))
     return out

@@ -10,7 +10,7 @@ _KEEP_COLUMN = "keep"
 def _read_pairs(pairs_path: str | Path) -> list[dict[str, str]]:
     lines = Path(pairs_path).read_text().splitlines()
     header = lines[0].split("\t")
-    return [dict(zip(header, line.split("\t"))) for line in lines[1:]]
+    return [dict(zip(header, line.split("\t"), strict=False)) for line in lines[1:]]
 
 
 def _sequences(seq_id_map_path: str | Path) -> dict[str, str]:
@@ -18,11 +18,18 @@ def _sequences(seq_id_map_path: str | Path) -> dict[str, str]:
 
 
 def _antigen_keep(path: str | Path | None) -> set[str] | None:
-    return None if path is None else {line.strip() for line in Path(path).open() if line.strip()}
+    return (
+        None
+        if path is None
+        else {line.strip() for line in Path(path).open() if line.strip()}
+    )
 
 
 def load_final_fasta(
-    pairs_path: str | Path, seq_id_map_path: str | Path, chain_set: str, antigen_keep_path: str | Path | None = None,
+    pairs_path: str | Path,
+    seq_id_map_path: str | Path,
+    chain_set: str,
+    antigen_keep_path: str | Path | None = None,
 ) -> dict[str, str]:
     """The FASTA of the chains of the kept pairs (``abag/pairs/pairs_basic.tsv``, ``keep == 1``): ``chain_set`` is ``antigen`` or ``antibody``.
 
@@ -34,11 +41,17 @@ def load_final_fasta(
     keep = _antigen_keep(antigen_keep_path)
     per_role: dict[str, set[str]] = {"T": set(), "H": set(), "L": set()}
     for row in _read_pairs(pairs_path):
-        if row[_KEEP_COLUMN] != "1" or (keep is not None and row["antigen_seq_id"] not in keep):
+        if row[_KEEP_COLUMN] != "1" or (
+            keep is not None and row["antigen_seq_id"] not in keep
+        ):
             continue
         per_role["T"].add(sequence[row["antigen_seq_id"]])
         per_role["H"].add(sequence[row["heavy_seq_id"]])
-        light = sequence[row["light_seq_id"]] if row["light_seq_id"] else row["light_sequence"]
+        light = (
+            sequence[row["light_seq_id"]]
+            if row["light_seq_id"]
+            else row["light_sequence"]
+        )
         if light:
             per_role["L"].add(light)
     roles = ("T",) if chain_set == "antigen" else ("H", "L")
@@ -74,28 +87,55 @@ def load_final_pairs(
         return member
 
     antigen_cluster = clusters(antigen_cluster_path)
-    antibody_clusters = {name: clusters(path) for name, path in antibody_cluster_paths.items()}
-    header = ["antigen_seq_id", "heavy_seq_id", "light_seq_id", "chain_status", "light_source", "datasets", "antigen_cluster40"]
+    antibody_clusters = {
+        name: clusters(path) for name, path in antibody_cluster_paths.items()
+    }
+    header = [
+        "antigen_seq_id",
+        "heavy_seq_id",
+        "light_seq_id",
+        "chain_status",
+        "light_source",
+        "datasets",
+        "antigen_cluster40",
+    ]
     for name in antibody_clusters:
         header += [f"heavy_cluster_{name}", f"light_cluster_{name}"]
     out: list[tuple[str, ...]] = [tuple(header)]
     keep = _antigen_keep(antigen_keep_path)
     for row in _read_pairs(pairs_path):
-        if row[_KEEP_COLUMN] != "1" or (keep is not None and row["antigen_seq_id"] not in keep):
+        if row[_KEEP_COLUMN] != "1" or (
+            keep is not None and row["antigen_seq_id"] not in keep
+        ):
             continue
-        light_id = row["light_seq_id"] or (id_of[row["light_sequence"]] if row["light_sequence"] else "")
-        cells = [row["antigen_seq_id"], row["heavy_seq_id"], light_id, row["chain_status"], row["light_source"], row["datasets"],
-                 antigen_cluster[row["antigen_seq_id"]]]
+        light_id = row["light_seq_id"] or (
+            id_of[row["light_sequence"]] if row["light_sequence"] else ""
+        )
+        cells = [
+            row["antigen_seq_id"],
+            row["heavy_seq_id"],
+            light_id,
+            row["chain_status"],
+            row["light_source"],
+            row["datasets"],
+            antigen_cluster[row["antigen_seq_id"]],
+        ]
         for member in antibody_clusters.values():
             cells += [member[row["heavy_seq_id"]], member[light_id] if light_id else ""]
         out.append(tuple(cells))
     return out
 
 
-def load_antigen_worklist(pairs_path: str | Path, seq_id_map_path: str | Path) -> dict[str, str]:
+def load_antigen_worklist(
+    pairs_path: str | Path, seq_id_map_path: str | Path
+) -> dict[str, str]:
     """``{seq_id: sequence}`` of the antigens of the kept pairs (``keep == 1``): what the MSA and template searches run on."""
     sequence = _sequences(seq_id_map_path)
-    antigens = {row["antigen_seq_id"] for row in _read_pairs(pairs_path) if row[_KEEP_COLUMN] == "1"}
+    antigens = {
+        row["antigen_seq_id"]
+        for row in _read_pairs(pairs_path)
+        if row[_KEEP_COLUMN] == "1"
+    }
     return {seq_id: sequence[seq_id] for seq_id in sorted(antigens)}
 
 

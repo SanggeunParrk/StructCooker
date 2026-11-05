@@ -40,9 +40,28 @@ from pathlib import Path
 _ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 RAW = _ROOT / "materials/raw/afdb_multimer/heterodimer"
 OUT = _ROOT / "materials/intermediate/afdb_multimer/heterodimer/repaired"
-_AA = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E",
-       "GLY": "G", "HIS": "H", "ILE": "I", "LEU": "L", "LYS": "K", "MET": "M", "PHE": "F",
-       "PRO": "P", "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V"}
+_AA = {
+    "ALA": "A",
+    "ARG": "R",
+    "ASN": "N",
+    "ASP": "D",
+    "CYS": "C",
+    "GLN": "Q",
+    "GLU": "E",
+    "GLY": "G",
+    "HIS": "H",
+    "ILE": "I",
+    "LEU": "L",
+    "LYS": "K",
+    "MET": "M",
+    "PHE": "F",
+    "PRO": "P",
+    "SER": "S",
+    "THR": "T",
+    "TRP": "W",
+    "TYR": "Y",
+    "VAL": "V",
+}
 
 
 def _loop(lines: list[str], cat: str) -> tuple[list[str], int, int]:
@@ -82,10 +101,12 @@ def repair(path: Path, dest: Path) -> list[tuple[str, str, str]]:
     changes = []
     for k in range(s, e):
         tokens = lines[k].split()
-        if not tokens:   # release files end some loops with a blank line rather than "#"
+        if not tokens:  # release files end some loops with a blank line rather than "#"
             continue
-        if len(tokens) != len(cols):   # a row split over lines would need a real parser
-            msg = f"{path.name}: _entity_poly row is not single-line; refusing to rewrite"
+        if len(tokens) != len(cols):  # a row split over lines would need a real parser
+            msg = (
+                f"{path.name}: _entity_poly row is not single-line; refusing to rewrite"
+            )
             raise ValueError(msg)
         ent, before = tokens[at_id], tokens[at_code]
         after = "".join(seq[ent])
@@ -101,12 +122,20 @@ def repair(path: Path, dest: Path) -> list[tuple[str, str, str]]:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--list", type=Path, default=None)
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     if a.list is not None:
-        names = sorted({ln.split("\t")[1] for ln in a.list.read_text().splitlines() if ln.startswith("BAD\t")})
+        names = sorted(
+            {
+                ln.split("\t")[1]
+                for ln in a.list.read_text().splitlines()
+                if ln.startswith("BAD\t")
+            }
+        )
     else:
         names = sorted(p.name for p in (RAW / "cif").glob("*/AF-*-model_v1.cif.gz"))
     log = OUT / "ENTITY_POLY_REPAIRS.tsv"
@@ -124,10 +153,18 @@ def main() -> None:
             # map holds wherever the tree lives (readers.afdb.get_afm_cif_data)
             overrides[str(path.relative_to(RAW.parent))] = str(dest.relative_to(OUT))
         for ent, before, after in changes:
-            diff = [i for i, (x, y) in enumerate(zip(before, after, strict=False)) if x != y]
-            kind = "ambiguity_code" if len(before) == len(after) and {before[i] for i in diff} <= set("ZBXJU") \
+            diff = [
+                i for i, (x, y) in enumerate(zip(before, after, strict=False)) if x != y
+            ]
+            kind = (
+                "ambiguity_code"
+                if len(before) == len(after)
+                and {before[i] for i in diff} <= set("ZBXJU")
                 else "crossed_entity"
-            rows.append(f"{name}\t{ent}\t{kind}\t{len(before)}\t{len(after)}\t{before}\t{after}\n")
+            )
+            rows.append(
+                f"{name}\t{ent}\t{kind}\t{len(before)}\t{len(after)}\t{before}\t{after}\n"
+            )
             print(f"{name} entity {ent}: {kind} ({len(before)} -> {len(after)})")
     if rows:
         (OUT / "overrides.json").write_text(json.dumps(overrides, indent=2) + "\n")

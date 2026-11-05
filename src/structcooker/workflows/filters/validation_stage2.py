@@ -1,9 +1,9 @@
 from datacooker import RecipeBook
 
+from structcooker.instructions.mols import CIFMolAttached
 from structcooker.instructions.transforms.filtering import (
     filter_cifmol_by_clusters,
 )
-from structcooker.instructions.mols import CIFMolAttached
 
 """Rebuild a CIF lmdb to train AF3"""
 

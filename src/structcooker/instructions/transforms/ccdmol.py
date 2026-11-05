@@ -7,6 +7,7 @@ fields -- id, element, aromatic, stereo, charge, model_xyz and the three bond fe
 derived chemistry (no RDKit), so single-atom and bare-ion components pass through with an empty bond
 section. Built by scripts/staging/build_inference_ccd.py.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -34,14 +35,23 @@ def convert_chem_comp_to_ccdmol(record: dict, ccd_code: str) -> dict:
     src = np.asarray(ae["bond_type"]["src_indices"], dtype=np.int64)
     dst = np.asarray(ae["bond_type"]["dst_indices"], dtype=np.int64)
     atoms = {
-        "nodes": {key: _node(np.asarray(an[key]["value"]))
-                  for key in ("id", "element", "aromatic", "stereo", "charge", "model_xyz")},
-        "edges": {key: _edge(np.asarray(ae[key]["value"]), src, dst)
-                  for key in ("bond_type", "bond_aromatic", "bond_stereo")},
+        "nodes": {
+            key: _node(np.asarray(an[key]["value"]))
+            for key in ("id", "element", "aromatic", "stereo", "charge", "model_xyz")
+        },
+        "edges": {
+            key: _edge(np.asarray(ae[key]["value"]), src, dst)
+            for key in ("bond_type", "bond_aromatic", "bond_stereo")
+        },
     }
     rn = cc["residue"]["nodes"]
-    residues = {"nodes": {"id": _node(np.asarray(rn["id"]["value"])),
-                          "formula": _node(np.asarray(rn["formula"]["value"]))}, "edges": {}}
+    residues = {
+        "nodes": {
+            "id": _node(np.asarray(rn["id"]["value"])),
+            "formula": _node(np.asarray(rn["formula"]["value"])),
+        },
+        "edges": {},
+    }
     chains = {"nodes": {"id": _node(np.array([ccd_code]))}, "edges": {}}
     index_table = {
         "atom_to_res": np.zeros(n, dtype=np.int64),
@@ -51,4 +61,10 @@ def convert_chem_comp_to_ccdmol(record: dict, ccd_code: str) -> dict:
         "chain_res_indptr": np.array([0, 1], dtype=np.int64),
         "chain_res_indices": np.zeros(1, dtype=np.int64),
     }
-    return {"atoms": atoms, "residues": residues, "chains": chains, "index_table": index_table, "metadata": {}}
+    return {
+        "atoms": atoms,
+        "residues": residues,
+        "chains": chains,
+        "index_table": index_table,
+        "metadata": {},
+    }

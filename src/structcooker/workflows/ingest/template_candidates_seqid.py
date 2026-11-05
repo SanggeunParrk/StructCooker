@@ -3,6 +3,7 @@
 Materialize recipe: writes seqid_to_templates / the Phase 3 work list / chain_to_seq /
 reduced hmm as side effects (output_data_path = seqid_to_templates.tsv is the marker).
 """
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.template_candidates import (

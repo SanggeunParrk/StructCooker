@@ -11,6 +11,7 @@ collection and the old directories can be deleted afterwards. Default is a dry r
 
     python scripts/staging/consolidate_shards.py <db>.lmdb [...] [--apply]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -42,7 +43,9 @@ def consolidate(target: Path, *, apply: bool) -> None:
     manifest = json.loads((target / MANIFEST).read_text())
     moves = plan(target)
     inside = sum(src == dst.resolve() for src, dst in moves)
-    print(f"{target}: {len(moves)} shards, {inside} already inside, {manifest['entries']} entries")
+    print(
+        f"{target}: {len(moves)} shards, {inside} already inside, {manifest['entries']} entries"
+    )
     if not apply or inside == len(moves):
         for src, dst in moves[:3]:
             print(f"  {src} -> {dst}")
@@ -58,8 +61,13 @@ def consolidate(target: Path, *, apply: bool) -> None:
         if entries(dst) != shard["entries"]:
             msg = f"{dst}: entry count differs from the manifest"
             raise ValueError(msg)
-    new = {**manifest, "shards": [{**s, "path": os.path.relpath(dst, target)}
-                                  for (src, dst), s in zip(moves, manifest["shards"], strict=True)]}
+    new = {
+        **manifest,
+        "shards": [
+            {**s, "path": os.path.relpath(dst, target)}
+            for (src, dst), s in zip(moves, manifest["shards"], strict=True)
+        ],
+    }
     with tempfile.NamedTemporaryFile("w", dir=target, delete=False) as handle:
         json.dump(new, handle, indent=2)
         handle.flush()

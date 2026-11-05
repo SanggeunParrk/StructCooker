@@ -9,6 +9,7 @@ the assessed residues, structcooker.instructions.design.ss), ``ss_max_coil_run``
 ``fs_cluster_size`` (members of that cluster in the source, passing or not). Worker w writes DIR/<name>.lmdb/shards/shard_<w>.lmdb and
 DIR/manifest_<w>.tsv; --finalize writes shards.json, the meta file and manifest.tsv.
 """
+
 import argparse
 import json
 import os
@@ -25,9 +26,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 import multiprocessing as mp  # noqa: E402
 
 import lmdb  # noqa: E402
+from build_stats import shard_paths  # noqa: E402
 
-from build_stats import list_keys, shard_paths  # noqa: E402
-from structcooker.instructions.transforms.codecs import from_bytes, to_bytes  # noqa: E402
+from structcooker.instructions.transforms.codecs import (  # noqa: E402
+    from_bytes,
+    to_bytes,
+)
 
 LINES: list[list[str]] = []
 SIZE: dict[str, int] = {}
@@ -36,15 +40,29 @@ SOURCE = ""
 
 def work(task):
     w, lo, hi, db, out, name = task
-    envs = [lmdb.open(sp, readonly=True, lock=False, readahead=False, subdir=Path(sp).is_dir(), max_readers=512) for sp in shard_paths(db)]
+    envs = [
+        lmdb.open(
+            sp,
+            readonly=True,
+            lock=False,
+            readahead=False,
+            subdir=Path(sp).is_dir(),
+            max_readers=512,
+        )
+        for sp in shard_paths(db)
+    ]
     shard = Path(out) / f"{name}.lmdb" / "shards" / f"shard_{w:03d}.lmdb"
     shard.parent.mkdir(parents=True, exist_ok=True)
-    dst = lmdb.open(str(shard), map_size=200 << 30, subdir=True, writemap=False, max_readers=8)
+    dst = lmdb.open(
+        str(shard), map_size=200 << 30, subdir=True, writemap=False, max_readers=8
+    )
     n = 0
     txn = dst.begin(write=True)
     with open(Path(out) / f"manifest_{w:03d}.tsv", "w") as man:
         for x in LINES[lo:hi]:
-            key = (x[9] if len(x) > 9 else x[0]).encode()      # complexes by assembly: the entry holds the assembly x[10]
+            key = (
+                x[9] if len(x) > 9 else x[0]
+            ).encode()  # complexes by assembly: the entry holds the assembly x[10]
             raw = None
             for env in envs:
                 with env.begin() as t:
@@ -58,9 +76,18 @@ def work(task):
                 md = v["cifmol_attached_dict"]["metadata"]
                 if x[2] != "nan":
                     md["mean_plddt"] = float(x[2])
-                md.update({"source": SOURCE, "length": int(x[1]), "ss_helix": float(x[3]),
-                           "ss_strand": float(x[4]), "ss_coil": float(x[5]), "ss_max_coil_run": int(x[6]), "fs_cluster": x[7],
-                           "fs_cluster_size": SIZE[x[7]]})
+                md.update(
+                    {
+                        "source": SOURCE,
+                        "length": int(x[1]),
+                        "ss_helix": float(x[3]),
+                        "ss_strand": float(x[4]),
+                        "ss_coil": float(x[5]),
+                        "ss_max_coil_run": int(x[6]),
+                        "fs_cluster": x[7],
+                        "fs_cluster_size": SIZE[x[7]],
+                    }
+                )
             txn.put(x[0].encode(), to_bytes(rec))
             man.write("\t".join([*x[:8], str(SIZE[x[7]]), str(w), *x[9:]]) + "\n")
             n += 1
@@ -83,14 +110,40 @@ def finalize(out, name, source):
         shards.append({"path": f"shards/{p.name}", "entries": env.stat()["entries"]})
         env.close()
     total = sum(s["entries"] for s in shards)
-    (out / f"{name}.lmdb" / "shards.json").write_text(json.dumps({"format": "shard_lmdb", "version": 1, "entries": total, "merge_limit": 5000000, "shards": shards}, indent=2))
-    (out / f"{name}.lmdb.meta.json").write_text(json.dumps({
-        "schema": "design-monomer v1", "key_convention": "source key", "codec": "biomol_zstd", "entries": total, "source": source,
-        "recipe": "scripts/design/build_db.py", "extra": {"shards": len(shards)}}, indent=2))
+    (out / f"{name}.lmdb" / "shards.json").write_text(
+        json.dumps(
+            {
+                "format": "shard_lmdb",
+                "version": 1,
+                "entries": total,
+                "merge_limit": 5000000,
+                "shards": shards,
+            },
+            indent=2,
+        )
+    )
+    (out / f"{name}.lmdb.meta.json").write_text(
+        json.dumps(
+            {
+                "schema": "design-monomer v1",
+                "key_convention": "source key",
+                "codec": "biomol_zstd",
+                "entries": total,
+                "source": source,
+                "recipe": "scripts/design/build_db.py",
+                "extra": {"shards": len(shards)},
+            },
+            indent=2,
+        )
+    )
     first = next((ln for p in sorted(out.glob("manifest_*.tsv")) for ln in open(p)), "")
     with_asm = first.count("\t") > 9
     with open(out / "manifest.tsv", "w") as m:
-        m.write("id\tlength\tmean_plddt\tss_helix\tss_strand\tss_coil\tss_max_coil_run\tfs_cluster\tfs_cluster_size\tshard" + ("\tentry\tasm" if with_asm else "") + "\n")
+        m.write(
+            "id\tlength\tmean_plddt\tss_helix\tss_strand\tss_coil\tss_max_coil_run\tfs_cluster\tfs_cluster_size\tshard"
+            + ("\tentry\tasm" if with_asm else "")
+            + "\n"
+        )
         for p in sorted(out.glob("manifest_*.tsv")):
             m.write(p.read_text())
     print("entries", total, "shards", len(shards))
@@ -131,7 +184,17 @@ def main():
     LINES.extend(rows)
     print(f"{len(rows)} items", flush=True)
     step = -(-len(rows) // a.workers)
-    tasks = [(pi * a.workers + w, w * step, min((w + 1) * step, len(rows)), a.db, a.out, a.name) for w in range(a.workers)]
+    tasks = [
+        (
+            pi * a.workers + w,
+            w * step,
+            min((w + 1) * step, len(rows)),
+            a.db,
+            a.out,
+            a.name,
+        )
+        for w in range(a.workers)
+    ]
     with mp.get_context("fork").Pool(a.workers) as p:
         res = p.map(work, tasks, chunksize=1)
     print("written", sum(res))

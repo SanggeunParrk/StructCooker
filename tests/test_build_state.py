@@ -1,5 +1,3 @@
-import json
-
 import pytest
 
 from structcooker.build.build_state import (
@@ -19,14 +17,22 @@ def callbacks(tmp_path, events):
     def wait(job):
         events.append(("wait", job))
 
-    return {"submit": submit, "wait": wait, "verify": lambda: {"checked": True},
-            "unchanged": lambda: True,
-            "output_signature": lambda: output.read_text() if output.exists() else None}
+    return {
+        "submit": submit,
+        "wait": wait,
+        "verify": lambda: {"checked": True},
+        "unchanged": lambda: True,
+        "output_signature": lambda: output.read_text() if output.exists() else None,
+    }
 
 
 def test_exclusive_output_lock(tmp_path):
     path = tmp_path / "output.lock"
-    with exclusive(path), pytest.raises(RuntimeError, match="Another build"), exclusive(path):
+    with (
+        exclusive(path),
+        pytest.raises(RuntimeError, match="Another build"),
+        exclusive(path),
+    ):
         pass
     with exclusive(path):
         pass
@@ -76,10 +82,18 @@ def test_resolved_hooks_and_relative_recipes_are_frozen(tmp_path):
 
     repo = tmp_path / "repo"
     frozen = tmp_path / "frozen"
-    cfg = freeze_config({"recipe": Path("src/structcooker/recipe.py"),
-                         "reader": {"loader": get_cif_data}}, repo, frozen)
+    cfg = freeze_config(
+        {
+            "recipe": Path("src/structcooker/recipe.py"),
+            "reader": {"loader": get_cif_data},
+        },
+        repo,
+        frozen,
+    )
     assert cfg["recipe"] == str(frozen / "src/structcooker/recipe.py")
-    assert cfg["reader"]["loader"] == "structcooker.instructions.readers.cif.get_cif_data"
+    assert (
+        cfg["reader"]["loader"] == "structcooker.instructions.readers.cif.get_cif_data"
+    )
 
 
 def test_output_ownership_survives_driver_lock_release(tmp_path):
@@ -102,8 +116,12 @@ def test_engine_yaml_preserves_nested_path_types(tmp_path):
 
     from structcooker.release.dag import encode_engine_paths, freeze_config
 
-    cfg = {"metadata_input": {"tsv": tmp_path / "reference.tsv",
-                              "paths": [tmp_path / "other.tsv"]}}
+    cfg = {
+        "metadata_input": {
+            "tsv": tmp_path / "reference.tsv",
+            "paths": [tmp_path / "other.tsv"],
+        }
+    }
     frozen = freeze_config(cfg, tmp_path, tmp_path)
     engine = tmp_path / "engine.yaml"
     OmegaConf.save(OmegaConf.create(encode_engine_paths(cfg, frozen)), engine)

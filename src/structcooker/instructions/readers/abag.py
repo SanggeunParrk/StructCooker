@@ -3,8 +3,9 @@ from __future__ import annotations
 import csv
 import hashlib
 import re
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator, NamedTuple
+from typing import NamedTuple
 
 from .abag_binding import abrank_verdict, poisk_verdict
 from .asd_binding import binding_verdict
@@ -42,7 +43,8 @@ def abag_header(tag: str, sequence: str) -> str:
 
 def columns_swapped(heavy: str, light: str) -> bool:
     """AbRank's heavy and light columns are swapped in 807 rows: the heavy column ends in a light FR4 *and* the light column in a heavy FR4 (both, so a
-    rare J variant of one chain is not taken for a swap)."""
+    rare J variant of one chain is not taken for a swap).
+    """
     return bool(_LIGHT_FR4.search(heavy[-20:]) and _HEAVY_FR4.search(light[-20:]))
 
 
@@ -54,13 +56,27 @@ def iter_asd_rows(asd_dir: str | Path) -> Iterator[Row]:
         msg = f"no part-*.parquet under {asd_dir}"
         raise FileNotFoundError(msg)
     for path in files:
-        columns = ["dataset", "affinity", "affinity_type", "chains", "metadata", "nanobody", "scfv"]
+        columns = [
+            "dataset",
+            "affinity",
+            "affinity_type",
+            "chains",
+            "metadata",
+            "nanobody",
+            "scfv",
+        ]
         for row in pq.read_table(path, columns=columns).to_pylist():
             antibody = dict(row["chains"]["antibody_chains"] or [])
             target = dict(row["chains"]["target_chains"] or [])
             yield Row(
-                "asd", row["dataset"], normalize(antibody.get("heavy")), normalize(antibody.get("light")), normalize(target.get("full")),
-                binding_verdict(row["affinity_type"], row["affinity"], row["dataset"]), bool(row["nanobody"]), bool(row["scfv"]),
+                "asd",
+                row["dataset"],
+                normalize(antibody.get("heavy")),
+                normalize(antibody.get("light")),
+                normalize(target.get("full")),
+                binding_verdict(row["affinity_type"], row["affinity"], row["dataset"]),
+                bool(row["nanobody"]),
+                bool(row["scfv"]),
                 (row["metadata"] or {}).get("target_name") or "",
             )
 
@@ -73,27 +89,53 @@ def iter_abrank_rows(path: str | Path) -> Iterator[Row]:
             antigen = normalize(row["Ag_seq"])
             if ":" in antigen:
                 continue
-            heavy, light = normalize(row["Ab_heavy_chain_seq"]), normalize(row["Ab_light_chain_seq"])
+            heavy, light = (
+                normalize(row["Ab_heavy_chain_seq"]),
+                normalize(row["Ab_light_chain_seq"]),
+            )
             if columns_swapped(heavy, light):
                 heavy, light = light, heavy
-            verdict = abrank_verdict(row["Affinity_Kd [nM]"], row["IC50 [ug/mL]"], row["Aff_op"] or "=")
-            yield Row("abrank", row["Source"], heavy, light, antigen, verdict, False, False, row["Ag_name"])
+            verdict = abrank_verdict(
+                row["Affinity_Kd [nM]"], row["IC50 [ug/mL]"], row["Aff_op"] or "="
+            )
+            yield Row(
+                "abrank",
+                row["Source"],
+                heavy,
+                light,
+                antigen,
+                verdict,
+                False,
+                False,
+                row["Ag_name"],
+            )
 
 
 def iter_poisk_rows(path: str | Path) -> Iterator[Row]:
     csv.field_size_limit(10**9)
     with Path(path).open(newline="") as handle:
         for row in csv.DictReader(handle):
-            keep, verdict = poisk_verdict(row["target.binding_affinity.affinity_value"], row["audit.verdict"])
+            keep, verdict = poisk_verdict(
+                row["target.binding_affinity.affinity_value"], row["audit.verdict"]
+            )
             if not keep:
                 continue
             yield Row(
-                "poisk", row["antibody_type"], normalize(row["vh.sequence_from_patent"]), normalize(row["vl.sequence_from_patent"]),
-                normalize(row["target.sequence_from_patent"]), verdict, row["antibody_type"] == "VHH", False, row["target.protein_name"],
+                "poisk",
+                row["antibody_type"],
+                normalize(row["vh.sequence_from_patent"]),
+                normalize(row["vl.sequence_from_patent"]),
+                normalize(row["target.sequence_from_patent"]),
+                verdict,
+                row["antibody_type"] == "VHH",
+                False,
+                row["target.protein_name"],
             )
 
 
-def iter_rows(asd_dir: str | Path, abrank_path: str | Path, poisk_path: str | Path) -> Iterator[Row]:
+def iter_rows(
+    asd_dir: str | Path, abrank_path: str | Path, poisk_path: str | Path
+) -> Iterator[Row]:
     yield from iter_asd_rows(asd_dir)
     yield from iter_abrank_rows(abrank_path)
     yield from iter_poisk_rows(poisk_path)
@@ -102,12 +144,17 @@ def iter_rows(asd_dir: str | Path, abrank_path: str | Path, poisk_path: str | Pa
 def valid(row: Row) -> bool:
     """A usable row: a heavy chain and an antigen, every chain A-Z only."""
     return bool(
-        row.heavy and row.antigen and _LETTERS.fullmatch(row.heavy) and _LETTERS.fullmatch(row.antigen)
+        row.heavy
+        and row.antigen
+        and _LETTERS.fullmatch(row.heavy)
+        and _LETTERS.fullmatch(row.antigen)
         and (not row.light or _LETTERS.fullmatch(row.light)),
     )
 
 
-def load_abag_fasta(asd_dir: str | Path, abrank_path: str | Path, poisk_path: str | Path, chain_set: str) -> dict[str, str]:
+def load_abag_fasta(
+    asd_dir: str | Path, abrank_path: str | Path, poisk_path: str | Path, chain_set: str
+) -> dict[str, str]:
     """One FASTA of the distinct chain sequences of ASD, AbRank and POISK (every usable row): ``chain_set`` is ``antigen`` or ``antibody`` (heavy, then light).
 
     A sequence several sources hold is one record. The order is (role, length, sequence): a seq_id is a counter assigned in order of first appearance, so

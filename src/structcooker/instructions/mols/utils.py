@@ -7,7 +7,7 @@ import numpy as np
 from structcooker.instructions.mols import CIFMol, CIFMolAttached
 
 
-def to_cif(cifmol: CIFMol|CIFMolAttached, output_path: Path) -> None:
+def to_cif(cifmol: CIFMol | CIFMolAttached, output_path: Path) -> None:
     """
     Write a CIFMol object to a CIF file.
 

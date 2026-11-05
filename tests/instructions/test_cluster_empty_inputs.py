@@ -1,4 +1,5 @@
 """Clustering a sequence type the build does not contain yields empty clusters, not an error."""
+
 from structcooker.instructions.transforms.sequence import (
     parse_cdhit_cluster,
     parse_mmseqs2_cluster,

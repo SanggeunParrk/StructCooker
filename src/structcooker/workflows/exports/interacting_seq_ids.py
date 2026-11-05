@@ -1,4 +1,5 @@
 """Extract interacting sequence IDs using the already-attached chain contact graph."""
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.graph import (

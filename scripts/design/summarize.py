@@ -5,8 +5,8 @@ DIR holds part_*.tsv (build_stats) and fs/clusters.tsv (cluster_tar). Writes ite
 max_coil_run, cluster (representative id), pass (La-Proteina filters: pLDDT >= 80, 32 <= length <= 512, coil < 0.5, max coil run <= 20;
 --all keeps every item, for sets that were filtered when they were made, e.g. Teddymer).
 """
+
 import argparse
-import csv
 import glob
 from collections import Counter
 from pathlib import Path
@@ -27,8 +27,14 @@ reps, sizes = set(), Counter()
 with open(a.out or d / "items.tsv", "w") as out:
     parts = sorted(glob.glob(str(d / "part_*.tsv")))
     with open(parts[0]) as f:
-        has_asm = len(f.readline().split("\t")) > 7      # complexes by assembly: entry, asm follow the statistics
-    out.write("id\tlength\tplddt\thelix\tstrand\tcoil\tmax_coil_run\tcluster\tpass" + ("\tentry\tasm" if has_asm else "") + "\n")
+        has_asm = (
+            len(f.readline().split("\t")) > 7
+        )  # complexes by assembly: entry, asm follow the statistics
+    out.write(
+        "id\tlength\tplddt\thelix\tstrand\tcoil\tmax_coil_run\tcluster\tpass"
+        + ("\tentry\tasm" if has_asm else "")
+        + "\n"
+    )
     for p in parts:
         with open(p) as f:
             for ln in f:
@@ -45,7 +51,14 @@ with open(a.out or d / "items.tsv", "w") as out:
                     ok += 1
                     reps.add(c)
                 out.write("\t".join(x[:7] + [c, str(int(keep))] + x[7:]) + "\n")
-print(f"items {n}  no cluster {miss}  clusters {len(sizes)}  pass {ok}  clusters with a passing member {len(reps)}")
-print("cluster size: max", max(sizes.values()), " singletons", sum(v == 1 for v in sizes.values()))
+print(
+    f"items {n}  no cluster {miss}  clusters {len(sizes)}  pass {ok}  clusters with a passing member {len(reps)}"
+)
+print(
+    "cluster size: max",
+    max(sizes.values()),
+    " singletons",
+    sum(v == 1 for v in sizes.values()),
+)
 if miss:
     raise SystemExit(f"{miss} items have no cluster; items.tsv is incomplete")

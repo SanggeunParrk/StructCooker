@@ -31,6 +31,7 @@ both by default.
 Run as ``structcooker foldbench keys|build|verify`` (see :mod:`structcooker.cli`) or
 ``python -m structcooker.release.foldbench build PACKAGE OUT``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,9 +40,9 @@ import json
 import re
 import sys
 import time
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable, Sequence
 
 import lmdb
 
@@ -64,9 +65,13 @@ def lmdb_key(seq_id: str) -> str:
 class FoldBenchKeys:
     """The keys one FoldBench package looks up, by asset."""
 
-    protein: list[str] = field(default_factory=list)  # includes the from-scratch (edge) sequences: ``--fallback`` supplies them
+    protein: list[str] = field(
+        default_factory=list
+    )  # includes the from-scratch (edge) sequences: ``--fallback`` supplies them
     rna: list[str] = field(default_factory=list)
-    other: list[str] = field(default_factory=list)  # D / N / Q keys: DNA and short oligos, no MSA by design (not copied)
+    other: list[str] = field(
+        default_factory=list
+    )  # D / N / Q keys: DNA and short oligos, no MSA by design (not copied)
     template: list[str] = field(default_factory=list)
     ccd: list[str] = field(default_factory=list)
 
@@ -101,7 +106,9 @@ def load_keys(package: Path) -> FoldBenchKeys:
     if index.is_file():
         import yaml
 
-        for target in (ln.strip() for ln in index.read_text().splitlines() if ln.strip()):
+        for target in (
+            ln.strip() for ln in index.read_text().splitlines() if ln.strip()
+        ):
             spec = package / "inputs" / target / "data.yaml"
             if not spec.is_file():
                 continue
@@ -110,7 +117,11 @@ def load_keys(package: Path) -> FoldBenchKeys:
             for v in (doc.get("a3m_key") or {}).values():
                 msa[str(v)[0] if str(v)[0] in "PR" else "other"].add(lmdb_key(str(v)))
         # the lookups a ``data.yaml`` actually makes are authoritative; they also name the from-scratch (edge) sequences
-        keys.protein, keys.rna, keys.other = sorted(msa["P"]), sorted(msa["R"]), sorted(msa["other"])
+        keys.protein, keys.rna, keys.other = (
+            sorted(msa["P"]),
+            sorted(msa["R"]),
+            sorted(msa["other"]),
+        )
     keys.template = sorted(template)
     return keys
 
@@ -131,12 +142,16 @@ class CopyReport:
 
 
 def _open_read(path: Path):
-    from datacooker.lmdb.sharded import open_env  # an ordinary LMDB or an immutable shard collection
+    from datacooker.lmdb.sharded import (
+        open_env,  # an ordinary LMDB or an immutable shard collection
+    )
 
     return open_env(path, readonly=True, lock=False, readahead=False)
 
 
-def copy_keys(dst: Path, keys: Iterable[str], sources: Sequence[Path], *, name: str = "") -> CopyReport:
+def copy_keys(
+    dst: Path, keys: Iterable[str], sources: Sequence[Path], *, name: str = ""
+) -> CopyReport:
     """Write ``keys`` out of the first of ``sources`` that holds each one into a new LMDB at ``dst`` (values byte-for-byte).
 
     ``sources[0]`` is the primary DB; later ones only supply keys the primary does not have. Keys no source holds are
@@ -144,7 +159,12 @@ def copy_keys(dst: Path, keys: Iterable[str], sources: Sequence[Path], *, name: 
     """
     t0 = time.time()
     wanted = sorted(set(keys))
-    report = CopyReport(name=name or dst.name, target=str(dst), sources=[str(s) for s in sources], requested=len(wanted))
+    report = CopyReport(
+        name=name or dst.name,
+        target=str(dst),
+        sources=[str(s) for s in sources],
+        requested=len(wanted),
+    )
     if (dst / "data.mdb").exists():
         msg = f"Refusing to replace existing database: {dst}"
         raise FileExistsError(msg)
@@ -163,7 +183,9 @@ def copy_keys(dst: Path, keys: Iterable[str], sources: Sequence[Path], *, name: 
             else:
                 report.missing.append(k)
         dst.mkdir(parents=True, exist_ok=True)
-        with lmdb.open(str(dst), map_size=max(1 << 26, int(total * 1.5) + (1 << 24)), subdir=True) as out:
+        with lmdb.open(
+            str(dst), map_size=max(1 << 26, int(total * 1.5) + (1 << 24)), subdir=True
+        ) as out:
             with out.begin(write=True) as wtxn:
                 for k, i in where.items():
                     wtxn.put(k.encode(), bytes(txns[i].get(k.encode())))
@@ -195,13 +217,23 @@ class Sources:
     rna_msa: Path
     template: Path
     ccd: Path | None = None
-    protein_fallback: list[Path] = field(default_factory=list)  # DBs holding the from-scratch (edge) sequences
+    protein_fallback: list[Path] = field(
+        default_factory=list
+    )  # DBs holding the from-scratch (edge) sequences
 
     @classmethod
-    def from_release(cls, release: Path, *, ccd: Path | None = None, fallback: Sequence[Path] = ()) -> "Sources":
+    def from_release(
+        cls, release: Path, *, ccd: Path | None = None, fallback: Sequence[Path] = ()
+    ) -> Sources:
         """``release`` = a release tree (``BIOMOL_ROOT``, e.g. ``/data/shared/cssb_data/BioMol_clean``)."""
         paths = {name: release / rel for name, (_db, rel) in RELEASE_LAYOUT.items()}
-        return cls(paths["protein_msa"], paths["rna_msa"], paths["template"], ccd, list(fallback))
+        return cls(
+            paths["protein_msa"],
+            paths["rna_msa"],
+            paths["template"],
+            ccd,
+            list(fallback),
+        )
 
 
 def build(package: Path, out: Path, sources: Sources) -> dict:
@@ -209,13 +241,33 @@ def build(package: Path, out: Path, sources: Sources) -> dict:
     keys = load_keys(package)
     # the from-scratch (edge) sequences are asked of the primary first, then of the fallbacks
     reports = [
-        copy_keys(out / "msa" / "a3m.lmdb", keys.protein, [sources.protein_msa, *sources.protein_fallback], name="protein_msa"),
-        copy_keys(out / "msa" / "a3m_rna.lmdb", keys.rna, [sources.rna_msa], name="rna_msa"),
-        copy_keys(out / "template" / "template.lmdb", keys.template, [sources.template], name="template"),
+        copy_keys(
+            out / "msa" / "a3m.lmdb",
+            keys.protein,
+            [sources.protein_msa, *sources.protein_fallback],
+            name="protein_msa",
+        ),
+        copy_keys(
+            out / "msa" / "a3m_rna.lmdb", keys.rna, [sources.rna_msa], name="rna_msa"
+        ),
+        copy_keys(
+            out / "template" / "template.lmdb",
+            keys.template,
+            [sources.template],
+            name="template",
+        ),
     ]
     if sources.ccd is not None:
-        reports.append(copy_keys(out / "CCD" / sources.ccd.name, keys.ccd, [sources.ccd], name="ccd"))
-    summary = {"package": str(package), "keys": keys.counts(), "copies": [asdict(r) for r in reports]}
+        reports.append(
+            copy_keys(
+                out / "CCD" / sources.ccd.name, keys.ccd, [sources.ccd], name="ccd"
+            )
+        )
+    summary = {
+        "package": str(package),
+        "keys": keys.counts(),
+        "copies": [asdict(r) for r in reports],
+    }
     (out / "foldbench_build.json").write_text(json.dumps(summary, indent=1))
     return summary
 
@@ -230,7 +282,11 @@ def verify(package: Path, out: Path, *, decode_sample: int = 20) -> dict:
 
     msa_dbs = [out / "msa" / "a3m.lmdb", out / "msa" / "a3m_rna.lmdb"]
     tmpl_db = out / "template" / "template.lmdb"
-    envs = {p: lmdb.open(str(p), readonly=True, lock=False, readahead=False) for p in [*msa_dbs, tmpl_db] if p.exists()}
+    envs = {
+        p: lmdb.open(str(p), readonly=True, lock=False, readahead=False)
+        for p in [*msa_dbs, tmpl_db]
+        if p.exists()
+    }
     txns = {p: e.begin() for p, e in envs.items()}
 
     def has(db: Path, key: str) -> bool:
@@ -239,7 +295,11 @@ def verify(package: Path, out: Path, *, decode_sample: int = 20) -> dict:
     msa = {"found": 0, "expected_missing": 0, "missing": 0}
     msa_missing: list[str] = []
     tmpl = {"found": 0, "missing": 0}
-    ids = [ln.strip() for ln in (package / "inputs" / "index.txt").read_text().splitlines() if ln.strip()]
+    ids = [
+        ln.strip()
+        for ln in (package / "inputs" / "index.txt").read_text().splitlines()
+        if ln.strip()
+    ]
     for target in ids:
         spec = yaml.safe_load((package / "inputs" / target / "data.yaml").read_text())
         for k in (spec.get("a3m_key") or {}).values():
@@ -254,7 +314,9 @@ def verify(package: Path, out: Path, *, decode_sample: int = 20) -> dict:
             if has(tmpl_db, k):
                 tmpl["found"] += 1
             else:
-                tmpl["missing"] += 1  # a chain with no template before the cutoff has no key: not an error
+                tmpl["missing"] += (
+                    1  # a chain with no template before the cutoff has no key: not an error
+                )
     decoded = {}
     try:
         from structcooker.instructions.transforms.codecs import from_bytes
@@ -277,21 +339,48 @@ def verify(package: Path, out: Path, *, decode_sample: int = 20) -> dict:
         decoded = {"skipped": "decode_sample=0 or codecs not importable"}
     for e in envs.values():
         e.close()
-    return {"targets": len(ids), "msa_slots": msa, "msa_missing_examples": msa_missing[:10], "template_slots": tmpl, "decode": decoded}
+    return {
+        "targets": len(ids),
+        "msa_slots": msa,
+        "msa_missing_examples": msa_missing[:10],
+        "template_slots": tmpl,
+        "decode": decoded,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="structcooker.release.foldbench", description=__doc__.split("\n", 1)[0])
+    p = argparse.ArgumentParser(
+        prog="structcooker.release.foldbench", description=__doc__.split("\n", 1)[0]
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
-    k = sub.add_parser("keys", help="print and optionally save the key lists of a FoldBench package")
+    k = sub.add_parser(
+        "keys", help="print and optionally save the key lists of a FoldBench package"
+    )
     k.add_argument("package", type=Path)
     k.add_argument("--out", type=Path)
-    b = sub.add_parser("build", help="cut the FoldBench DBs out of the full-release LMDBs")
+    b = sub.add_parser(
+        "build", help="cut the FoldBench DBs out of the full-release LMDBs"
+    )
     b.add_argument("package", type=Path)
     b.add_argument("out", type=Path)
-    b.add_argument("--release", type=Path, required=True, help="release tree (BIOMOL_ROOT), e.g. .../BioMol_clean")
-    b.add_argument("--ccd", type=Path, help="inference CCD LMDB (atoms/residues/chains, single-atom components in)")
-    b.add_argument("--fallback", type=Path, action="append", default=[], help="DB holding the from-scratch edge MSAs")
+    b.add_argument(
+        "--release",
+        type=Path,
+        required=True,
+        help="release tree (BIOMOL_ROOT), e.g. .../BioMol_clean",
+    )
+    b.add_argument(
+        "--ccd",
+        type=Path,
+        help="inference CCD LMDB (atoms/residues/chains, single-atom components in)",
+    )
+    b.add_argument(
+        "--fallback",
+        type=Path,
+        action="append",
+        default=[],
+        help="DB holding the from-scratch edge MSAs",
+    )
     v = sub.add_parser("verify", help="check every data.yaml lookup resolves in OUT")
     v.add_argument("package", type=Path)
     v.add_argument("out", type=Path)
@@ -302,10 +391,16 @@ def main(argv: list[str] | None = None) -> int:
         if a.out:
             a.out.write_text(json.dumps(asdict(keys), indent=1))
     elif a.cmd == "build":
-        out = build(a.package, a.out, Sources.from_release(a.release, ccd=a.ccd, fallback=a.fallback))
+        out = build(
+            a.package,
+            a.out,
+            Sources.from_release(a.release, ccd=a.ccd, fallback=a.fallback),
+        )
         for c in out["copies"]:
-            print(f"{c['name']:<12} requested {c['requested']:>5}  written {c['written']:>5}  fallback {c['from_fallback']:>3}  "
-                  f"missing {len(c['missing']):>4}  {c['value_bytes'] / 2**20:8.1f} MiB  {c['seconds']}s")
+            print(
+                f"{c['name']:<12} requested {c['requested']:>5}  written {c['written']:>5}  fallback {c['from_fallback']:>3}  "
+                f"missing {len(c['missing']):>4}  {c['value_bytes'] / 2**20:8.1f} MiB  {c['seconds']}s"
+            )
     else:
         print(json.dumps(verify(a.package, a.out), indent=1))
     return 0

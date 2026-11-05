@@ -5,6 +5,7 @@ Checks per unit: array shapes / index ranges, every atom finite, edge min_dist a
 (brute force, cutoff from the config; ion edges: 3.0 A to N/O/S), contact-atom flag, interface-residue
 flag, every water within water.near of a unit atom and the bridging flag, node sequences cover the residues.
 """
+
 import random
 import sys
 from pathlib import Path
@@ -14,13 +15,19 @@ import numpy as np
 from structcooker.instructions.interface.config import load_config
 from structcooker.instructions.interface.db import InterfaceDB
 
-root, n, seed = sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 300, int(sys.argv[3]) if len(sys.argv) > 3 else 0
+root, n, seed = (
+    sys.argv[1],
+    int(sys.argv[2]) if len(sys.argv) > 2 else 300,
+    int(sys.argv[3]) if len(sys.argv) > 3 else 0,
+)
 cfg = load_config()
 rows = [l.rstrip("\n").split("\t") for l in open(Path(root) / "manifest.tsv")]
 hdr, rows = rows[0], rows[1:]
 ix = {c: i for i, c in enumerate(hdr)}
 random.Random(seed).shuffle(rows)
-max_atoms = int(sys.argv[4]) if len(sys.argv) > 4 else 15000   # brute force: keep it to units that fit
+max_atoms = (
+    int(sys.argv[4]) if len(sys.argv) > 4 else 15000
+)  # brute force: keep it to units that fit
 rows = [r for r in rows if int(r[ix["n_atoms"]]) <= max_atoms]
 db = InterfaceDB(root)
 bad = {}
@@ -31,18 +38,21 @@ def block_pairs(P, Q, cut, mask_q=None, mask_p=None, block=512):
     n, dmin, n_lo, n_hi = 0, np.inf, 0, 0
     fp, fq = np.zeros(len(P), bool), np.zeros(len(Q), bool)
     for s0 in range(0, len(P), block):
-        d = np.linalg.norm(P[s0:s0 + block, None] - Q[None], axis=-1)
+        d = np.linalg.norm(P[s0 : s0 + block, None] - Q[None], axis=-1)
         ok = np.ones(d.shape, bool)
         if mask_q is not None:
             ok &= mask_q[None, :]
         if mask_p is not None:
-            ok &= mask_p[s0:s0 + block, None]
-        n_lo += int(((d < cut - 1e-3) & ok).sum()); n_hi += int(((d < cut + 1e-3) & ok).sum())  # float32 storage
+            ok &= mask_p[s0 : s0 + block, None]
+        n_lo += int(((d < cut - 1e-3) & ok).sum())
+        n_hi += int(((d < cut + 1e-3) & ok).sum())  # float32 storage
         m = (d < cut) & ok
         if m.any():
-            n += int(m.sum()); dmin = min(dmin, float(d[m].min()))
-            core = (d < cut - 1e-3) & ok   # flags: ignore float32 boundary cases
-            fp[s0:s0 + block] |= core.any(axis=1); fq |= core.any(axis=0)
+            n += int(m.sum())
+            dmin = min(dmin, float(d[m].min()))
+            core = (d < cut - 1e-3) & ok  # flags: ignore float32 boundary cases
+            fp[s0 : s0 + block] |= core.any(axis=1)
+            fq |= core.any(axis=0)
     return n, dmin, fp, fq, n_lo, n_hi
 
 
@@ -53,7 +63,13 @@ def fail(msg, uid):
 for r in rows[:n]:
     uid = r[ix["unit_id"]]
     rec = db.get(uid, int(r[ix["shard"]]))
-    at, rs, ed, w, nodes = rec["atoms"], rec["residues"], rec["edges"], rec["water"], rec["nodes"]
+    at, rs, ed, w, nodes = (
+        rec["atoms"],
+        rec["residues"],
+        rec["edges"],
+        rec["water"],
+        rec["nodes"],
+    )
     xyz = at["xyz"].astype(np.float64)
     k = len(nodes["kind"])
     if not np.isfinite(xyz).all():
@@ -83,7 +99,7 @@ for r in rows[:n]:
     if len(w["xyz"]):
         wx = w["xyz"].astype(np.float64)
         for j0 in range(0, len(wx), 256):
-            dw = np.linalg.norm(wx[j0:j0 + 256, None] - xyz[None], axis=-1)
+            dw = np.linalg.norm(wx[j0 : j0 + 256, None] - xyz[None], axis=-1)
             if not (dw.min(axis=1) < cfg.water_near + 1e-3).all():
                 fail("water_too_far", uid)
             for j in range(len(dw)):

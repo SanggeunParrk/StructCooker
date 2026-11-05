@@ -19,6 +19,7 @@ with the fixed per-type weights of the training config (``sampler:``), type from
 
     python compare_sampling.py --items <dir> --out report.md [--cluster-tsv ... --seqid-tsv ...]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,9 +33,19 @@ import numpy as np
 
 # ---- MiniWorld, copied from src/miniworld/data/dataloader/sources.py and the training config ----
 MW_WEIGHTS = {
-    "protein_protein": 25.0, "protein_ligand": 25.0, "protein_dna": 10.0, "protein_rna": 10.0,
-    "antibody_protein": 15.0, "dna_dna": 5.0, "rna_rna": 5.0, "dna_rna": 0.5,
-    "antibody_antibody": 0.5, "antibody_ligand": 1.0, "na_ligand": 1.0, "etc_interface": 1.0, "sole": 1.0,
+    "protein_protein": 25.0,
+    "protein_ligand": 25.0,
+    "protein_dna": 10.0,
+    "protein_rna": 10.0,
+    "antibody_protein": 15.0,
+    "dna_dna": 5.0,
+    "rna_rna": 5.0,
+    "dna_rna": 0.5,
+    "antibody_antibody": 0.5,
+    "antibody_ligand": 1.0,
+    "na_ligand": 1.0,
+    "etc_interface": 1.0,
+    "sole": 1.0,
 }
 
 
@@ -76,7 +87,10 @@ def mw_edge_type_verbatim(edge_id: str) -> str:
 BETA = {"chain": 0.5, "interface": 1.0}
 ALPHA = {"prot": 3.0, "nuc": 3.0, "lig": 1.0}
 POLYMER = set("PAQRDN")
-KIND = {**dict.fromkeys("PAQ", "prot"), **dict.fromkeys("RDN", "nuc")}     # everything else: ligand
+KIND = {
+    **dict.fromkeys("PAQ", "prot"),
+    **dict.fromkeys("RDN", "nuc"),
+}  # everything else: ligand
 
 
 def kind_of(letter: str) -> str:
@@ -121,7 +135,9 @@ def load_pool(items_dir: Path) -> dict:
         return v
 
     ch_entry, ch_cl, ch_ok4, ch_seq = array("i"), array("i"), array("b"), array("i")
-    dropped: dict[str, set[str]] = defaultdict(set)         # "entry|asm" -> chains with < 4 resolved residues
+    dropped: dict[str, set[str]] = defaultdict(
+        set
+    )  # "entry|asm" -> chains with < 4 resolved residues
     for path in sorted(glob.glob(str(items_dir / "chains.*.tsv"))):
         with open(path) as handle:
             for line in handle:
@@ -138,7 +154,13 @@ def load_pool(items_dir: Path) -> dict:
                 ch_cl.append(c)
                 ch_ok4.append(ok4)
 
-    if_entry, if_c1, if_c2, if_in5, if_ok4 = array("i"), array("i"), array("i"), array("b"), array("b")
+    if_entry, if_c1, if_c2, if_in5, if_ok4 = (
+        array("i"),
+        array("i"),
+        array("i"),
+        array("b"),
+        array("b"),
+    )
     if_s1, if_s2 = array("i"), array("i")
     for path in sorted(glob.glob(str(items_dir / "interfaces.*.tsv"))):
         with open(path) as handle:
@@ -162,11 +184,22 @@ def load_pool(items_dir: Path) -> dict:
         return np.frombuffer(a, dtype=dt) if len(a) else np.zeros(0, dtype=dt)
 
     return {
-        "n_entries": len(entries), "n_clusters": len(clusters), "letters": np.array(cl_letter), "names": names,
-        "ch_entry": arr(ch_entry, np.int32), "ch_cl": arr(ch_cl, np.int32), "ch_ok4": arr(ch_ok4, np.int8).astype(bool),
-        "if_entry": arr(if_entry, np.int32), "if_c1": arr(if_c1, np.int32), "if_c2": arr(if_c2, np.int32),
-        "if_in5": arr(if_in5, np.int8).astype(bool), "if_ok4": arr(if_ok4, np.int8).astype(bool),
-        "ch_seq": arr(ch_seq, np.int32), "if_s1": arr(if_s1, np.int32), "if_s2": arr(if_s2, np.int32), "seq_names": seq_names,
+        "n_entries": len(entries),
+        "n_clusters": len(clusters),
+        "letters": np.array(cl_letter),
+        "names": names,
+        "ch_entry": arr(ch_entry, np.int32),
+        "ch_cl": arr(ch_cl, np.int32),
+        "ch_ok4": arr(ch_ok4, np.int8).astype(bool),
+        "if_entry": arr(if_entry, np.int32),
+        "if_c1": arr(if_c1, np.int32),
+        "if_c2": arr(if_c2, np.int32),
+        "if_in5": arr(if_in5, np.int8).astype(bool),
+        "if_ok4": arr(if_ok4, np.int8).astype(bool),
+        "ch_seq": arr(ch_seq, np.int32),
+        "if_s1": arr(if_s1, np.int32),
+        "if_s2": arr(if_s2, np.int32),
+        "seq_names": seq_names,
     }
 
 
@@ -183,7 +216,13 @@ def letter_codes(letters: np.ndarray) -> tuple[np.ndarray, list[str]]:
     return np.array([table[x] for x in letters.tolist()], dtype=np.int64), alphabet
 
 
-def category(lcode: np.ndarray, alphabet: list[str], c1: np.ndarray, c2: np.ndarray, is_iface: np.ndarray) -> np.ndarray:
+def category(
+    lcode: np.ndarray,
+    alphabet: list[str],
+    c1: np.ndarray,
+    c2: np.ndarray,
+    is_iface: np.ndarray,
+) -> np.ndarray:
     """Common label of an item (chain:<kind> or the MiniWorld interface bucket); vectorised via unique combos."""
     a = lcode[c1]
     b = np.where(c2 >= 0, lcode[np.maximum(c2, 0)], -1)
@@ -206,12 +245,27 @@ def bin_name(lo: int, hi: int) -> str:
     return f"{lo}-{hi}" if hi < 10**12 else f">={lo}"
 
 
-def summarize(p, cat, size, c1, c2, entry, n_clusters, n_entries, ns=(128_000, 1_000_000, 10_000_000)) -> dict:
+def summarize(
+    p,
+    cat,
+    size,
+    c1,
+    c2,
+    entry,
+    n_clusters,
+    n_entries,
+    ns=(128_000, 1_000_000, 10_000_000),
+) -> dict:
     res: dict = {}
     cats, cinv = np.unique(cat, return_inverse=True)
     mass = np.bincount(cinv, weights=p, minlength=len(cats))
-    res["mass_by_category"] = {c: float(m) for c, m in zip(cats.tolist(), mass.tolist(), strict=True)}
-    res["mass_by_size"] = {bin_name(lo, hi): float(p[(size >= lo) & (size <= hi)].sum()) for lo, hi in SIZE_BINS}
+    res["mass_by_category"] = {
+        c: float(m) for c, m in zip(cats.tolist(), mass.tolist(), strict=True)
+    }
+    res["mass_by_size"] = {
+        bin_name(lo, hi): float(p[(size >= lo) & (size <= hi)].sum())
+        for lo, hi in SIZE_BINS
+    }
     m_cl = np.bincount(c1, weights=p, minlength=n_clusters)
     both = (c2 >= 0) & (c2 != c1)
     m_cl += np.bincount(c2[both], weights=p[both], minlength=n_clusters)
@@ -239,8 +293,10 @@ def pdb_section(pool: dict, out: list[str]) -> dict:
     lcode, alphabet = letter_codes(letters)
     kinds = np.array([kind_of(x) for x in letters.tolist()])
     n_ch, n_if = len(pool["ch_cl"]), len(pool["if_c1"])
-    out.append(f"Pool read: {n_ch:,} chain rows, {n_if:,} stored contact (6 A) interface rows, "
-               f"{pool['n_entries']:,} entries, {k:,} chain clusters. Type letters seen: {', '.join(alphabet)}.\n")
+    out.append(
+        f"Pool read: {n_ch:,} chain rows, {n_if:,} stored contact (6 A) interface rows, "
+        f"{pool['n_entries']:,} entries, {k:,} chain clusters. Type letters seen: {', '.join(alphabet)}.\n"
+    )
 
     # ----- MiniWorld pool: sole chains + every stored contact edge
     iface_clusters = np.zeros(k, dtype=bool)
@@ -252,7 +308,9 @@ def pdb_section(pool: dict, out: list[str]) -> dict:
     mw_entry = np.concatenate([pool["ch_entry"][sole], pool["if_entry"]])
     mw_is_if = np.concatenate([np.zeros(int(sole.sum()), bool), np.ones(n_if, bool)])
     mw_edge = edge_codes(mw_c1, mw_c2, k)
-    uniq, first, inv, cnt = np.unique(mw_edge, return_index=True, return_inverse=True, return_counts=True)
+    uniq, first, inv, cnt = np.unique(
+        mw_edge, return_index=True, return_inverse=True, return_counts=True
+    )
     btype = np.empty(len(uniq), dtype=object)
     pair_cache: dict[tuple[str, str], str] = {}
     for j, row in enumerate(first.tolist()):
@@ -276,24 +334,46 @@ def pdb_section(pool: dict, out: list[str]) -> dict:
     ch_keep = pool["ch_ok4"]
     if_keep = pool["if_in5"] & pool["if_ok4"]
     af_c1 = np.concatenate([pool["ch_cl"][ch_keep], pool["if_c1"][if_keep]])
-    af_c2 = np.concatenate([np.full(int(ch_keep.sum()), -1, np.int32), pool["if_c2"][if_keep]])
+    af_c2 = np.concatenate(
+        [np.full(int(ch_keep.sum()), -1, np.int32), pool["if_c2"][if_keep]]
+    )
     af_entry = np.concatenate([pool["ch_entry"][ch_keep], pool["if_entry"][if_keep]])
-    af_is_if = np.concatenate([np.zeros(int(ch_keep.sum()), bool), np.ones(int(if_keep.sum()), bool)])
-    af_key = edge_codes(af_c1, af_c2, k) * 2 + af_is_if.astype(np.int64)      # item kind is part of the cluster
-    uniq2, first2, inv2, cnt2 = np.unique(af_key, return_index=True, return_inverse=True, return_counts=True)
-    n_prot = (kinds[af_c1] == "prot").astype(float) + ((af_c2 >= 0) & (kinds[np.maximum(af_c2, 0)] == "prot"))
-    n_nuc = (kinds[af_c1] == "nuc").astype(float) + ((af_c2 >= 0) & (kinds[np.maximum(af_c2, 0)] == "nuc"))
-    n_lig = (kinds[af_c1] == "lig").astype(float) + ((af_c2 >= 0) & (kinds[np.maximum(af_c2, 0)] == "lig"))
+    af_is_if = np.concatenate(
+        [np.zeros(int(ch_keep.sum()), bool), np.ones(int(if_keep.sum()), bool)]
+    )
+    af_key = edge_codes(af_c1, af_c2, k) * 2 + af_is_if.astype(
+        np.int64
+    )  # item kind is part of the cluster
+    uniq2, first2, inv2, cnt2 = np.unique(
+        af_key, return_index=True, return_inverse=True, return_counts=True
+    )
+    n_prot = (kinds[af_c1] == "prot").astype(float) + (
+        (af_c2 >= 0) & (kinds[np.maximum(af_c2, 0)] == "prot")
+    )
+    n_nuc = (kinds[af_c1] == "nuc").astype(float) + (
+        (af_c2 >= 0) & (kinds[np.maximum(af_c2, 0)] == "nuc")
+    )
+    n_lig = (kinds[af_c1] == "lig").astype(float) + (
+        (af_c2 >= 0) & (kinds[np.maximum(af_c2, 0)] == "lig")
+    )
     beta = np.where(af_is_if, BETA["interface"], BETA["chain"])
-    af_w = beta / cnt2[inv2] * (ALPHA["prot"] * n_prot + ALPHA["nuc"] * n_nuc + ALPHA["lig"] * n_lig)
+    af_w = (
+        beta
+        / cnt2[inv2]
+        * (ALPHA["prot"] * n_prot + ALPHA["nuc"] * n_nuc + ALPHA["lig"] * n_lig)
+    )
     af_p = af_w / af_w.sum()
     af_size = cnt2[inv2]
 
     out.append("### Pools\n")
     out.append("| | MiniWorld pool | AF3 pool |\n|---|---:|---:|")
     out.append(f"| rows | {len(mw_p):,} | {len(af_p):,} |")
-    out.append(f"| chain rows | {int((~mw_is_if).sum()):,} (clusters never in an interface) | {int((~af_is_if).sum()):,} (every chain) |")
-    out.append(f"| interface rows | {int(mw_is_if.sum()):,} (6 A, any atom) | {int(af_is_if.sum()):,} (5 A) |")
+    out.append(
+        f"| chain rows | {int((~mw_is_if).sum()):,} (clusters never in an interface) | {int((~af_is_if).sum()):,} (every chain) |"
+    )
+    out.append(
+        f"| interface rows | {int(mw_is_if.sum()):,} (6 A, any atom) | {int(af_is_if.sum()):,} (5 A) |"
+    )
     out.append(f"| distinct item clusters | {len(uniq):,} | {len(uniq2):,} |\n")
 
     mw_cat = category(lcode, alphabet, mw_c1, mw_c2, mw_is_if)
@@ -303,40 +383,81 @@ def pdb_section(pool: dict, out: list[str]) -> dict:
         af_cat_counts[c] += 1
     af_cat_rows = {c: int((af_cat == c).sum()) for c in af_cat_counts}
     mw_cat_rows = {c: int((mw_cat == c).sum()) for c in set(mw_cat.tolist())}
-    s_mw = summarize(mw_p, mw_cat, mw_size, mw_c1, mw_c2, mw_entry, k, pool["n_entries"])
-    s_af = summarize(af_p, af_cat, af_size, af_c1, af_c2, af_entry, k, pool["n_entries"])
+    s_mw = summarize(
+        mw_p, mw_cat, mw_size, mw_c1, mw_c2, mw_entry, k, pool["n_entries"]
+    )
+    s_af = summarize(
+        af_p, af_cat, af_size, af_c1, af_c2, af_entry, k, pool["n_entries"]
+    )
 
     out.append("### Probability of an item class (within the PDB source)\n")
-    out.append("| item class | MiniWorld | AF3 | MiniWorld / AF3 |\n|---|---:|---:|---:|")
+    out.append(
+        "| item class | MiniWorld | AF3 | MiniWorld / AF3 |\n|---|---:|---:|---:|"
+    )
     # MiniWorld's own `sole` rows are single chains: show them under chain:<kind> for comparison
-    mw_cat_chain = np.where(~mw_is_if, np.char.add("chain:", kinds[mw_c1]).astype(object), mw_cat)
-    s_mw2 = summarize(mw_p, mw_cat_chain, mw_size, mw_c1, mw_c2, mw_entry, k, pool["n_entries"])
-    cats = sorted(set(s_mw2["mass_by_category"]) | set(s_af["mass_by_category"]),
-                  key=lambda c: -max(s_mw2["mass_by_category"].get(c, 0), s_af["mass_by_category"].get(c, 0)))
+    mw_cat_chain = np.where(
+        ~mw_is_if, np.char.add("chain:", kinds[mw_c1]).astype(object), mw_cat
+    )
+    s_mw2 = summarize(
+        mw_p, mw_cat_chain, mw_size, mw_c1, mw_c2, mw_entry, k, pool["n_entries"]
+    )
+    cats = sorted(
+        set(s_mw2["mass_by_category"]) | set(s_af["mass_by_category"]),
+        key=lambda c: -max(
+            s_mw2["mass_by_category"].get(c, 0), s_af["mass_by_category"].get(c, 0)
+        ),
+    )
     for c in cats:
-        a, b = s_mw2["mass_by_category"].get(c, 0.0), s_af["mass_by_category"].get(c, 0.0)
+        a, b = (
+            s_mw2["mass_by_category"].get(c, 0.0),
+            s_af["mass_by_category"].get(c, 0.0),
+        )
         out.append(f"| {c} | {a:.2%} | {b:.2%} | {f'{a / b:.2f}' if b > 0 else '—'} |")
-    chain_mw = sum(v for c, v in s_mw2["mass_by_category"].items() if c.startswith("chain:"))
-    chain_af = sum(v for c, v in s_af["mass_by_category"].items() if c.startswith("chain:"))
-    out.append(f"\nSingle-chain items together: MiniWorld {chain_mw:.2%}, AF3 {chain_af:.2%}.\n")
+    chain_mw = sum(
+        v for c, v in s_mw2["mass_by_category"].items() if c.startswith("chain:")
+    )
+    chain_af = sum(
+        v for c, v in s_af["mass_by_category"].items() if c.startswith("chain:")
+    )
+    out.append(
+        f"\nSingle-chain items together: MiniWorld {chain_mw:.2%}, AF3 {chain_af:.2%}.\n"
+    )
 
-    out.append("### Probability by cluster size (rows in the item's own cluster, in that sampler's pool)\n")
+    out.append(
+        "### Probability by cluster size (rows in the item's own cluster, in that sampler's pool)\n"
+    )
     out.append("| cluster size | MiniWorld | AF3 |\n|---|---:|---:|")
     for key in s_mw["mass_by_size"]:
-        out.append(f"| {key} | {s_mw['mass_by_size'][key]:.2%} | {s_af['mass_by_size'][key]:.2%} |")
+        out.append(
+            f"| {key} | {s_mw['mass_by_size'][key]:.2%} | {s_af['mass_by_size'][key]:.2%} |"
+        )
     out.append("")
 
     out.append("### Coverage and concentration\n")
     out.append("| | MiniWorld | AF3 |\n|---|---:|---:|")
-    out.append(f"| chain clusters reachable | {s_mw['n_clusters_touched']:,} | {s_af['n_clusters_touched']:,} |")
-    out.append(f"| effective number of chain clusters (exp entropy of the touch probabilities) | {s_mw['eff_clusters']:,.0f} | {s_af['eff_clusters']:,.0f} |")
-    out.append(f"| effective number of entries | {s_mw['eff_entries']:,.0f} | {s_af['eff_entries']:,.0f} |")
-    out.append(f"| touch probability of the 100 most-touched chain clusters | {s_mw['top100_cluster_mass']:.2%} | {s_af['top100_cluster_mass']:.2%} |")
-    out.append(f"| largest single-entry probability | {s_mw['max_entry_prob']:.2e} | {s_af['max_entry_prob']:.2e} |")
+    out.append(
+        f"| chain clusters reachable | {s_mw['n_clusters_touched']:,} | {s_af['n_clusters_touched']:,} |"
+    )
+    out.append(
+        f"| effective number of chain clusters (exp entropy of the touch probabilities) | {s_mw['eff_clusters']:,.0f} | {s_af['eff_clusters']:,.0f} |"
+    )
+    out.append(
+        f"| effective number of entries | {s_mw['eff_entries']:,.0f} | {s_af['eff_entries']:,.0f} |"
+    )
+    out.append(
+        f"| touch probability of the 100 most-touched chain clusters | {s_mw['top100_cluster_mass']:.2%} | {s_af['top100_cluster_mass']:.2%} |"
+    )
+    out.append(
+        f"| largest single-entry probability | {s_mw['max_entry_prob']:.2e} | {s_af['max_entry_prob']:.2e} |"
+    )
     for n in (128_000, 1_000_000, 10_000_000):
         a, b = s_mw["expected_unique"][n], s_af["expected_unique"][n]
-        out.append(f"| expected distinct chain clusters touched in {n:,} draws | {a[0]:,.0f} | {b[0]:,.0f} |")
-        out.append(f"| expected distinct entries drawn in {n:,} draws | {a[1]:,.0f} | {b[1]:,.0f} |")
+        out.append(
+            f"| expected distinct chain clusters touched in {n:,} draws | {a[0]:,.0f} | {b[0]:,.0f} |"
+        )
+        out.append(
+            f"| expected distinct entries drawn in {n:,} draws | {a[1]:,.0f} | {b[1]:,.0f} |"
+        )
     out.append("")
 
     def contains(p, c1, c2):
@@ -344,7 +465,12 @@ def pdb_section(pool: dict, out: list[str]) -> dict:
         k2 = np.where(c2 >= 0, kinds[np.maximum(c2, 0)], "")
         has_nuc = (k1 == "nuc") | (k2 == "nuc")
         has_lig = (k1 == "lig") | (k2 == "lig")
-        return float(p[has_nuc].sum()), float(p[has_lig].sum()), float(p[~has_nuc & ~has_lig].sum())
+        return (
+            float(p[has_nuc].sum()),
+            float(p[has_lig].sum()),
+            float(p[~has_nuc & ~has_lig].sum()),
+        )
+
     a, b = contains(mw_p, mw_c1, mw_c2), contains(af_p, af_c1, af_c2)
     out.append("### What a draw contains\n")
     out.append("| | MiniWorld | AF3 |\n|---|---:|---:|")
@@ -358,19 +484,36 @@ def pdb_section(pool: dict, out: list[str]) -> dict:
     rows = np.nonzero(mw_is_if)[0][:200000].tolist()
     for row in rows:
         counts[mw_edge_type_verbatim(f"{names[mw_c1[row]]}_{names[mw_c2[row]]}")] += 1
-    sole_ids = {mw_edge_type_verbatim(names[mw_c1[row]]) for row in np.nonzero(~mw_is_if)[0][:1000].tolist()}
-    out.append("### MiniWorld's `_pdb_edge_type`, unchanged, on the new cluster ids (`cPDB_<letter><number>`)\n")
-    out.append(f"{len(rows):,} interface rows classified: "
-               + ", ".join(f"{t} {n:,}" for t, n in sorted(counts.items(), key=lambda x: -x[1]))
-               + f". Single-chain ids classified as: {sorted(sole_ids)}.\n")
+    sole_ids = {
+        mw_edge_type_verbatim(names[mw_c1[row]])
+        for row in np.nonzero(~mw_is_if)[0][:1000].tolist()
+    }
+    out.append(
+        "### MiniWorld's `_pdb_edge_type`, unchanged, on the new cluster ids (`cPDB_<letter><number>`)\n"
+    )
+    out.append(
+        f"{len(rows):,} interface rows classified: "
+        + ", ".join(
+            f"{t} {n:,}" for t, n in sorted(counts.items(), key=lambda x: -x[1])
+        )
+        + f". Single-chain ids classified as: {sorted(sole_ids)}.\n"
+    )
     return {
-        "mw_mass": s_mw2["mass_by_category"], "af_mass": s_af["mass_by_category"],
-        "mw_clusters": dict(n_edges_in_type), "af_clusters": dict(af_cat_counts),
-        "mw_rows": mw_cat_rows, "af_rows": af_cat_rows,
-        "mw_pool_rows": len(mw_p), "af_pool_rows": len(af_p),
-        "mw_eff_entries": s_mw["eff_entries"], "af_eff_entries": s_af["eff_entries"],
-        "mw_eff_clusters": s_mw["eff_clusters"], "af_eff_clusters": s_af["eff_clusters"],
-        "n_chain_clusters": int(len(set(np.concatenate([af_c1, af_c2[af_c2 >= 0]]).tolist()))),
+        "mw_mass": s_mw2["mass_by_category"],
+        "af_mass": s_af["mass_by_category"],
+        "mw_clusters": dict(n_edges_in_type),
+        "af_clusters": dict(af_cat_counts),
+        "mw_rows": mw_cat_rows,
+        "af_rows": af_cat_rows,
+        "mw_pool_rows": len(mw_p),
+        "af_pool_rows": len(af_p),
+        "mw_eff_entries": s_mw["eff_entries"],
+        "af_eff_entries": s_af["eff_entries"],
+        "mw_eff_clusters": s_mw["eff_clusters"],
+        "af_eff_clusters": s_af["eff_clusters"],
+        "n_chain_clusters": len(
+            set(np.concatenate([af_c1, af_c2[af_c2 >= 0]]).tolist())
+        ),
     }
 
 
@@ -395,10 +538,17 @@ def distillation_section(cluster_tsv: Path, seqid_tsv: Path, out: list[str]) -> 
                 continue
             codes[sid[0]].append(c)
     out.append("## Distillation sources: within-source weighting\n")
-    out.append("AF3 draws a distillation example uniformly (SI table 3, 'uniform'). MiniWorld gives every cluster the same "
-               "mass and splits it evenly over the cluster's entries (`1 / rowcount`, then source-normalised).\n")
-    out.append(f"Entries whose sequence is missing from the cluster table: {missing:,}.\n")
-    for kind, label in (("P", "protein monomers (long and short sets together)"), ("R", "RNA monomers")):
+    out.append(
+        "AF3 draws a distillation example uniformly (SI table 3, 'uniform'). MiniWorld gives every cluster the same "
+        "mass and splits it evenly over the cluster's entries (`1 / rowcount`, then source-normalised).\n"
+    )
+    out.append(
+        f"Entries whose sequence is missing from the cluster table: {missing:,}.\n"
+    )
+    for kind, label in (
+        ("P", "protein monomers (long and short sets together)"),
+        ("R", "RNA monomers"),
+    ):
         arr = np.frombuffer(codes[kind], dtype=np.int32)
         if len(arr) == 0:
             continue
@@ -408,30 +558,54 @@ def distillation_section(cluster_tsv: Path, seqid_tsv: Path, out: list[str]) -> 
         p_af = np.full(n, 1.0 / n)
         p_mw = (1.0 / ncl) / size
         out.append(f"### {label}\n")
-        out.append(f"{n:,} entries in {ncl:,} clusters at 30% identity (mean {n / ncl:.2f} entries per cluster, "
-                   f"largest {int(cnt.max()):,}).\n")
-        out.append("| cluster size | share of entries | AF3 uniform | MiniWorld cluster-uniform | MiniWorld / AF3 |\n|---|---:|---:|---:|---:|")
+        out.append(
+            f"{n:,} entries in {ncl:,} clusters at 30% identity (mean {n / ncl:.2f} entries per cluster, "
+            f"largest {int(cnt.max()):,}).\n"
+        )
+        out.append(
+            "| cluster size | share of entries | AF3 uniform | MiniWorld cluster-uniform | MiniWorld / AF3 |\n|---|---:|---:|---:|---:|"
+        )
         for lo, hi in SIZE_BINS:
             m = (size >= lo) & (size <= hi)
             a, b = float(p_af[m].sum()), float(p_mw[m].sum())
-            out.append(f"| {bin_name(lo, hi)} | {m.mean():.2%} | {a:.2%} | {b:.2%} | {b / a if a else 0:.2f} |")
+            out.append(
+                f"| {bin_name(lo, hi)} | {m.mean():.2%} | {a:.2%} | {b:.2%} | {b / a if a else 0:.2f} |"
+            )
         eff_mw = float(np.exp(-(p_mw * np.log(p_mw)).sum()))
-        out.append(f"\nEffective number of entries: AF3 {n:,} (uniform), MiniWorld {eff_mw:,.0f}.\n")
+        out.append(
+            f"\nEffective number of entries: AF3 {n:,} (uniform), MiniWorld {eff_mw:,.0f}.\n"
+        )
 
 
 def mixture_section(out: list[str]) -> None:
-    af3 = {"weighted PDB": 0.5, "disordered PDB": 0.02, "protein monomer (long)": 0.495,
-           "short protein monomer": 0.005, "RNA distillation": 0.05}
-    mw = {"weighted PDB": 0.5, "disordered PDB": 0.0, "protein monomer (long)": 0.495,
-          "short protein monomer": 0.005, "RNA distillation": 0.0}
+    af3 = {
+        "weighted PDB": 0.5,
+        "disordered PDB": 0.02,
+        "protein monomer (long)": 0.495,
+        "short protein monomer": 0.005,
+        "RNA distillation": 0.05,
+    }
+    mw = {
+        "weighted PDB": 0.5,
+        "disordered PDB": 0.0,
+        "protein monomer (long)": 0.495,
+        "short protein monomer": 0.005,
+        "RNA distillation": 0.0,
+    }
     sa, sm = sum(af3.values()), sum(mw.values())
     out.append("## Dataset mixture\n")
-    out.append("AF3 SI table 3 (pre-training rows; the transcription-factor sets are fine-tuning only) against the "
-               "`source_weights` of `H100_d512.yaml` (RNA distillation not declared, disordered PDB masked out of the "
-               "sampler). Both are normalised over the active sources.\n")
-    out.append("| source | AF3 weight | AF3 share | MiniWorld weight | MiniWorld share |\n|---|---:|---:|---:|---:|")
+    out.append(
+        "AF3 SI table 3 (pre-training rows; the transcription-factor sets are fine-tuning only) against the "
+        "`source_weights` of `H100_d512.yaml` (RNA distillation not declared, disordered PDB masked out of the "
+        "sampler). Both are normalised over the active sources.\n"
+    )
+    out.append(
+        "| source | AF3 weight | AF3 share | MiniWorld weight | MiniWorld share |\n|---|---:|---:|---:|---:|"
+    )
     for name in af3:
-        out.append(f"| {name} | {af3[name]} | {af3[name] / sa:.2%} | {mw[name]} | {mw[name] / sm:.2%} |")
+        out.append(
+            f"| {name} | {af3[name]} | {af3[name] / sa:.2%} | {mw[name]} | {mw[name] / sm:.2%} |"
+        )
     out.append(f"| sum | {sa:.3f} | | {sm:.3f} | |\n")
 
 

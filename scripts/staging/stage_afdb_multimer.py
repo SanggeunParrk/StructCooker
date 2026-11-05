@@ -36,9 +36,15 @@ import re
 import shutil
 from pathlib import Path
 
-HOMO_SRC = Path(os.environ.get(           # the bundle's extraction
-    "AFM_HOMODIMER_SRC", "/data/psk6950/external_source/AFDB/multimer/test/high_conf_homodimers_manuscript_v1"))
-HET_SRC = Path(os.environ.get("AFM_HETERODIMER_SRC", "/data/shared/cssb_data/AFDB_heterodimer/cif"))
+HOMO_SRC = Path(
+    os.environ.get(  # the bundle's extraction
+        "AFM_HOMODIMER_SRC",
+        "/data/psk6950/external_source/AFDB/multimer/test/high_conf_homodimers_manuscript_v1",
+    )
+)
+HET_SRC = Path(
+    os.environ.get("AFM_HETERODIMER_SRC", "/data/shared/cssb_data/AFDB_heterodimer/cif")
+)
 _ID = re.compile(r"^AF[-_](\d+)-model_v1\.(pdb|cif)$")
 
 
@@ -66,7 +72,9 @@ def stage_homodimers(out: Path) -> int:
             log.flush()
             Path(entry.path).rename(dest)
     log.close()
-    return _finish_source(out / "homodimer", "entity_id\toriginal_name\toriginal_path\tbytes")
+    return _finish_source(
+        out / "homodimer", "entity_id\toriginal_name\toriginal_path\tbytes"
+    )
 
 
 def stage_heterodimers(out: Path) -> int:
@@ -96,7 +104,9 @@ def _finish_source(part_dir: Path, header: str) -> int:
     """De-duplicate the append-only move log (a resumed run re-logs nothing already moved)."""
     partial = part_dir / "SOURCE.tsv.partial"
     rows = sorted(set(partial.read_text().splitlines())) if partial.exists() else []
-    (part_dir / "SOURCE.tsv").write_text(header + "\n" + "".join(r + "\n" for r in rows))
+    (part_dir / "SOURCE.tsv").write_text(
+        header + "\n" + "".join(r + "\n" for r in rows)
+    )
     partial.unlink(missing_ok=True)
     return len(rows)
 

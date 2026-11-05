@@ -4,8 +4,8 @@ from typing import cast
 import networkx as nx
 import numpy as np
 
-from structcooker.instructions.transforms.sequence import extract_sequence_from_cifmol
 from structcooker.instructions.mols import CIFMol, CIFMolAttached
+from structcooker.instructions.transforms.sequence import extract_sequence_from_cifmol
 from structcooker.utils.mapping import mol_type_map, polymer_cluster_types
 
 
@@ -34,7 +34,9 @@ def filter_by_resolution_and_date(
     # deposition date. Prefer release_date; fall back to deposition_date only if a
     # record predates the patch (should not happen once metadata is filled).
     resolution = cifmol.metadata["resolution"]
-    cutoff_date = cifmol.metadata.get("release_date") or cifmol.metadata["deposition_date"]
+    cutoff_date = (
+        cifmol.metadata.get("release_date") or cifmol.metadata["deposition_date"]
+    )
     cutoff_date = date.fromisoformat(cutoff_date)
     if (
         resolution is not None
@@ -189,5 +191,3 @@ def filter_cifmol_by_clusters(
     if not cluster_id_set.issubset(filtered_clusters):
         return None
     return cast("dict", cifmol.to_dict())
-
-

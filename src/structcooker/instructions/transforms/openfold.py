@@ -49,10 +49,14 @@ def merge_msa_sources(
     )
 
 
-RNA_MSA_SOURCES = frozenset({"rnacentral_hits", "nucleotide_collection_hits", "nt_hits", "rfam_hits"})
+RNA_MSA_SOURCES = frozenset(
+    {"rnacentral_hits", "nucleotide_collection_hits", "nt_hits", "rfam_hits"}
+)
 
 
-def resolve_a3m_type(msa_sources: dict[str, dict[str, np.ndarray]], a3m_type: str | None = "protein") -> str:
+def resolve_a3m_type(
+    msa_sources: dict[str, dict[str, np.ndarray]], a3m_type: str | None = "protein"
+) -> str:
     """The alphabet of one alignment file: ``rna`` when it carries RNA search sources, else the configured type.
 
     The disordered set mixes protein and RNA chains in one MSA config. Configured ``protein``, its RNA records were
@@ -105,7 +109,9 @@ def build_msa_features(
     lut = view.map(np.array([chr(i) for i in range(256)], dtype="<U1")).astype(np.uint8)
     is_rna = (a3m_type or "protein").lower() == "rna"
     if is_rna:
-        lut[ord("T")] = lut[ord("U")]  # RNA has no thymine: a T is a DNA letter for U (see parse_sequence)
+        lut[ord("T")] = lut[
+            ord("U")
+        ]  # RNA has no thymine: a T is a DNA letter for U (see parse_sequence)
     lut[ord("a") : ord("z") + 1] = lut[ord("A") : ord("Z") + 1]
     codes = np.ascontiguousarray(msa.astype("<U1")).view(np.uint32)
     aligned_sequences = lut[codes].astype(np.uint8)
@@ -114,7 +120,10 @@ def build_msa_features(
     deletion_mean, profile = msa_statistics(aligned_sequences, deletions, n_classes)
 
     # Query keeps the row-0 a3m string (upper columns + lowercase insertions).
-    q_upper, q_del = np.char.upper(msa[0].astype("<U1")), deletion_matrix[0].astype(np.int64)
+    q_upper, q_del = (
+        np.char.upper(msa[0].astype("<U1")),
+        deletion_matrix[0].astype(np.int64),
+    )
     if is_rna:
         q_upper = np.where(q_upper == "T", "U", q_upper)
     query_string = "".join(
@@ -170,7 +179,9 @@ def cap_msa_dict(msa_dict: dict, max_depth: int) -> dict:
         "deletion_mean": deletion_mean,
         "profile": profile,
     }
-    capped_headers = {k: np.asarray(v)[:max_depth] for k, v in msa_dict["headers"].items()}
+    capped_headers = {
+        k: np.asarray(v)[:max_depth] for k, v in msa_dict["headers"].items()
+    }
     return {"sequences": capped_sequences, "headers": capped_headers}
 
 

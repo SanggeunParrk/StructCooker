@@ -1,4 +1,5 @@
 """Depth (rows of each a3m, query included) of every <seq_id>.a3m under a tree -> TSV seq_id, depth."""
+
 import sys
 from pathlib import Path
 

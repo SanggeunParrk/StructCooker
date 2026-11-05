@@ -6,6 +6,7 @@ The node size uses DataCooker's own variables, which its planner reads too
 ``DATACOOKER_QOS`` and ``DATACOOKER_EXCLUDE_NODES`` (nodes to keep jobs off). The CSSB values
 are collected in scripts/cluster/cssb.env.
 """
+
 from __future__ import annotations
 
 import os

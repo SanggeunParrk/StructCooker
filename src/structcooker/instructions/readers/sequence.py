@@ -23,7 +23,9 @@ def load_fasta(fasta_path: str | Path) -> dict[str, str]:
 
 def load_seq_id_map(seq_id_map_path: str | Path) -> dict[str, str] | None:
     """Load a sequence-id map from a TSV file if it exists."""
-    path = Path(seq_id_map_path) if isinstance(seq_id_map_path, str) else seq_id_map_path
+    path = (
+        Path(seq_id_map_path) if isinstance(seq_id_map_path, str) else seq_id_map_path
+    )
     if not path.exists():
         return None
     seq_id_map: dict[str, str] = {}

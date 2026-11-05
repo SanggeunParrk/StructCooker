@@ -1,4 +1,5 @@
 """Durable build receipts and fail-closed restart handling."""
+
 from __future__ import annotations
 
 import fcntl
@@ -15,7 +16,9 @@ from pathlib import Path
 
 def digest(value: object) -> str:
     """Hash a canonical JSON description."""
-    return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, default=str).encode()
+    ).hexdigest()
 
 
 def write_json(path: Path, value: object) -> None:
@@ -89,7 +92,10 @@ class Fingerprints:
                 hasher.update(block)
         after = path.stat()
         if (before.st_size, before.st_mtime_ns, before.st_ctime_ns, before.st_ino) != (
-            after.st_size, after.st_mtime_ns, after.st_ctime_ns, after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+            after.st_ino,
         ):
             msg = f"Input changed while hashing: {path}"
             raise RuntimeError(msg)
@@ -102,8 +108,10 @@ class Fingerprints:
         with ThreadPoolExecutor(max_workers=64) as pool:
             values = {}
             for offset in range(0, len(paths), 1024):
-                batch = paths[offset:offset + 1024]
-                values.update(zip(map(str, batch), pool.map(self.file, batch), strict=False))
+                batch = paths[offset : offset + 1024]
+                values.update(
+                    zip(map(str, batch), pool.map(self.file, batch), strict=False)
+                )
             return values
 
     def path(self, path: Path) -> object:
@@ -115,21 +123,21 @@ class Fingerprints:
         if (path / "shards.json").is_file():
             from datacooker.lmdb.sharded import shard_paths
 
-            return {"manifest": self.file(path / "shards.json"),
-                    "shards": {str(p): self.path(p) for p in shard_paths(path)}}
+            return {
+                "manifest": self.file(path / "shards.json"),
+                "shards": {str(p): self.path(p) for p in shard_paths(path)},
+            }
         if (path / "data.mdb").is_file():
             return {"data.mdb": self.file(path / "data.mdb")}
         from datacooker.utils.paths import scan_paths
 
         children = []
-        for child in scan_paths(path, pattern="*"):        # parallel listing, sorted
+        for child in scan_paths(path, pattern="*"):  # parallel listing, sorted
             if "__pycache__" in child.parts or child.suffix == ".pyc":
                 continue
-            if child.is_dir():                              # listed as a non-directory: a symlink
+            if child.is_dir():  # listed as a non-directory: a symlink
                 msg = f"Directory symlink requires an explicit input root: {child}"
                 raise ValueError(msg)
             children.append(child)
         hashes = self.files(children)
         return {str(child.relative_to(path)): hashes[str(child)] for child in children}
-
-

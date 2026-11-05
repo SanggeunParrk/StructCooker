@@ -4,6 +4,7 @@ Materialize recipe: the instruction reads the hmm outputs + fasta + maps and wri
 seqid_to_chains / chain_to_templates / reduced_hmm as side effects, returning a status
 (output_data_path = chain_to_templates.tsv is the build-done marker).
 """
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.template_candidates import (

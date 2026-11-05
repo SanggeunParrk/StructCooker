@@ -10,8 +10,12 @@ def test_explicit_structure_recovery_keeps_entry_identity(tmp_path, monkeypatch)
     original.parent.mkdir()
     original.write_bytes(b"broken original")
     recovered = tmp_path / "recovered.npz"
-    np.savez(recovered, chain_id=np.array(["A", "A", "A"]),
-             res_id=np.array([1, 1, 2]), ins_code=np.array(["", "", ""]))
+    np.savez(
+        recovered,
+        chain_id=np.array(["A", "A", "A"]),
+        res_id=np.array([1, 1, 2]),
+        ins_code=np.array(["", "", ""]),
+    )
     template = original.with_name("template.npz")
     np.savez(template)
     manifest = tmp_path / "overrides.json"
@@ -25,17 +29,25 @@ def test_explicit_structure_recovery_keeps_entry_identity(tmp_path, monkeypatch)
 
 def test_relative_overrides_resolve_under_any_root(tmp_path, monkeypatch):
     """Keys are paths under the OpenFold root and values relative to the manifest, so the
-    same manifest serves the release tree and a sampled copy of it."""
+    same manifest serves the release tree and a sampled copy of it.
+    """
     rel = "monomer_distillation_sets_v2/long_monomers/preprocessed/MGYP1/structure.npz"
     store = tmp_path / "intermediate" / "long_recovered"
     (store / "MGYP1").mkdir(parents=True)
-    np.savez(store / "MGYP1" / "structure.npz", chain_id=np.array(["A"]), res_id=np.array([1]),
-             ins_code=np.array([""]))
+    np.savez(
+        store / "MGYP1" / "structure.npz",
+        chain_id=np.array(["A"]),
+        res_id=np.array([1]),
+        ins_code=np.array([""]),
+    )
     (store / "overrides.json").write_text(json.dumps({rel: "MGYP1/structure.npz"}))
     monkeypatch.setenv("OPENFOLD_STRUCTURE_OVERRIDES", str(store / "overrides.json"))
     monkeypatch.setattr(openfold, "_STRUCTURE_OVERRIDES", None)
     for root in (tmp_path / "release", tmp_path / "sample"):
-        assert openfold._structure_path(root / "raw" / rel) == store / "MGYP1" / "structure.npz"
+        assert (
+            openfold._structure_path(root / "raw" / rel)
+            == store / "MGYP1" / "structure.npz"
+        )
     other = tmp_path / "release" / "raw" / rel.replace("MGYP1", "MGYP2")
     assert openfold._structure_path(other) == other
 

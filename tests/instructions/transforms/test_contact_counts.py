@@ -16,8 +16,14 @@ def test_unique_contact_pairs_match_dense_reference_and_keep_legacy_mode():
             if chain[i] != chain[j] and np.sum((xyz[i] - xyz[j]) ** 2) <= 36:
                 pair = tuple(sorted((int(chain[i]), int(chain[j]))))
                 expected[pair] = expected.get(pair, 0) + 1
+
     def edges(once):
-        src, dst, counts = chain_contacts_grid(xyz, chain, 6, count_atom_pairs_once=once)
-        return {(int(a), int(b)): int(v) for a, b, v in zip(src, dst, counts, strict=True)}
+        src, dst, counts = chain_contacts_grid(
+            xyz, chain, 6, count_atom_pairs_once=once
+        )
+        return {
+            (int(a), int(b)): int(v) for a, b, v in zip(src, dst, counts, strict=True)
+        }
+
     assert edges(True) == expected
     assert edges(False) == {key: 2 * value for key, value in expected.items()}

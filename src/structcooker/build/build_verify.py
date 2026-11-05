@@ -1,4 +1,5 @@
 """Full output checks required before writing a reusable build receipt."""
+
 from __future__ import annotations
 
 import json
@@ -19,6 +20,7 @@ from datacooker.utils.importing import resolve_object
 
 from structcooker.build import preflight, schemas
 from structcooker.build.build_state import Fingerprints
+from structcooker.instructions.mols import CIFMol
 from structcooker.instructions.transforms.cifmol import (
     convert_to_cifmol_attached_transformed,
     convert_to_cifmol_dict,
@@ -27,13 +29,15 @@ from structcooker.instructions.transforms.cifmol import (
 from structcooker.instructions.transforms.codecs import from_bytes
 from structcooker.instructions.transforms.msa import msa_statistics
 from structcooker.instructions.transforms.pruning import load_pruned_cifmol
-from structcooker.instructions.mols import CIFMol
 
 
 def verify_structure(value: Any, schema: str) -> None:
     """Check every assembly's coordinate, parent-index and bond-index invariants."""
-    adapters = {"A": convert_to_cifmol_dict, "B": convert_to_cifmol_attached_transformed,
-                "I": convert_to_cifmol_transformed}
+    adapters = {
+        "A": convert_to_cifmol_dict,
+        "B": convert_to_cifmol_attached_transformed,
+        "I": convert_to_cifmol_transformed,
+    }
     if schema in adapters:
         assemblies = adapters[schema](value)
         mols = [item["cifmol"] for item in assemblies.values()]
@@ -47,7 +51,12 @@ def verify_structure(value: Any, schema: str) -> None:
         raise ValueError(msg)
     for mol in mols:
         xyz = mol.atoms.xyz.value
-        if xyz.ndim != 2 or xyz.shape[1] != 3 or not len(xyz) or not np.isfinite(xyz).any():
+        if (
+            xyz.ndim != 2
+            or xyz.shape[1] != 3
+            or not len(xyz)
+            or not np.isfinite(xyz).any()
+        ):
             msg = "Invalid coordinate array"
             raise ValueError(msg)
         chain = mol.index_table.atoms_to_chains(np.arange(len(xyz)))
@@ -57,14 +66,18 @@ def verify_structure(value: Any, schema: str) -> None:
         try:
             bonds = mol.atoms.bond_type
         except FeatureKeyError:
-            bonds = None                     # pruned (H) records keep no bonds
-        for endpoints in (bonds.src_indices, bonds.dst_indices) if bonds is not None else ():
+            bonds = None  # pruned (H) records keep no bonds
+        for endpoints in (
+            (bonds.src_indices, bonds.dst_indices) if bonds is not None else ()
+        ):
             if len(endpoints) and (endpoints.min() < 0 or endpoints.max() >= len(xyz)):
                 msg = "Bond endpoint out of range"
                 raise ValueError(msg)
         if schema == "B":
             for field in (mol.chains.seq_id.value, mol.chains.cluster_id.value):
-                if len(field) != len(mol.chains.chain_id.value) or any(not str(v) for v in field):
+                if len(field) != len(mol.chains.chain_id.value) or any(
+                    not str(v) for v in field
+                ):
                     msg = "Missing chain sequence/cluster identity"
                     raise ValueError(msg)
 
@@ -79,7 +92,9 @@ def _verify_workers() -> int:
 _WORKER_ENVS: dict[str, Any] = {}
 
 
-def _check_records(path: str, keys: list[str], schema_name: str, max_depth: int | None) -> int:
+def _check_records(
+    path: str, keys: list[str], schema_name: str, max_depth: int | None
+) -> int:
     """Read and validate a batch of records (runs in a worker process); returns how many."""
     schema = schemas.get(schema_name)
     if path not in _WORKER_ENVS:
@@ -116,19 +131,27 @@ def _check_msa(key: str, value: Any, max_depth: int | None) -> None:
         msg = f"MSA depth exceeds configured cap for {key}"
         raise ValueError(msg)
     profile = sequence["profile"]
-    if (aligned.ndim != 2 or min(aligned.shape) == 0
-            or sequence["deletions"].shape != aligned.shape
-            or profile.shape[0] != aligned.shape[1]
-            or not np.isfinite(profile).all()
-            or not np.allclose(profile.sum(axis=1), 1)
-            or aligned.min() < 0 or aligned.max() >= profile.shape[1]
-            or sequence["deletions"].min() < 0 or sequence["deletions"].max() > 255
-            or any(len(v) != len(aligned) for v in msa["headers"].values())):
+    if (
+        aligned.ndim != 2
+        or min(aligned.shape) == 0
+        or sequence["deletions"].shape != aligned.shape
+        or profile.shape[0] != aligned.shape[1]
+        or not np.isfinite(profile).all()
+        or not np.allclose(profile.sum(axis=1), 1)
+        or aligned.min() < 0
+        or aligned.max() >= profile.shape[1]
+        or sequence["deletions"].min() < 0
+        or sequence["deletions"].max() > 255
+        or any(len(v) != len(aligned) for v in msa["headers"].values())
+    ):
         msg = f"Invalid MSA arrays for {key}"
         raise ValueError(msg)
-    deletion_mean, expected_profile = msa_statistics(aligned, sequence["deletions"], profile.shape[1])
-    if (not np.array_equal(profile, expected_profile)
-            or not np.array_equal(sequence["deletion_mean"], deletion_mean)):
+    deletion_mean, expected_profile = msa_statistics(
+        aligned, sequence["deletions"], profile.shape[1]
+    )
+    if not np.array_equal(profile, expected_profile) or not np.array_equal(
+        sequence["deletion_mean"], deletion_mean
+    ):
         msg = f"Incorrect MSA statistics for {key}"
         raise ValueError(msg)
 
@@ -139,7 +162,9 @@ def _nonempty(path: Path) -> bool:
     return path.is_file() and path.stat().st_size > 0
 
 
-def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str, dict[str, str]]) -> dict[str, Any]:
+def verify_output(
+    cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str, dict[str, str]]
+) -> dict[str, Any]:
     """Check all records, complete index coverage, and exact build-input key coverage."""
     activate_environment(cfg)
     target = cfg.get("new_env_path") or cfg.get("env_path")
@@ -150,7 +175,10 @@ def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str
         if not outputs or any(not _nonempty(p) for p in outputs):
             msg = "Projection outputs are missing or empty"
             raise ValueError(msg)
-        return {"outputs": list(map(str, outputs)), "verification": "nonempty files/directories"}
+        return {
+            "outputs": list(map(str, outputs)),
+            "verification": "nonempty files/directories",
+        }
     path = Path(target)
     indices = read_index(path)
     sizes = {item.key: item.value_bytes for item in indices}
@@ -159,14 +187,20 @@ def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str
         raise ValueError(msg)
     metadata = json.loads(Path(str(path) + ".meta.json").read_text())
     schema = schemas.get(str(cfg["schema"]))
-    if (metadata["schema"] != schema.name or metadata["entries"] != len(sizes)
-            or metadata["total_bytes"] != sum(sizes.values())
-            or metadata["max_bytes"] != max(sizes.values())):
+    if (
+        metadata["schema"] != schema.name
+        or metadata["entries"] != len(sizes)
+        or metadata["total_bytes"] != sum(sizes.values())
+        or metadata["max_bytes"] != max(sizes.values())
+    ):
         msg = "Index/metadata mismatch"
         raise ValueError(msg)
     max_depth = cfg.get("parameters", {}).get("max_depth")
     checked = 0
-    with open_env(str(path), readonly=True, lock=False, readahead=False) as env, env.begin(buffers=True) as txn:
+    with (
+        open_env(str(path), readonly=True, lock=False, readahead=False) as env,
+        env.begin(buffers=True) as txn,
+    ):
 
         def batches() -> Iterator[list[str]]:
             batch: list[str] = []
@@ -190,7 +224,11 @@ def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str
         with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
             pending: set[Future[int]] = set()
             for batch in batches():
-                pending.add(pool.submit(_check_records, str(path), batch, schema.name, max_depth))
+                pending.add(
+                    pool.submit(
+                        _check_records, str(path), batch, schema.name, max_depth
+                    )
+                )
                 if len(pending) >= 4 * workers:
                     done, pending = wait(pending, return_when=FIRST_COMPLETED)
                     checked += sum(f.result() for f in done)
@@ -205,7 +243,13 @@ def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str
         raise ValueError(msg)
     manifest = manifests[0]
     failures: set[str] = set()
-    totals = {"attempted": 0, "written": 0, "skipped_existing": 0, "skipped_empty": 0, "failed": 0}
+    totals = {
+        "attempted": 0,
+        "written": 0,
+        "skipped_existing": 0,
+        "skipped_empty": 0,
+        "failed": 0,
+    }
     for shard in manifest.read_text().splitlines():
         report = json.loads(Path(shard + ".build-report.json").read_text())
         if report["failed"] != len(report["failed_keys"]):
@@ -221,13 +265,23 @@ def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str
     # An exploding rebuild (cif_chain: entry -> its chains) attempts source entries but
     # writes sub-records, so only the record count can be checked against attempts there.
     exploded = bool(cfg.get("explode_entries"))
-    if (totals["written"] + totals["skipped_existing"] != checked or (not exploded and totals["attempted"] !=
-            totals["written"] + totals["skipped_existing"] + totals["skipped_empty"] + totals["failed"])):
+    if totals["written"] + totals["skipped_existing"] != checked or (
+        not exploded
+        and totals["attempted"]
+        != totals["written"]
+        + totals["skipped_existing"]
+        + totals["skipped_empty"]
+        + totals["failed"]
+    ):
         msg = "Shard accounting does not match output records"
         raise ValueError(msg)
     if not cfg.get("old_env_path"):
         builder = cfg.get("key_builder")
-        key_fn = resolve_object(builder) if isinstance(builder, str) else (builder if callable(builder) else default_lmdb_key)
+        key_fn = (
+            resolve_object(builder)
+            if isinstance(builder, str)
+            else (builder if callable(builder) else default_lmdb_key)
+        )
         expected: set[str] = set()
         paths: dict[str, Path] = {}
         count = 0
@@ -240,8 +294,12 @@ def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str
         if count != len(expected):
             msg = "Duplicate source keys"
             raise ValueError(msg)
-        if (not expected or not failures <= expected or count != totals["attempted"]
-                or expected - failures != sizes.keys()):
+        if (
+            not expected
+            or not failures <= expected
+            or count != totals["attempted"]
+            or expected - failures != sizes.keys()
+        ):
             msg = "Input/output key coverage mismatch"
             raise ValueError(msg)
         fingerprints = Fingerprints()
@@ -257,5 +315,9 @@ def verify_output(cfg: dict[str, Any], workdir: Path, allowed_failures: dict[str
         if source_keys != sizes.keys():
             msg = "MSA rebuild must preserve every source key"
             raise ValueError(msg)
-    return {"records": checked, "schema": schema.name, "build_counts": totals,
-            "accepted_failures": {k: allowed_failures[k] for k in sorted(failures)}}
+    return {
+        "records": checked,
+        "schema": schema.name,
+        "build_counts": totals,
+        "accepted_failures": {k: allowed_failures[k] for k in sorted(failures)},
+    }

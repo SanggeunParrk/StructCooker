@@ -16,16 +16,22 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-_OFFSETS = np.array(np.meshgrid([-1, 0, 1], [-1, 0, 1], [-1, 0, 1], indexing="ij")).reshape(3, -1).T
+_OFFSETS = (
+    np.array(np.meshgrid([-1, 0, 1], [-1, 0, 1], [-1, 0, 1], indexing="ij"))
+    .reshape(3, -1)
+    .T
+)
 
 
 @dataclass
 class ContactCfg:
     cutoff: float = 5.0
-    min_residues: int = 5          # polymer-polymer: contacting residues on BOTH sides
-    min_ligand_atoms: int = 3      # polymer-ligand: ligand atoms in contact
-    min_ligand_residues: int = 2   # polymer-ligand: polymer residues in contact
-    ion_cutoff: float = 3.0        # coordination distance (MetalPDB / InterMetalDB); only N/O/S donors count
+    min_residues: int = 5  # polymer-polymer: contacting residues on BOTH sides
+    min_ligand_atoms: int = 3  # polymer-ligand: ligand atoms in contact
+    min_ligand_residues: int = 2  # polymer-ligand: polymer residues in contact
+    ion_cutoff: float = (
+        3.0  # coordination distance (MetalPDB / InterMetalDB); only N/O/S donors count
+    )
     min_ion_residues: int = 1
 
 
@@ -34,15 +40,22 @@ class UnitCfg:
     max_polymer_chains: int = 6
     max_ligands: int = 4
     max_ions: int = 8
-    join_min_residues: int = 3     # joiner's residues touching R
-    allowed_pairs: frozenset = frozenset({
-        ("protein", "protein"), ("na", "protein"), ("ligand", "protein"),
-        ("ion", "protein"), ("ion", "na"),
-    })
+    join_min_residues: int = 3  # joiner's residues touching R
+    allowed_pairs: frozenset = frozenset(
+        {
+            ("protein", "protein"),
+            ("na", "protein"),
+            ("ligand", "protein"),
+            ("ion", "protein"),
+            ("ion", "na"),
+        }
+    )
     max_polymer_chains_in_assembly: int = 60
     max_units: int = 200
     weight_bucket: int = 5
-    max_forced_polymer: int = 10   # antibody partners / duplex strands bypass max_polymer_chains up to this
+    max_forced_polymer: int = (
+        10  # antibody partners / duplex strands bypass max_polymer_chains up to this
+    )
 
 
 @dataclass
@@ -51,7 +64,7 @@ class Edge:
     b: int
     n_atom_pairs: int
     res_pairs: np.ndarray  # (n, 2) unique residue pairs, column 0 on side a
-    atoms_a: np.ndarray    # contacting atom indices on side a
+    atoms_a: np.ndarray  # contacting atom indices on side a
     atoms_b: np.ndarray
     min_dist: float
 
@@ -97,7 +110,9 @@ def inter_node_pairs(xyz: np.ndarray, node_idx: np.ndarray, cutoff: float):
     lo = ucell.min(axis=0) - 1
     span = ucell.max(axis=0) - lo + 2
     key = (ucell - lo) @ np.array([span[1] * span[2], span[2], 1])
-    ks = np.argsort(key)  # ucell is lexsorted so already ordered, kept explicit for safety
+    ks = np.argsort(
+        key
+    )  # ucell is lexsorted so already ordered, kept explicit for safety
     key_sorted = key[ks]
     I, J = [], []
     for off in _OFFSETS:
@@ -129,7 +144,9 @@ def inter_node_pairs(xyz: np.ndarray, node_idx: np.ndarray, cutoff: float):
     return i[near], j[near], d[near]
 
 
-def node_edges(xyz, node_idx, res_idx, kinds, ccfg: ContactCfg, donor=None) -> dict[tuple[int, int], Edge]:
+def node_edges(
+    xyz, node_idx, res_idx, kinds, ccfg: ContactCfg, donor=None
+) -> dict[tuple[int, int], Edge]:
     """All node-node contacts (no significance filter yet), keyed ``(a, b)`` with a < b.
 
     Ion edges use ``ion_cutoff`` and, if ``donor`` (bool per atom) is given, only count donor atoms.
@@ -162,7 +179,9 @@ def node_edges(xyz, node_idx, res_idx, kinds, ccfg: ContactCfg, donor=None) -> d
         p = int(pair_s[lo])
         a, b = p // nn, p % nn
         rp = np.unique(np.stack([res_idx[i[m]], res_idx[j[m]]], axis=1), axis=0)
-        out[(a, b)] = Edge(a, b, len(m), rp, np.unique(i[m]), np.unique(j[m]), float(d[m].min()))
+        out[(a, b)] = Edge(
+            a, b, len(m), rp, np.unique(i[m]), np.unique(j[m]), float(d[m].min())
+        )
     return out
 
 
@@ -170,7 +189,10 @@ def _significant(e: Edge, kinds: list[str], ccfg: ContactCfg, ucfg: UnitCfg) -> 
     ka, kb = kinds[e.a], kinds[e.b]
     if (ka, kb) not in ucfg.allowed_pairs and (kb, ka) not in ucfg.allowed_pairs:
         return False
-    for small, k in (("ion", ccfg.min_ion_residues), ("ligand", ccfg.min_ligand_residues)):
+    for small, k in (
+        ("ion", ccfg.min_ion_residues),
+        ("ligand", ccfg.min_ligand_residues),
+    ):
         if small in (ka, kb):
             if ka == small:
                 atoms, pol_res = e.atoms_a, e.res_b
@@ -250,12 +272,22 @@ def find_units(
 
     def is_bundle_edge(key) -> bool:
         a, b = key
-        return bool(ab_class[a] and ab_class[b] and ab_class[b] in PAIR_PARTNERS.get(ab_class[a], ()))
+        return bool(
+            ab_class[a]
+            and ab_class[b]
+            and ab_class[b] in PAIR_PARTNERS.get(ab_class[a], ())
+        )
 
     # an ion alone is not an interface: it seeds only when it bridges >= 2 nodes
-    seeds = [k for k in sig if all(kinds[n] != "ion" or len(partners[n]) >= 2 for n in k)]
-    limit = {"protein": ucfg.max_polymer_chains, "na": ucfg.max_polymer_chains,
-             "ligand": ucfg.max_ligands, "ion": ucfg.max_ions}
+    seeds = [
+        k for k in sig if all(kinds[n] != "ion" or len(partners[n]) >= 2 for n in k)
+    ]
+    limit = {
+        "protein": ucfg.max_polymer_chains,
+        "na": ucfg.max_polymer_chains,
+        "ligand": ucfg.max_ligands,
+        "ion": ucfg.max_ions,
+    }
     poly = ("protein", "na")
     by_nodes: dict[tuple[int, ...], Unit] = {}
     bundle_only: dict[tuple[int, ...], bool] = {}
@@ -286,8 +318,13 @@ def find_units(
             if kinds[c] in poly:
                 # a polymer linked through an ion / ligand is judged by that edge's threshold
                 small = [kinds[m] for m in key if kinds[m] in ("ion", "ligand")]
-                need = (ccfg.min_ion_residues if "ion" in small else ccfg.min_ligand_residues
-                        if "ligand" in small else ucfg.join_min_residues)
+                need = (
+                    ccfg.min_ion_residues
+                    if "ion" in small
+                    else ccfg.min_ligand_residues
+                    if "ligand" in small
+                    else ucfg.join_min_residues
+                )
             else:
                 need = 1
             if s >= need:
@@ -297,7 +334,8 @@ def find_units(
             if c in group:
                 continue
             n_kind = sum(
-                (kinds[g] in poly) == (kinds[c] in poly) and (kinds[c] in poly or kinds[g] == kinds[c])
+                (kinds[g] in poly) == (kinds[c] in poly)
+                and (kinds[c] in poly or kinds[g] == kinds[c])
                 for g in group
             )
             if n_kind >= limit[kinds[c]]:
@@ -312,7 +350,9 @@ def find_units(
             bundle_only[gk] &= is_bundle_edge(key)
             continue
         members = {(a, b) for a in gk for b in gk if a < b}
-        by_nodes[gk] = Unit(list(gk), [sig[k] for k in sorted(members) if k in sig], [key], truncated)
+        by_nodes[gk] = Unit(
+            list(gk), [sig[k] for k in sorted(members) if k in sig], [key], truncated
+        )
         bundle_only[gk] = is_bundle_edge(key)
     # a bare H-L (or TCR alpha-beta) unit is redundant when a larger unit holds the pair plus a partner
     sets = {gk: frozenset(gk) for gk in by_nodes}
@@ -340,7 +380,9 @@ def select_waters(
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=bool)
     n_u = len(unit_xyz)
     xyz = np.vstack([unit_xyz, water_xyz])
-    node = np.concatenate([unit_node, np.full(len(water_xyz), int(unit_node.max()) + 1)])
+    node = np.concatenate(
+        [unit_node, np.full(len(water_xyz), int(unit_node.max()) + 1)]
+    )
     i, j, d = inter_node_pairs(xyz, node, max(near, bridge))
     # inter_node_pairs orders i < j, so a unit-water pair has the unit atom as i and the water as j
     is_uw = j >= n_u
@@ -361,10 +403,12 @@ def select_waters(
 def unit_signature(unit: Unit, node_keys: list[str], bucket: int = 5) -> tuple:
     """Symmetry-invariant identity: node keys (seq id / CCD id) + bucketed contact sizes."""
     nodes = tuple(sorted(node_keys[n] for n in unit.nodes))
-    es = tuple(sorted(
-        (*sorted((node_keys[e.a], node_keys[e.b])), round(e.weight / bucket))
-        for e in unit.edges
-    ))
+    es = tuple(
+        sorted(
+            (*sorted((node_keys[e.a], node_keys[e.b])), round(e.weight / bucket))
+            for e in unit.edges
+        )
+    )
     return nodes, es
 
 
@@ -375,7 +419,8 @@ def drop_ion_subsets(units: list[Unit], kinds: list[str]) -> list[Unit]:
     for n, u in enumerate(units):
         covered = any(
             sets[n] < sets[m] and all(kinds[x] == "ion" for x in sets[m] - sets[n])
-            for m in range(len(units)) if m != n
+            for m in range(len(units))
+            if m != n
         )
         if not covered:
             keep.append(u)

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from structcooker.instructions.potential.pairs import AA, TYPES
+from structcooker.instructions.potential.pairs import AA
 
 
 def frame_atom_names(type_idx: int) -> tuple[str, str, str]:
@@ -31,7 +31,11 @@ def frames(cm, rtype: np.ndarray):
         want = np.full(n, "", dtype="U3")
         for t in np.unique(rtype[rtype >= 0]):
             want[rtype == t] = frame_atom_names(int(t))[slot]
-        hit = np.flatnonzero((name == want[atom_res]) & np.isfinite(xyz).all(axis=1) & (rtype[atom_res] >= 0))
+        hit = np.flatnonzero(
+            (name == want[atom_res])
+            & np.isfinite(xyz).all(axis=1)
+            & (rtype[atom_res] >= 0)
+        )
         r, first = np.unique(atom_res[hit], return_index=True)
         pts[slot, r] = xyz[hit[first]]
     a, o, c = pts

@@ -11,6 +11,7 @@ input/output name collision — a same-name target silently returns the *uncappe
 ``max_depth`` comes from the config's ``parameters``. Unlike the older ``lightweight_msa``
 recipe, this neither double-wraps (``msa_dict_record``) nor no-ops the deep records.
 """
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.openfold import cap_msa_dict

@@ -1,4 +1,5 @@
 """Recipe: the antibody records of a PDB fasta (``ab_seq.fasta``), headers as in the input."""
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.antibody_fasta import filter_fasta_antibody

@@ -9,7 +9,6 @@ import numpy as np
 
 from structcooker.instructions.design.ss import backbone
 
-
 CHAIN_LETTERS = string.ascii_uppercase + string.ascii_lowercase + string.digits
 
 
@@ -29,15 +28,19 @@ def backbone_pdb_text(cm):
     use = (rtype >= 0) & (rtype < 20) & np.isfinite(x).all(axis=(1, 2))
     present, letter = np.unique(chain[use], return_inverse=True)
     if len(present) > len(CHAIN_LETTERS):
-        raise ValueError(f"{len(present)} protein chains do not fit the {len(CHAIN_LETTERS)} PDB chain letters")
+        raise ValueError(
+            f"{len(present)} protein chains do not fit the {len(CHAIN_LETTERS)} PDB chain letters"
+        )
     chain_letter = np.zeros(len(chain), dtype=np.int64)
     chain_letter[use] = letter
     lines, serial = [], 1
     for r in np.flatnonzero(use):
         for k, a in enumerate(("N", "CA", "C", "O")):
             X, Y, Z = x[r, k]
-            lines.append(f"ATOM  {serial % 100000:5d} {a:^4s} {comp[r]:>3s} {CHAIN_LETTERS[chain_letter[r]]}{(cif[r] + 1) % 10000:4d}    "
-                         f"{X:8.3f}{Y:8.3f}{Z:8.3f}  1.00  0.00          {a[0]:>2s}")
+            lines.append(
+                f"ATOM  {serial % 100000:5d} {a:^4s} {comp[r]:>3s} {CHAIN_LETTERS[chain_letter[r]]}{(cif[r] + 1) % 10000:4d}    "
+                f"{X:8.3f}{Y:8.3f}{Z:8.3f}  1.00  0.00          {a[0]:>2s}"
+            )
             serial += 1
     return "\n".join(lines) + "\nEND\n"
 

@@ -1,4 +1,5 @@
 """A failed MMseqs2 batch is split and retried; only a query that fails alone raises."""
+
 import pytest
 
 from structcooker.instructions.transforms import msa_mmseqs
@@ -24,7 +25,14 @@ def _fake_search(max_ok, bad=()):
 
 def _run(tmp_path, n):
     chunk = [(f"P{i:020d}", "ACDEFGHIK") for i in range(n)]
-    return run_mmseqs_msa_search(chunk, 0, tmp_path / "work", tmp_path / "out", db_uniref=tmp_path, mmseqs_bin=tmp_path)
+    return run_mmseqs_msa_search(
+        chunk,
+        0,
+        tmp_path / "work",
+        tmp_path / "out",
+        db_uniref=tmp_path,
+        mmseqs_bin=tmp_path,
+    )
 
 
 def test_a_failed_batch_is_split_until_it_passes(tmp_path, monkeypatch):

@@ -4,6 +4,7 @@ The end-to-end build (db_configs/MANIFEST_all.yaml) runs every one of these conf
 reader/writer hook that no longer resolves would otherwise surface only when its stage runs,
 possibly days into a build.
 """
+
 import importlib
 import re
 from pathlib import Path
@@ -37,7 +38,9 @@ def test_config_references_resolve(path):
             assert Path(text).is_file(), f"{path.name}: recipe {text} is missing"
         elif _DOTTED.match(text):
             module, _, attr = text.rpartition(".")
-            assert hasattr(importlib.import_module(module), attr), f"{path.name}: {text} does not resolve"
+            assert hasattr(importlib.import_module(module), attr), (
+                f"{path.name}: {text} does not resolve"
+            )
 
 
 @pytest.mark.parametrize("path", CONFIGS, ids=lambda p: str(p.relative_to(DB)))

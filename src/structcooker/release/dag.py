@@ -1,4 +1,5 @@
 """Verified releases as finite native SLURM jobs, with no resident polling process."""
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,6 @@ from datacooker.utils.paths import scan_paths
 from omegaconf import OmegaConf
 
 from structcooker.build import preflight, workflow_ops
-from structcooker.build.cluster import NODE_CORES
 from structcooker.build.build_state import (
     Fingerprints,
     claim_output,
@@ -29,6 +29,7 @@ from structcooker.build.build_state import (
     write_json,
 )
 from structcooker.build.build_verify import verify_output
+from structcooker.build.cluster import NODE_CORES
 
 # Stages that finish together queue for the dispatch lock (held for a few sbatch calls).
 _DISPATCH_WAIT = 600
@@ -43,15 +44,28 @@ def encode_engine_paths(original: Any, resolved: Any) -> Any:
     if isinstance(original, dict):
         return {k: encode_engine_paths(v, resolved[k]) for k, v in original.items()}
     if isinstance(original, (list, tuple)):
-        return [encode_engine_paths(v, r) for v, r in zip(original, resolved, strict=True)]
+        return [
+            encode_engine_paths(v, r) for v, r in zip(original, resolved, strict=True)
+        ]
     return resolved
+
 
 def snapshot(repo: Path, workdir: Path) -> tuple[Path, str]:
     """Freeze source packages and dependency declarations before submitting any job."""
     fingerprints = Fingerprints()
-    sources = [repo / "src", repo / "libs/datacooker/src", repo / "pyproject.toml", repo / "pixi.lock"]
+    sources = [
+        repo / "src",
+        repo / "libs/datacooker/src",
+        repo / "pyproject.toml",
+        repo / "pixi.lock",
+    ]
     contents = {str(p.relative_to(repo)): fingerprints.path(p) for p in sources}
-    runtime = {"python": sys.version, "packages": sorted((str(d.metadata.get("Name", "unknown")), d.version) for d in distributions())}
+    runtime = {
+        "python": sys.version,
+        "packages": sorted(
+            (str(d.metadata.get("Name", "unknown")), d.version) for d in distributions()
+        ),
+    }
     signature = digest({"contents": contents, "runtime": runtime})
     destination = workdir / "snapshots" / signature
     if not destination.exists():
@@ -63,23 +77,34 @@ def snapshot(repo: Path, workdir: Path) -> tuple[Path, str]:
             target = temporary / source.relative_to(repo)
             target.parent.mkdir(parents=True, exist_ok=True)
             if source.is_dir():
-                shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+                shutil.copytree(
+                    source,
+                    target,
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+                )
             else:
                 shutil.copy2(source, target)
         temporary.rename(destination)
         write_json(destination / "environment.json", runtime)
-    captured = {str(p.relative_to(repo)): fingerprints.path(destination / p.relative_to(repo)) for p in sources}
+    captured = {
+        str(p.relative_to(repo)): fingerprints.path(destination / p.relative_to(repo))
+        for p in sources
+    }
     # Optional dependency declaration files may be absent in test repositories.
     for source in sources:
         if not source.exists():
-            captured[str(source.relative_to(repo))] = contents[str(source.relative_to(repo))]
+            captured[str(source.relative_to(repo))] = contents[
+                str(source.relative_to(repo))
+            ]
     if captured != contents:
         msg = f"Code snapshot is incomplete or was modified: {destination}"
         raise RuntimeError(msg)
     return destination, signature
 
+
 def freeze_config(cfg: dict[str, Any], repo: Path, frozen: Path) -> dict[str, Any]:
     """Resolve path objects and pin all recipe paths to the captured source tree."""
+
     def convert(value: Any) -> Any:
         if isinstance(value, dict):
             return {k: convert(v) for k, v in value.items()}
@@ -99,6 +124,7 @@ def freeze_config(cfg: dict[str, Any], repo: Path, frozen: Path) -> dict[str, An
         if isinstance(value, str) and value.startswith(str(repo / "src") + "/"):
             return str(frozen / Path(value).relative_to(repo))
         return value
+
     return convert(cfg)
 
 
@@ -116,19 +142,30 @@ def input_identity(cfg: dict[str, Any]) -> str:
     inputs = {}
     for path in preflight.input_paths(cfg):
         if str(path) == str(cfg.get("data_dir")) and cfg.get("file_list"):
-            continue                  # the base a file list's relative lines resolve against
+            continue  # the base a file list's relative lines resolve against
         if str(path) == str(cfg.get("data_dir")):
             patterns = cfg.get("input_patterns", [cfg.get("file_pattern", "*")])
-            paths = sorted({p for pattern in patterns for p in scan_paths(path, pattern=pattern)})
+            paths = sorted(
+                {p for pattern in patterns for p in scan_paths(path, pattern=pattern)}
+            )
             inputs[str(path)] = hashes.files(paths)
         elif str(path) == str(cfg.get("file_list")) and not cfg.get("keyed"):
             from datacooker.cli.lmdb import resolve_listed
 
-            listed = [resolve_listed(s, cfg.get("data_dir")) for s in path.read_text().splitlines() if s]
-            inputs[str(path)] = {"list": hashes.file(path), "payloads": hashes.files(listed)}
+            listed = [
+                resolve_listed(s, cfg.get("data_dir"))
+                for s in path.read_text().splitlines()
+                if s
+            ]
+            inputs[str(path)] = {
+                "list": hashes.file(path),
+                "payloads": hashes.files(listed),
+            }
         else:
             inputs[str(path)] = hashes.path(path)
-    return digest({"config": freeze_config(cfg, Path.cwd(), Path.cwd()), "inputs": inputs})
+    return digest(
+        {"config": freeze_config(cfg, Path.cwd(), Path.cwd()), "inputs": inputs}
+    )
 
 
 def output_identity(cfg: dict[str, Any]) -> dict[str, Any]:
@@ -142,21 +179,35 @@ def output_identity(cfg: dict[str, Any]) -> dict[str, Any]:
 
 def _executor(run: Path, folder: Path) -> SlurmExecutor:
     definition = _read(run / "release.json")
-    return SlurmExecutor(workdir=folder, repo=Path(definition["repo"]),
-                         pixi_manifest=(Path(definition["repo"]) / "pyproject.toml").resolve())
+    return SlurmExecutor(
+        workdir=folder,
+        repo=Path(definition["repo"]),
+        pixi_manifest=(Path(definition["repo"]) / "pyproject.toml").resolve(),
+    )
 
 
 def _submit(run: Path, name: str, action: str, depends: tuple[str, ...] = ()) -> str:
     definition = _read(run / "release.json")
     frozen = Path(definition["frozen"])
     folder = run / "jobs" / uuid4().hex
-    command = ["env", f"PYTHONPATH={frozen}/src:{frozen}/libs/datacooker/src",
-               sys.executable, "-m", "structcooker.release.dag", action, str(run), name]
+    command = [
+        "env",
+        f"PYTHONPATH={frozen}/src:{frozen}/libs/datacooker/src",
+        sys.executable,
+        "-m",
+        "structcooker.release.dag",
+        action,
+        str(run),
+        name,
+    ]
     handle = _executor(run, folder).run_once(
-        name=f"release_{action}_{name.replace('/', '_')}", argv=command,
+        name=f"release_{action}_{name.replace('/', '_')}",
+        argv=command,
         # Verification decodes every record on a process pool (build_verify); planning is
         # mostly I/O.
-        mem_gb=128, cores=NODE_CORES if action == "verify" else 8, depends_on=depends,
+        mem_gb=128,
+        cores=NODE_CORES if action == "verify" else 8,
+        depends_on=depends,
     )
     if not handle.job_id:
         msg = "Scheduler did not return a job ID"
@@ -171,21 +222,30 @@ def dispatch(run: Path) -> None:
         states = {name: _read(_state(run, name)) for name in definition["graph"]}
         for name, parents in definition["graph"].items():
             state = states[name]
-            if state.get("phase") != "waiting" or any(states[p].get("phase") != "complete" for p in parents):
+            if state.get("phase") != "waiting" or any(
+                states[p].get("phase") != "complete" for p in parents
+            ):
                 continue
             state.update(phase="submitting")
             write_json(_state(run, name), state)
             job = _submit(run, name, "plan")
             state.update(phase="queued", job=job, action="plan")
             write_json(_state(run, name), state)
-        write_json(run / "summary.json", {"complete": all(s.get("phase") == "complete" for s in states.values()),
-                                         "nodes": {n: s.get("phase") for n, s in states.items()}})
+        write_json(
+            run / "summary.json",
+            {
+                "complete": all(s.get("phase") == "complete" for s in states.values()),
+                "nodes": {n: s.get("phase") for n, s in states.items()},
+            },
+        )
 
 
 def start(repo: Path, manifest: Path, run: Path, policy: Path) -> None:
     """Freeze a portable definition or reconcile a previous run without waiting for jobs."""
     graph = OmegaConf.to_container(OmegaConf.load(manifest), resolve=True)
-    if not isinstance(graph, dict) or any(not isinstance(v, list) for v in graph.values()):
+    if not isinstance(graph, dict) or any(
+        not isinstance(v, list) for v in graph.values()
+    ):
         msg = "Manifest must map node names to dependency lists"
         raise ValueError(msg)
     graph = {str(n): [str(p) for p in parents] for n, parents in graph.items()}
@@ -199,17 +259,28 @@ def start(repo: Path, manifest: Path, run: Path, policy: Path) -> None:
     run.mkdir(parents=True, exist_ok=True)
     with exclusive(run / "definition.lock"):
         frozen, code = snapshot(repo, run)
-        encoded = {n: encode_engine_paths(cfg, freeze_config(cfg, repo, frozen)) for n, cfg in configs.items()}
+        encoded = {
+            n: encode_engine_paths(cfg, freeze_config(cfg, repo, frozen))
+            for n, cfg in configs.items()
+        }
         exceptions = _read(policy)
         for name, entries in exceptions.items():
             if not isinstance(entries, dict) or any(
-                not isinstance(v, dict) or not v.get("reason")
-                or not re.fullmatch(r"[0-9a-f]{64}", v.get("sha256", "")) for v in entries.values()
+                not isinstance(v, dict)
+                or not v.get("reason")
+                or not re.fullmatch(r"[0-9a-f]{64}", v.get("sha256", ""))
+                for v in entries.values()
             ):
                 msg = f"{name}: exceptions require exact input keys, SHA256 and reasons"
                 raise ValueError(msg)
-        definition = {"repo": str(repo), "frozen": str(frozen), "code": code,
-                      "graph": graph, "configs": encoded, "policy": exceptions}
+        definition = {
+            "repo": str(repo),
+            "frozen": str(frozen),
+            "code": code,
+            "graph": graph,
+            "configs": encoded,
+            "policy": exceptions,
+        }
         signature = digest(definition)
         previous = _read(run / "release.json")
         if previous and previous.get("signature") != signature:
@@ -244,23 +315,39 @@ def reconcile(run: Path) -> None:
         if attempt:
             jobs.update(p.read_text().strip() for p in attempt.rglob("*.job-id"))
         if attempt and (attempt / "submit.out").exists():
-            jobs.update(re.findall(r"\[slurm\].*?: job (\d+)", (attempt / "submit.out").read_text()))
+            jobs.update(
+                re.findall(
+                    r"\[slurm\].*?: job (\d+)", (attempt / "submit.out").read_text()
+                )
+            )
         stage_active = False
         for job in jobs:
-            result = subprocess.run(["scontrol", "show", "job", "-o", job], capture_output=True, text=True, check=False)  # noqa: S603, S607 - scheduler argv
+            result = subprocess.run(
+                ["scontrol", "show", "job", "-o", job],
+                capture_output=True,
+                text=True,
+                check=False,
+            )  # noqa: S603, S607 - scheduler argv
             found = re.findall(r"JobState=(\S+)", result.stdout)
             if result.returncode or not found:
                 receipts = list(run.rglob(f"{job}.exit.json"))
                 if len(receipts) != 1:
                     msg = f"{name}: cannot establish terminal state for {job}"
                     raise RuntimeError(msg)
-                found = ["COMPLETED" if _read(receipts[0])["exit_code"] == 0 else "FAILED"]
-            if any(s in _ACTIVE for s in found) and "Reason=DependencyNeverSatisfied" not in result.stdout:
+                found = [
+                    "COMPLETED" if _read(receipts[0])["exit_code"] == 0 else "FAILED"
+                ]
+            if (
+                any(s in _ACTIVE for s in found)
+                and "Reason=DependencyNeverSatisfied" not in result.stdout
+            ):
                 stage_active = True
         if stage_active:
             active = True
             continue
-        state.update(phase="waiting", error="Replay a terminal stage using its recorded attempt")
+        state.update(
+            phase="waiting", error="Replay a terminal stage using its recorded attempt"
+        )
         write_json(_state(run, name), state)
     if not active:
         # A repeat invocation must check completed input/output identities on compute.
@@ -290,7 +377,9 @@ def _pin_references(cfg: dict[str, Any], attempt: Path) -> dict[str, Any]:
         target = attempt / "references" / (key + source.suffix)
         target.parent.mkdir(exist_ok=True)
         if key in OVERRIDE_MAPS:
-            from structcooker.instructions.readers.openfold import load_structure_overrides
+            from structcooker.instructions.readers.openfold import (
+                load_structure_overrides,
+            )
 
             pinned = {}
             for original, payload in load_structure_overrides(source).items():
@@ -318,7 +407,9 @@ def plan_stage(run: Path, name: str) -> None:
     activate_environment(cfg)
     state.update(phase="planning")
     write_json(state_path, state)
-    identity = digest({"inputs": input_identity(cfg), "definition": definition["signature"]})
+    identity = digest(
+        {"inputs": input_identity(cfg), "definition": definition["signature"]}
+    )
     outputs = preflight.output_paths(cfg)
     if not outputs:
         msg = f"{name}: no declared outputs"
@@ -329,12 +420,18 @@ def plan_stage(run: Path, name: str) -> None:
                 msg = f"Untracked output {output}; use a fresh output root"
                 raise RuntimeError(msg)
             claim_output(output, state_path)
-    if state.get("completed_identity") == identity and state.get("output") == output_identity(cfg):
+    if state.get("completed_identity") == identity and state.get(
+        "output"
+    ) == output_identity(cfg):
         state.update(phase="complete", reused=True, error=None)
         write_json(state_path, state)
         dispatch(run)
         return
-    attempt = Path(state["attempt"]) if state.get("identity") == identity and state.get("attempt") else None
+    attempt = (
+        Path(state["attempt"])
+        if state.get("identity") == identity and state.get("attempt")
+        else None
+    )
     if attempt and (attempt / "submitted.json").exists():
         terminal = repair_attempt(run, cfg, attempt)
     else:
@@ -344,23 +441,53 @@ def plan_stage(run: Path, name: str) -> None:
         attempt = state_path.parent / "attempts" / uuid4().hex
         attempt.mkdir(parents=True)
         engine_cfg = _pin_references(cfg, attempt)
-        OmegaConf.save(OmegaConf.create(encode_engine_paths(engine_cfg, freeze_config(engine_cfg, Path(definition["repo"]), Path(definition["frozen"])))), attempt / "engine.yaml")
+        OmegaConf.save(
+            OmegaConf.create(
+                encode_engine_paths(
+                    engine_cfg,
+                    freeze_config(
+                        engine_cfg, Path(definition["repo"]), Path(definition["frozen"])
+                    ),
+                )
+            ),
+            attempt / "engine.yaml",
+        )
         state.update(attempt=str(attempt), identity=identity)
         write_json(state_path, state)
         op = workflow_ops.op_of(cfg)
         if op in workflow_ops.WORKFLOW_CMD:
             # Projections and parallel searches write files, not an LMDB: one job, or an
             # N-task array for a parallel op that declares node_count.
-            terminal = str(workflow_ops.submit(_executor(run, attempt), op, op, attempt / "engine.yaml", cfg))
+            terminal = str(
+                workflow_ops.submit(
+                    _executor(run, attempt), op, op, attempt / "engine.yaml", cfg
+                )
+            )
         else:
-            result = subprocess.run([sys.executable, "-m", "datacooker.cli.lmdb", "pipeline",  # noqa: S603 - captured config argv
-                                     str(attempt / "engine.yaml"), "--workdir", str(attempt),
-                                     "--schema", str(cfg["schema"]), "--repo", definition["repo"]],
-                                    capture_output=True, text=True, check=False)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "datacooker.cli.lmdb",
+                    "pipeline",  # noqa: S603 - captured config argv
+                    str(attempt / "engine.yaml"),
+                    "--workdir",
+                    str(attempt),
+                    "--schema",
+                    str(cfg["schema"]),
+                    "--repo",
+                    definition["repo"],
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             (attempt / "submit.out").write_text(result.stdout)
             (attempt / "submit.err").write_text(result.stderr)
             result.check_returncode()
-            match = re.search(r"^PIPELINE_TERMINAL_JOB=(\d+)$", result.stdout, re.MULTILINE)
+            match = re.search(
+                r"^PIPELINE_TERMINAL_JOB=(\d+)$", result.stdout, re.MULTILINE
+            )
             if not match:
                 msg = "Ambiguous pipeline submission; inspect attempt manifests"
                 raise RuntimeError(msg)
@@ -368,7 +495,13 @@ def plan_stage(run: Path, name: str) -> None:
         write_json(attempt / "submitted.json", {"terminal": terminal})
     with exclusive(run / "dispatch.lock", wait=_DISPATCH_WAIT):
         job = _submit(run, name, "verify", (terminal,))
-        state.update(phase="submitted", job=job, terminal=terminal, identity=identity, action="verify")
+        state.update(
+            phase="submitted",
+            job=job,
+            terminal=terminal,
+            identity=identity,
+            action="verify",
+        )
         write_json(state_path, state)
 
 
@@ -388,20 +521,42 @@ def repair_attempt(run: Path, cfg: dict[str, Any], attempt: Path) -> str:
                 command = shlex.split(line)
                 target = Path(command[command.index("--output") + 1])
                 report = _read(Path(str(target) + ".build-report.json"))
-                if report and not report.get("failed") and not report.get("skipped_empty"):
+                if (
+                    report
+                    and not report.get("failed")
+                    and not report.get("skipped_empty")
+                ):
                     continue
-                handle = executor.run_once(name=f"repair_{path.stem}_{i}", argv=command, mem_gb=128, cores=8)
+                handle = executor.run_once(
+                    name=f"repair_{path.stem}_{i}", argv=command, mem_gb=128, cores=8
+                )
                 workers.append(str(handle.job_id))
     if publish is None or index is None:
         op = workflow_ops.op_of(cfg)
         if op in workflow_ops.WORKFLOW_CMD:
             # Projection retries overwrite their own declared outputs through the same recipe;
             # parallel retries skip the items whose outputs are already written.
-            return str(workflow_ops.submit(executor, f"{op}_retry", op, attempt / "engine.yaml", cfg))
+            return str(
+                workflow_ops.submit(
+                    executor, f"{op}_retry", op, attempt / "engine.yaml", cfg
+                )
+            )
         msg = "Incomplete submission manifests; reconcile before retrying"
         raise RuntimeError(msg)
-    merged = executor.run_once(name="repair_publish", argv=publish, mem_gb=128, cores=8, depends_on=tuple(workers))
-    indexed = executor.run_once(name="repair_index", argv=index, mem_gb=64, cores=8, depends_on=(str(merged.job_id),))
+    merged = executor.run_once(
+        name="repair_publish",
+        argv=publish,
+        mem_gb=128,
+        cores=8,
+        depends_on=tuple(workers),
+    )
+    indexed = executor.run_once(
+        name="repair_index",
+        argv=index,
+        mem_gb=64,
+        cores=8,
+        depends_on=(str(merged.job_id),),
+    )
     return str(indexed.job_id)
 
 
@@ -417,12 +572,19 @@ def verify_stage(run: Path, name: str) -> None:
     frozen_cfg = load_config(attempt / "engine.yaml")
     activate_environment(frozen_cfg)
     report = verify_output(frozen_cfg, attempt, definition["policy"].get(name, {}))
-    identity = digest({"inputs": input_identity(cfg), "definition": definition["signature"]})
+    identity = digest(
+        {"inputs": input_identity(cfg), "definition": definition["signature"]}
+    )
     if identity != state["identity"]:
         msg = "Inputs changed during stage execution"
         raise RuntimeError(msg)
-    state.update(phase="complete", completed_identity=identity, verification=report,
-                 output=output_identity(cfg), error=None)
+    state.update(
+        phase="complete",
+        completed_identity=identity,
+        verification=report,
+        output=output_identity(cfg),
+        error=None,
+    )
     write_json(path, state)
     dispatch(run)
 
@@ -448,7 +610,10 @@ def main() -> None:
     except BaseException as exc:
         path = _state(run, name)
         state = _read(path)
-        state.update(phase="failed" if action == "plan" else "verification_failed", error=str(exc))
+        state.update(
+            phase="failed" if action == "plan" else "verification_failed",
+            error=str(exc),
+        )
         write_json(path, state)
         dispatch(run)
         raise

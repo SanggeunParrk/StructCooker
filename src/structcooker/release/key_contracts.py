@@ -15,12 +15,14 @@ Rules (``chain_id`` and ``seq_id`` are the structure's ``chains.nodes`` columns)
 
 A new template DB or a new key rule is added here, with the structure DB it is looked up from.
 """
+
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
@@ -30,26 +32,54 @@ SAMPLE_RECORDS = 300
 @dataclass(frozen=True)
 class Contract:
     name: str
-    structure: str  # attached cif DB, relative to ``<BIOMOL_ROOT>/lmdb``, without ``.lmdb``
+    structure: (
+        str  # attached cif DB, relative to ``<BIOMOL_ROOT>/lmdb``, without ``.lmdb``
+    )
     template: str
     rule: str
     min_hit: float = 0.9  # a chain may lack a template key (e.g. not a polypeptide the template build covers)
 
 
 CONTRACTS = (
-    Contract("pdb", "pdb/cif_attached/cif_pdb_attached", "chain/template/template", "label"),
-    Contract("disordered", "distillation_disordered/cif_attached/cif_disordered_attached",
-             "distillation_disordered/template/template_disordered", "label"),
-    Contract("short", "distillation_short/cif_attached/cif_short_attached",
-             "distillation_short/template/template_topn_short", "record"),
-    Contract("long", "distillation_long/cif_attached/cif_long_attached",
-             "distillation_long/template/template_topn_long", "record"),
-    Contract("teddymer", "teddymer/cif_attached/cif_teddymer_attached",
-             "teddymer/template/template_teddymer", "seq_id"),
-    Contract("afm_homodimer", "afdb_multimer/cif_attached/cif_afm_homodimer_attached",
-             "afdb_multimer/template/template_afm", "seq_id"),
-    Contract("afm_heterodimer", "afdb_multimer/cif_attached/cif_afm_heterodimer_attached",
-             "afdb_multimer/template/template_afm", "seq_id"),
+    Contract(
+        "pdb", "pdb/cif_attached/cif_pdb_attached", "chain/template/template", "label"
+    ),
+    Contract(
+        "disordered",
+        "distillation_disordered/cif_attached/cif_disordered_attached",
+        "distillation_disordered/template/template_disordered",
+        "label",
+    ),
+    Contract(
+        "short",
+        "distillation_short/cif_attached/cif_short_attached",
+        "distillation_short/template/template_topn_short",
+        "record",
+    ),
+    Contract(
+        "long",
+        "distillation_long/cif_attached/cif_long_attached",
+        "distillation_long/template/template_topn_long",
+        "record",
+    ),
+    Contract(
+        "teddymer",
+        "teddymer/cif_attached/cif_teddymer_attached",
+        "teddymer/template/template_teddymer",
+        "seq_id",
+    ),
+    Contract(
+        "afm_homodimer",
+        "afdb_multimer/cif_attached/cif_afm_homodimer_attached",
+        "afdb_multimer/template/template_afm",
+        "seq_id",
+    ),
+    Contract(
+        "afm_heterodimer",
+        "afdb_multimer/cif_attached/cif_afm_heterodimer_attached",
+        "afdb_multimer/template/template_afm",
+        "seq_id",
+    ),
 )
 
 
@@ -65,12 +95,19 @@ def _seq_id(record: str, chain_id: str, seq_id: str) -> str:
     return seq_id
 
 
-RULES: dict[str, Callable[[str, str, str], str]] = {"label": _label, "record": _record, "seq_id": _seq_id}
+RULES: dict[str, Callable[[str, str, str], str]] = {
+    "label": _label,
+    "record": _record,
+    "seq_id": _seq_id,
+}
 
 
 def _column(nodes: dict[str, Any], name: str) -> list[str]:
     col = nodes[name]
-    return [str(x) for x in np.asarray(col["value"] if isinstance(col, dict) else col).ravel()]
+    return [
+        str(x)
+        for x in np.asarray(col["value"] if isinstance(col, dict) else col).ravel()
+    ]
 
 
 def record_keys(record: str, value: dict, rule: str) -> list[str]:
@@ -79,33 +116,52 @@ def record_keys(record: str, value: dict, rule: str) -> list[str]:
     keys = []
     for assembly in value.values():
         nodes = assembly["cifmol_attached_dict"]["chains"]["nodes"]
-        for cid, etype, sid in zip(_column(nodes, "chain_id"), _column(nodes, "entity_type"), _column(nodes, "seq_id")):
+        for cid, etype, sid in zip(
+            _column(nodes, "chain_id"),
+            _column(nodes, "entity_type"),
+            _column(nodes, "seq_id"),
+            strict=False,
+        ):
             if "polypeptide" in etype:
                 keys.append(derive(record, cid, sid))
     return keys
 
 
-def check(contract: Contract, lmdb_root: Path, records: int = SAMPLE_RECORDS) -> dict[str, Any]:
+def check(
+    contract: Contract, lmdb_root: Path, records: int = SAMPLE_RECORDS
+) -> dict[str, Any]:
     """Sample structure records of ``contract`` and count the chains whose derived key is in the template DB."""
     from datacooker.lmdb.sharded import open_env
 
     from structcooker.instructions.transforms.codecs import from_bytes
 
-    report: dict[str, Any] = {"contract": contract.name, "rule": contract.rule, "problems": []}
-    struct, templ = lmdb_root / f"{contract.structure}.lmdb", lmdb_root / f"{contract.template}.lmdb"
+    report: dict[str, Any] = {
+        "contract": contract.name,
+        "rule": contract.rule,
+        "problems": [],
+    }
+    struct, templ = (
+        lmdb_root / f"{contract.structure}.lmdb",
+        lmdb_root / f"{contract.template}.lmdb",
+    )
     for path in (struct, templ):
         if not path.exists():
             report["problems"].append(f"missing {path}")
             return report
     index = Path(f"{struct}.index.tsv")
     with index.open() as handle:
-        names = [ln.split("\t", 1)[0] for ln in handle if not ln.startswith(("#", "key\t"))]
+        names = [
+            ln.split("\t", 1)[0] for ln in handle if not ln.startswith(("#", "key\t"))
+        ]
     chosen = random.Random(contract.name).sample(names, min(records, len(names)))
     chains = hit = 0
     missing: list[str] = []
-    with open_env(str(struct), readonly=True, lock=False, readahead=False) as senv, \
-            open_env(str(templ), readonly=True, lock=False, readahead=False) as tenv, \
-            senv.begin() as stxn, tenv.begin() as ttxn:
+    with (
+        open_env(str(struct), readonly=True, lock=False, readahead=False) as senv,
+        open_env(str(templ), readonly=True, lock=False, readahead=False) as tenv,
+        senv.begin() as stxn,
+        tenv.begin() as ttxn,
+    ):
         for name in chosen:
             raw = stxn.get(name.encode())
             if raw is None:
@@ -125,7 +181,8 @@ def check(contract: Contract, lmdb_root: Path, records: int = SAMPLE_RECORDS) ->
     elif rate < contract.min_hit:
         report["problems"].append(
             f"only {rate:.1%} of {chains} protein chains find their template key (rule {contract.rule}; "
-            f"need {contract.min_hit:.0%}); e.g. {missing[:3]}")
+            f"need {contract.min_hit:.0%}); e.g. {missing[:3]}"
+        )
     return report
 
 

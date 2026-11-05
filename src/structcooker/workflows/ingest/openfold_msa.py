@@ -24,7 +24,12 @@ msa_recipe = RecipeBook()
 msa_recipe.add(
     targets=(("record_a3m_type", str),),
     instruction=resolve_a3m_type,
-    inputs={"kwargs": {"msa_sources": ("msa_sources", dict), "a3m_type": ("a3m_type", str | None)}},
+    inputs={
+        "kwargs": {
+            "msa_sources": ("msa_sources", dict),
+            "a3m_type": ("a3m_type", str | None),
+        }
+    },
 )
 
 msa_recipe.add(

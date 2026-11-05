@@ -8,6 +8,7 @@ all stored atoms (N CA C O CB of 14 residues) and, separately, over the second f
 A random sample of DB pairs gives the RMSD one would get without any sequence information. With ``--same-kind`` a query
 between two chains is compared only with DB pairs between two chains, a query inside one chain only with DB pairs inside one chain.
 """
+
 import argparse
 import datetime
 import json
@@ -20,9 +21,9 @@ import lmdb
 import numpy as np
 
 from structcooker.instructions.fragdb.extract import extract_pairs
-from structcooker.instructions.transforms.codecs import from_bytes
 from structcooker.instructions.mols import CIFMolAttached
 from structcooker.instructions.potential.pairs import AA
+from structcooker.instructions.transforms.codecs import from_bytes
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 K, MID, MINID = 7, 3, 8
@@ -37,7 +38,9 @@ def load(db):
     S["off"] = np.concatenate([[0], np.cumsum(sizes)])
     seq = np.concatenate(S["seq"])
     S["N"] = len(seq)
-    S["A"] = np.ascontiguousarray(seq[:, 0].T)            # (7, N): column-wise scans are cache friendly
+    S["A"] = np.ascontiguousarray(
+        seq[:, 0].T
+    )  # (7, N): column-wise scans are cache friendly
     S["B"] = np.ascontiguousarray(seq[:, 1].T)
     del seq
     for f in ("pdb", "date", "center", "inter", "chain", "resolution"):
@@ -83,7 +86,7 @@ def one_query(args):
     rng = np.random.default_rng(qi)
     s1, s2 = identity(qseq[0], qseq[1])
     score = np.maximum(s1, s2)
-    if want >= 0:                                                   # same kind of pair only: between chains, or inside one chain
+    if want >= 0:  # same kind of pair only: between chains, or inside one chain
         score = np.where(S["inter"] == want, score, 0).astype(np.uint8)
     top = np.argpartition(score, -topk)[-topk:]
     top = top[np.argsort(-score[top], kind="stable")]
@@ -91,8 +94,8 @@ def one_query(args):
     c = coords_of(top)
     if swapped.any():
         c[swapped] = to_b_frame(c[swapped])
-    d = np.linalg.norm(c - qcoord[None], axis=-1)                               # (topk, 2, k, 5)
-    rmsd_all = np.sqrt((d ** 2).mean(axis=(1, 2, 3)))
+    d = np.linalg.norm(c - qcoord[None], axis=-1)  # (topk, 2, k, 5)
+    rmsd_all = np.sqrt((d**2).mean(axis=(1, 2, 3)))
     rmsd_b = np.sqrt((d[:, 1] ** 2).mean(axis=(1, 2)))
     return qi, int(score.max()), top, score[top], swapped, rmsd_all, rmsd_b
 
@@ -100,28 +103,54 @@ def one_query(args):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pdb", required=True)
-    ap.add_argument("--roles", required=True, help="asym_oper chain ids and roles, e.g. A_1:antigen,B_1:H,C_1:L")
+    ap.add_argument(
+        "--roles",
+        required=True,
+        help="asym_oper chain ids and roles, e.g. A_1:antigen,B_1:H,C_1:L",
+    )
     ap.add_argument("--db", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--assembly", default="1")
     ap.add_argument("--k", type=int, default=7)
-    ap.add_argument("--min-id", type=int, default=0, help="identity (of 2k positions) that counts as a sequence match; default ~57%%")
-    ap.add_argument("--topk", type=int, default=0, help="candidates compared geometrically per query pair (default 200 / 500 / 2000 for k = 7 / 5 / 3)")
+    ap.add_argument(
+        "--min-id",
+        type=int,
+        default=0,
+        help="identity (of 2k positions) that counts as a sequence match; default ~57%%",
+    )
+    ap.add_argument(
+        "--topk",
+        type=int,
+        default=0,
+        help="candidates compared geometrically per query pair (default 200 / 500 / 2000 for k = 7 / 5 / 3)",
+    )
     ap.add_argument("--workers", type=int, default=24)
     ap.add_argument("--max-per-class", type=int, default=400)
-    ap.add_argument("--same-kind", action="store_true", help="a between-chains query is matched only with between-chains DB pairs (and likewise inside one chain)")
+    ap.add_argument(
+        "--same-kind",
+        action="store_true",
+        help="a between-chains query is matched only with between-chains DB pairs (and likewise inside one chain)",
+    )
     a = ap.parse_args()
     global K, MID, MINID
     K, MID = a.k, a.k // 2
     MINID = a.min_id or int(np.ceil(0.57 * 2 * K))
     a.topk = a.topk or {7: 200, 5: 500, 3: 2000}.get(K, 200)
-    out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
     roles = dict(x.split(":") for x in a.roles.split(","))
     t0 = time.time()
-    env = lmdb.open(str(ROOT / "lmdb/pdb/cif_attached/cif_pdb_attached.lmdb"), readonly=True, lock=False)
+    env = lmdb.open(
+        str(ROOT / "lmdb/pdb/cif_attached/cif_pdb_attached.lmdb"),
+        readonly=True,
+        lock=False,
+    )
     with env.begin() as txn:
         rec = from_bytes(bytes(txn.get(a.pdb.encode())))
-    key = min((k for k in rec if k.split("_")[0] == a.assembly), key=lambda c: (int(c.split("_")[1]), c.split("_")[2] != ".", c))
+    key = min(
+        (k for k in rec if k.split("_")[0] == a.assembly),
+        key=lambda c: (int(c.split("_")[1]), c.split("_")[2] != ".", c),
+    )
     cm = CIFMolAttached.from_dict(rec[key]["cifmol_attached_dict"])
     res = extract_pairs(cm, k=K)
     chains = res["chain"]
@@ -142,39 +171,113 @@ def main():
     sel = []
     for c in sorted(set(cls)):
         ii = idx[cls == c]
-        sel += list(rng.choice(ii, min(len(ii), a.max_per_class), replace=False)) if len(ii) > a.max_per_class else list(ii)
+        sel += (
+            list(rng.choice(ii, min(len(ii), a.max_per_class), replace=False))
+            if len(ii) > a.max_per_class
+            else list(ii)
+        )
     sel = np.array(sorted(sel))
-    cls_of = dict(zip(idx.tolist(), cls.tolist()))
-    print(f"query {a.pdb} assembly {a.assembly}, released: see metadata; {len(res['inter'])} pairs in the structure, {keep.sum()} among the three chains "
-          f"{ {c: int((cls == c).sum()) for c in sorted(set(cls))} }; searching {len(sel)}", flush=True)
+    cls_of = dict(zip(idx.tolist(), cls.tolist(), strict=False))
+    print(
+        f"query {a.pdb} assembly {a.assembly}, released: see metadata; {len(res['inter'])} pairs in the structure, {keep.sum()} among the three chains "
+        f"{ {c: int((cls == c).sum()) for c in sorted(set(cls))} }; searching {len(sel)}",
+        flush=True,
+    )
     load(a.db)
     print(f"DB loaded: {S['N']:,} pairs in {time.time() - t0:.0f}s", flush=True)
     qseq = res["seq"][sel]
     qcoord = res["coords"][sel].astype(np.float32) / 100.0
+
     # null: RMSD of random DB pairs against each query pair
-    def null_for(kind):                                               # RMSD of random DB pairs (of one kind) against every query pair
-        pool_idx = np.flatnonzero(S["inter"] == kind) if a.same_kind else np.arange(S["N"])
+    def null_for(
+        kind,
+    ):  # RMSD of random DB pairs (of one kind) against every query pair
+        pool_idx = (
+            np.flatnonzero(S["inter"] == kind) if a.same_kind else np.arange(S["N"])
+        )
         rc = coords_of(np.sort(rng.choice(pool_idx, 4000, replace=False)))
-        return np.sqrt(((rc[None, :, 1] - qcoord[:, None, 1]) ** 2).sum(-1).mean(axis=(2, 3)))
-    null_by = {0: null_for(0), 1: null_for(1)} if a.same_kind else {0: null_for(0), 1: null_for(0)}
+        return np.sqrt(
+            ((rc[None, :, 1] - qcoord[:, None, 1]) ** 2).sum(-1).mean(axis=(2, 3))
+        )
+
+    null_by = (
+        {0: null_for(0), 1: null_for(1)}
+        if a.same_kind
+        else {0: null_for(0), 1: null_for(0)}
+    )
     qkind = res["inter"][sel].astype(int)
     null_b = np.where(qkind[:, None] == 1, null_by[1], null_by[0])
     with mp.get_context("fork").Pool(a.workers) as pool:
-        results = pool.map(one_query, [(i, qseq[i], qcoord[i], a.topk, int(res['inter'][sel[i]]) if a.same_kind else -1) for i in range(len(sel))])
+        results = pool.map(
+            one_query,
+            [
+                (
+                    i,
+                    qseq[i],
+                    qcoord[i],
+                    a.topk,
+                    int(res["inter"][sel[i]]) if a.same_kind else -1,
+                )
+                for i in range(len(sel))
+            ],
+        )
     print(f"searched in {time.time() - t0:.0f}s", flush=True)
     rows = []
     rng_null = np.random.default_rng(1)
     for qi, best, top, sc, sw, ra, rb in results:
-        j = int(np.argmin(rb)); i0 = 0
-        rows.append({"query": int(sel[qi]), "class": cls_of[int(sel[qi])], "chains": list(map(str, chains[sel[qi]])), "center": list(map(int, res["center"][sel[qi]])),
-                     "seqA": "".join(AA[x] for x in qseq[qi, 0]), "seqB": "".join(AA[x] for x in qseq[qi, 1]), "best_id": best,
-                     "top1_rmsd_all": float(ra[i0]), "top1_rmsd_b": float(rb[i0]), "min_rmsd_b": float(rb[j]), "min_rmsd_b_id": int(sc[j]),
-                     "n_hits_id8": int((sc >= MINID).sum()), "n_good": int(((sc >= MINID) & (rb <= 2.5)).sum()),
-                     "null_min_rmsd_b": float(np.median([np.min(rng_null.choice(null_b[qi], a.topk)) for _ in range(100)])),
-                     "null_rmsd_b_median": float(np.median(null_b[qi])), "null_frac_le2.5": float((null_b[qi] <= 2.5).mean()),
-                     "top1": {"pdb": int(S["pdb"][top[i0]]).to_bytes(4, "little").decode(), "chains": list(map(str, S["chain"][top[i0]])), "center": list(map(int, S["center"][top[i0]])),
-                              "date": str(datetime.date(1970, 1, 1) + datetime.timedelta(days=int(S["date"][top[i0]]))), "swapped": bool(sw[i0])}})
-    (out / "results.json").write_text(json.dumps({"pdb": a.pdb, "k": K, "min_id": MINID, "topk": a.topk, "roles": roles, "rows": rows, "null_b": np.percentile(null_b, [1, 5, 25, 50, 75]).tolist(), "db_pairs": S["N"]}))
+        j = int(np.argmin(rb))
+        i0 = 0
+        rows.append(
+            {
+                "query": int(sel[qi]),
+                "class": cls_of[int(sel[qi])],
+                "chains": list(map(str, chains[sel[qi]])),
+                "center": list(map(int, res["center"][sel[qi]])),
+                "seqA": "".join(AA[x] for x in qseq[qi, 0]),
+                "seqB": "".join(AA[x] for x in qseq[qi, 1]),
+                "best_id": best,
+                "top1_rmsd_all": float(ra[i0]),
+                "top1_rmsd_b": float(rb[i0]),
+                "min_rmsd_b": float(rb[j]),
+                "min_rmsd_b_id": int(sc[j]),
+                "n_hits_id8": int((sc >= MINID).sum()),
+                "n_good": int(((sc >= MINID) & (rb <= 2.5)).sum()),
+                "null_min_rmsd_b": float(
+                    np.median(
+                        [
+                            np.min(rng_null.choice(null_b[qi], a.topk))
+                            for _ in range(100)
+                        ]
+                    )
+                ),
+                "null_rmsd_b_median": float(np.median(null_b[qi])),
+                "null_frac_le2.5": float((null_b[qi] <= 2.5).mean()),
+                "top1": {
+                    "pdb": int(S["pdb"][top[i0]]).to_bytes(4, "little").decode(),
+                    "chains": list(map(str, S["chain"][top[i0]])),
+                    "center": list(map(int, S["center"][top[i0]])),
+                    "date": str(
+                        datetime.date(1970, 1, 1)
+                        + datetime.timedelta(days=int(S["date"][top[i0]]))
+                    ),
+                    "swapped": bool(sw[i0]),
+                },
+            }
+        )
+    (out / "results.json").write_text(
+        json.dumps(
+            {
+                "pdb": a.pdb,
+                "k": K,
+                "min_id": MINID,
+                "topk": a.topk,
+                "roles": roles,
+                "rows": rows,
+                "null_b": np.percentile(null_b, [1, 5, 25, 50, 75]).tolist(),
+                "db_pairs": S["N"],
+            }
+        )
+    )
     print("written", out / "results.json")
 
 

@@ -16,18 +16,28 @@ def test_nested_and_top_level_inputs(tmp_path):
         "env_path": tmp_path / "output",
         "recipe": tmp_path / "recipe.py",
         "ccd_db_path": source / "ccd.lmdb",
-        "inputs": {"fasta_paths": [source / "a.fasta", source / "b.fasta"],
-                   "out_path": tmp_path / "output.tsv",
-                   "old_seq_id_map_path": source / "optional-seed.tsv"},
+        "inputs": {
+            "fasta_paths": [source / "a.fasta", source / "b.fasta"],
+            "out_path": tmp_path / "output.tsv",
+            "old_seq_id_map_path": source / "optional-seed.tsv",
+        },
         "parameters": {"reference_selection_path": source / "choices.lmdb"},
     }
     assert set(preflight.input_paths(cfg)) == {
-        source / "ccd.lmdb", source / "a.fasta", source / "b.fasta", source / "choices.lmdb",
+        source / "ccd.lmdb",
+        source / "a.fasta",
+        source / "b.fasta",
+        source / "choices.lmdb",
     }
 
 
 def test_relative_to_base_is_not_an_input(tmp_path):
-    cfg = {"inputs": {"sources": [{"dir": tmp_path / "raw", "glob": "*.zst"}], "relative_to": tmp_path / "materials"}}
+    cfg = {
+        "inputs": {
+            "sources": [{"dir": tmp_path / "raw", "glob": "*.zst"}],
+            "relative_to": tmp_path / "materials",
+        }
+    }
     assert preflight.input_paths(cfg) == [tmp_path / "raw"]
 
 
@@ -37,18 +47,41 @@ def test_dependency_validation(tmp_path):
         "middle": {"inputs": {"db_path": tmp_path / "db"}},
         "consumer": {"inputs": {"db_path": tmp_path / "db"}},
     }
-    assert preflight.dependency_errors(configs, {
-        "producer": [], "middle": ["producer"], "consumer": ["middle"],
-    }) == []
-    assert any("without depending" in e for e in preflight.dependency_errors(configs, {}))
-    assert any("cycle" in e for e in preflight.dependency_errors(configs, {
-        "producer": ["middle"], "middle": ["producer"],
-    }))
-    assert any("unknown" in e for e in preflight.dependency_errors(configs, {"producer": ["absent"]}))
+    assert (
+        preflight.dependency_errors(
+            configs,
+            {
+                "producer": [],
+                "middle": ["producer"],
+                "consumer": ["middle"],
+            },
+        )
+        == []
+    )
+    assert any(
+        "without depending" in e for e in preflight.dependency_errors(configs, {})
+    )
+    assert any(
+        "cycle" in e
+        for e in preflight.dependency_errors(
+            configs,
+            {
+                "producer": ["middle"],
+                "middle": ["producer"],
+            },
+        )
+    )
+    assert any(
+        "unknown" in e
+        for e in preflight.dependency_errors(configs, {"producer": ["absent"]})
+    )
 
 
 def test_output_collision(tmp_path):
-    configs = {"a": {"env_path": tmp_path / "same"}, "b": {"env_path": tmp_path / "same"}}
+    configs = {
+        "a": {"env_path": tmp_path / "same"},
+        "b": {"env_path": tmp_path / "same"},
+    }
     assert any("both write" in e for e in preflight.dependency_errors(configs, {}))
 
 
@@ -56,21 +89,47 @@ def test_portable_config_paths(monkeypatch, tmp_path):
     """Every path resolves under BIOMOL_ROOT, except the shared search DBs (SEQ_DB_ROOT)."""
     monkeypatch.setenv("BIOMOL_ROOT", str(tmp_path / "root"))
     monkeypatch.setenv("SEQ_DB_ROOT", str(tmp_path / "seq_db"))
-    configs = {str(p.relative_to(DB_ROOT)): load_config(p)
-               for p in DB_ROOT.rglob("*.yaml") if not p.name.startswith("MANIFEST")}
+    configs = {
+        str(p.relative_to(DB_ROOT)): load_config(p)
+        for p in DB_ROOT.rglob("*.yaml")
+        if not p.name.startswith("MANIFEST")
+    }
     for cfg in configs.values():
         for path in preflight.input_paths(cfg) + preflight.output_paths(cfg):
-            assert path.is_relative_to(tmp_path / "root") or path.is_relative_to(tmp_path / "seq_db"), path
+            assert path.is_relative_to(tmp_path / "root") or path.is_relative_to(
+                tmp_path / "seq_db"
+            ), path
     assert configs["pdb/cif.yaml"]["data_dir"] == mmcif_root(tmp_path / "root")
-    assert configs["distillation/short_cif.yaml"]["data_dir"].is_relative_to(distillation_root(tmp_path / "root"))
+    assert configs["distillation/short_cif.yaml"]["data_dir"].is_relative_to(
+        distillation_root(tmp_path / "root")
+    )
     # Every PDB consumer reads the one PDB clustering (cPDB_*; docs/seq-id-and-cluster-scheme.md).
-    cluster_paths = [configs[p]["metadata_input"]["seqcluster_path"]
-                     for p in ("pdb/cif_attached.yaml", "valid/valid1_attach.yaml", "valid/valid2.yaml")]
-    cluster_paths.append(configs["metadata/interacting_seq_clusters.yaml"]["inputs"]["seqcluster_path"])
+    cluster_paths = [
+        configs[p]["metadata_input"]["seqcluster_path"]
+        for p in (
+            "pdb/cif_attached.yaml",
+            "valid/valid1_attach.yaml",
+            "valid/valid2.yaml",
+        )
+    ]
+    cluster_paths.append(
+        configs["metadata/interacting_seq_clusters.yaml"]["inputs"]["seqcluster_path"]
+    )
     assert len(set(cluster_paths)) == 1
-    assert cluster_paths[0] == configs["metadata/pdb_seq_cluster40.yaml"]["output_data_path"]
-    assert preflight.download_hint(mmcif_root(tmp_path / "root"), str(tmp_path / "root")) == "mmcif"
-    assert preflight.download_hint(Path("/elsewhere/materials/raw/cif"), str(tmp_path / "root")) is None
+    assert (
+        cluster_paths[0]
+        == configs["metadata/pdb_seq_cluster40.yaml"]["output_data_path"]
+    )
+    assert (
+        preflight.download_hint(mmcif_root(tmp_path / "root"), str(tmp_path / "root"))
+        == "mmcif"
+    )
+    assert (
+        preflight.download_hint(
+            Path("/elsewhere/materials/raw/cif"), str(tmp_path / "root")
+        )
+        is None
+    )
 
 
 @pytest.mark.parametrize("manifest", sorted(DB_ROOT.glob("MANIFEST*.yaml")))

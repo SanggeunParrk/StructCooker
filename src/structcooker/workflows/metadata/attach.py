@@ -1,7 +1,7 @@
 from datacooker import RecipeBook
 
-from structcooker.instructions.transforms.metadata import attach_metadata
 from structcooker.instructions.mols import CIFMol
+from structcooker.instructions.transforms.metadata import attach_metadata
 
 """Rebuild a CIF lmdb to train AF3"""
 

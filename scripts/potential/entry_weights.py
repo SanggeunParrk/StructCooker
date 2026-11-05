@@ -6,6 +6,7 @@ through seq_id_map.tsv) plus its nucleic-acid chain sequences, over all chains o
 of the training DB (cif_pdb_attached_train_20210930_res9_chain300). A protein sequence with no seq_id is its own
 cluster. Output columns: entry, n_same_signature, weight.
 """
+
 import hashlib
 import os
 import sys
@@ -13,8 +14,14 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
-train = {l.split("\t")[0] for l in open(ROOT / "lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb.index.tsv")
-         if not l.startswith(("#", "key"))}
+train = {
+    l.split("\t")[0]
+    for l in open(
+        ROOT
+        / "lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb.index.tsv"
+    )
+    if not l.startswith(("#", "key"))
+}
 prot, na = defaultdict(set), defaultdict(set)
 with open(ROOT / "materials/intermediate/fasta/cif_pdb.fasta") as f:
     for h in f:
@@ -44,7 +51,10 @@ with open(ROOT / "metadata/seq_cluster40_PDB.tsv") as f:
         for m in members.split(","):
             if m in ids:
                 id2c[m] = c
-print(f"{len(train)} train entries, {len(need)} protein sequences, {len(seq2id)} with seq_id", flush=True)
+print(
+    f"{len(train)} train entries, {len(need)} protein sequences, {len(seq2id)} with seq_id",
+    flush=True,
+)
 sig = {}
 for e in train:
     parts = set()
@@ -59,5 +69,7 @@ with open(sys.argv[1], "w") as fo:
     for e in sorted(train):
         n = cnt[sig[e]]
         fo.write(f"{e}\t{n}\t{1 / n:.6g}\n")
-print(f"{len(cnt)} distinct signatures; largest group {cnt.most_common(1)[0][1]} entries; "
-      f"effective entries {sum(1 / cnt[sig[e]] for e in train):.0f} of {len(train)}")
+print(
+    f"{len(cnt)} distinct signatures; largest group {cnt.most_common(1)[0][1]} entries; "
+    f"effective entries {sum(1 / cnt[sig[e]] for e in train):.0f} of {len(train)}"
+)

@@ -3,6 +3,7 @@
 usage: check_ss.py --n 100 [--seed 0] [--work DIR]
 Writes N/CA/C/O of every protein residue as a PDB file, runs ``mkdssp`` (legacy output) and compares the three-state codes.
 """
+
 import argparse
 import os
 import random
@@ -15,12 +16,33 @@ import numpy as np
 
 from structcooker.instructions.design.export import write_backbone_pdb
 from structcooker.instructions.design.ss import secondary_structure
-from structcooker.instructions.transforms.codecs import from_bytes
 from structcooker.instructions.mols import CIFMolAttached
+from structcooker.instructions.transforms.codecs import from_bytes
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 DB = ROOT / "lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb"
-AA = "ALA ARG ASN ASP CYS GLN GLU GLY HIS ILE LEU LYS MET PHE PRO SER THR TRP TYR VAL".split()
+AA = [
+    "ALA",
+    "ARG",
+    "ASN",
+    "ASP",
+    "CYS",
+    "GLN",
+    "GLU",
+    "GLY",
+    "HIS",
+    "ILE",
+    "LEU",
+    "LYS",
+    "MET",
+    "PHE",
+    "PRO",
+    "SER",
+    "THR",
+    "TRP",
+    "TYR",
+    "VAL",
+]
 MAP = {"H": "H", "G": "H", "I": "H", "E": "E", "B": "E"}
 
 
@@ -48,7 +70,12 @@ def main():
     work.mkdir(parents=True, exist_ok=True)
     env = lmdb.open(str(DB), readonly=True, lock=False, max_readers=8)
     with env.begin() as txn:
-        keys = [k for k, _ in zip(txn.cursor().iternext(values=False), range(20000))]
+        keys = [
+            k
+            for k, _ in zip(
+                txn.cursor().iternext(values=False), range(20000), strict=False
+            )
+        ]
     random.Random(a.seed).shuffle(keys)
     agree = tot = done = 0
     fr_err, rows = [], []
@@ -58,7 +85,11 @@ def main():
         with env.begin() as txn:
             rec = from_bytes(txn.get(key))
         akey = sorted(rec)[0]
-        cm = CIFMolAttached.from_dict(rec[akey]["cifmol_attached_dict"]) if hasattr(CIFMolAttached, "from_dict") else None
+        cm = (
+            CIFMolAttached.from_dict(rec[akey]["cifmol_attached_dict"])
+            if hasattr(CIFMolAttached, "from_dict")
+            else None
+        )
         if cm is None:
             raise SystemExit("cannot build CIFMolAttached from record; adapt loader")
         s3, summ = secondary_structure(cm)
@@ -66,7 +97,20 @@ def main():
             continue
         pdb = work / f"{key.decode()}.pdb"
         use = write_pdb(cm, pdb)
-        res = subprocess.run(["pixi", "run", "mkdssp", "--output-format", "dssp", str(pdb), str(work / "o.dssp")], capture_output=True, text=True)
+        res = subprocess.run(
+            [
+                "pixi",
+                "run",
+                "mkdssp",
+                "--output-format",
+                "dssp",
+                str(pdb),
+                str(work / "o.dssp"),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         if res.returncode:
             print("mkdssp failed", key, res.stderr[-200:])
             continue
@@ -78,11 +122,22 @@ def main():
         agree += int((ref == mine).sum())
         tot += len(ref)
         f = [float((ref == c).mean()) for c in "HEC"]
-        fr_err.append([summ["helix"] - f[0], summ["strand"] - f[1], summ["coil"] - f[2]])
+        fr_err.append(
+            [summ["helix"] - f[0], summ["strand"] - f[1], summ["coil"] - f[2]]
+        )
         done += 1
     e = np.array(fr_err)
-    print(f"items {done}  residues {tot}  per-residue 3-state agreement {agree / tot:.4f}")
-    print("fraction error mean (mine - dssp) H/E/C", e.mean(0).round(4), " mean |err|", np.abs(e).mean(0).round(4), " max |err|", np.abs(e).max(0).round(3))
+    print(
+        f"items {done}  residues {tot}  per-residue 3-state agreement {agree / tot:.4f}"
+    )
+    print(
+        "fraction error mean (mine - dssp) H/E/C",
+        e.mean(0).round(4),
+        " mean |err|",
+        np.abs(e).mean(0).round(4),
+        " max |err|",
+        np.abs(e).max(0).round(3),
+    )
 
 
 if __name__ == "__main__":

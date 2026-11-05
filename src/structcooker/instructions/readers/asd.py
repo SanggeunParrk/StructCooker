@@ -66,7 +66,10 @@ def load_asd_fasta(asd_dir: str | Path, chain_set: str) -> dict[str, str]:
                 raise ValueError(msg)
     print(  # noqa: T201 (CLI progress)
         f"asd {chain_set}: {n_rows} rows, "
-        + ", ".join(f"{tag}: {len(per_role[tag])} distinct, {n_empty[tag]} rows without" for tag in per_role)
+        + ", ".join(
+            f"{tag}: {len(per_role[tag])} distinct, {n_empty[tag]} rows without"
+            for tag in per_role
+        )
         + f"; {len(invalid)} rows skipped for a character outside A-Z {invalid[:6]}",
     )
     return fasta

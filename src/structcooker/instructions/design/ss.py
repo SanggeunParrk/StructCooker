@@ -42,7 +42,9 @@ def _best2(who, e):
     order = np.lexsort((e, who))
     w = who[order]
     start = np.concatenate([[0], np.flatnonzero(w[1:] != w[:-1]) + 1])
-    rank = np.arange(len(w)) - np.repeat(start, np.diff(np.concatenate([start, [len(w)]])))
+    rank = np.arange(len(w)) - np.repeat(
+        start, np.diff(np.concatenate([start, [len(w)]]))
+    )
     keep = np.zeros(len(w), dtype=bool)
     keep[order[rank < 2]] = True
     return keep
@@ -51,10 +53,16 @@ def _best2(who, e):
 def assign8(x, chain, cif, proline, usable):
     """8-state codes (``H G I E B -``) for every residue; unusable residues are ``-``."""
     n = len(chain)
-    link = np.zeros(n, dtype=bool)                                      # link[r]: r and r + 1 are joined by a peptide bond
+    link = np.zeros(n, dtype=bool)  # link[r]: r and r + 1 are joined by a peptide bond
     if n > 1:
         d = np.linalg.norm(x[:-1, 2] - x[1:, 0], axis=1)
-        link[:-1] = (chain[:-1] == chain[1:]) & (cif[1:] - cif[:-1] == 1) & usable[:-1] & usable[1:] & (d < PEPTIDE)
+        link[:-1] = (
+            (chain[:-1] == chain[1:])
+            & (cif[1:] - cif[:-1] == 1)
+            & usable[:-1]
+            & usable[1:]
+            & (d < PEPTIDE)
+        )
     cs_link = np.concatenate([[0], np.cumsum(link)])
     state = np.full(n, "-", dtype="U1")
     ca = x[:, 1]
@@ -63,32 +71,44 @@ def assign8(x, chain, cif, proline, usable):
         return state
     has_h = np.concatenate([[False], link[:-1]]) & ~proline & usable
     hpos = np.full((n, 3), np.nan)
-    v = x[:-1, 2] - x[:-1, 3]                                           # C(i-1) - O(i-1)
+    v = x[:-1, 2] - x[:-1, 3]  # C(i-1) - O(i-1)
     hpos[1:] = x[1:, 0] + v / np.maximum(np.linalg.norm(v, axis=1, keepdims=True), 1e-6)
     hpos[~has_h] = np.nan
     i, j, _ = inter_node_pairs(ca[ok], np.arange(len(ok)), CA_RANGE)
-    lo, hi = ok[i], ok[j]                                               # residue pairs with CA-CA < 9 A
-    a, b = np.concatenate([lo, hi]), np.concatenate([hi, lo])           # a: acceptor (CO), b: donor (NH)
+    lo, hi = ok[i], ok[j]  # residue pairs with CA-CA < 9 A
+    a, b = (
+        np.concatenate([lo, hi]),
+        np.concatenate([hi, lo]),
+    )  # a: acceptor (CO), b: donor (NH)
     keep = (b != a) & (b != a + 1)
     a, b = a[keep], b[keep]
-    dist = lambda p, q: np.linalg.norm(p - q, axis=1)                   # noqa: E731
+    dist = lambda p, q: np.linalg.norm(p - q, axis=1)  # noqa: E731
     with np.errstate(divide="ignore", invalid="ignore"):
-        e = Q1Q2F * (1 / dist(x[a, 3], x[b, 0]) + 1 / dist(x[a, 2], hpos[b]) - 1 / dist(x[a, 3], hpos[b]) - 1 / dist(x[a, 2], x[b, 0]))
+        e = Q1Q2F * (
+            1 / dist(x[a, 3], x[b, 0])
+            + 1 / dist(x[a, 2], hpos[b])
+            - 1 / dist(x[a, 3], hpos[b])
+            - 1 / dist(x[a, 2], x[b, 0])
+        )
     sel = np.isfinite(e) & (e < HB_CUT)
     a, b, e = a[sel], b[sel], e[sel]
     for who in ("a", "b"):
         k = _best2(a if who == "a" else b, e)
         a, b, e = a[k], b[k], e[k]
-    hb = np.sort(a.astype(np.int64) * n + b)                            # hb(a, b): CO(a) ... NH(b)
+    hb = np.sort(a.astype(np.int64) * n + b)  # hb(a, b): CO(a) ... NH(b)
 
     def H(p, q):
         p, q = np.asarray(p, dtype=np.int64), np.asarray(q, dtype=np.int64)
         inside = (p >= 0) & (p < n) & (q >= 0) & (q < n)
         key = np.where(inside, p * n + q, -1)
         pos = np.searchsorted(hb, key)
-        return inside & (pos < len(hb)) & (hb[np.minimum(pos, max(len(hb) - 1, 0))] == key) if len(hb) else np.zeros(p.shape, dtype=bool)
+        return (
+            inside & (pos < len(hb)) & (hb[np.minimum(pos, max(len(hb) - 1, 0))] == key)
+            if len(hb)
+            else np.zeros(p.shape, dtype=bool)
+        )
 
-    def chained(lo_, k):                                                # residues lo_ .. lo_ + k all linked in a row
+    def chained(lo_, k):  # residues lo_ .. lo_ + k all linked in a row
         lo_ = np.asarray(lo_, dtype=np.int64)
         inside = (lo_ >= 0) & (lo_ + k <= n - 1)
         out = np.zeros(lo_.shape, dtype=bool)
@@ -97,23 +117,31 @@ def assign8(x, chain, cif, proline, usable):
 
     idx = np.arange(n)
     for m, code in ((4, "H"), (3, "G"), (5, "I")):
-        t = H(idx, idx + m) & chained(idx, m)                           # an m-turn starts at i
-        for s in np.flatnonzero(t[1:] & t[:-1]) + 1:                    # two consecutive m-turns: residues s .. s + m - 1
+        t = H(idx, idx + m) & chained(idx, m)  # an m-turn starts at i
+        for s in (
+            np.flatnonzero(t[1:] & t[:-1]) + 1
+        ):  # two consecutive m-turns: residues s .. s + m - 1
             seg = np.arange(s, min(s + m, n))
             state[seg[state[seg] == "-"]] = code
     p, q = np.minimum(lo, hi), np.maximum(lo, hi)
     far = (q - p > 2) | (chain[p] != chain[q])
     p, q = p[far], q[far]
-    interior = lambda r: (r >= 1) & (r <= n - 2) & chained(r - 1, 2)    # noqa: E731
+    interior = lambda r: (r >= 1) & (r <= n - 2) & chained(r - 1, 2)  # noqa: E731
     base = interior(p) & interior(q)
     par = base & ((H(p - 1, q) & H(q, p + 1)) | (H(q - 1, p) & H(p, q + 1)))
     anti = base & ((H(p, q) & H(q, p)) | (H(p - 1, q + 1) & H(q - 1, p + 1)))
-    bridges = {(int(u), int(w), 0) for u, w in zip(p[par], q[par])} | {(int(u), int(w), 1) for u, w in zip(p[anti], q[anti])}
+    bridges = {(int(u), int(w), 0) for u, w in zip(p[par], q[par], strict=False)} | {
+        (int(u), int(w), 1) for u, w in zip(p[anti], q[anti], strict=False)
+    }
     in_bridge, in_ladder = np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
     for u, w, t in bridges:
         in_bridge[[u, w]] = True
         nu, nw = (u + 1, w + 1) if t == 0 else (u + 1, w - 1)
-        if (min(nu, nw), max(nu, nw), t) in bridges:                    # the next bridge of the same ladder
+        if (
+            min(nu, nw),
+            max(nu, nw),
+            t,
+        ) in bridges:  # the next bridge of the same ladder
             in_ladder[[u, w, nu, nw]] = True
     free = state == "-"
     state[free & in_ladder] = "E"
@@ -123,7 +151,9 @@ def assign8(x, chain, cif, proline, usable):
 
 
 def to_three(s8):
-    return np.where(np.isin(s8, ["H", "G", "I"]), "H", np.where(np.isin(s8, ["E", "B"]), "E", "C"))
+    return np.where(
+        np.isin(s8, ["H", "G", "I"]), "H", np.where(np.isin(s8, ["E", "B"]), "E", "C")
+    )
 
 
 def max_run(mask):
@@ -145,5 +175,11 @@ def secondary_structure(cm):
     s3 = to_three(assign8(x, chain, cif, comp == "PRO", usable))
     s3[~usable] = "-"
     n = int(usable.sum())
-    frac = lambda c: float((s3 == c).sum() / n) if n else 0.0            # noqa: E731
-    return s3, {"helix": frac("H"), "strand": frac("E"), "coil": frac("C"), "max_coil_run": max_run(s3 == "C"), "n_assessed": n}
+    frac = lambda c: float((s3 == c).sum() / n) if n else 0.0  # noqa: E731
+    return s3, {
+        "helix": frac("H"),
+        "strand": frac("E"),
+        "coil": frac("C"),
+        "max_coil_run": max_run(s3 == "C"),
+        "n_assessed": n,
+    }

@@ -8,6 +8,7 @@ it is a supplied reference input (docs/e2e-build.md, "Reference inputs").
 
 Destinations follow the ``BIOMOL_ROOT`` layout the db configs read (``materials/raw``).
 """
+
 from __future__ import annotations
 
 import datetime
@@ -42,7 +43,9 @@ def download_ccd(root: Path) -> Path:
     (docs/raw-materials.md: raw holds only what was downloaded). Returns the components directory.
     """
     raw_dir = root / "materials" / "raw" / "ccd"
-    gz_path = raw_dir / f"components_{datetime.datetime.now(datetime.UTC):%Y%m%d}.cif.gz"
+    gz_path = (
+        raw_dir / f"components_{datetime.datetime.now(datetime.UTC):%Y%m%d}.cif.gz"
+    )
     components = root / "materials" / "intermediate" / "ccd" / "components"
     _curl(CCD_URL, gz_path)
     components.mkdir(parents=True, exist_ok=True)
@@ -54,7 +57,7 @@ def download_ccd(root: Path) -> Path:
             if line.startswith("data_"):
                 if out is not None:
                     out.close()
-                comp_id = line.strip()[len("data_"):]
+                comp_id = line.strip()[len("data_") :]
                 out = (components / f"{comp_id}.cif").open("w", encoding="utf-8")
                 n += 1
             if out is not None:
@@ -81,8 +84,10 @@ def download_mmcif(root: Path, *, confirmed: bool) -> Path:
     """
     dest = mmcif_root(root)
     if not confirmed:
-        msg = (f"mmCIF is a ~90 GB+ rsync from {MMCIF_RSYNC}. "
-               f"Re-run with --yes to start it (target: {dest}).")
+        msg = (
+            f"mmCIF is a ~90 GB+ rsync from {MMCIF_RSYNC}. "
+            f"Re-run with --yes to start it (target: {dest})."
+        )
         raise RuntimeError(msg)
     dest.mkdir(parents=True, exist_ok=True)
     subprocess.run(  # noqa: S603

@@ -1,4 +1,5 @@
 """Recipe: one template link per chain id of the disordered set (see ``disordered_template_links``)."""
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.filelists import disordered_template_links

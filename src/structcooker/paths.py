@@ -7,6 +7,7 @@ tables) and ``docs``. Every db config resolves its paths against it, so moving o
 the tree is one variable. ``SEQ_DB_ROOT`` points at the shared sequence search databases
 (UniRef30, MMseqs2), which are not part of the release.
 """
+
 from __future__ import annotations
 
 import os

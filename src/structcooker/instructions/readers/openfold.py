@@ -51,7 +51,14 @@ def _map_changed(name: str, path: Path) -> bool:
         identity = (str(path.absolute()),)
     else:
         stat = path.stat()
-        identity = (str(path.resolve()), stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+        identity = (
+            str(path.resolve()),
+            stat.st_dev,
+            stat.st_ino,
+            stat.st_size,
+            stat.st_mtime_ns,
+            stat.st_ctime_ns,
+        )
     changed = _MAP_IDENTITIES.get(name) != identity
     _MAP_IDENTITIES[name] = identity
     return changed
@@ -67,7 +74,8 @@ def load_structure_overrides(manifest: Path) -> dict[str, Path]:
     """
     mapping = json.loads(Path(manifest).read_text())
     if not isinstance(mapping, dict) or any(
-        not isinstance(key, str) or not isinstance(value, str) for key, value in mapping.items()
+        not isinstance(key, str) or not isinstance(value, str)
+        for key, value in mapping.items()
     ):
         msg = "Structure overrides must map original paths to recovered paths"
         raise ValueError(msg)
@@ -84,7 +92,9 @@ def _structure_path(path: Path) -> Path:
     changed = _map_changed("structure", Path(manifest))
     if _STRUCTURE_OVERRIDES is None or changed:
         _STRUCTURE_OVERRIDES = None
-        _STRUCTURE_OVERRIDES = {k: str(v) for k, v in load_structure_overrides(Path(manifest)).items()}
+        _STRUCTURE_OVERRIDES = {
+            k: str(v) for k, v in load_structure_overrides(Path(manifest)).items()
+        }
     text = str(path)
     for key, replacement in _STRUCTURE_OVERRIDES.items():
         if text == key or text.endswith("/" + key):
@@ -103,9 +113,15 @@ def _monomer_seqid_map() -> dict[str, str]:
     sharing a sequence collapse onto one seq_id, matching production's dedup.
     """
     global _MONOMER_SEQID  # noqa: PLW0603 - process-local cache
-    map_path = Path(os.environ.get(
-        "MONOMER_SEQID_MAP", str(biomol_root() / "materials/intermediate/worklists/distillation_monomer_seqid.tsv"),
-    ))
+    map_path = Path(
+        os.environ.get(
+            "MONOMER_SEQID_MAP",
+            str(
+                biomol_root()
+                / "materials/intermediate/worklists/distillation_monomer_seqid.tsv"
+            ),
+        )
+    )
     changed = _map_changed("monomer", map_path)
     if _MONOMER_SEQID is None or changed:
         _MONOMER_SEQID = None
@@ -246,11 +262,13 @@ def get_openfold_pdb_structure_data(pdb_path: Path) -> dict[str, Any]:
     """
     path = Path(pdb_path)
     if path.suffix == ".zst":
-        with path.open("rb") as raw, zstandard.ZstdDecompressor().stream_reader(raw) as reader:
+        with (
+            path.open("rb") as raw,
+            zstandard.ZstdDecompressor().stream_reader(raw) as reader,
+        ):
             lines = io.TextIOWrapper(reader, encoding="utf-8")
             table = pdb_atom_table(lines, name=path.name, drop_hydrogens=True)
     else:
         with path.open() as handle:
             table = pdb_atom_table(handle, name=path.name, drop_hydrogens=True)
     return {"raw_atom_site_dict": table, "entry_id": path.parent.name}
-

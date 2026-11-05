@@ -1,4 +1,5 @@
 """Number of templates stored for each seq_id of a template LMDB -> TSV seq_id, n_templates."""
+
 import sys
 
 import lmdb

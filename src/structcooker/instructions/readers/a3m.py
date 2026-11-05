@@ -18,7 +18,9 @@ def get_a3m_data(a3m_path: Path) -> dict[str, Any]:
     headers = []
     with a3m_path.open("rb") as raw:
         stream = (
-            zstd.ZstdDecompressor().stream_reader(raw) if a3m_path.suffix == ".zst" else raw
+            zstd.ZstdDecompressor().stream_reader(raw)
+            if a3m_path.suffix == ".zst"
+            else raw
         )
         handle = io.TextIOWrapper(stream, encoding="utf-8")
         for raw_line in handle:

@@ -14,6 +14,7 @@ The OpenFold npz are pickled object arrays from the official bucket; the build r
 
     python rna_msa_depth.py --out <dir> [--workers 16]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,7 +39,7 @@ def sanitize(seq: str) -> str:
 
 
 def load_ours() -> tuple[dict[str, str], dict[str, dict[str, int]]]:
-    """sanitised query -> R seq_id, and per R id the a3m depth and its sources."""
+    """Sanitised query -> R seq_id, and per R id the a3m depth and its sources."""
     by_seq: dict[str, str] = {}
     depth: dict[str, dict[str, int]] = {}
     for path in glob.glob(str(OURS / "*/*/*.a3m")):
@@ -69,7 +70,9 @@ def load_fasta() -> tuple[dict, dict]:
                 pdb, chain, _alt = idp.split("_", 2)
                 if typ == "polyribonucleotide":
                     label.setdefault((pdb.lower(), chain), []).append(line.strip())
-                    auth.setdefault((pdb.lower(), a.removeprefix("Auth:")), []).append(line.strip())
+                    auth.setdefault((pdb.lower(), a.removeprefix("Auth:")), []).append(
+                        line.strip()
+                    )
                 hdr = None
     return label, auth
 
@@ -105,40 +108,83 @@ def one(path: str) -> dict | None:
     cands = _G["label"].get((pdb, chain), []) or _G["auth"].get((pdb, chain), [])
     seqs = [s for s in cands if width is not None and len(s) == width]
     rid = _G["by_seq"].get(sanitize(seqs[0])) if seqs else None
-    return {"file": stem, "width": width, "rid": rid, "mapped_rna": bool(cands), **{f"n_{k}": v for k, v in counts.items()},
-            "rows": sum(counts.values()), "unique": len(uniq)}
+    return {
+        "file": stem,
+        "width": width,
+        "rid": rid,
+        "mapped_rna": bool(cands),
+        **{f"n_{k}": v for k, v in counts.items()},
+        "rows": sum(counts.values()),
+        "unique": len(uniq),
+    }
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--workers", type=int, default=16)
-    ap.add_argument("--limit", type=int, default=0, help="only the first N files (smoke test)")
+    ap.add_argument(
+        "--limit", type=int, default=0, help="only the first N files (smoke test)"
+    )
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     by_seq, ours = load_ours()
     label, auth = load_fasta()
-    print(f"ours: {len(ours):,} RNA alignments; {len(by_seq):,} distinct queries", flush=True)
+    print(
+        f"ours: {len(ours):,} RNA alignments; {len(by_seq):,} distinct queries",
+        flush=True,
+    )
     files = sorted(glob.glob(str(OPENFOLD / "*.npz")))
     if args.limit:
         files = files[: args.limit]
     rows = []
-    with get_context("forkserver").Pool(args.workers, initializer=_init, initargs=(label, auth, by_seq)) as pool:
+    with get_context("forkserver").Pool(
+        args.workers, initializer=_init, initargs=(label, auth, by_seq)
+    ) as pool:
         for i, r in enumerate(pool.imap_unordered(one, files, chunksize=8), 1):
             if r:
                 rows.append(r)
             if i % 2000 == 0:
                 print(f"  {i}/{len(files)}", flush=True)
     import csv
+
     with open(args.out / "per_chain.tsv", "w", newline="") as f:
         w = csv.writer(f, delimiter="\t")
-        w.writerow(["openfold_file", "width", "seq_id", "of_nt", "of_rfam", "of_rnacentral", "of_rows", "of_unique",
-                    "our_depth", "our_rnacentral", "our_other"])
+        w.writerow(
+            [
+                "openfold_file",
+                "width",
+                "seq_id",
+                "of_nt",
+                "of_rfam",
+                "of_rnacentral",
+                "of_rows",
+                "of_unique",
+                "our_depth",
+                "our_rnacentral",
+                "our_other",
+            ]
+        )
         for r in rows:
             o = ours.get(r["rid"], {})
-            w.writerow([r["file"], r["width"], r["rid"] or "", r["n_nucleotide_collection_hits"], r["n_rfam_hits"],
-                        r["n_rnacentral_hits"], r["rows"], r["unique"], o.get("depth", ""), o.get("rnacentral", ""), o.get("other", "")])
-    print(f"done: {len(rows):,} OpenFold RNA files; mapped to ours: {sum(1 for r in rows if r['rid'] in ours):,}")
+            w.writerow(
+                [
+                    r["file"],
+                    r["width"],
+                    r["rid"] or "",
+                    r["n_nucleotide_collection_hits"],
+                    r["n_rfam_hits"],
+                    r["n_rnacentral_hits"],
+                    r["rows"],
+                    r["unique"],
+                    o.get("depth", ""),
+                    o.get("rnacentral", ""),
+                    o.get("other", ""),
+                ]
+            )
+    print(
+        f"done: {len(rows):,} OpenFold RNA files; mapped to ours: {sum(1 for r in rows if r['rid'] in ours):,}"
+    )
 
 
 if __name__ == "__main__":

@@ -19,12 +19,12 @@ PYRIMIDINES = {"C", "U", "T"}
 
 
 def find_duplex(
-    xyz: np.ndarray,          # (n, 3) atoms of the assembly's nodes
+    xyz: np.ndarray,  # (n, 3) atoms of the assembly's nodes
     node_idx: np.ndarray,
     res_idx: np.ndarray,
     atom_name: np.ndarray,
-    res_code: np.ndarray,     # parent one-letter code per atom (A/C/G/U/T/N)
-    is_na: np.ndarray,        # (n,) bool, atom belongs to an NA node
+    res_code: np.ndarray,  # parent one-letter code per atom (A/C/G/U/T/N)
+    is_na: np.ndarray,  # (n,) bool, atom belongs to an NA node
     min_bp: int = 4,
     min_hbonds: int = 2,
     hb_cutoff: float = 3.5,
@@ -40,7 +40,9 @@ def find_duplex(
     if len(i) == 0:
         return {}
     base = is_na & np.isin(atom_name, list(BASE_ATOMS))
-    base &= ~((atom_name == "N1") & np.isin(res_code, list(PYRIMIDINES)))  # N1 is glycosidic there
+    base &= ~(
+        (atom_name == "N1") & np.isin(res_code, list(PYRIMIDINES))
+    )  # N1 is glycosidic there
     by_res: dict[int, list] = {}
     for a in np.flatnonzero(base):
         by_res.setdefault(int(res_idx[a]), []).append(a)
@@ -54,7 +56,9 @@ def find_duplex(
         dd = np.linalg.norm(xyz[A][:, None] - xyz[B][None], axis=-1)
         n_hb = int((dd <= hb_cutoff).sum())
         if n_hb >= min_hbonds:
-            scored.append((-n_hb, abs(dist - 10.5), ra, rb, int(node_idx[a]), int(node_idx[b])))
+            scored.append(
+                (-n_hb, abs(dist - 10.5), ra, rb, int(node_idx[a]), int(node_idx[b]))
+            )
     scored.sort()
     used: set[int] = set()
     counts: dict[tuple[int, int], int] = {}

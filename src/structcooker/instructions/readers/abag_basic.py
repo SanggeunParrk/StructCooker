@@ -9,10 +9,25 @@ from .abag import normalize as _normalize
 # an antigen that is a polyprotein: ASD's own target name says so
 POLYPROTEIN = re.compile(r"polyprotein|orf1a|pp1ab?\b|gag[-/ ]?pol", re.IGNORECASE)
 HEADER = (
-    "antigen_seq_id", "heavy_seq_id", "light_seq_id", "light_sequence", "chain_status", "light_source",
-    "datasets", "polyprotein", "pdb_structure", "keep",
+    "antigen_seq_id",
+    "heavy_seq_id",
+    "light_seq_id",
+    "light_sequence",
+    "chain_status",
+    "light_source",
+    "datasets",
+    "polyprotein",
+    "pdb_structure",
+    "keep",
 )
-_KEEP_STATUS = ("paired_original", "scfv", "vhh", "filled_covid", "filled_hiv", "filled_biomap")
+_KEEP_STATUS = (
+    "paired_original",
+    "scfv",
+    "vhh",
+    "filled_covid",
+    "filled_hiv",
+    "filled_biomap",
+)
 _K = 25
 
 
@@ -33,20 +48,41 @@ class PdbComplexIndex:
     * ``match="contained"``: the looser reading. The antibody chains are contained in the PDB chains or contain them (a PDB chain carries a constant domain or a
       tag, ASD often the variable domain), the antigen matches when the PDB antigen chain is contained in the ASD antigen, the reverse, or 80% of its 10-mers
       (sampled every 5th) occur in it. It flags about twice as many pairs (4,616 against 2,204 on the ASD pairs).
-        """
+    """
 
-    def __init__(self, sabdab_summary_path: str | Path, pdb_fasta_path: str | Path) -> None:
+    def __init__(
+        self, sabdab_summary_path: str | Path, pdb_fasta_path: str | Path
+    ) -> None:
         entries = []
         wanted: set[tuple[str, str]] = set()
         for line in list(Path(sabdab_summary_path).open())[1:]:
             fields = line.rstrip("\n").split("\t")
-            pdb, heavy_chain, light_chain, antigen_chain, antigen_type = fields[0].upper(), fields[1], fields[2], fields[4], fields[5]
-            if heavy_chain in ("NA", "") or "protein" not in antigen_type and "peptide" not in antigen_type:
+            pdb, heavy_chain, light_chain, antigen_chain, antigen_type = (
+                fields[0].upper(),
+                fields[1],
+                fields[2],
+                fields[4],
+                fields[5],
+            )
+            if heavy_chain in ("NA", "") or (
+                "protein" not in antigen_type and "peptide" not in antigen_type
+            ):
                 continue
-            antigens = [c.strip() for c in antigen_chain.split("|") if c.strip() not in ("", "NA")]
+            antigens = [
+                c.strip()
+                for c in antigen_chain.split("|")
+                if c.strip() not in ("", "NA")
+            ]
             if not antigens:
                 continue
-            entries.append((pdb, heavy_chain, None if light_chain in ("NA", "") else light_chain, antigens))
+            entries.append(
+                (
+                    pdb,
+                    heavy_chain,
+                    None if light_chain in ("NA", "") else light_chain,
+                    antigens,
+                )
+            )
             wanted.update((pdb, c) for c in [heavy_chain, light_chain, *antigens])
         chain: dict[tuple[str, str], str] = {}
         key = None
@@ -71,7 +107,9 @@ class PdbComplexIndex:
             for i in range(len(heavy) - _K + 1):
                 self.index[heavy[i : i + _K]].add(number)
         self._kmers: dict[str, set[str]] = {}
-        self.exact: dict[tuple[str, str], list[tuple[str, list[str]]]] = defaultdict(list)
+        self.exact: dict[tuple[str, str], list[tuple[str, list[str]]]] = defaultdict(
+            list
+        )
         for pdb, heavy, light, antigen_sequences in self.entries:
             self.exact[(heavy, light)].append((pdb, antigen_sequences))
 
@@ -84,11 +122,15 @@ class PdbComplexIndex:
             return False
         kmers = self._kmers.get(antigen)
         if kmers is None:
-            kmers = self._kmers[antigen] = {antigen[i : i + 10] for i in range(len(antigen) - 9)}
+            kmers = self._kmers[antigen] = {
+                antigen[i : i + 10] for i in range(len(antigen) - 9)
+            }
         sample = [pdb_antigen[i : i + 10] for i in range(0, len(pdb_antigen) - 9, 5)]
         return sum(k in kmers for k in sample) >= 0.8 * len(sample)
 
-    def find(self, heavy: str, light: str, antigen: str, match: str = "exact") -> str | None:
+    def find(
+        self, heavy: str, light: str, antigen: str, match: str = "exact"
+    ) -> str | None:
         if match == "exact":
             for pdb, antigens in self.exact.get((heavy, light), ()):
                 if antigen in antigens:
@@ -136,24 +178,69 @@ def load_basic_pairs(
         seq_id, text = line.rstrip("\n").split("\t")
         sequence[seq_id] = text
         id_of[text] = seq_id
-    pairs = [line.rstrip("\n").split("\t") for line in list(Path(pairs_chains_path).open())[1:]]
+    pairs = [
+        line.rstrip("\n").split("\t")
+        for line in list(Path(pairs_chains_path).open())[1:]
+    ]
     merged: dict[tuple[str, str, str], list] = {}
     for antigen, heavy, light_id, light_seq, status, source, datasets, names in pairs:
         light = sequence[light_id] if light_id else light_seq
-        if light_seq and light in id_of:  # a recovered light chain a source also holds: it has a seq_id after all
+        if (
+            light_seq and light in id_of
+        ):  # a recovered light chain a source also holds: it has a seq_id after all
             light_id, light_seq = id_of[light], ""
         key = (heavy, light_id or light_seq, antigen)
         if key in merged:
-            merged[key][6] = ",".join(sorted(set(merged[key][6].split(",")) | set(datasets.split(","))))
-            merged[key][7] = ";".join(sorted(set(filter(None, merged[key][7].split(";"))) | set(filter(None, names.split(";")))))
+            merged[key][6] = ",".join(
+                sorted(set(merged[key][6].split(",")) | set(datasets.split(",")))
+            )
+            merged[key][7] = ";".join(
+                sorted(
+                    set(filter(None, merged[key][7].split(";")))
+                    | set(filter(None, names.split(";")))
+                )
+            )
         else:
-            merged[key] = [antigen, heavy, light_id, light_seq, status, source, datasets, names]
+            merged[key] = [
+                antigen,
+                heavy,
+                light_id,
+                light_seq,
+                status,
+                source,
+                datasets,
+                names,
+            ]
     index = PdbComplexIndex(sabdab_summary_path, pdb_fasta_path)
     out: list[tuple[str, ...]] = [HEADER]
-    for antigen, heavy, light_id, light_seq, status, source, datasets, names in merged.values():
+    for (
+        antigen,
+        heavy,
+        light_id,
+        light_seq,
+        status,
+        source,
+        datasets,
+        names,
+    ) in merged.values():
         light = sequence[light_id] if light_id else light_seq
         polyprotein = int(bool(POLYPROTEIN.search(names)))
-        pdb = index.find(sequence[heavy], light, sequence[antigen], structure_match) or ""
+        pdb = (
+            index.find(sequence[heavy], light, sequence[antigen], structure_match) or ""
+        )
         keep = int(status in _KEEP_STATUS and not polyprotein and not pdb)
-        out.append((antigen, heavy, light_id, light_seq, status, source, datasets, str(polyprotein), pdb, str(keep)))
+        out.append(
+            (
+                antigen,
+                heavy,
+                light_id,
+                light_seq,
+                status,
+                source,
+                datasets,
+                str(polyprotein),
+                pdb,
+                str(keep),
+            )
+        )
     return out

@@ -55,16 +55,31 @@ def test_load_keys_reads_lists_inline_codes_and_template_keys(tmp_path):
     assert keys.protein == ["P00000000000000000001", "P00000000000000300001"]
     assert keys.rna == ["R00000000000000000007"]
     assert keys.other == ["D00000000000000020007"]
-    assert keys.ccd == ["ACE", "NAG", "ZN"]  # the glycosidic '|(1,2)' is not a component
+    assert keys.ccd == [
+        "ACE",
+        "NAG",
+        "ZN",
+    ]  # the glycosidic '|(1,2)' is not a component
     assert keys.template == ["t1xx_A", "t1xx_Z"]
 
 
 def test_copy_keys_is_byte_exact_reports_missing_and_uses_the_fallback(tmp_path):
     primary = make_db(tmp_path / "primary", {"a": b"1", "b": b"22", "z": b"zz"})
     fallback = make_db(tmp_path / "fallback", {"c": b"333", "a": b"WRONG"})
-    rep = fb.copy_keys(tmp_path / "out", ["a", "b", "c", "nope"], [primary, fallback], name="x")
-    assert read_all(tmp_path / "out") == {"a": b"1", "b": b"22", "c": b"333"}  # primary wins; 'z' not asked for
-    assert (rep.requested, rep.written, rep.from_fallback, rep.missing) == (4, 3, 1, ["nope"])
+    rep = fb.copy_keys(
+        tmp_path / "out", ["a", "b", "c", "nope"], [primary, fallback], name="x"
+    )
+    assert read_all(tmp_path / "out") == {
+        "a": b"1",
+        "b": b"22",
+        "c": b"333",
+    }  # primary wins; 'z' not asked for
+    assert (rep.requested, rep.written, rep.from_fallback, rep.missing) == (
+        4,
+        3,
+        1,
+        ["nope"],
+    )
 
 
 def test_copy_keys_never_replaces_an_existing_db(tmp_path):
@@ -78,20 +93,34 @@ def test_copy_keys_never_replaces_an_existing_db(tmp_path):
 def test_build_then_verify_resolves_every_lookup(tmp_path):
     pkg = make_package(tmp_path / "pkg")
     rel = tmp_path / "rel" / "lmdb"
-    make_db(rel / "pdb" / "msa" / "a3m.lmdb", {"P00000000000000000001": b"m1", "P00000000000000000002": b"m2"})
+    make_db(
+        rel / "pdb" / "msa" / "a3m.lmdb",
+        {"P00000000000000000001": b"m1", "P00000000000000000002": b"m2"},
+    )
     make_db(rel / "pdb" / "msa" / "msa_rna.lmdb", {"R00000000000000000007": b"r7"})
     make_db(rel / "chain" / "template" / "template.lmdb", {"t1xx_A": b"t"})
     edge = make_db(tmp_path / "edge_a3m", {"P00000000000000300001": b"e1"})
     ccd = make_db(tmp_path / "CCD_x.lmdb", {"ZN": b"z", "NAG": b"n"})
     out = tmp_path / "out"
     out.mkdir()
-    summary = fb.build(pkg, out, fb.Sources.from_release(tmp_path / "rel", ccd=ccd, fallback=[edge]))
+    summary = fb.build(
+        pkg, out, fb.Sources.from_release(tmp_path / "rel", ccd=ccd, fallback=[edge])
+    )
     assert json.loads((out / "foldbench_build.json").read_text())["keys"]["rna"] == 1
     copies = {c["name"]: c for c in summary["copies"]}
-    assert copies["protein_msa"]["written"] == 2 and copies["protein_msa"]["from_fallback"] == 1
-    assert copies["template"]["missing"] == ["t1xx_Z"] and copies["ccd"]["missing"] == ["ACE"]
+    assert (
+        copies["protein_msa"]["written"] == 2
+        and copies["protein_msa"]["from_fallback"] == 1
+    )
+    assert copies["template"]["missing"] == ["t1xx_Z"] and copies["ccd"]["missing"] == [
+        "ACE"
+    ]
     v = fb.verify(pkg, out, decode_sample=0)
-    assert v["msa_slots"] == {"found": 3, "expected_missing": 1, "missing": 0}  # the D key has no MSA by design
+    assert v["msa_slots"] == {
+        "found": 3,
+        "expected_missing": 1,
+        "missing": 0,
+    }  # the D key has no MSA by design
     assert v["template_slots"] == {"found": 1, "missing": 1}
 
 
@@ -104,4 +133,6 @@ def test_release_layout_matches_the_db_configs(monkeypatch, tmp_path):
     monkeypatch.setenv("BIOMOL_ROOT", str(tmp_path))
     for name, (db, rel) in fb.RELEASE_LAYOUT.items():
         cfg = load_config(_resolve_db(db))
-        assert str(cfg.get("new_env_path") or cfg.get("env_path")) == str(tmp_path / rel), name
+        assert str(cfg.get("new_env_path") or cfg.get("env_path")) == str(
+            tmp_path / rel
+        ), name

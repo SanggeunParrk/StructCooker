@@ -15,13 +15,18 @@ def test_recipe_shape() -> None:
     assert TARGETS == ["chem_comp_dict"]
     assert RECIPE.required_inputs(TARGETS) == set()
     assert "chem_comp_dict <- parse_chem_comp(" in describe(
-        RECIPE, targets=TARGETS, detail="compact",
+        RECIPE,
+        targets=TARGETS,
+        detail="compact",
     )
 
 
 def test_parses_alanine(fixture_dir: Path) -> None:
     entry = parse_file(
-        RECIPE, fixture_dir / "ala.cif", get_cif_data, targets=TARGETS,
+        RECIPE,
+        fixture_dir / "ala.cif",
+        get_cif_data,
+        targets=TARGETS,
     )["chem_comp_dict"]
 
     atom = entry["atom"]

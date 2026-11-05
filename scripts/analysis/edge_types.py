@@ -2,12 +2,13 @@
 
 usage: edge_types.py train_item.tsv
 """
+
 import re
 import sys
 from collections import Counter
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent))
-from expected_draws import edge_type  # noqa: E402
+from expected_draws import edge_type
 
 edges = Counter()
 with open(sys.argv[1]) as f:

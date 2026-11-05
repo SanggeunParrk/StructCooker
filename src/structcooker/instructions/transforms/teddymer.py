@@ -27,7 +27,9 @@ def attach_bonds(
     res_id = raw_atom_site_dict["res_id"]
 
     # Residue boundaries: [starts[r], ends[r]) is residue r's slice of the atom table.
-    atom_to_res = _group_ids(chain_id, res_id, raw_atom_site_dict["ins_code"].astype(str))
+    atom_to_res = _group_ids(
+        chain_id, res_id, raw_atom_site_dict["ins_code"].astype(str)
+    )
     starts = np.flatnonzero(np.r_[True, atom_to_res[1:] != atom_to_res[:-1]])
     ends = np.r_[starts[1:], len(atom_to_res)]
 
@@ -58,7 +60,10 @@ def _intra_residue_bonds(
         nodes = entry["atom"]["nodes"]["id"]["value"]
         bond_type = entry["atom"]["edges"]["bond_type"]
         edges_by_res[name] = [
-            (str(nodes[bond_type["src_indices"][k]]), str(nodes[bond_type["dst_indices"][k]]))
+            (
+                str(nodes[bond_type["src_indices"][k]]),
+                str(nodes[bond_type["dst_indices"][k]]),
+            )
             for k in range(len(bond_type["value"]))
         ]
 

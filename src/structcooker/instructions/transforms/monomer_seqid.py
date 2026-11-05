@@ -5,6 +5,7 @@ This joins each monomer distillation FASTA (entry -> sequence) with the seq_id_m
 (sequence -> seq_id) to produce the entry -> seq_id lookup the ``openfold_seqid_key``
 key builder loads at build time. Streams the FASTAs so the (large) long set stays cheap.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

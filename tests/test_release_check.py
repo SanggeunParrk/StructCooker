@@ -1,11 +1,12 @@
 """release_check: a shard collection must hold its shards; counts must agree."""
+
 import json
 
 import lmdb
 from datacooker.lmdb.sharded import publish_shards
 
-from structcooker.release import check as release_check
 from structcooker.instructions.transforms.codecs import to_bytes
+from structcooker.release import check as release_check
 
 
 def _write(path, n):
@@ -15,8 +16,12 @@ def _write(path, n):
 
 
 def _sidecars(target, n):
-    (target.parent / (target.name + ".meta.json")).write_text(json.dumps({"entries": n, "schema": "G", "total_bytes": n, "max_bytes": 1}))
-    (target.parent / (target.name + ".index.tsv")).write_text("key\tbytes\n" + "".join(f"k{i}\t1\n" for i in range(n)))
+    (target.parent / (target.name + ".meta.json")).write_text(
+        json.dumps({"entries": n, "schema": "G", "total_bytes": n, "max_bytes": 1})
+    )
+    (target.parent / (target.name + ".index.tsv")).write_text(
+        "key\tbytes\n" + "".join(f"k{i}\t1\n" for i in range(n))
+    )
 
 
 def test_single_lmdb_passes_and_counts_are_checked(tmp_path):
@@ -42,5 +47,7 @@ def test_shards_outside_the_collection_are_reported(tmp_path):
 def test_file_outputs(tmp_path):
     (tmp_path / "a.tsv").write_text("x\n")
     (tmp_path / "empty").mkdir()
-    r = release_check.check_files("m", [str(tmp_path / "a.tsv"), str(tmp_path / "empty")])
+    r = release_check.check_files(
+        "m", [str(tmp_path / "a.tsv"), str(tmp_path / "empty")]
+    )
     assert r["problems"] == [f"empty directory {tmp_path / 'empty'}"]

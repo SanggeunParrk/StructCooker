@@ -40,7 +40,9 @@ def get_teddymer_structure_data(pdb_path: Path) -> dict[str, Any]:
     return {"raw_atom_site_dict": table, "entry_id": teddymer_entry_key(path)}
 
 
-def pdb_atom_table(lines: Iterable[str], *, name: str, drop_hydrogens: bool = False) -> dict[str, np.ndarray]:
+def pdb_atom_table(
+    lines: Iterable[str], *, name: str, drop_hydrogens: bool = False
+) -> dict[str, np.ndarray]:
     """Parse the ATOM/HETATM records of a predicted-model PDB into the flat atom table.
 
     Shared by the readers of PDB-format predicted models (teddymer, AFDB homodimers, the
@@ -102,7 +104,9 @@ def pdb_atom_table(lines: Iterable[str], *, name: str, drop_hydrogens: bool = Fa
         "b_factor": np.array(b_factor, dtype=np.float64),
         "coord": np.array(coord, dtype=np.float64),
         "molecule_type_id": np.full(len(atom_name), _MOL_TYPE_PROTEIN, dtype=np.int64),
-        "entity_id": _entity_ids(chain_arr, res_name_arr, np.array(res_id, dtype=np.int64)),
+        "entity_id": _entity_ids(
+            chain_arr, res_name_arr, np.array(res_id, dtype=np.int64)
+        ),
     }
 
 

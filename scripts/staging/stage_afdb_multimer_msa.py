@@ -41,22 +41,46 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 _ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
-RAW = _ROOT / "materials/raw/afdb_multimer"            # release MSAs, as shipped
+RAW = _ROOT / "materials/raw/afdb_multimer"  # release MSAs, as shipped
 INTER = _ROOT / "materials/intermediate/afdb_multimer"  # what we derive from them
 # The download (release msas/ batches + metadata CSVs) and the dir for the staging tables.
 DIST = Path(os.environ.get("AFM_MSA_DOWNLOAD", str(RAW / "download/msas")))
 BATCHES = ("251124_1.2M", "251124_8.8M", "251209_13.4M")
 WORK = Path(os.environ.get("AFM_STAGE_WORK", str(INTER / "staging")))
 HOMO_META = RAW / "download/metadata/homodimer_metadata.csv"
-HET_META = Path(os.environ.get("AFM_HET_METADATA", str(RAW / "download/heterodimer_fetch/heterodimer_metadata.csv")))
+HET_META = Path(
+    os.environ.get(
+        "AFM_HET_METADATA",
+        str(RAW / "download/heterodimer_fetch/heterodimer_metadata.csv"),
+    )
+)
 SEQ_FOUND = WORK / "msa_found_by_sequence.tsv"
-PLAN = WORK / "msa_stage_plan.tsv"          # entity, kind(dir|tar), path, member, roles
+PLAN = WORK / "msa_stage_plan.tsv"  # entity, kind(dir|tar), path, member, roles
 CHAIN_SEQ = WORK / "msa_stage_chainseq.tsv"  # het, chain, sequence
 
 _MSA = re.compile(r"(AF[-_]\d+)-msa_v1\.a3m\.zst$")
-_AA = {"ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C", "GLN": "Q", "GLU": "E",
-       "GLY": "G", "HIS": "H", "ILE": "I", "LEU": "L", "LYS": "K", "MET": "M", "PHE": "F",
-       "PRO": "P", "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V"}
+_AA = {
+    "ALA": "A",
+    "ARG": "R",
+    "ASN": "N",
+    "ASP": "D",
+    "CYS": "C",
+    "GLN": "Q",
+    "GLU": "E",
+    "GLY": "G",
+    "HIS": "H",
+    "ILE": "I",
+    "LEU": "L",
+    "LYS": "K",
+    "MET": "M",
+    "PHE": "F",
+    "PRO": "P",
+    "SER": "S",
+    "THR": "T",
+    "TRP": "W",
+    "TYR": "Y",
+    "VAL": "V",
+}
 
 
 def _norm(x: str) -> str:
@@ -84,7 +108,9 @@ def _inventory() -> dict[str, tuple[str, str, str]]:
                 tars.append(entry.path)
 
     def names(p: str) -> tuple[str, list[str]]:
-        out = subprocess.run(["tar", "tf", p], capture_output=True, text=True, check=True)  # noqa: S603, S607
+        out = subprocess.run(
+            ["tar", "tf", p], capture_output=True, text=True, check=True
+        )  # noqa: S603, S607
         return p, out.stdout.split()
 
     with ThreadPoolExecutor(8) as pool:
@@ -106,7 +132,9 @@ def _cif_chain_seqs(path: Path) -> dict[str, str]:
             elif cols and line.startswith("ATOM"):
                 d = dict(zip(cols, line.split(), strict=False))
                 if d.get("label_atom_id") == "CA":
-                    seq.setdefault(d["label_asym_id"], []).append(_AA.get(d["label_comp_id"], "X"))
+                    seq.setdefault(d["label_asym_id"], []).append(
+                        _AA.get(d["label_comp_id"], "X")
+                    )
     return {k: "".join(v) for k, v in seq.items()}
 
 
@@ -115,14 +143,19 @@ def plan() -> None:
     print(f"distributed MSA entities: {len(inv):,}", flush=True)
 
     roles: dict[str, set[str]] = {}
-    homo = [line.split("\t", 1)[0] for line in (RAW / "homodimer" / "SOURCE.tsv").read_text().splitlines()[1:]]
+    homo = [
+        line.split("\t", 1)[0]
+        for line in (RAW / "homodimer" / "SOURCE.tsv").read_text().splitlines()[1:]
+    ]
     for e in homo:
         roles.setdefault(e, set()).add("homodimer")
 
     u2e: dict[str, list[str]] = {}
     with HOMO_META.open(newline="") as fh:
         for row in csv.DictReader(fh):
-            u2e.setdefault(row["uniprotAccession"], []).append(_norm(row["modelEntityId"]))
+            u2e.setdefault(row["uniprotAccession"], []).append(
+                _norm(row["modelEntityId"])
+            )
     ambiguous = sum(1 for v in u2e.values() if len(v) > 1)
     print(f"UniProt accessions with >1 monomer entity: {ambiguous:,}", flush=True)
     by_seq = dict(line.split("\t") for line in SEQ_FOUND.read_text().splitlines())
@@ -142,7 +175,10 @@ def plan() -> None:
                 elif f"{het}:{chain}" in by_seq:
                     ent, how = by_seq[f"{het}:{chain}"], "sequence"
                 elif cands:
-                    ent, how = "|".join(cands), "uniprot_ambiguous"   # resolved by sequence in stage
+                    ent, how = (
+                        "|".join(cands),
+                        "uniprot_ambiguous",
+                    )  # resolved by sequence in stage
                 else:
                     ent, how = "", "unmapped"
                 chain_rows.append((het, chain, acc, ent, how))
@@ -155,7 +191,12 @@ def plan() -> None:
 
     def seqs(het: str) -> list[tuple[str, str, str]]:
         n = het.split("-", 1)[1]
-        return [(het, c, s) for c, s in _cif_chain_seqs(het_dir / n[-3:] / f"{het}-model_v1.cif.gz").items()]
+        return [
+            (het, c, s)
+            for c, s in _cif_chain_seqs(
+                het_dir / n[-3:] / f"{het}-model_v1.cif.gz"
+            ).items()
+        ]
 
     with ThreadPoolExecutor(16) as pool, CHAIN_SEQ.open("w") as out:
         for rows in pool.map(seqs, hets, chunksize=256):
@@ -171,9 +212,16 @@ def plan() -> None:
     with (WORK / "msa_stage_chainmap.tsv").open("w") as out:
         for r in chain_rows:
             out.write("\t".join(r) + "\n")
-    print(f"planned {len(roles):,} MSAs  (not in the release: {len(missing):,} -> {missing[:5]})")
-    print("chain links: " + ", ".join(f"{k} {sum(1 for r in chain_rows if r[4] == k):,}"
-                                      for k in ("uniprot", "sequence", "uniprot_ambiguous", "unmapped")))
+    print(
+        f"planned {len(roles):,} MSAs  (not in the release: {len(missing):,} -> {missing[:5]})"
+    )
+    print(
+        "chain links: "
+        + ", ".join(
+            f"{k} {sum(1 for r in chain_rows if r[4] == k):,}"
+            for k in ("uniprot", "sequence", "uniprot_ambiguous", "unmapped")
+        )
+    )
 
 
 # ---------------------------------------------------------------- stage
@@ -200,12 +248,16 @@ def stage(task: int, ntasks: int) -> None:
         scratch.mkdir(parents=True, exist_ok=True)
         lst = scratch / "members.txt"
         lst.write_text("".join(m + "\n" for _, m in members))
-        subprocess.run(["tar", "xf", tar, "-C", str(scratch), "-T", str(lst)], check=True)  # noqa: S603, S607
+        subprocess.run(
+            ["tar", "xf", tar, "-C", str(scratch), "-T", str(lst)], check=True
+        )  # noqa: S603, S607
         for ent, mem in members:
             shutil.move(str(scratch / mem), _dest(ent))
             extracted += 1
         shutil.rmtree(scratch, ignore_errors=True)
-    print(f"task {task}: rows {len(mine):,}  linked {linked:,}  extracted {extracted:,}  already {skipped:,}")
+    print(
+        f"task {task}: rows {len(mine):,}  linked {linked:,}  extracted {extracted:,}  already {skipped:,}"
+    )
 
 
 # ---------------------------------------------------------------- finalize
@@ -230,7 +282,9 @@ def finalize() -> None:
         zst = a3m.with_name(a3m.name + ".zst")
         if not zst.exists():
             subprocess.run(["zstd", "-q", "-19", str(a3m), "-o", str(zst)], check=True)  # noqa: S603, S607
-    generated = {p.name[: -len("-msa_v1.a3m.zst")]: p for p in gen.glob("*-msa_v1.a3m.zst")}
+    generated = {
+        p.name[: -len("-msa_v1.a3m.zst")]: p for p in gen.glob("*-msa_v1.a3m.zst")
+    }
 
     def where(ent: str) -> Path:
         return generated.get(ent) or _dest(ent)
@@ -240,15 +294,28 @@ def finalize() -> None:
     print(f"staged {have:,} / planned {len(plan_rows):,}", flush=True)
 
     # verify every heterodimer chain link by content, resolving ambiguous UniProt links
-    seq = {(h, c): s for h, c, s in (ln.split("\t") for ln in CHAIN_SEQ.read_text().splitlines())}
-    chain_rows = [ln.split("\t") for ln in (WORK / "msa_stage_chainmap.tsv").read_text().splitlines()]
+    seq = {
+        (h, c): s
+        for h, c, s in (ln.split("\t") for ln in CHAIN_SEQ.read_text().splitlines())
+    }
+    chain_rows = [
+        ln.split("\t")
+        for ln in (WORK / "msa_stage_chainmap.tsv").read_text().splitlines()
+    ]
 
     def check(row: list[str]) -> list[str]:
         het, chain, acc, ent, how = row
         target = seq.get((het, chain), "")
         for cand in ent.split("|"):
             if cand and where(cand).exists() and _query(where(cand)) == target:
-                return [het, chain, acc, cand, how if "|" not in ent else "uniprot+sequence", "ok"]
+                return [
+                    het,
+                    chain,
+                    acc,
+                    cand,
+                    how if "|" not in ent else "uniprot+sequence",
+                    "ok",
+                ]
         return [het, chain, acc, ent, how, "MISMATCH"]
 
     with ThreadPoolExecutor(32) as pool:
@@ -256,10 +323,14 @@ def finalize() -> None:
     bad = [r for r in verified if r[5] != "ok"]
     (INTER / "heterodimer").mkdir(parents=True, exist_ok=True)
     with (INTER / "heterodimer" / "chain_msa.tsv").open("w") as out:
-        out.write("heterodimer_id\tchain\tuniprot\tmonomer_msa_entity\tlinked_by\tverified\n")
+        out.write(
+            "heterodimer_id\tchain\tuniprot\tmonomer_msa_entity\tlinked_by\tverified\n"
+        )
         for r in verified:
             out.write("\t".join(r) + "\n")
-    print(f"heterodimer chains verified {len(verified) - len(bad):,} / {len(verified):,}  mismatch {len(bad):,}")
+    print(
+        f"heterodimer chains verified {len(verified) - len(bad):,} / {len(verified):,}  mismatch {len(bad):,}"
+    )
 
     with (RAW / "msa" / "SOURCE.tsv").open("w") as out:
         out.write("entity_id\tsource_kind\tsource_path\ttar_member\tused_by\n")
@@ -297,7 +368,9 @@ here needs it.
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("plan")
     s = sub.add_parser("stage")

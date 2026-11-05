@@ -20,6 +20,7 @@ pair of members the way CAPRI compares a model with a reference:
 usage: interface_cluster_similarity.py --interfaces DIR --db CIF_ATTACHED --out DIR [--n-clusters 3000] [--max-members 8] [--workers 56]
   DIR holds interfaces.*.tsv (scripts/sampling/extract_items.py: entry asm chain1 chain2 cluster1 cluster2 in5 seq1 seq2).
 """
+
 import argparse
 import glob
 import json
@@ -40,9 +41,15 @@ from Bio.Align import substitution_matrices  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "design"))
 from build_stats import shard_paths  # noqa: E402
-from structcooker.instructions.transforms.codecs import from_bytes  # noqa: E402
+
 from structcooker.instructions.mols import CIFMolAttached  # noqa: E402
-from structcooker.instructions.potential.pairs import AA, TYPES, representative_atoms, residue_types  # noqa: E402
+from structcooker.instructions.potential.pairs import (  # noqa: E402
+    AA,
+    TYPES,
+    representative_atoms,
+    residue_types,
+)
+from structcooker.instructions.transforms.codecs import from_bytes  # noqa: E402
 
 KINDS = ("protein_protein", "protein_na", "antibody_antigen")
 CONTACT = 8.0
@@ -61,7 +68,7 @@ def kind_of(k1, k2):
 
 
 def sample(args):
-    groups = defaultdict(dict)                                 # (k1, k2) -> {entry: (asm, chain of k1, chain of k2)}
+    groups = defaultdict(dict)  # (k1, k2) -> {entry: (asm, chain of k1, chain of k2)}
     for p in sorted(glob.glob(str(Path(args.interfaces) / "interfaces.*.tsv"))):
         with open(p) as f:
             for ln in f:
@@ -81,8 +88,15 @@ def sample(args):
     tasks, stats = [], {}
     for kind in KINDS:
         keys = sorted(by_kind[kind])
-        stats[kind] = {"interface_clusters": sum(1 for k, e in groups.items() if kind_of(*k) == kind), "with_2plus_entries": len(keys),
-                       "clusters_above_max_members": sum(len(groups[k]) > args.max_members for k in keys)}
+        stats[kind] = {
+            "interface_clusters": sum(
+                1 for k, e in groups.items() if kind_of(*k) == kind
+            ),
+            "with_2plus_entries": len(keys),
+            "clusters_above_max_members": sum(
+                len(groups[k]) > args.max_members for k in keys
+            ),
+        }
         rng.shuffle(keys)
         for key in keys[: args.n_clusters]:
             ents = sorted(groups[key].items())
@@ -94,15 +108,34 @@ def sample(args):
 
 
 def _init(db):
-    _ST["envs"] = [lmdb.open(p, readonly=True, lock=False, readahead=False, subdir=Path(p).is_dir(), max_readers=512) for p in shard_paths(db)]
+    _ST["envs"] = [
+        lmdb.open(
+            p,
+            readonly=True,
+            lock=False,
+            readahead=False,
+            subdir=Path(p).is_dir(),
+            max_readers=512,
+        )
+        for p in shard_paths(db)
+    ]
     _ST["aln"] = {}
     for name, mat in (("prot", substitution_matrices.load("BLOSUM62")), ("na", None)):
         a = Align.PairwiseAligner()
         a.mode = "global"
         if mat is not None:
-            a.substitution_matrix, a.open_gap_score, a.extend_gap_score = mat, -10.0, -0.5
+            a.substitution_matrix, a.open_gap_score, a.extend_gap_score = (
+                mat,
+                -10.0,
+                -0.5,
+            )
         else:
-            a.match_score, a.mismatch_score, a.open_gap_score, a.extend_gap_score = 2.0, -1.0, -5.0, -1.0
+            a.match_score, a.mismatch_score, a.open_gap_score, a.extend_gap_score = (
+                2.0,
+                -1.0,
+                -5.0,
+                -1.0,
+            )
         _ST["aln"][name] = a
 
 
@@ -133,7 +166,10 @@ def load_member(entry, asm, ca, cb):
     rtype, _ = residue_types(cm)
     rep = representative_atoms(cm, rtype)
     chain_of_res = cm.index_table.residues_to_chains(np.arange(len(rtype)))
-    a, b = load_chain(cm, rtype, rep, chain_of_res, ca), load_chain(cm, rtype, rep, chain_of_res, cb)
+    a, b = (
+        load_chain(cm, rtype, rep, chain_of_res, ca),
+        load_chain(cm, rtype, rep, chain_of_res, cb),
+    )
     return None if a is None or b is None else (a, b)
 
 
@@ -146,7 +182,13 @@ def align(x, y):
         ix.extend(range(a0, a1))
         iy.extend(range(b0, b1))
     ix, iy = np.array(ix, dtype=int), np.array(iy, dtype=int)
-    ident = float(np.mean([x["seq"][i] == y["seq"][j] for i, j in zip(ix, iy, strict=True)])) if len(ix) else 0.0
+    ident = (
+        float(
+            np.mean([x["seq"][i] == y["seq"][j] for i, j in zip(ix, iy, strict=True)])
+        )
+        if len(ix)
+        else 0.0
+    )
     return ix, iy, ident
 
 
@@ -187,7 +229,14 @@ def compare(ref, mod):
     ok_a = ok_a[np.isfinite(ma["xyz"][mapa[ok_a]]).all(1)]
     ok_b = ok_b[np.isfinite(mb["xyz"][mapb[ok_b]]).all(1)]
     cov = (len(ok_a) + len(ok_b)) / (len(ia) + len(ib))
-    out = {"cov": cov, "identity": (ida + idb) / 2, "fnat": np.nan, "irmsd": np.nan, "lrmsd": np.nan, "cls": "unscored"}
+    out = {
+        "cov": cov,
+        "identity": (ida + idb) / 2,
+        "fnat": np.nan,
+        "irmsd": np.nan,
+        "lrmsd": np.nan,
+        "cls": "unscored",
+    }
     if cov < 0.5 or len(ok_a) + len(ok_b) < 3:
         return out
     pi = np.vstack([ra["xyz"][ok_a], rb["xyz"][ok_b]])
@@ -248,12 +297,46 @@ def work(task):
             options = [o for o in options if o is not None]
             if not options:
                 continue
-            best = max(options, key=lambda o: (RANK[o["cls"]], -(o["irmsd"] if np.isfinite(o["irmsd"]) else 99)))
-            rows.append((kind, k1, k2, n_entries, ei, ej, best["identity"], best["cov"], best["fnat"], best["irmsd"], best["lrmsd"], best["cls"]))
+            best = max(
+                options,
+                key=lambda o: (
+                    RANK[o["cls"]],
+                    -(o["irmsd"] if np.isfinite(o["irmsd"]) else 99),
+                ),
+            )
+            rows.append(
+                (
+                    kind,
+                    k1,
+                    k2,
+                    n_entries,
+                    ei,
+                    ej,
+                    best["identity"],
+                    best["cov"],
+                    best["fnat"],
+                    best["irmsd"],
+                    best["lrmsd"],
+                    best["cls"],
+                )
+            )
     return rows
 
 
-COLS = ["kind", "cluster1", "cluster2", "n_entries", "entry_i", "entry_j", "identity", "coverage", "fnat", "irmsd", "lrmsd", "class"]
+COLS = [
+    "kind",
+    "cluster1",
+    "cluster2",
+    "n_entries",
+    "entry_i",
+    "entry_j",
+    "identity",
+    "coverage",
+    "fnat",
+    "irmsd",
+    "lrmsd",
+    "class",
+]
 
 
 def summarize(path, out):
@@ -262,18 +345,40 @@ def summarize(path, out):
     rows = list(csv.DictReader(open(path), delimiter="\t"))
     for r in rows:
         r["identity"], r["n_entries"] = float(r["identity"]), int(r["n_entries"])
-        r["id_bin"] = "<60%" if r["identity"] < 0.6 else "60-90%" if r["identity"] < 0.9 else ">=90%"
+        r["id_bin"] = (
+            "<60%"
+            if r["identity"] < 0.6
+            else "60-90%"
+            if r["identity"] < 0.9
+            else ">=90%"
+        )
         n = r["n_entries"]
-        r["size_bin"] = "2" if n == 2 else "3-5" if n <= 5 else "6-20" if n <= 20 else ">20"
-    lines = ["# Are members of one interface cluster similar?", "",
-             "CAPRI-style comparison of two members of the same interface cluster (pseudo-beta points, 8 A contacts; see the script header).", ""]
+        r["size_bin"] = (
+            "2" if n == 2 else "3-5" if n <= 5 else "6-20" if n <= 20 else ">20"
+        )
+    lines = [
+        "# Are members of one interface cluster similar?",
+        "",
+        "CAPRI-style comparison of two members of the same interface cluster (pseudo-beta points, 8 A contacts; see the script header).",
+        "",
+    ]
 
     def table(title, by, order):
-        lines.extend([f"## {title}", "", f"| {by or 'kind'} | pairs | clusters | unscored | incorrect | acceptable | medium | high | similar (acceptable or better) | similar, of scored pairs | medium or better |",
-                      "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"])
+        lines.extend(
+            [
+                f"## {title}",
+                "",
+                f"| {by or 'kind'} | pairs | clusters | unscored | incorrect | acceptable | medium | high | similar (acceptable or better) | similar, of scored pairs | medium or better |",
+                "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            ]
+        )
         for kind in KINDS:
             for lab in order:
-                g = [r for r in rows if r["kind"] == kind and (by is None or r[by] == lab)]
+                g = [
+                    r
+                    for r in rows
+                    if r["kind"] == kind and (by is None or r[by] == lab)
+                ]
                 if not g:
                     continue
                 n = len(g)
@@ -281,22 +386,47 @@ def summarize(path, out):
                 sc = n - c["unscored"]
                 sim = c["acceptable"] + c["medium"] + c["high"]
                 name = kind if by is None else f"{kind} / {lab}"
-                lines.append(f"| {name} | {n:,} | {len({(r['cluster1'], r['cluster2']) for r in g}):,} | {c['unscored'] / n:.1%} | {c['incorrect'] / n:.1%} | {c['acceptable'] / n:.1%} | "
-                             f"{c['medium'] / n:.1%} | {c['high'] / n:.1%} | {sim / n:.1%} | {(sim / sc if sc else float('nan')):.1%} | {(c['medium'] + c['high']) / n:.1%} |")
+                lines.append(
+                    f"| {name} | {n:,} | {len({(r['cluster1'], r['cluster2']) for r in g}):,} | {c['unscored'] / n:.1%} | {c['incorrect'] / n:.1%} | {c['acceptable'] / n:.1%} | "
+                    f"{c['medium'] / n:.1%} | {c['high'] / n:.1%} | {sim / n:.1%} | {(sim / sc if sc else float('nan')):.1%} | {(c['medium'] + c['high']) / n:.1%} |"
+                )
         lines.append("")
 
-    table("All pairs (each interface cluster contributes up to C(members, 2) pairs)", None, [None])
-    table("By sequence identity of the aligned chains", "id_bin", ["<60%", "60-90%", ">=90%"])
-    table("By number of entries in the interface cluster", "size_bin", ["2", "3-5", "6-20", ">20"])
-    lines.extend(["## Per cluster (each cluster counts once)", "", "| kind | clusters | mean share of similar pairs | clusters with every pair similar | clusters with no pair similar |", "|---|---:|---:|---:|---:|"])
+    table(
+        "All pairs (each interface cluster contributes up to C(members, 2) pairs)",
+        None,
+        [None],
+    )
+    table(
+        "By sequence identity of the aligned chains",
+        "id_bin",
+        ["<60%", "60-90%", ">=90%"],
+    )
+    table(
+        "By number of entries in the interface cluster",
+        "size_bin",
+        ["2", "3-5", "6-20", ">20"],
+    )
+    lines.extend(
+        [
+            "## Per cluster (each cluster counts once)",
+            "",
+            "| kind | clusters | mean share of similar pairs | clusters with every pair similar | clusters with no pair similar |",
+            "|---|---:|---:|---:|---:|",
+        ]
+    )
     for kind in KINDS:
         per = {}
         for r in rows:
             if r["kind"] == kind:
-                per.setdefault((r["cluster1"], r["cluster2"]), []).append(r["class"] in ("acceptable", "medium", "high"))
+                per.setdefault((r["cluster1"], r["cluster2"]), []).append(
+                    r["class"] in ("acceptable", "medium", "high")
+                )
         if per:
             rate = [sum(v) / len(v) for v in per.values()]
-            lines.append(f"| {kind} | {len(per):,} | {np.mean(rate):.1%} | {np.mean([x == 1 for x in rate]):.1%} | {np.mean([x == 0 for x in rate]):.1%} |")
+            lines.append(
+                f"| {kind} | {len(per):,} | {np.mean(rate):.1%} | {np.mean([x == 1 for x in rate]):.1%} | {np.mean([x == 0 for x in rate]):.1%} |"
+            )
     Path(out).write_text("\n".join(lines) + "\n")
 
 
@@ -314,11 +444,19 @@ def main():
     tasks, stats = sample(a)
     (out / "sampling.json").write_text(json.dumps(stats, indent=1))
     n = 0
-    with open(out / "pairs.tsv", "w") as f, mp.get_context("fork").Pool(a.workers, initializer=_init, initargs=(a.db,)) as pool:
+    with (
+        open(out / "pairs.tsv", "w") as f,
+        mp.get_context("fork").Pool(
+            a.workers, initializer=_init, initargs=(a.db,)
+        ) as pool,
+    ):
         f.write("\t".join(COLS) + "\n")
         for k, rows in enumerate(pool.imap_unordered(work, tasks, chunksize=4), 1):
             for r in rows:
-                f.write("\t".join(f"{v:.4f}" if isinstance(v, float) else str(v) for v in r) + "\n")
+                f.write(
+                    "\t".join(f"{v:.4f}" if isinstance(v, float) else str(v) for v in r)
+                    + "\n"
+                )
                 n += 1
             if k % 500 == 0:
                 print(f"{k}/{len(tasks)} clusters, {n} pairs", flush=True)

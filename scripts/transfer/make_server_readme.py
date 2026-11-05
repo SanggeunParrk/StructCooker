@@ -5,6 +5,7 @@
 A listing is ``<db path without .lmdb> <entries> <total bytes>`` per line (from each DB's ``.meta.json``). The text never lists
 a database the server lacks as present, and names what is not here (the release minus the server).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -76,7 +77,10 @@ def read(path: str) -> dict[str, tuple[int, int]]:
     for line in open(path):
         p = line.split()
         if len(p) >= 2:
-            out[p[0].removeprefix("lmdb/")] = (int(p[1]), int(p[2]) if len(p) > 2 and p[2].isdigit() else 0)
+            out[p[0].removeprefix("lmdb/")] = (
+                int(p[1]),
+                int(p[2]) if len(p) > 2 and p[2].isdigit() else 0,
+            )
     return out
 
 
@@ -88,22 +92,32 @@ def main() -> None:
     a = ap.parse_args()
     srv, rel = read(a.server), read(a.release)
     print(f"# BioMolDB_20261014 on {a.name} — a subset of the BioMol release\n")
-    print("A subset of the BioMol release (`/data/shared/cssb_data/BioMol_clean` on the BioAI cluster; release-check: 95 stages and the 7 "
-          "template key contracts pass, 2026-11-02), copied with its paths unchanged, so a config written for the release works here with "
-          "`BIOMOL_ROOT` pointing at this directory. `docs/` is the whole release's documentation (schemas, every database, provenance, "
-          "licences); only the files below are here. Sequence clusters are 40% only.\n")
+    print(
+        "A subset of the BioMol release (`/data/shared/cssb_data/BioMol_clean` on the BioAI cluster; release-check: 95 stages and the 7 "
+        "template key contracts pass, 2026-11-02), copied with its paths unchanged, so a config written for the release works here with "
+        "`BIOMOL_ROOT` pointing at this directory. `docs/` is the whole release's documentation (schemas, every database, provenance, "
+        "licences); only the files below are here. Sequence clusters are 40% only.\n"
+    )
     print("| path under `lmdb/` | entries | what |\n|---|---:|---|")
     for k in sorted(srv):
         print(f"| `{k}.lmdb` | {srv[k][0]:,} | {WHAT.get(k, '')} |")
     if any(k.startswith("foldbench") for k in srv):
-        print("| `foldbench/{msa,template,CCD}` | | FoldBench inference DB (`foldbench_build.json` says what was cut from the release) |")
+        print(
+            "| `foldbench/{msa,template,CCD}` | | FoldBench inference DB (`foldbench_build.json` says what was cut from the release) |"
+        )
     if a.metadata:
         print("\n| path | what |\n|---|---|")
         for m in a.metadata:
             print(f"| `metadata/{m}` | {META.get(m, '')} |")
-    print("\nEach `<db>.lmdb` comes with its `.index.tsv` and `.meta.json`; sharded databases keep their shards under `<db>.lmdb/shards/` "
-          "(see `shards.json`). Reading records: `docs/README.md`.")
-    print("\nNot here (in the release): " + ", ".join(f"`{k}`" for k in sorted(set(rel) - set(srv))) + ".")
+    print(
+        "\nEach `<db>.lmdb` comes with its `.index.tsv` and `.meta.json`; sharded databases keep their shards under `<db>.lmdb/shards/` "
+        "(see `shards.json`). Reading records: `docs/README.md`."
+    )
+    print(
+        "\nNot here (in the release): "
+        + ", ".join(f"`{k}`" for k in sorted(set(rel) - set(srv)))
+        + "."
+    )
     if a.extra:
         print("\n" + a.extra)
 

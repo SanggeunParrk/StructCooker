@@ -6,7 +6,13 @@ from pathlib import Path
 
 import yaml
 
-DEFAULT_PATH = Path(__file__).resolve().parents[4] / "db_configs" / "interface" / "params" / "ligand_exclusion.yaml"
+DEFAULT_PATH = (
+    Path(__file__).resolve().parents[4]
+    / "db_configs"
+    / "interface"
+    / "params"
+    / "ligand_exclusion.yaml"
+)
 
 
 def load_excluded(
@@ -22,6 +28,8 @@ def load_excluded(
     return frozenset(str(c).upper() for cat in categories for c in table[cat])
 
 
-def is_binding_ligand(ccd_id: str, n_heavy: int, excluded: frozenset[str], min_heavy: int) -> bool:
+def is_binding_ligand(
+    ccd_id: str, n_heavy: int, excluded: frozenset[str], min_heavy: int
+) -> bool:
     """True if the component may act as a ligand party."""
     return ccd_id.upper() not in excluded and n_heavy >= min_heavy

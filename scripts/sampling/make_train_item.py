@@ -10,6 +10,7 @@ Columns: source cluster1 cluster2 pdb_id assembly_id model_id alt_id chain_id1 c
   monomer row carries them; a partner that only touched them falls back to the monomer rule);
 * a monomer row (cluster2 = None) per chain whose cluster appears in no interface of the source -- the legacy edge_node rule.
 """
+
 import glob
 import sys
 from pathlib import Path
@@ -46,7 +47,9 @@ with open(out_path, "w") as out:
                         in_iface.add(k1)
                         in_iface.add(k2)
                         a, m, alt = asm.split("_", 2)
-                        out.write(f"{source}\t{k1}\t{k2}\t{e}\t{a}\t{m}\t{alt}\t{c1}\t{c2}\n")
+                        out.write(
+                            f"{source}\t{k1}\t{k2}\t{e}\t{a}\t{m}\t{alt}\t{c1}\t{c2}\n"
+                        )
                         n_if += 1
         for d in dirs:
             for p in sorted(glob.glob(str(Path(d) / "chains.*.tsv"))):
@@ -57,6 +60,11 @@ with open(out_path, "w") as out:
                         if k in in_iface or k in drop:
                             continue
                         a, m, alt = asm.split("_", 2)
-                        out.write(f"{source}\t{k}\tNone\t{e}\t{a}\t{m}\t{alt}\t{c}\tNone\n")
+                        out.write(
+                            f"{source}\t{k}\tNone\t{e}\t{a}\t{m}\t{alt}\t{c}\tNone\n"
+                        )
                         n_mono += 1
-        print(f"{source}: interface rows {n_if:,}  monomer rows {n_mono:,}  interface clusters {len(in_iface):,}", flush=True)
+        print(
+            f"{source}: interface rows {n_if:,}  monomer rows {n_mono:,}  interface clusters {len(in_iface):,}",
+            flush=True,
+        )

@@ -21,8 +21,10 @@ def test_build_all_uses_verified_native_release(monkeypatch, tmp_path, failed):
             raise RuntimeError(msg)
 
     monkeypatch.setattr(release, "start", start)
-    result = CliRunner().invoke(cli_module.cli, ["build-all", "--manifest", str(manifest),
-                                                "--workdir", str(tmp_path / "run")])
+    result = CliRunner().invoke(
+        cli_module.cli,
+        ["build-all", "--manifest", str(manifest), "--workdir", str(tmp_path / "run")],
+    )
     assert len(called) == 1
     assert result.exit_code == int(failed)
     assert "completed " not in result.output
@@ -37,7 +39,9 @@ def test_dry_run_does_not_submit(monkeypatch, tmp_path):
     manifest.write_text("ccd/ccd: []\n")
     calls = []
     monkeypatch.setattr(release, "start", lambda *args: calls.append(args))
-    result = CliRunner().invoke(cli_module.cli, ["build-all", "--manifest", str(manifest), "--dry-run"])
+    result = CliRunner().invoke(
+        cli_module.cli, ["build-all", "--manifest", str(manifest), "--dry-run"]
+    )
     assert result.exit_code == 0, result.output
     assert not calls
     assert "no jobs submitted" in result.output

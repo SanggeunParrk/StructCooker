@@ -3,6 +3,7 @@ at least 60 days before the query chain's entry, and not be the query's own entr
 
     python template_date_audit.py DB [--sample N]      DB: a chain-keyed template.lmdb (keys <pdbid>_<chain>)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -49,8 +50,10 @@ def main() -> None:
                 elif (q - td).days < GAP:
                     close += 1
                     ex.append((chain, t, f"only {(q - td).days} days before the query"))
-    print(f"{a.db}: chains={chains} template_mols={mols} after_cutoff={late} within_{GAP}d={close} same_entry={self_} "
-          f"no_date={nodate} examples={ex[:5]}")
+    print(
+        f"{a.db}: chains={chains} template_mols={mols} after_cutoff={late} within_{GAP}d={close} same_entry={self_} "
+        f"no_date={nodate} examples={ex[:5]}"
+    )
 
 
 if __name__ == "__main__":

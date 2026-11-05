@@ -8,6 +8,7 @@ PDB entry, waters removed). Per entry only the first assembly (lowest id), first
 Writes DIR/hist.npz (hist and hist_weighted [scope, a, b, bin]; scopes intra / inter; weighted = each entry's counts
 times its weight from --weights) and DIR/done.tsv.
 """
+
 import argparse
 import os
 
@@ -23,9 +24,9 @@ from pathlib import Path  # noqa: E402
 import lmdb  # noqa: E402
 import numpy as np  # noqa: E402
 
-from structcooker.instructions.transforms.codecs import from_bytes  # noqa: E402
 from structcooker.instructions.mols import CIFMolAttached  # noqa: E402
 from structcooker.instructions.potential import pairs  # noqa: E402
+from structcooker.instructions.transforms.codecs import from_bytes  # noqa: E402
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 DB = ROOT / "lmdb/pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb"
@@ -39,14 +40,18 @@ WEIGHTS: dict[str, float] = {}
 def init(min_sep, mode, rmax):
     global ENV, MIN_SEP, MODE, RMAX_ALL
     MIN_SEP, MODE, RMAX_ALL = min_sep, mode, rmax
-    ENV = lmdb.open(str(DB), readonly=True, lock=False, readahead=False, max_readers=512)
+    ENV = lmdb.open(
+        str(DB), readonly=True, lock=False, readahead=False, max_readers=512
+    )
 
 
 def pick(keys):
     """Lowest assembly id, then lowest model, altloc '.' preferred."""
+
     def k(c):
         a, m, alt = c.split("_")
         return (int(a), int(m), alt != ".", alt)
+
     return min(keys, key=k)
 
 
@@ -85,12 +90,25 @@ def main():
     ap.add_argument("--min-mb", type=float, default=0)
     ap.add_argument("--max-mb", type=float, default=30)
     ap.add_argument("--min-sep", type=int, default=3)
-    ap.add_argument("--mode", choices=["contact", "all"], default="contact",
-                    help="contact = definition A (heavy atoms within 5 A), all = definition B (every pair within --rmax)")
-    ap.add_argument("--rmax", type=float, default=15.0, help="definition B: distance limit between representative atoms")
+    ap.add_argument(
+        "--mode",
+        choices=["contact", "all"],
+        default="contact",
+        help="contact = definition A (heavy atoms within 5 A), all = definition B (every pair within --rmax)",
+    )
+    ap.add_argument(
+        "--rmax",
+        type=float,
+        default=15.0,
+        help="definition B: distance limit between representative atoms",
+    )
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--chunk", type=int, default=8)
-    ap.add_argument("--weights", default=None, help="entry_weights.tsv (entry, n, weight); default weight 1")
+    ap.add_argument(
+        "--weights",
+        default=None,
+        help="entry_weights.tsv (entry, n, weight); default weight 1",
+    )
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -101,7 +119,9 @@ def main():
         k, b = line.split("\t")[:2]
         sizes[k] = int(b)
     if a.weights:
-        WEIGHTS.update({l.split("\t")[0]: float(l.split("\t")[2]) for l in open(a.weights)})
+        WEIGHTS.update(
+            {l.split("\t")[0]: float(l.split("\t")[2]) for l in open(a.weights)}
+        )
     keys = [k for k, b in sizes.items() if a.min_mb * 1e6 <= b < a.max_mb * 1e6]
     random.Random(a.seed).shuffle(keys)
     if a.limit:
@@ -114,22 +134,43 @@ def main():
     hist_w = np.zeros_like(hist)
     n_ok = n_fail = 0
     t0 = time.time()
-    with mp.get_context("fork").Pool(a.workers, init, (a.min_sep, a.mode, a.rmax)) as pool, open(out / "done.tsv", "w") as fd, \
-         open(out / "failed.tsv", "w") as ff:
+    with (
+        mp.get_context("fork").Pool(
+            a.workers, init, (a.min_sep, a.mode, a.rmax)
+        ) as pool,
+        open(out / "done.tsv", "w") as fd,
+        open(out / "failed.tsv", "w") as ff,
+    ):
         for h, hw, dn, fl in pool.imap_unordered(chunk, chunks):
             hist += h
             hist_w += hw
-            n_ok += len(dn); n_fail += len(fl)
+            n_ok += len(dn)
+            n_fail += len(fl)
             for k, ni, nx in dn:
                 fd.write(f"{k}\t{ni}\t{nx}\n")
             for k, m in fl:
                 ff.write(f"{k}\t{m}\n")
             if (n_ok + n_fail) % 400 < a.chunk:
-                print(f"{n_ok + n_fail}/{len(keys)} ({n_fail} failed) {time.time() - t0:.0f}s", flush=True)
-    np.savez_compressed(out / "hist.npz", hist=hist, hist_weighted=hist_w, types=np.array(pairs.TYPES), bin=pairs.BIN, rmax=a.rmax if a.mode == "all" else pairs.RMAX, mode=a.mode,
-                        scopes=np.array(pairs.SCOPES), min_sep=a.min_sep)
-    print(f"done: {n_ok} entries, {n_fail} failed; pairs intra {hist[0].sum():.0f} inter {hist[1].sum():.0f}; "
-          f"{time.time() - t0:.0f}s", flush=True)
+                print(
+                    f"{n_ok + n_fail}/{len(keys)} ({n_fail} failed) {time.time() - t0:.0f}s",
+                    flush=True,
+                )
+    np.savez_compressed(
+        out / "hist.npz",
+        hist=hist,
+        hist_weighted=hist_w,
+        types=np.array(pairs.TYPES),
+        bin=pairs.BIN,
+        rmax=a.rmax if a.mode == "all" else pairs.RMAX,
+        mode=a.mode,
+        scopes=np.array(pairs.SCOPES),
+        min_sep=a.min_sep,
+    )
+    print(
+        f"done: {n_ok} entries, {n_fail} failed; pairs intra {hist[0].sum():.0f} inter {hist[1].sum():.0f}; "
+        f"{time.time() - t0:.0f}s",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

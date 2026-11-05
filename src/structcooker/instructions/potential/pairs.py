@@ -32,7 +32,7 @@ TYPES = [*AA, "X", "DA", "DC", "DG", "DT", "DN", "RA", "RC", "RG", "RU", "RN"]
 TYPE_INDEX = {t: i for i, t in enumerate(TYPES)}
 T = len(TYPES)
 BIN, RMAX = 0.5, 20.0
-NBIN = int(RMAX / BIN)          # the last bin (index NBIN) is the overflow >= RMAX
+NBIN = int(RMAX / BIN)  # the last bin (index NBIN) is the overflow >= RMAX
 SCOPES = ("intra", "inter")
 _DNA_COMP = {"DA", "DC", "DG", "DT", "DU", "DI", "DN"}
 
@@ -81,7 +81,14 @@ def representative_atoms(cm, rtype: np.ndarray) -> np.ndarray:
     return rep
 
 
-def count_assembly(cm, contact: float = 5.0, min_sep: int = 3, weight: float = 1.0, hist=None, dedup: bool = True):
+def count_assembly(
+    cm,
+    contact: float = 5.0,
+    min_sep: int = 3,
+    weight: float = 1.0,
+    hist=None,
+    dedup: bool = True,
+):
     """Add this assembly's pairs to ``hist`` (``(2, T, T, NBIN + 1)`` float64, created if None)."""
     if hist is None:
         hist = np.zeros((2, T, T, NBIN + 1))
@@ -123,11 +130,20 @@ def count_assembly(cm, contact: float = 5.0, min_sep: int = 3, weight: float = 1
     d = np.linalg.norm(xyz[rep[lo]] - xyz[rep[hi]], axis=1)
     b = np.minimum((d / BIN).astype(np.int64), NBIN)
     ta, tb = rtype[lo].astype(np.int64), rtype[hi].astype(np.int64)
-    np.add.at(hist, (np.where(same, 0, 1), np.minimum(ta, tb), np.maximum(ta, tb), b), weight)
+    np.add.at(
+        hist, (np.where(same, 0, 1), np.minimum(ta, tb), np.maximum(ta, tb), b), weight
+    )
     return hist
 
 
-def count_assembly_all(cm, rmax: float = 15.0, min_sep: int = 3, weight: float = 1.0, hist=None, dedup: bool = True):
+def count_assembly_all(
+    cm,
+    rmax: float = 15.0,
+    min_sep: int = 3,
+    weight: float = 1.0,
+    hist=None,
+    dedup: bool = True,
+):
     """Definition B: every residue pair whose representative atoms are within ``rmax``.
 
     ``hist`` is ``(2, T, T, int(rmax / BIN) + 1)``; the last bin is never filled (distances are < ``rmax``).
@@ -147,7 +163,7 @@ def count_assembly_all(cm, rmax: float = 15.0, min_sep: int = 3, weight: float =
     i, j, d = inter_node_pairs(xyz, np.arange(len(have)), rmax)
     if len(i) == 0:
         return hist
-    lo, hi = have[i], have[j]                      # have is ascending, so lo < hi
+    lo, hi = have[i], have[j]  # have is ascending, so lo < hi
     chain = ix.residues_to_chains(np.arange(len(rtype)))
     cif = rs.cif_idx.value.astype(np.int64)
     same = chain[lo] == chain[hi]
@@ -158,27 +174,38 @@ def count_assembly_all(cm, rmax: float = 15.0, min_sep: int = 3, weight: float =
         cint = cint.astype(np.int64)
         a = cint[chain[lo]] * 100000 + cif[lo]
         b = cint[chain[hi]] * 100000 + cif[hi]
-        key = np.minimum(a, b) * (1 << 28) + np.maximum(a, b)   # one integer per unordered (cluster, position) pair
+        key = np.minimum(a, b) * (1 << 28) + np.maximum(
+            a, b
+        )  # one integer per unordered (cluster, position) pair
         _, u = np.unique(key, return_index=True)
         lo, hi, same, d = lo[u], hi[u], same[u], d[u]
     b = np.minimum((d / BIN).astype(np.int64), nb)
     ta, tb = rtype[lo].astype(np.int64), rtype[hi].astype(np.int64)
-    np.add.at(hist, (np.where(same, 0, 1), np.minimum(ta, tb), np.maximum(ta, tb), b), weight)
+    np.add.at(
+        hist, (np.where(same, 0, 1), np.minimum(ta, tb), np.maximum(ta, tb), b), weight
+    )
     return hist
 
 
 # ---------------------------------------------------------------------------------------------------------------
 # contacts seen from each residue's own backbone frame
 
-BOX, VOX = 14.0, 1.0                    # the grid spans +-BOX A around the frame origin
-NV = int(2 * BOX / VOX)                 # voxels per axis
+BOX, VOX = 14.0, 1.0  # the grid spans +-BOX A around the frame origin
+NV = int(2 * BOX / VOX)  # voxels per axis
 
 
 BACKBONE = np.array(["N", "CA", "C", "O", "OXT"])
 
 
-def count_frame_contacts(cm, contact: float = 5.0, min_sep: int = 3, grid=None, wgrid=None, weight: float = 1.0,
-                         sidechain: bool = False):
+def count_frame_contacts(
+    cm,
+    contact: float = 5.0,
+    min_sep: int = 3,
+    grid=None,
+    wgrid=None,
+    weight: float = 1.0,
+    sidechain: bool = False,
+):
     """For every touching residue pair (definition A), add the partner's representative atom to the grid of the
     other residue's frame, in both directions. ``grid`` is ``(2, T, T, NV, NV, NV)`` float32 indexed by
     ``[scope, reference type, partner type, x, y, z]``; ``wgrid`` (same shape) receives the same samples times
@@ -196,7 +223,7 @@ def count_frame_contacts(cm, contact: float = 5.0, min_sep: int = 3, grid=None, 
     rs, ch, at, ix = cm.residues, cm.chains, cm.atoms, cm.index_table
     rtype, poly = residue_types(cm)
     if sidechain:
-        poly = poly & (rtype < len(AA))             # the 20 standard amino acids only
+        poly = poly & (rtype < len(AA))  # the 20 standard amino acids only
     if not poly.any():
         return grid, 0, 0
     rep = representative_atoms(cm, rtype)
@@ -231,12 +258,21 @@ def count_frame_contacts(cm, contact: float = 5.0, min_sep: int = 3, grid=None, 
     cint = cint.astype(np.int64)
     a = cint[chain[ref]] * 100000 + cif[ref]
     b = cint[chain[par]] * 100000 + cif[par]
-    _, u = np.unique(a * (1 << 28) + b, return_index=True)       # symmetry copies: one sample per (cluster, position) pair
+    _, u = np.unique(
+        a * (1 << 28) + b, return_index=True
+    )  # symmetry copies: one sample per (cluster, position) pair
     ref, par, sc = ref[u], par[u], sc[u]
     local = to_local(origin[ref], rot[ref], xyz[rep[par]])
     cell = np.floor((local + BOX) / VOX).astype(np.int64)
     inside = ((cell >= 0) & (cell < NV)).all(axis=1)
-    idx = (np.where(sc, 0, 1), rtype[ref].astype(np.int64), rtype[par].astype(np.int64), cell[:, 0], cell[:, 1], cell[:, 2])
+    idx = (
+        np.where(sc, 0, 1),
+        rtype[ref].astype(np.int64),
+        rtype[par].astype(np.int64),
+        cell[:, 0],
+        cell[:, 1],
+        cell[:, 2],
+    )
     sel = tuple(v[inside] for v in idx)
     np.add.at(grid, sel, 1.0)
     if wgrid is not None:

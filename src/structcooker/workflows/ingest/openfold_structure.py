@@ -54,13 +54,23 @@ structure_recipe.add(
 structure_recipe.add(
     targets=(("atom_features", dict),),
     instruction=derive_atom_features,
-    inputs={"kwargs": {"atom_site_dict": ("atom_site_dict", dict), "ccd_cache": ("ccd_cache", dict)}},
+    inputs={
+        "kwargs": {
+            "atom_site_dict": ("atom_site_dict", dict),
+            "ccd_cache": ("ccd_cache", dict),
+        }
+    },
 )
 
 structure_recipe.add(
     targets=(("bonds", dict),),
     instruction=derive_bond_edges,
-    inputs={"kwargs": {"atom_site_dict": ("atom_site_dict", dict), "ccd_cache": ("ccd_cache", dict)}},
+    inputs={
+        "kwargs": {
+            "atom_site_dict": ("atom_site_dict", dict),
+            "ccd_cache": ("ccd_cache", dict),
+        }
+    },
 )
 
 structure_recipe.add(

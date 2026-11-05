@@ -1,12 +1,13 @@
 """Finite scheduler DAG recovery without production data or scheduler access."""
+
 import json
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
-from structcooker.release import dag as release
 from structcooker.build.build_state import write_json
+from structcooker.release import dag as release
 
 
 def fixture_run(tmp_path):
@@ -31,9 +32,17 @@ def test_active_repair_prevents_duplicate_submission(tmp_path, monkeypatch):
     attempt = run / "attempt"
     attempt.mkdir()
     (attempt / "repair.job-id").write_text("456\n")
-    write_json(run / "nodes/base/state.json", {"phase": "failed", "job": "123", "attempt": str(attempt)})
+    write_json(
+        run / "nodes/base/state.json",
+        {"phase": "failed", "job": "123", "attempt": str(attempt)},
+    )
+
     def observe(argv, **_kwargs):
-        return SimpleNamespace(returncode=0, stdout="JobState=" + ("RUNNING" if argv[-1] == "456" else "FAILED"))
+        return SimpleNamespace(
+            returncode=0,
+            stdout="JobState=" + ("RUNNING" if argv[-1] == "456" else "FAILED"),
+        )
+
     monkeypatch.setattr(release.subprocess, "run", observe)
     release.reconcile(run)
     assert json.loads((run / "nodes/base/state.json").read_text())["phase"] == "failed"
@@ -51,7 +60,11 @@ def test_completed_run_must_revalidate(tmp_path):
 def test_unknown_scheduler_state_fails_closed(tmp_path, monkeypatch):
     run = fixture_run(tmp_path)
     write_json(run / "nodes/base/state.json", {"phase": "failed", "job": "123"})
-    monkeypatch.setattr(release.subprocess, "run", lambda *_a, **_k: SimpleNamespace(returncode=1, stdout=""))
+    monkeypatch.setattr(
+        release.subprocess,
+        "run",
+        lambda *_a, **_k: SimpleNamespace(returncode=1, stdout=""),
+    )
     with pytest.raises(RuntimeError, match="cannot establish terminal"):
         release.reconcile(run)
 

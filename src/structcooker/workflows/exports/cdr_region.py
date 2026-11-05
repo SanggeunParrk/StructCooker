@@ -1,4 +1,5 @@
 """Recipe: the CDR positions of the antibody sequences of a fasta (``cdr_region.csv``)."""
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.antibody_fasta import extract_cdr_table

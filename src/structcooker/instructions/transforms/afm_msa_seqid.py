@@ -44,6 +44,7 @@ def build_afm_msa_seqid_map(
                 seq_to_id[seq] = seq_id
 
     uses: dict[str, str] = {}  # msa entity -> sequence
+
     def claim(entity: str, seq: str) -> None:
         prior = uses.setdefault(entity, seq)
         if prior != seq:
@@ -55,7 +56,7 @@ def build_afm_msa_seqid_map(
         next(handle)  # header
         hetero = [line.rstrip("\n").split("\t") for line in handle]
     het_ids = {row[0] for row in hetero}
-    for entity in homo - het_ids:          # a homodimer: its own entity, chain A
+    for entity in homo - het_ids:  # a homodimer: its own entity, chain A
         claim(entity, chains[(entity, "A")])
     for het, chain, _acc, monomer, _how, verified in hetero:
         if verified != "ok":

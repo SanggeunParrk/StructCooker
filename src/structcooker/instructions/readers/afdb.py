@@ -39,9 +39,14 @@ def _afm_msa_seqid_map() -> dict[str, str]:
     """
     global _AFM_MSA_SEQID  # noqa: PLW0603 - process-local cache
     if _AFM_MSA_SEQID is None:
-        map_path = Path(os.environ.get(
-            "AFM_MSA_SEQID_MAP", str(biomol_root() / "materials/intermediate/worklists/afm_msa_seqid.tsv"),
-        ))
+        map_path = Path(
+            os.environ.get(
+                "AFM_MSA_SEQID_MAP",
+                str(
+                    biomol_root() / "materials/intermediate/worklists/afm_msa_seqid.tsv"
+                ),
+            )
+        )
         mapping: dict[str, str] = {}
         with map_path.open(encoding="utf-8") as handle:
             for line in handle:
@@ -78,7 +83,11 @@ def get_afm_cif_data(cif_path: Path) -> dict:
     if _CIF_OVERRIDES is None:
         from structcooker.instructions.readers.openfold import load_structure_overrides
 
-        _CIF_OVERRIDES = {k: str(v) for k, v in load_structure_overrides(Path(manifest)).items()} if manifest else {}
+        _CIF_OVERRIDES = (
+            {k: str(v) for k, v in load_structure_overrides(Path(manifest)).items()}
+            if manifest
+            else {}
+        )
     text = str(cif_path)
     for key, replacement in _CIF_OVERRIDES.items():
         if text == key or text.endswith("/" + key):

@@ -1,4 +1,5 @@
 """Recipe: the polypeptide(L) subset of a fasta (the hmmsearch template DB)."""
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.filelists import filter_fasta_polypeptide_l

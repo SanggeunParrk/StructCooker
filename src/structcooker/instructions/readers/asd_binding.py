@@ -4,6 +4,7 @@ The release mixes scales that cannot be compared (``bool``, a log10 assay score,
 energy, ratios), so each type is read on its own and compared with one affinity: Kd <= 1 uM binds. Types that are not
 an affinity (EC50, ka, ddG, enrichment, a ratio, IC50, ``fuzzy``) and types whose unit is not known give no verdict.
 """
+
 from __future__ import annotations
 
 import math
@@ -39,7 +40,9 @@ def _number(affinity: object) -> float | None:
 UNIT_UNCERTAIN_DATASETS = frozenset({"flab_warszawski2019"})
 
 
-def binding_verdict(affinity_type: str | None, affinity: object, dataset: str | None = None) -> bool | None:
+def binding_verdict(
+    affinity_type: str | None, affinity: object, dataset: str | None = None
+) -> bool | None:
     """``True`` binds (Kd <= 1 uM), ``False`` does not, ``None`` the row cannot say.
 
     ``bool``: the label. ``alphaseq``: log10(Kd nM) <= 3 (a missing score is unknown). ``-log Kd (M)``: >= 6.

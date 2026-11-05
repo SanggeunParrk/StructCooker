@@ -13,6 +13,7 @@ the rest is generated from this tree, so it cannot drift from what is on disk:
 The tables are computed once and rendered twice, so the Markdown and the HTML agree.
 Run ``structcooker release-docs`` after a build, a patch or a move.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -74,10 +75,20 @@ def database_rows(root: Path, manifest: Path) -> list[dict[str, Any]]:
         target = Path(str(target))
         meta_path = Path(str(target) + ".meta.json")
         meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
-        source = cfg.get("old_env_path") or cfg.get("file_list") or cfg.get("data_dir") or ""
-        rows.append({"path": _rel(target, root), "stage": name, "schema": str(cfg.get("schema", "")),
-                     "entries": meta.get("entries"), "size": disk_bytes(target) if target.exists() else None,
-                     "op": op_of(cfg), "source": _rel(source, root)})
+        source = (
+            cfg.get("old_env_path") or cfg.get("file_list") or cfg.get("data_dir") or ""
+        )
+        rows.append(
+            {
+                "path": _rel(target, root),
+                "stage": name,
+                "schema": str(cfg.get("schema", "")),
+                "entries": meta.get("entries"),
+                "size": disk_bytes(target) if target.exists() else None,
+                "op": op_of(cfg),
+                "source": _rel(source, root),
+            }
+        )
     # Databases made outside the build DAG (FoldBench assets, the inference CCD): any other
     # <db>.lmdb with a .meta.json, outside hidden and superseded directories.
     known = {r["path"] for r in rows}
@@ -86,11 +97,22 @@ def database_rows(root: Path, manifest: Path) -> list[dict[str, Any]]:
         if rel in known or any(part.startswith((".", "_")) for part in Path(rel).parts):
             continue
         meta = json.loads(meta_path.read_text())
-        rows.append({"path": rel, "stage": "", "schema": str(meta.get("schema", "")), "entries": meta.get("entries"),
-                     "size": disk_bytes(root / rel), "op": "staging", "source": str(meta.get("source") or "")})
+        rows.append(
+            {
+                "path": rel,
+                "stage": "",
+                "schema": str(meta.get("schema", "")),
+                "entries": meta.get("entries"),
+                "size": disk_bytes(root / rel),
+                "op": "staging",
+                "source": str(meta.get("source") or ""),
+            }
+        )
     for r in rows:
         r["group"] = "/".join(r["path"].split("/")[:2])
-        r["title"] = schemas.SCHEMAS[r["schema"]].title if r["schema"] in schemas.SCHEMAS else ""
+        r["title"] = (
+            schemas.SCHEMAS[r["schema"]].title if r["schema"] in schemas.SCHEMAS else ""
+        )
     return sorted(rows, key=lambda r: r["path"])
 
 
@@ -105,8 +127,11 @@ def scenario_data(root: Path, spec: Path) -> list[dict[str, Any]]:
             for e in entries:
                 e["exists"] = (root / e["path"]).exists()
                 e["size"] = disk_bytes(root / e["path"]) if e["exists"] else None
-            item[f"{part}_total"] = (sum(e["size"] for e in entries)
-                                     if entries and all(e["size"] is not None for e in entries) else None)
+            item[f"{part}_total"] = (
+                sum(e["size"] for e in entries)
+                if entries and all(e["size"] is not None for e in entries)
+                else None
+            )
     return items
 
 
@@ -115,34 +140,51 @@ def check_data(root: Path) -> dict[str, Any] | None:
     if not path.exists():
         return None
     report = json.loads(path.read_text())
-    report["when"] = datetime.datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+    report["when"] = datetime.datetime.fromtimestamp(path.stat().st_mtime).strftime(
+        "%Y-%m-%d %H:%M"
+    )
     return report
 
 
 # --------------------------------------------------------------------------- markdown
 def databases_md(rows: list[dict[str, Any]]) -> str:
     total = sum(r["size"] or 0 for r in rows)
-    lines = ["# Databases", "",
-             f"{len(rows)} databases, {human(total)} on disk. Sizes are the LMDB files; entries come",
-             "from each database's `.meta.json`. Schemas are described in the [README](README.md).", ""]
+    lines = [
+        "# Databases",
+        "",
+        f"{len(rows)} databases, {human(total)} on disk. Sizes are the LMDB files; entries come",
+        "from each database's `.meta.json`. Schemas are described in the [README](README.md).",
+        "",
+    ]
     group = None
     for r in rows:
         if r["group"] != group:
             group = r["group"]
-            lines += ["", f"## `{group}`", "", "| database | schema | entries | size | built by | from |",
-                      "|---|---|---|---|---|---|"]
+            lines += [
+                "",
+                f"## `{group}`",
+                "",
+                "| database | schema | entries | size | built by | from |",
+                "|---|---|---|---|---|---|",
+            ]
         schema = f"{r['schema']} — {r['title']}" if r["title"] else r["schema"]
         count = f"{r['entries']:,}" if isinstance(r["entries"], int) else "—"
         built = f"`{r['stage']}` ({r['op']})" if r["stage"] else r["op"]
         source = f"`{r['source']}`" if r["source"] else ""
-        lines.append(f"| `{r['path']}` | {schema} | {count} | {human(r['size'])} | {built} | {source} |")
+        lines.append(
+            f"| `{r['path']}` | {schema} | {count} | {human(r['size'])} | {built} | {source} |"
+        )
     return "\n".join(lines) + "\n"
 
 
 def scenarios_md(items: list[dict[str, Any]]) -> str:
-    out = ["# What to copy", "",
-           "Sizes are this tree's. MSA databases come in depth-capped versions (`_d512`, `_d2k`,",
-           "`_d5k`, `_d16k`, or uncapped); one per molecule type is enough.", ""]
+    out = [
+        "# What to copy",
+        "",
+        "Sizes are this tree's. MSA databases come in depth-capped versions (`_d512`, `_d2k`,",
+        "`_d5k`, `_d16k`, or uncapped); one per molecule type is enough.",
+        "",
+    ]
     for item in items:
         out += [f"## {item['title']}", "", f"*{item['when']}*", ""]
         for part, label in (("take", "needed"), ("optional", "optional")):
@@ -150,9 +192,16 @@ def scenarios_md(items: list[dict[str, Any]]) -> str:
             if not entries:
                 continue
             total = item[f"{part}_total"]
-            out += [f"**{label}**{f' — {human(total)}' if total is not None else ''}", "", "| path | size | |", "|---|---|---|"]
-            out += [f"| `{e['path']}`{'' if e['exists'] else ' (missing)'} | {human(e['size'])} | {e.get('note', '')} |"
-                    for e in entries]
+            out += [
+                f"**{label}**{f' — {human(total)}' if total is not None else ''}",
+                "",
+                "| path | size | |",
+                "|---|---|---|",
+            ]
+            out += [
+                f"| `{e['path']}`{'' if e['exists'] else ' (missing)'} | {human(e['size'])} | {e.get('note', '')} |"
+                for e in entries
+            ]
             out.append("")
         if item.get("notes"):
             out += [item["notes"], ""]
@@ -162,15 +211,22 @@ def scenarios_md(items: list[dict[str, Any]]) -> str:
 def check_md(report: dict[str, Any] | None) -> str:
     if report is None:
         return "# Release check\n\nNo `release_check.json` yet: run `structcooker release-check`.\n"
-    lines = ["# Release check", "",
-             f"`structcooker release-check`, {report['when']}: **{report['stages']} stages, "
-             f"{report['with_problems']} with problems.**", "",
-             "Each database: at its configured path, shards inside its own directory, entries and bytes",
-             "agreeing with `.meta.json` and `.index.tsv`, a seeded sample of 200 records decoding and",
-             "passing the build verification's checks. File outputs: present and non-empty.", ""]
+    lines = [
+        "# Release check",
+        "",
+        f"`structcooker release-check`, {report['when']}: **{report['stages']} stages, "
+        f"{report['with_problems']} with problems.**",
+        "",
+        "Each database: at its configured path, shards inside its own directory, entries and bytes",
+        "agreeing with `.meta.json` and `.index.tsv`, a seeded sample of 200 records decoding and",
+        "passing the build verification's checks. File outputs: present and non-empty.",
+        "",
+    ]
     bad = [r for r in report["reports"] if r["problems"]]
     if bad:
-        lines += ["| stage | problems |", "|---|---|"] + [f"| `{r['stage']}` | {'; '.join(r['problems'])} |" for r in bad]
+        lines += ["| stage | problems |", "|---|---|"] + [
+            f"| `{r['stage']}` | {'; '.join(r['problems'])} |" for r in bad
+        ]
     return "\n".join(lines) + "\n"
 
 
@@ -208,8 +264,12 @@ def _e(text: Any) -> str:
     return html.escape(str(text))
 
 
-def render_html(root: Path, rows: list[dict[str, Any]], items: list[dict[str, Any]],
-                report: dict[str, Any] | None) -> str:
+def render_html(
+    root: Path,
+    rows: list[dict[str, Any]],
+    items: list[dict[str, Any]],
+    report: dict[str, Any] | None,
+) -> str:
     total = sum(r["size"] or 0 for r in rows)
     records = sum(r["entries"] or 0 for r in rows)
     groups: dict[str, dict[str, Any]] = {}
@@ -224,7 +284,8 @@ def render_html(root: Path, rows: list[dict[str, Any]], items: list[dict[str, An
     else:
         check = f'<span class="ok">{report["stages"]}/{report["stages"]} OK</span>'
     when = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    out = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+    out = [
+        f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>BioMol release</title><style>{_CSS}</style></head>
 <body><main><h1>BioMol release</h1>
 <p class="sub"><code>{_e(root)}</code> · generated {when} by <code>structcooker release-docs</code></p>
@@ -238,39 +299,60 @@ def render_html(root: Path, rows: list[dict[str, Any]], items: list[dict[str, An
 <div class="card"><div class="k">release-check{f" · {_e(report['when'])}" if report else ""}</div><div class="v">{check}</div></div>
 </div>
 <h2>Layout</h2><pre>{_e(_TREE)}</pre>
-<h2>Data sets</h2><div class="wrap"><table><tr><th>lmdb/…</th><th>databases</th><th>size</th></tr>"""]
-    out += [f'<tr><td><code>{_e(g)}</code></td><td class="n">{v["dbs"]}</td><td class="n">{human(v["size"])}</td></tr>'
-            for g, v in sorted(groups.items())]
+<h2>Data sets</h2><div class="wrap"><table><tr><th>lmdb/…</th><th>databases</th><th>size</th></tr>"""
+    ]
+    out += [
+        f'<tr><td><code>{_e(g)}</code></td><td class="n">{v["dbs"]}</td><td class="n">{human(v["size"])}</td></tr>'
+        for g, v in sorted(groups.items())
+    ]
     out.append('</table></div><h2>What to copy</h2><div class="scen">')
     for item in items:
         need = item.get("take_total")
-        out.append(f'<div class="card"><h3>{_e(item["title"])}</h3><div class="when">{_e(item["when"])}</div>'
-                   f'<div class="tot">needed: {human(need) if need is not None else "see list"}</div><ul>')
-        out += [f'<li><code>{_e(e["path"])}</code> <span class="note">{human(e["size"])}'
-                f'{" · " + _e(e["note"]) if e.get("note") else ""}</span></li>' for e in item.get("take") or []]
+        out.append(
+            f'<div class="card"><h3>{_e(item["title"])}</h3><div class="when">{_e(item["when"])}</div>'
+            f'<div class="tot">needed: {human(need) if need is not None else "see list"}</div><ul>'
+        )
+        out += [
+            f'<li><code>{_e(e["path"])}</code> <span class="note">{human(e["size"])}'
+            f"{' · ' + _e(e['note']) if e.get('note') else ''}</span></li>"
+            for e in item.get("take") or []
+        ]
         out.append("</ul>")
         if item.get("optional"):
             opt = item.get("optional_total")
-            out.append(f'<div class="note" style="margin-top:8px">optional{f" ({human(opt)})" if opt is not None else ""}:</div><ul>')
-            out += [f'<li><code>{_e(e["path"])}</code> <span class="note">{human(e["size"])}'
-                    f'{" · " + _e(e["note"]) if e.get("note") else ""}</span></li>' for e in item["optional"]]
+            out.append(
+                f'<div class="note" style="margin-top:8px">optional{f" ({human(opt)})" if opt is not None else ""}:</div><ul>'
+            )
+            out += [
+                f'<li><code>{_e(e["path"])}</code> <span class="note">{human(e["size"])}'
+                f"{' · ' + _e(e['note']) if e.get('note') else ''}</span></li>"
+                for e in item["optional"]
+            ]
             out.append("</ul>")
         if item.get("notes"):
-            out.append(f'<div class="note" style="margin-top:8px">{_e(item["notes"])}</div>')
+            out.append(
+                f'<div class="note" style="margin-top:8px">{_e(item["notes"])}</div>'
+            )
         out.append("</div>")
-    out.append('</div><h2>Every database</h2><input id="q" placeholder="filter: path, stage, schema…" '
-               'oninput="f(this.value)"><div class="wrap"><table id="t"><tr><th>database</th><th>schema</th>'
-               '<th>entries</th><th>size</th><th>built by</th><th>from</th></tr>')
+    out.append(
+        '</div><h2>Every database</h2><input id="q" placeholder="filter: path, stage, schema…" '
+        'oninput="f(this.value)"><div class="wrap"><table id="t"><tr><th>database</th><th>schema</th>'
+        "<th>entries</th><th>size</th><th>built by</th><th>from</th></tr>"
+    )
     group = None
     for r in rows:
         if r["group"] != group:
             group = r["group"]
-            out.append(f'<tr class="grp"><td colspan="6"><code>{_e(group)}</code></td></tr>')
+            out.append(
+                f'<tr class="grp"><td colspan="6"><code>{_e(group)}</code></td></tr>'
+            )
         count = f"{r['entries']:,}" if isinstance(r["entries"], int) else "—"
         schema = f"{r['schema']} · {r['title']}" if r["title"] else r["schema"]
         built = f"{r['stage']} ({r['op']})" if r["stage"] else r["op"]
-        out.append(f'<tr><td><code>{_e(r["path"])}</code></td><td>{_e(schema)}</td><td class="n">{count}</td>'
-                   f'<td class="n">{human(r["size"])}</td><td>{_e(built)}</td><td><code>{_e(r["source"])}</code></td></tr>')
+        out.append(
+            f'<tr><td><code>{_e(r["path"])}</code></td><td>{_e(schema)}</td><td class="n">{count}</td>'
+            f'<td class="n">{human(r["size"])}</td><td>{_e(built)}</td><td><code>{_e(r["source"])}</code></td></tr>'
+        )
     out.append("""</table></div></main><script>
 function f(q){q=q.toLowerCase();for(const tr of document.querySelectorAll('#t tr')){if(tr.querySelector('th')||tr.classList.contains('grp'))continue;
 tr.style.display=tr.textContent.toLowerCase().includes(q)?'':'none'}}</script></body></html>""")
@@ -287,8 +369,12 @@ def write(root: Path, manifest: Path) -> list[Path]:
     rows = database_rows(root, manifest)
     items = scenario_data(root, SOURCES / "scenarios.yaml")
     report = check_data(root)
-    for name, body in (("databases.md", databases_md(rows)), ("scenarios.md", scenarios_md(items)),
-                       ("check.md", check_md(report)), ("index.html", render_html(root, rows, items, report))):
+    for name, body in (
+        ("databases.md", databases_md(rows)),
+        ("scenarios.md", scenarios_md(items)),
+        ("check.md", check_md(report)),
+        ("index.html", render_html(root, rows, items, report)),
+    ):
         (out / name).write_text(body)
         written.append(out / name)
     return written

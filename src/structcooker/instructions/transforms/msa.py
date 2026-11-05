@@ -32,7 +32,9 @@ def _run_command(
     *,
     env: dict[str, str] | None = None,
 ) -> None:
-    result = subprocess.run(command, capture_output=True, text=True, env=env, check=False)  # noqa: S603 (fixed internal tool argv)
+    result = subprocess.run(
+        command, capture_output=True, text=True, env=env, check=False
+    )  # noqa: S603 (fixed internal tool argv)
     if result.returncode != 0:
         cmd = " ".join(command)
         msg = (
@@ -89,7 +91,9 @@ def parse_sequence(
     for row, raw_sequence in enumerate(raw_sequences):
         sequence = raw_sequence.translate(table)
         if len(sequence) != length:
-            msg = f"MSA row {row} has {len(sequence)} aligned columns; expected {length}."
+            msg = (
+                f"MSA row {row} has {len(sequence)} aligned columns; expected {length}."
+            )
             raise ValueError(msg)
         if any(not ("A" <= c <= "Z" or c == "-") for c in sequence):
             msg = f"MSA row {row} contains an invalid aligned character."
@@ -100,7 +104,9 @@ def parse_sequence(
             dtype=np.int64,
         )
         if positions.size:
-            columns, counts = np.unique(positions - np.arange(positions.size), return_counts=True)
+            columns, counts = np.unique(
+                positions - np.arange(positions.size), return_counts=True
+            )
             # A3M insertions belong to the following aligned column. Trailing
             # insertions have no following column and do not enter the matrix.
             keep = columns < length
@@ -125,12 +131,16 @@ def msa_statistics(
     if not n_rows or not length or deletions.shape != sequences.shape:
         msg = "MSA and deletion matrices must have matching, nonempty dimensions."
         raise ValueError(msg)
-    deletion_mean = (2 * np.arctan(deletions.astype(np.float32) / 3) / np.pi).mean(axis=0).astype(np.float32)
+    deletion_mean = (
+        (2 * np.arctan(deletions.astype(np.float32) / 3) / np.pi)
+        .mean(axis=0)
+        .astype(np.float32)
+    )
     counts = np.zeros(length * n_classes, dtype=np.int64)
     offsets = np.arange(length) * n_classes
     rows_per_chunk = max(1, 1_000_000 // length)
     for start in range(0, n_rows, rows_per_chunk):
-        indices = sequences[start:start + rows_per_chunk].astype(np.int64) + offsets
+        indices = sequences[start : start + rows_per_chunk].astype(np.int64) + offsets
         counts += np.bincount(indices.ravel(), minlength=counts.size)
     profile = (counts.reshape(length, n_classes) / n_rows).astype(np.float32)
     return deletion_mean, profile

@@ -95,7 +95,9 @@ def write_asd_pairs_chains(data: dict, output_path: Path) -> None:
     """Write the ASD pair table with chain status: antigen, heavy, light seq_id, the recovered light sequence (if any), status, source, datasets."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w") as f:
-        f.write("antigen_seq_id\theavy_seq_id\tlight_seq_id\tlight_sequence\tchain_status\tlight_source\tdatasets\n")
+        f.write(
+            "antigen_seq_id\theavy_seq_id\tlight_seq_id\tlight_sequence\tchain_status\tlight_source\tdatasets\n"
+        )
         for row in data["pairs"]:
             f.write("\t".join(row) + "\n")
 
@@ -262,8 +264,10 @@ def write_edge_node(
                 pdb_id1, assembly_id1, model_id1, alt_id1, chain_id1 = _extract_info(
                     chain_id_pairs[0],
                 )
-                _pdb_id2, _assembly_id2, _model_id2, _alt_id2, chain_id2 = _extract_info(
-                    chain_id_pairs[1],
+                _pdb_id2, _assembly_id2, _model_id2, _alt_id2, chain_id2 = (
+                    _extract_info(
+                        chain_id_pairs[1],
+                    )
                 )
                 to_write = f"{cluster1}\t{cluster2}\t{pdb_id1}\t{assembly_id1}\t{model_id1}\t{alt_id1}\t{chain_id1}\t{chain_id2}\n"
                 f.write(to_write)

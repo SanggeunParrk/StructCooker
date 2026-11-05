@@ -6,10 +6,17 @@ from structcooker.build.schemas import get
 
 
 def filtered_record():
-    return {"1_1_.": {"cifmol_dict": {
-        "atoms": {}, "residues": {}, "chains": {}, "index_table": {},
-        "metadata": {"id": ["1abc"]},
-    }}}
+    return {
+        "1_1_.": {
+            "cifmol_dict": {
+                "atoms": {},
+                "residues": {},
+                "chains": {},
+                "index_table": {},
+                "metadata": {"id": ["1abc"]},
+            }
+        }
+    }
 
 
 def test_filtered_cif_has_a_distinct_schema():
@@ -20,7 +27,9 @@ def test_filtered_cif_has_a_distinct_schema():
     assert get("I").expansion == get("A").expansion
 
 
-@pytest.mark.parametrize("missing", ["atoms", "residues", "chains", "index_table", "metadata"])
+@pytest.mark.parametrize(
+    "missing", ["atoms", "residues", "chains", "index_table", "metadata"]
+)
 def test_filtered_schema_checks_every_assembly(missing):
     value = filtered_record()
     value["2_1_."] = deepcopy(value["1_1_."])

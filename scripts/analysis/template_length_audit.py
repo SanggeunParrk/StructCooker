@@ -7,6 +7,7 @@ with some mol the wrong length, and examples.
 
     python template_length_audit.py [--records 150]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,19 +39,36 @@ def main() -> None:
     a = ap.parse_args()
     for c in CONTRACTS:
         struct, templ = ROOT / f"{c.structure}.lmdb", ROOT / f"{c.template}.lmdb"
-        names = [ln.split("\t", 1)[0] for ln in open(f"{struct}.index.tsv") if not ln.startswith(("#", "key\t"))]
-        chosen = random.Random("len-" + c.name).sample(names, min(a.records, len(names)))
+        names = [
+            ln.split("\t", 1)[0]
+            for ln in open(f"{struct}.index.tsv")
+            if not ln.startswith(("#", "key\t"))
+        ]
+        chosen = random.Random("len-" + c.name).sample(
+            names, min(a.records, len(names))
+        )
         n = with_t = ok = bad = nmols = badmols = 0
         ex = []
-        with open_env(str(struct), readonly=True, lock=False) as se, open_env(str(templ), readonly=True, lock=False) as te, \
-                se.begin() as st, te.begin() as tt:
+        with (
+            open_env(str(struct), readonly=True, lock=False) as se,
+            open_env(str(templ), readonly=True, lock=False) as te,
+            se.begin() as st,
+            te.begin() as tt,
+        ):
             for name in chosen:
                 rec = from_bytes(bytes(st.get(name.encode())))
                 for asm in rec.values():
                     v = asm["cifmol_attached_dict"]
                     cn = v["chains"]["nodes"]
                     ptr = np.asarray(v["index_table"]["chain_res_indptr"]).ravel()
-                    for i, (cid, et, sid) in enumerate(zip(col(cn, "chain_id"), col(cn, "entity_type"), col(cn, "seq_id"))):
+                    for i, (cid, et, sid) in enumerate(
+                        zip(
+                            col(cn, "chain_id"),
+                            col(cn, "entity_type"),
+                            col(cn, "seq_id"),
+                            strict=False,
+                        )
+                    ):
                         if "polypeptide" not in str(et):
                             continue
                         n += 1
@@ -72,8 +90,11 @@ def main() -> None:
                                 ex.append((name, str(cid), qlen, wrong[:3]))
                         else:
                             ok += 1
-        print(f"{c.name:16} chains={n} with_template={with_t} all_mols_fit={ok} some_mol_wrong={bad} "
-              f"mols={nmols} wrong_mols={badmols} ex={ex}", flush=True)
+        print(
+            f"{c.name:16} chains={n} with_template={with_t} all_mols_fit={ok} some_mol_wrong={bad} "
+            f"mols={nmols} wrong_mols={badmols} ex={ex}",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":

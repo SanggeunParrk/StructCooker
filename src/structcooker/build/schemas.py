@@ -23,6 +23,7 @@ Structures below are the ones observed across ``/data/shared/cssb_data/BioMol``:
   H  {atoms,residues,chains,index_table,metadata}   (one assembly-model-altloc/key)
   I  {<assm>: {cifmol_dict:{atoms,residues,chains,index_table,metadata}}}
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -34,9 +35,9 @@ from typing import Any
 class Codec(str, Enum):
     """How a value is framed on disk (drives which decoder ``from_bytes`` uses)."""
 
-    biomol_zstd = "biomol_zstd"                      # standard frame (content-size present)
+    biomol_zstd = "biomol_zstd"  # standard frame (content-size present)
     biomol_zstd_streaming = "biomol_zstd_streaming"  # streaming frame (no content-size)
-    raw = "raw"                                      # bare bytes
+    raw = "raw"  # bare bytes
 
 
 # ---- per-schema validators (deserialized value -> list of issues) -----------
@@ -65,14 +66,21 @@ def _v_B(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(first) or "cifmol_attached_dict" not in first:
         return ["assembly value lacks cifmol_attached_dict"]
     cad = first["cifmol_attached_dict"]
-    return [] if _is_dict(cad) and "atoms" in cad and "metadata" in cad else \
-        ["cifmol_attached_dict missing atoms/metadata"]
+    return (
+        []
+        if _is_dict(cad) and "atoms" in cad and "metadata" in cad
+        else ["cifmol_attached_dict missing atoms/metadata"]
+    )
 
 
 def _v_C(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(v):
         return [f"not a dict: {type(v).__name__}"]
-    return [f"missing {k}" for k in ("atoms", "residues", "chains", "index_table") if k not in v]
+    return [
+        f"missing {k}"
+        for k in ("atoms", "residues", "chains", "index_table")
+        if k not in v
+    ]
 
 
 def _v_D(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
@@ -87,12 +95,17 @@ def _v_D(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
         lists: list[list[str]] = []
         for key in ("loaded_hits", "missing_chain_hits", "not_selected_hits"):
             items = report.get(key)
-            if not isinstance(items, list) or any(not isinstance(x, str) for x in items):
+            if not isinstance(items, list) or any(
+                not isinstance(x, str) for x in items
+            ):
                 return ["invalid template hit ledger"]
             lists.append(items)
         hits = [hit for items in lists for hit in items]
-        if (len(set(hits)) != len(hits) or len(hits) != report.get("candidate_count")
-                or set(lists[0]) != set(v["template_mols"])):
+        if (
+            len(set(hits)) != len(hits)
+            or len(hits) != report.get("candidate_count")
+            or set(lists[0]) != set(v["template_mols"])
+        ):
             return ["inconsistent template hit ledger"]
     return []
 
@@ -101,13 +114,19 @@ def _v_E(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     if not _is_dict(v) or "msa_dict" not in v:
         return ["missing msa_dict"]
     md = v["msa_dict"]
-    return [] if _is_dict(md) and ("sequences" in md or "aligned_sequences" in md) else \
-        ["msa_dict missing sequences"]
+    return (
+        []
+        if _is_dict(md) and ("sequences" in md or "aligned_sequences" in md)
+        else ["msa_dict missing sequences"]
+    )
 
 
 def _v_F(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
-    return [] if isinstance(v, (str, bytes, bytearray)) else \
-        [f"raw scalar expected, got {type(v).__name__}"]
+    return (
+        []
+        if isinstance(v, (str, bytes, bytearray))
+        else [f"raw scalar expected, got {type(v).__name__}"]
+    )
 
 
 def _v_G(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
@@ -115,7 +134,11 @@ def _v_G(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
         return ["missing chem_comp_dict"]
     # None: a component the CCD defines without atoms (UNL, unknown ligand); the CIF build
     # reads it as "no definition", so the record is kept.
-    return [] if v["chem_comp_dict"] is None or _is_dict(v["chem_comp_dict"]) else ["chem_comp_dict not a dict"]
+    return (
+        []
+        if v["chem_comp_dict"] is None or _is_dict(v["chem_comp_dict"])
+        else ["chem_comp_dict not a dict"]
+    )
 
 
 def _v_I(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
@@ -124,12 +147,17 @@ def _v_I(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
         return ["not a non-empty assembly map"]
     issues = []
     for assembly, wrapped in v.items():
-        if not isinstance(wrapped, dict) or not isinstance(wrapped.get("cifmol_dict"), dict):
+        if not isinstance(wrapped, dict) or not isinstance(
+            wrapped.get("cifmol_dict"), dict
+        ):
             issues.append(f"{assembly}: missing cifmol_dict")
             continue
         record = wrapped["cifmol_dict"]
         issues.extend(f"{assembly}: {issue}" for issue in _v_C(record))
-        if not isinstance(record.get("metadata"), dict) or "id" not in record["metadata"]:
+        if (
+            not isinstance(record.get("metadata"), dict)
+            or "id" not in record["metadata"]
+        ):
             issues.append(f"{assembly}: metadata has no id")
     return issues
 
@@ -138,40 +166,41 @@ def _v_I(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
 class Schema:
     """Place-of-truth record for one BioMol LMDB value schema."""
 
-    name: str                 # "A".."I"
+    name: str  # "A".."I"
     title: str
-    key_convention: str       # pdbid | pdbid_chain | seqid | mgyp | mgyp_topn | mixed
+    key_convention: str  # pdbid | pdbid_chain | seqid | mgyp | mgyp_topn | mixed
     codec: Codec
-    expansion: float | None   # E = peak live mem / stored value bytes (None = unmeasured)
+    expansion: (
+        float | None
+    )  # E = peak live mem / stored value bytes (None = unmeasured)
     validate: Callable[[Any], list[str]]
 
 
 SCHEMAS: dict[str, Schema] = {
-    "A": Schema("A", "assembly + metadata_dict", "pdbid",
-                Codec.biomol_zstd, 100.0, _v_A),
-    "B": Schema("B", "cifmol_attached (per assembly)", "pdbid",
-                Codec.biomol_zstd, 100.0, _v_B),
-    "C": Schema("C", "chain BioMol", "pdbid_chain",
-                Codec.biomol_zstd, 100.0, _v_C),
+    "A": Schema(
+        "A", "assembly + metadata_dict", "pdbid", Codec.biomol_zstd, 100.0, _v_A
+    ),
+    "B": Schema(
+        "B", "cifmol_attached (per assembly)", "pdbid", Codec.biomol_zstd, 100.0, _v_B
+    ),
+    "C": Schema("C", "chain BioMol", "pdbid_chain", Codec.biomol_zstd, 100.0, _v_C),
     # D/E carry conservative E estimates, not a precise measurement like CIFMol's
     # 100x: their values are small (template ~KB, msa ~MB) with no giant tail, so
     # the planner's size-tiering keeps them memory-safe regardless -- refine only
     # if a specific DB shows memory pressure.
-    "D": Schema("D", "template_mols", "pdbid_chain",
-                Codec.biomol_zstd, 20.0, _v_D),
+    "D": Schema("D", "template_mols", "pdbid_chain", Codec.biomol_zstd, 20.0, _v_D),
     # E was 40, but that under-sized MSA rebuilds: depth-capping materializes a
     # dense depth x length array whose LIVE memory (~1-2 GB/record, measured) is
     # unrelated to the compressed stored bytes, so at n_jobs=112 the mem the planner
     # requested (209 g) was crossed and shards OOM-Killed. Worst-case measured
     # E ~= 1.9 GB / 17.9 MB ~= 104; 100 makes the planner request ~326 g (safe).
-    "E": Schema("E", "msa_dict", "seqid",
-                Codec.biomol_zstd_streaming, 100.0, _v_E),  # codec: standardize (see below)
-    "F": Schema("F", "raw scalar", "mixed",
-                Codec.raw, 1.0, _v_F),
+    "E": Schema(
+        "E", "msa_dict", "seqid", Codec.biomol_zstd_streaming, 100.0, _v_E
+    ),  # codec: standardize (see below)
+    "F": Schema("F", "raw scalar", "mixed", Codec.raw, 1.0, _v_F),
     # CCD chem-component reference DB: small per-component dicts (~1-2 KB), no
     # giant tail, so a low conservative E is safe for the planner.
-    "G": Schema("G", "CCD chem component", "comp_id",
-                Codec.biomol_zstd, 5.0, _v_G),
+    "G": Schema("G", "CCD chem component", "comp_id", Codec.biomol_zstd, 5.0, _v_G),
     # Model-input DBs: a CIFMol pruned to the features one model reads, exploded
     # so a key is one training sample. Same value structure as C (hence _v_C),
     # different key convention. Its index_table may be compact -- only the two
@@ -179,10 +208,17 @@ SCHEMAS: dict[str, Schema] = {
     # structcooker.instructions.transforms.pruning.load_pruned_cifmol.
     # E stays the source's 100.0: a rebuild's memory is driven by the entries it
     # reads, and pruning happens after the source entry is already live.
-    "H": Schema("H", "pruned CIFMol (per assembly-model-altloc)",
-                "pdbid_assembly_model_altloc", Codec.biomol_zstd, 100.0, _v_C),
-    "I": Schema("I", "filtered CIFMol (per assembly)", "pdbid",
-                Codec.biomol_zstd, 100.0, _v_I),
+    "H": Schema(
+        "H",
+        "pruned CIFMol (per assembly-model-altloc)",
+        "pdbid_assembly_model_altloc",
+        Codec.biomol_zstd,
+        100.0,
+        _v_C,
+    ),
+    "I": Schema(
+        "I", "filtered CIFMol (per assembly)", "pdbid", Codec.biomol_zstd, 100.0, _v_I
+    ),
 }
 
 

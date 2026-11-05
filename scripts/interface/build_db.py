@@ -5,6 +5,7 @@ Reads $BIOMOL_ROOT/lmdb/pdb/cif/cif_pdb.lmdb (waters included). Resumable: finis
 listed in DIR/done.tsv and skipped on restart. Per entry: first model of every assembly (altloc '.'
 preferred), units deduplicated across the entry's assemblies by (node sequences, contact size).
 """
+
 import argparse
 import os
 
@@ -21,11 +22,9 @@ from pathlib import Path  # noqa: E402
 import lmdb  # noqa: E402
 import numpy as np  # noqa: E402
 
-from structcooker.instructions.transforms.codecs import (  # noqa: E402
-    from_bytes,
-    to_bytes,
+from structcooker.instructions.interface.antibody import (
+    AntibodyClassifier,
 )
-from structcooker.instructions.interface.antibody import AntibodyClassifier  # noqa: E402
 from structcooker.instructions.interface.config import load_config  # noqa: E402
 from structcooker.instructions.interface.pipeline import extract_units  # noqa: E402
 from structcooker.instructions.interface.record import (  # noqa: E402
@@ -34,6 +33,10 @@ from structcooker.instructions.interface.record import (  # noqa: E402
     unit_to_record,
 )
 from structcooker.instructions.mols import CIFMol  # noqa: E402
+from structcooker.instructions.transforms.codecs import (  # noqa: E402
+    from_bytes,
+    to_bytes,
+)
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
 CFG = AB = ENV_IN = ENV_OUT = None
@@ -60,11 +63,26 @@ def init_worker(counter, out_dir, ab_cache, shard_base):
         counter.value += 1
     SHARD_BASE = shard_base
     CFG = load_config()
-    AB = AntibodyClassifier(ab_cache)  # cache misses (rare) fall back to a live ANARCI call
-    ENV_IN = lmdb.open(str(ROOT / "lmdb/pdb/cif/cif_pdb.lmdb"), readonly=True, lock=False, readahead=False, max_readers=512)
+    AB = AntibodyClassifier(
+        ab_cache
+    )  # cache misses (rare) fall back to a live ANARCI call
+    ENV_IN = lmdb.open(
+        str(ROOT / "lmdb/pdb/cif/cif_pdb.lmdb"),
+        readonly=True,
+        lock=False,
+        readahead=False,
+        max_readers=512,
+    )
     shard = Path(out_dir) / "shards" / f"shard_{SHARD_BASE + WID:03d}.lmdb"
     shard.parent.mkdir(parents=True, exist_ok=True)
-    ENV_OUT = lmdb.open(str(shard), map_size=MAP_SIZE, subdir=True, metasync=False, sync=False, max_dbs=0)
+    ENV_OUT = lmdb.open(
+        str(shard),
+        map_size=MAP_SIZE,
+        subdir=True,
+        metasync=False,
+        sync=False,
+        max_dbs=0,
+    )
     atexit.register(ENV_OUT.sync)
 
 
@@ -75,8 +93,14 @@ def process_entry(key):
     del raw
     md = rec["metadata_dict"]
     res = md.get("resolution")
-    base_meta = {"pdb_id": key, "resolution": None if res is None or not np.isfinite(float(res)) else float(res),
-                 "release_date": md.get("release_date"), "deposition_date": md.get("deposition_date")}
+    base_meta = {
+        "pdb_id": key,
+        "resolution": None
+        if res is None or not np.isfinite(float(res))
+        else float(res),
+        "release_date": md.get("release_date"),
+        "deposition_date": md.get("deposition_date"),
+    }
     out_rows, seen, n_skipped = [], set(), 0
     puts = []
     for ck in select_keys(rec["assembly_dict"]):
@@ -87,7 +111,10 @@ def process_entry(key):
         item["metadata"] = m
         cm = CIFMol.from_dict(item)
         asm, units, duplex = extract_units(cm, CFG, AB)
-        if sum(k in ("protein", "na") for k in asm.kinds) > CFG.unit.max_polymer_chains_in_assembly:
+        if (
+            sum(k in ("protein", "na") for k in asm.kinds)
+            > CFG.unit.max_polymer_chains_in_assembly
+        ):
             n_skipped += 1
             del cm, asm
             continue
@@ -139,11 +166,17 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--chunk", type=int, default=8)
     ap.add_argument("--antibody-cache", default=None)
-    ap.add_argument("--keys", default=None, help="file with one PDB key per line (overrides the size/limit selection)")
+    ap.add_argument(
+        "--keys",
+        default=None,
+        help="file with one PDB key per line (overrides the size/limit selection)",
+    )
     a = ap.parse_args()
     out = Path(a.out)
     if (out / "interface_pdb.lmdb" / "shards.json").exists():
-        raise SystemExit(f"{out} is already finalized (interface_pdb.lmdb published); build into a new directory")
+        raise SystemExit(
+            f"{out} is already finalized (interface_pdb.lmdb published); build into a new directory"
+        )
     out.mkdir(parents=True, exist_ok=True)
     index = ROOT / "lmdb/pdb/cif/cif_pdb.lmdb.index.tsv"
     sizes = {}
@@ -164,14 +197,26 @@ def main():
     keys = [k for k in keys if k not in done]
     keys.sort(key=lambda k: -sizes[k])  # heaviest first: balances the tail
     chunks = [keys[i : i + a.chunk] for i in range(0, len(keys), a.chunk)]
-    shard_base = len(list((out / "shards").glob("shard_*.lmdb"))) if (out / "shards").exists() else 0
-    print(f"{len(keys)} entries ({len(done)} already done), {a.workers} workers, shards from {shard_base}", flush=True)
+    shard_base = (
+        len(list((out / "shards").glob("shard_*.lmdb")))
+        if (out / "shards").exists()
+        else 0
+    )
+    print(
+        f"{len(keys)} entries ({len(done)} already done), {a.workers} workers, shards from {shard_base}",
+        flush=True,
+    )
     man_p = out / "manifest.tsv"
     cols = None
     t0, n_done, n_units, n_fail = time.time(), 0, 0, 0
     counter = mp.Value("i", 0)
-    with mp.get_context("fork").Pool(a.workers, init_worker, (counter, out, a.antibody_cache, shard_base)) as pool, \
-         open(done_p, "a") as fd, open(out / "failed.tsv", "a") as ff:
+    with (
+        mp.get_context("fork").Pool(
+            a.workers, init_worker, (counter, out, a.antibody_cache, shard_base)
+        ) as pool,
+        open(done_p, "a") as fd,
+        open(out / "failed.tsv", "a") as ff,
+    ):
         mf = open(man_p, "a")
         for rows, dn, fl in pool.imap_unordered(run_chunk, chunks):
             if rows:
@@ -180,19 +225,32 @@ def main():
                     if man_p.stat().st_size == 0:
                         mf.write("\t".join(cols) + "\n")
                 for r in rows:
-                    mf.write("\t".join("" if r[c] is None else str(r[c]) for c in cols) + "\n")
+                    mf.write(
+                        "\t".join("" if r[c] is None else str(r[c]) for c in cols)
+                        + "\n"
+                    )
             for k, n, sk in dn:
                 fd.write(f"{k}\t{n}\t{sk}\n")
             for k, msg in fl:
                 ff.write(f"{k}\t{msg}\n")
-            mf.flush(); fd.flush(); ff.flush()
-            n_done += len(dn); n_units += len(rows); n_fail += len(fl)
+            mf.flush()
+            fd.flush()
+            ff.flush()
+            n_done += len(dn)
+            n_units += len(rows)
+            n_fail += len(fl)
             if (n_done + n_fail) % 400 < a.chunk:
                 el = time.time() - t0
-                print(f"{n_done + n_fail}/{len(keys)} entries, {n_units} units, {n_fail} failed, {el:.0f}s "
-                      f"({(n_done + n_fail) / max(el, 1):.1f}/s)", flush=True)
+                print(
+                    f"{n_done + n_fail}/{len(keys)} entries, {n_units} units, {n_fail} failed, {el:.0f}s "
+                    f"({(n_done + n_fail) / max(el, 1):.1f}/s)",
+                    flush=True,
+                )
         mf.close()
-    print(f"finished: {n_done} entries ok, {n_fail} failed, {n_units} units, {time.time() - t0:.0f}s", flush=True)
+    print(
+        f"finished: {n_done} entries ok, {n_fail} failed, {n_units} units, {time.time() - t0:.0f}s",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

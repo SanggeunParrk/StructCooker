@@ -1,4 +1,5 @@
 """Stored size of the filter-passing items, from the source index (value_bytes) joined with items.tsv (sbatch only)."""
+
 import sys
 
 idx, items = sys.argv[1], sys.argv[2]
@@ -23,5 +24,7 @@ with open(items) as f:
             if x[7] == x[0]:
                 m += b
                 by_len[1] = by_len.get(1, 0) + 1
-print(f"all {tot / 1e9:.0f} GB  passing {ok / 1e9:.0f} GB ({n} items, mean {ok / n / 1e3:.1f} KB)")
+print(
+    f"all {tot / 1e9:.0f} GB  passing {ok / 1e9:.0f} GB ({n} items, mean {ok / n / 1e3:.1f} KB)"
+)
 print(f"cluster representatives only (passing reps): {m / 1e9:.0f} GB")

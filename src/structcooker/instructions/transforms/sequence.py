@@ -361,9 +361,21 @@ def run_mmseqs2(
         return
     print(f"Running MMSeqs2 clustering for {fasta_path}...")  # noqa: T201 (CLI progress)
     subprocess.run(  # noqa: S603
-        ["mmseqs", "easy-cluster", str(fasta_path), str(tmp_dir), f"{tmp_dir}/tmp/",  # noqa: S607
-         "--min-seq-id", str(mmseqs2_seq_id), "-c", str(mmseqs2_cov),
-         "--cov-mode", str(mmseqs2_covmode), "--cluster-mode", str(mmseqs2_clustermode)],
+        [
+            "mmseqs",
+            "easy-cluster",
+            str(fasta_path),
+            str(tmp_dir),
+            f"{tmp_dir}/tmp/",  # noqa: S607
+            "--min-seq-id",
+            str(mmseqs2_seq_id),
+            "-c",
+            str(mmseqs2_cov),
+            "--cov-mode",
+            str(mmseqs2_covmode),
+            "--cluster-mode",
+            str(mmseqs2_clustermode),
+        ],
         check=True,
     )
     print(f"MMSeqs2 clustering finished for {fasta_path}")  # noqa: T201 (CLI progress)
@@ -418,7 +430,8 @@ def subset_seq_id_map(
     wanted = {
         sequence
         for sequence in load_fasta(Path(fasta_path)).values()
-        if (min_length is None or len(sequence) >= min_length) and (max_length is None or len(sequence) <= max_length)
+        if (min_length is None or len(sequence) >= min_length)
+        and (max_length is None or len(sequence) <= max_length)
     }
     subset: dict[str, str] = {}
     with Path(seq_id_map_path).open() as handle:
@@ -572,7 +585,15 @@ def separate_antibody_sequences(
     fasta_tmp_dir = tmp_dir / "fasta"
     fasta_tmp_dir.mkdir(parents=True, exist_ok=True)
     fasta_path_dict = {}
-    for etype in ("antibody_H", "antibody_L", "protein", "peptide", "protein_D", "nucleotide", "ligand"):
+    for etype in (
+        "antibody_H",
+        "antibody_L",
+        "protein",
+        "peptide",
+        "protein_D",
+        "nucleotide",
+        "ligand",
+    ):
         fasta_path_dict[etype] = fasta_tmp_dir / f"{etype}.fasta"
         with fasta_path_dict[etype].open("w") as f:
             for seq_id, sequence in seq_id_dict.items():
@@ -613,7 +634,10 @@ def _extract_H3L3_batch(cdr_type: str, sequences: list[str], ncpu: int) -> list[
     chotia_idx = set(chotia_map[cdr_type])
     queries = [(str(i), sequence) for i, sequence in enumerate(sequences) if sequence]
     numbering = run_anarci(queries, scheme="chothia", ncpu=ncpu)[1] if queries else []
-    found = {int(name): domains for (name, _), domains in zip(queries, numbering, strict=True)}
+    found = {
+        int(name): domains
+        for (name, _), domains in zip(queries, numbering, strict=True)
+    }
     output = []
     for i in range(len(sequences)):
         domains = found.get(i)
@@ -621,7 +645,11 @@ def _extract_H3L3_batch(cdr_type: str, sequences: list[str], ncpu: int) -> list[
             output.append("")
             continue
         residues = domains[0][0]
-        output.append("".join(aa for (idx, _), aa in residues if idx in chotia_idx).replace("-", ""))
+        output.append(
+            "".join(aa for (idx, _), aa in residues if idx in chotia_idx).replace(
+                "-", ""
+            )
+        )
     return output
 
 
@@ -654,7 +682,8 @@ def extract_H3L3_sequence(  # noqa: N802 (referenced by dotted-path)
     failed_seq_ids = []
     if batch_size is None:
         H3L3_sequences = {
-            seq_id: _extract_H3L3_sequence(cdr_type, sequence.replace("X", "")) for seq_id, sequence in Ab_chain.items()
+            seq_id: _extract_H3L3_sequence(cdr_type, sequence.replace("X", ""))
+            for seq_id, sequence in Ab_chain.items()
         }
     else:
         ids = list(Ab_chain)
@@ -662,7 +691,13 @@ def extract_H3L3_sequence(  # noqa: N802 (referenced by dotted-path)
         for start in range(0, len(ids), batch_size):
             chunk = ids[start : start + batch_size]
             H3L3_sequences.update(
-                zip(chunk, _extract_H3L3_batch(cdr_type, [Ab_chain[i].replace("X", "") for i in chunk], ncpu), strict=True),
+                zip(
+                    chunk,
+                    _extract_H3L3_batch(
+                        cdr_type, [Ab_chain[i].replace("X", "") for i in chunk], ncpu
+                    ),
+                    strict=True,
+                ),
             )
     for seq_id, H3L3_sequence in H3L3_sequences.items():
         if len(H3L3_sequence) == 0:
@@ -696,8 +731,33 @@ def run_CDHIT(  # noqa: N802 (referenced by dotted-path)
         Path(f"{output_path}.clstr").write_text("")
         return
     subprocess.run(  # noqa: S603
-        ["cd-hit", "-i", str(input_fasta), "-o", str(output_path), "-c", str(seq_id), "-n", "2",  # noqa: S607
-         "-M", "256000", "-d", "0", "-T", "0", "-l", "1", "-s", str(cutoff), "-aL", str(cutoff), "-aS", str(cutoff), "-g", "1"],
+        [
+            "cd-hit",
+            "-i",
+            str(input_fasta),
+            "-o",
+            str(output_path),
+            "-c",
+            str(seq_id),
+            "-n",
+            "2",  # noqa: S607
+            "-M",
+            "256000",
+            "-d",
+            "0",
+            "-T",
+            "0",
+            "-l",
+            "1",
+            "-s",
+            str(cutoff),
+            "-aL",
+            str(cutoff),
+            "-aS",
+            str(cutoff),
+            "-g",
+            "1",
+        ],
         check=True,
     )
 
@@ -735,7 +795,8 @@ def antibody_cluster(
 ) -> tuple[dict[str, list[str]], set[str]]:
     """Cluster antibody sequences using CD-HIT (``anarci_batch_size``: see ``extract_H3L3_sequence``).
 
-    CDR-H3 is clustered at ``h3_identity``, CDR-L3 at ``l3_identity`` (1.0: identical CDRs only)."""
+    CDR-H3 is clustered at ``h3_identity``, CDR-L3 at ``l3_identity`` (1.0: identical CDRs only).
+    """
     ab_heavy_fasta_path = fasta_path_dict["antibody_H"]
     ab_light_fasta_path = fasta_path_dict["antibody_L"]
     ab_H3_fasta_path = tmp_dir / "fasta" / "antibody_H3.fasta"
@@ -778,7 +839,9 @@ def antibody_cluster(
     ab_L_cluster_dict = parse_cdhit_cluster(ab_L_cluster_output)
     ab_cluster_dict = {**ab_H_cluster_dict, **ab_L_cluster_dict}
     # psk 20251103 : 이유는 모르겠지만, 씹히는 애들이 있음 (CDHIT에서)
-    output_ab = {x for v in ab_cluster_dict.values() for x in v}  # a set: this is a lookup per antibody
+    output_ab = {
+        x for v in ab_cluster_dict.values() for x in v
+    }  # a set: this is a lookup per antibody
     for ab_id in ab_seq_id_list:
         if ab_id not in output_ab:
             ab_cluster_dict[ab_id.replace("P", "A")] = [ab_id]

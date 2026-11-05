@@ -6,12 +6,16 @@ chains clustered on CDR3; see instructions/transforms/sequence.py antibody_clust
 materials/intermediate/interface/antibody_cache.tsv, empty when ANARCI did not call it an antibody), length, sequence.
 Written to materials/intermediate/interface/ab_seq_id.tsv.
 """
+
 import argparse
 import os
 from pathlib import Path
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--root", default=os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))
+ap.add_argument(
+    "--root",
+    default=os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"),
+)
 root = Path(ap.parse_args().root)
 
 ab = {}

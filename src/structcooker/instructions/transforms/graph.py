@@ -6,11 +6,11 @@ from typing import TypeVar, cast
 import networkx as nx
 from joblib import Parallel, delayed
 
+from structcooker.instructions.mols import CIFMol
 from structcooker.instructions.transforms.sequence import (
     extract_sequence_from_cifmol,
     filter_water,
 )
-from structcooker.instructions.mols import CIFMol
 from structcooker.utils.mapping import cluster_id, mol_type_map
 
 InputType = TypeVar("InputType", str, int, float)
@@ -62,7 +62,9 @@ def build_graph_hash(
             # degree multiset
             degs = tuple(sorted(d for _, d in G.degree))
             # node-label multiset
-            lbls = tuple(sorted(Counter(nx.get_node_attributes(G, "label").values()).items()))
+            lbls = tuple(
+                sorted(Counter(nx.get_node_attributes(G, "label").values()).items())
+            )
             return gid, (wl, degs, lbls)
 
         items = list(graph_map.items())
@@ -184,7 +186,9 @@ def interacting_seq_ids_from_attached(record: dict) -> set[tuple[str, str]]:
         chains = wrapped["cifmol_attached_dict"]["chains"]
         seqids = chains["nodes"]["seq_id"]["value"]
         contact = chains["edges"]["contact"]
-        for src, dst in zip(contact["src_indices"], contact["dst_indices"], strict=True):
+        for src, dst in zip(
+            contact["src_indices"], contact["dst_indices"], strict=True
+        ):
             left, right = sorted((str(seqids[src]), str(seqids[dst])))
             pairs.add((left, right))
     return pairs
@@ -213,7 +217,8 @@ def build_interacting_seq_clusters(
     """Build interacting sequence clusters from interacting sequence IDs."""
     interacting_seq_clusters: set = set()
     interacting_seq_ids_pair = {
-        (key, partner) for key, partners in interacting_seq_ids.items()
+        (key, partner)
+        for key, partners in interacting_seq_ids.items()
         for partner in partners
     }
     seqid2cluster = {}

@@ -17,6 +17,7 @@ The CDR extents are ``sequence.chotia_map`` (L1 24-34, L2 50-56, L3 89-97, H1 26
 codes count with their number, so H3 includes 100A, 100B... The H2 extent is the Kabat one, wider than Chothia's
 52-56. ``ranges`` overrides them.
 """
+
 from __future__ import annotations
 
 import csv
@@ -63,10 +64,16 @@ def _auth_key(header: str) -> str | None:
     """``<PDB id>_<author chain id>`` of a record, the key SAbDab's chain columns are matched on."""
     if "Auth:" not in header:
         return None
-    return header.split("|")[0].strip().split("_")[0] + "_" + header.split("Auth:")[1].strip()
+    return (
+        header.split("|")[0].strip().split("_")[0]
+        + "_"
+        + header.split("Auth:")[1].strip()
+    )
 
 
-def sabdab_antibody_sequences(fasta_path: str | Path, sabdab_summary_path: str | Path) -> tuple[set[str], set[str]]:
+def sabdab_antibody_sequences(
+    fasta_path: str | Path, sabdab_summary_path: str | Path
+) -> tuple[set[str], set[str]]:
     """Heavy-chain and light-chain sequences of the fasta that SAbDab lists (the ``separate_sequences`` rule)."""
     heavy_keys: set[str] = set()
     light_keys: set[str] = set()
@@ -85,13 +92,17 @@ def sabdab_antibody_sequences(fasta_path: str | Path, sabdab_summary_path: str |
         if _is_polypeptide_l(header):
             key = _auth_key(header)
             if key in wanted:
-                seq_of[key] = sequence          # as separate_sequences: the last record of an author chain
+                seq_of[key] = (
+                    sequence  # as separate_sequences: the last record of an author chain
+                )
     heavy = {seq_of[k] for k in heavy_keys if k in seq_of}
     light = {seq_of[k] for k in light_keys if k in seq_of}
     return heavy, light
 
 
-def filter_fasta_antibody(fasta_path: str | Path, sabdab_summary_path: str | Path, out_path: str | Path) -> str:
+def filter_fasta_antibody(
+    fasta_path: str | Path, sabdab_summary_path: str | Path, out_path: str | Path
+) -> str:
     """Write the records of ``fasta_path`` whose sequence is an antibody heavy or light chain, headers unchanged."""
     heavy, light = sabdab_antibody_sequences(fasta_path, sabdab_summary_path)
     antibody = heavy | light
@@ -102,20 +113,30 @@ def filter_fasta_antibody(fasta_path: str | Path, sabdab_summary_path: str | Pat
             if sequence in antibody and _is_polypeptide_l(header):
                 out.write(f">{header}\n{sequence}\n")
                 kept += 1
-    return (f"antibody fasta: {kept} records, {len(antibody)} distinct sequences "
-            f"({len(heavy)} heavy, {len(light)} light, {len(heavy & light)} both) -> {out_path}")
+    return (
+        f"antibody fasta: {kept} records, {len(antibody)} distinct sequences "
+        f"({len(heavy)} heavy, {len(light)} light, {len(heavy & light)} both) -> {out_path}"
+    )
 
 
-def _numbered_domains(sequences: Sequence[str], ncpu: int, scheme: str) -> list[list[Domain]]:
+def _numbered_domains(
+    sequences: Sequence[str], ncpu: int, scheme: str
+) -> list[list[Domain]]:
     """Per sequence, its antibody domains with each numbered residue's position; ``[]`` when ANARCI finds none.
 
     ``X`` residues are not sent to ANARCI; positions are mapped back, so they index the sequence as given.
     """
     kept_of = [[j for j, c in enumerate(s) if c != "X"] for s in sequences]
-    queries = [(str(i), "".join(sequences[i][j] for j in kept)) for i, kept in enumerate(kept_of) if kept]
+    queries = [
+        (str(i), "".join(sequences[i][j] for j in kept))
+        for i, kept in enumerate(kept_of)
+        if kept
+    ]
     if not queries:
         return [[] for _ in sequences]
-    _, numbering, details = run_anarci(queries, scheme=scheme, ncpu=ncpu, allow={"H", "K", "L"})[:3]
+    _, numbering, details = run_anarci(
+        queries, scheme=scheme, ncpu=ncpu, allow={"H", "K", "L"}
+    )[:3]
     found: dict[int, list[Domain]] = {}
     for (name, query), domains, info in zip(queries, numbering, details, strict=True):
         if not domains:
@@ -127,7 +148,9 @@ def _numbered_domains(sequences: Sequence[str], ncpu: int, scheme: str) -> list[
                 if aa == "-":
                     continue
                 if query[at] != aa:
-                    msg = f"ANARCI residue {aa} does not sit at position {at} of {query}"
+                    msg = (
+                        f"ANARCI residue {aa} does not sit at position {at} of {query}"
+                    )
                     raise ValueError(msg)
                 residues.append((idx, kept[at]))
                 at += 1
@@ -136,7 +159,9 @@ def _numbered_domains(sequences: Sequence[str], ncpu: int, scheme: str) -> list[
     return [found.get(i, []) for i in range(len(sequences))]
 
 
-def cdr_spans_of(domain: Domain, ranges: Mapping[str, Sequence[int]] | None = None) -> list[tuple[int, int] | None]:
+def cdr_spans_of(
+    domain: Domain, ranges: Mapping[str, Sequence[int]] | None = None
+) -> list[tuple[int, int] | None]:
     """``(start, end)`` of CDR1, CDR2, CDR3 of a domain (0-based, end exclusive); ``None`` for a CDR with no residue."""
     ranges = chotia_map if ranges is None else ranges
     region, residues = domain
@@ -193,15 +218,26 @@ def extract_cdr_table(
     rows, extra_rows, failed = [], [], []
     for start in range(0, len(sequences), batch_size):
         chunk = sequences[start : start + batch_size]
-        for sequence, domains in zip(chunk, _numbered_domains(chunk, ncpu, scheme), strict=True):
+        for sequence, domains in zip(
+            chunk, _numbered_domains(chunk, ncpu, scheme), strict=True
+        ):
             seq_id = seq_id_of[sequence]
             spans = cdr_spans_of(domains[0], ranges) if domains else []
-            if all(span is None for span in spans):         # no domain, or one numbered with no residue in any CDR
+            if all(
+                span is None for span in spans
+            ):  # no domain, or one numbered with no residue in any CDR
                 failed.append(seq_id)
                 continue
             rows.append(_row(seq_id, spans))
             for k, domain in enumerate(domains[1:], start=2):
-                extra_rows.append([seq_id, k, domain[0], *_row(seq_id, cdr_spans_of(domain, ranges))[1:]])
+                extra_rows.append(
+                    [
+                        seq_id,
+                        k,
+                        domain[0],
+                        *_row(seq_id, cdr_spans_of(domain, ranges))[1:],
+                    ]
+                )
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     with Path(out_path).open("w", encoding="utf-8", newline="") as out:
         writer = csv.writer(out)
@@ -213,6 +249,10 @@ def extract_cdr_table(
             writer.writerow(["seqid", "domain", "chain_type", *CDR_COLUMNS])
             writer.writerows(sorted(extra_rows, key=lambda r: (r[0], r[1])))
     if failed_path is not None:
-        Path(failed_path).write_text("".join(f"{s}\n" for s in sorted(failed)), encoding="utf-8")
-    return (f"CDR table: {len(rows)} sequences of {len(sequences)} (no usable antibody domain: {len(failed)}; "
-            f"{len(extra_rows)} further domains) -> {out_path}")
+        Path(failed_path).write_text(
+            "".join(f"{s}\n" for s in sorted(failed)), encoding="utf-8"
+        )
+    return (
+        f"CDR table: {len(rows)} sequences of {len(sequences)} (no usable antibody domain: {len(failed)}; "
+        f"{len(extra_rows)} further domains) -> {out_path}"
+    )

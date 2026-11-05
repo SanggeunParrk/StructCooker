@@ -23,7 +23,9 @@ def default_out() -> Path:
     return biomol_root() / "lmdb" / "interface" / "pdb"
 
 
-def _submit(script: str, args: list[str], dry_run: bool, sbatch_opts: list[str] | None = None) -> None:
+def _submit(
+    script: str, args: list[str], dry_run: bool, sbatch_opts: list[str] | None = None
+) -> None:
     cmd = ["sbatch", *(sbatch_opts or []), str(SCRIPTS / script), *args]
     if dry_run:
         click.echo(" ".join(cmd))
@@ -33,9 +35,15 @@ def _submit(script: str, args: list[str], dry_run: bool, sbatch_opts: list[str] 
     click.echo(out.stdout.strip())
 
 
-out_option = click.option("--out", type=click.Path(path_type=Path), default=None,
-                          help="DB directory (default: $BIOMOL_ROOT/lmdb/interface/pdb).")
-dry_option = click.option("--dry-run", is_flag=True, help="Print the sbatch command, do not submit.")
+out_option = click.option(
+    "--out",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="DB directory (default: $BIOMOL_ROOT/lmdb/interface/pdb).",
+)
+dry_option = click.option(
+    "--dry-run", is_flag=True, help="Print the sbatch command, do not submit."
+)
 
 
 @click.group("interface")
@@ -76,9 +84,16 @@ def split(out: Path | None, dry_run: bool) -> None:
 
 @interface_group.command("validate")
 @out_option
-@click.option("--n", type=int, default=1000, show_default=True, help="Units to recompute.")
+@click.option(
+    "--n", type=int, default=1000, show_default=True, help="Units to recompute."
+)
 @click.option("--seed", type=int, default=0, show_default=True)
 @dry_option
 def validate(out: Path | None, n: int, seed: int, dry_run: bool) -> None:
     """Recompute contacts, flags and waters of a random sample from the stored coordinates."""
-    _submit("validate_db.sbatch", [str(out or default_out()), str(n), str(seed)], dry_run, ["-c", "4", "--mem=16g"])
+    _submit(
+        "validate_db.sbatch",
+        [str(out or default_out()), str(n), str(seed)],
+        dry_run,
+        ["-c", "4", "--mem=16g"],
+    )

@@ -7,8 +7,8 @@ from typing import cast
 import numpy as np
 from biomol.core import NodeFeature
 
-from structcooker.instructions.transforms.sequence import filter_water
 from structcooker.instructions.mols import CIFMol, CIFMolAttached
+from structcooker.instructions.transforms.sequence import filter_water
 from structcooker.utils.mapping import cluster_id, mol_type_map
 
 _SEQMETA_SEP = "\t"  # separates seq_id and cluster in an LmdbDict value
@@ -46,7 +46,11 @@ class LmdbDict:
             from datacooker.lmdb.sharded import open_env
 
             self._env = open_env(
-                self._path, readonly=True, lock=False, subdir=True, max_readers=4096,
+                self._path,
+                readonly=True,
+                lock=False,
+                subdir=True,
+                max_readers=4096,
             )
         return self._env
 

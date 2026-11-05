@@ -16,17 +16,33 @@ import numpy as np
 from biomol.core import EdgeFeature, FeatureContainer, NodeFeature
 from biomol.core.index import IndexTable
 
-from structcooker.instructions.readers.lmdb import read_lmdb
 from structcooker.instructions.mols import CIFMol
+from structcooker.instructions.readers.lmdb import read_lmdb
 
 if TYPE_CHECKING:
     from biomol.core.types import BioMolDict
 
 _PROTEIN_3TO1 = {
-    "ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C",
-    "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H", "ILE": "I",
-    "LEU": "L", "LYS": "K", "MET": "M", "PHE": "F", "PRO": "P",
-    "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V",
+    "ALA": "A",
+    "ARG": "R",
+    "ASN": "N",
+    "ASP": "D",
+    "CYS": "C",
+    "GLN": "Q",
+    "GLU": "E",
+    "GLY": "G",
+    "HIS": "H",
+    "ILE": "I",
+    "LEU": "L",
+    "LYS": "K",
+    "MET": "M",
+    "PHE": "F",
+    "PRO": "P",
+    "SER": "S",
+    "THR": "T",
+    "TRP": "W",
+    "TYR": "Y",
+    "VAL": "V",
 }
 _RNA_1 = {"A": "A", "C": "C", "G": "G", "U": "U"}
 # OpenFold3 distillation molecule_type_id (protein=0, rna=1, dna=2, ligand=3)
@@ -113,9 +129,15 @@ def _ccd_atom_lookup(entry: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
 def build_hierarchy(
     atom_site_dict: dict[str, np.ndarray],
 ) -> tuple[
-    np.ndarray, np.ndarray, int,
-    np.ndarray, np.ndarray, np.ndarray,
-    np.ndarray, np.ndarray, np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    int,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
 ]:
     """Recover the atom→residue→chain hierarchy from the flat atom table.
 
@@ -170,7 +192,9 @@ def derive_atom_features(
     stereo = np.full(n, "N", dtype="<U1")
     charge = np.full(n, "0", dtype="<U2")
     model_xyz = np.full((n, 3), "", dtype="<U7")
-    lookups = {r: _ccd_atom_lookup(ccd_cache.get(r)) for r in np.unique(res_name).tolist()}
+    lookups = {
+        r: _ccd_atom_lookup(ccd_cache.get(r)) for r in np.unique(res_name).tolist()
+    }
     for i in range(n):
         feat = lookups[res_name[i]].get(atom_name[i])
         if feat is None:
@@ -179,7 +203,12 @@ def derive_atom_features(
         stereo[i] = feat["stereo"]
         charge[i] = feat["charge"]
         model_xyz[i] = feat["model_xyz"]
-    return {"aromatic": aromatic, "stereo": stereo, "charge": charge, "model_xyz": model_xyz}
+    return {
+        "aromatic": aromatic,
+        "stereo": stereo,
+        "charge": charge,
+        "model_xyz": model_xyz,
+    }
 
 
 def derive_bond_edges(
@@ -250,7 +279,9 @@ def derive_bond_edges(
             if hit is not None:
                 bond_type[k], bond_aromatic[k], bond_stereo[k] = hit
         else:
-            res_bonds.setdefault((int(atom_to_res[i]), int(atom_to_res[j])), str(bond_type[k]))
+            res_bonds.setdefault(
+                (int(atom_to_res[i]), int(atom_to_res[j])), str(bond_type[k])
+            )
     return {
         "src": src,
         "dst": dst,
@@ -343,8 +374,12 @@ def assemble_cifmol(
             ),
             "occupancy": NodeFeature(atom_site_dict["occupancy"].astype(np.float64)),
             "bond_type": EdgeFeature(bonds["bond_type"], bonds["src"], bonds["dst"]),
-            "bond_aromatic": EdgeFeature(bonds["bond_aromatic"], bonds["src"], bonds["dst"]),
-            "bond_stereo": EdgeFeature(bonds["bond_stereo"], bonds["src"], bonds["dst"]),
+            "bond_aromatic": EdgeFeature(
+                bonds["bond_aromatic"], bonds["src"], bonds["dst"]
+            ),
+            "bond_stereo": EdgeFeature(
+                bonds["bond_stereo"], bonds["src"], bonds["dst"]
+            ),
             "struct_conn": _empty_edge((0, 2), "<U6"),
         },
     )
@@ -352,7 +387,9 @@ def assemble_cifmol(
         k: NodeFeature(v) for k, v in residue_features.items()
     }
     residue_fields["bond"] = EdgeFeature(
-        bonds["res_bond_value"], bonds["res_src"], bonds["res_dst"],
+        bonds["res_bond_value"],
+        bonds["res_src"],
+        bonds["res_dst"],
     )
     residue_fields["struct_conn"] = _empty_edge((0,), "int64")
     chain_fields: dict[str, NodeFeature | EdgeFeature] = {
@@ -370,20 +407,39 @@ def assemble_cifmol(
 
 def _build_one_cifmol(atom_site_dict: dict, ccd_db_path: Path) -> "BioMolDict":
     """Run the full structure pipeline on one atom table -> CIFMol dict."""
-    (atom_to_res, res_to_chain, n_chain, res_names, res_ids,
-     res_hetero, chain_ids, entity_ids, chain_mol_types) = build_hierarchy(atom_site_dict)
+    (
+        atom_to_res,
+        res_to_chain,
+        n_chain,
+        res_names,
+        res_ids,
+        res_hetero,
+        chain_ids,
+        entity_ids,
+        chain_mol_types,
+    ) = build_hierarchy(atom_site_dict)
     ccd_cache = load_ccd_entries(atom_site_dict, ccd_db_path)
     atom_features = derive_atom_features(atom_site_dict, ccd_cache)
     bonds = derive_bond_edges(atom_site_dict, ccd_cache)
-    residue_features = derive_residue_features(res_names, res_ids, res_hetero, ccd_cache)
+    residue_features = derive_residue_features(
+        res_names, res_ids, res_hetero, ccd_cache
+    )
     chain_features = derive_chain_features(chain_ids, entity_ids, chain_mol_types)
     return assemble_cifmol(
-        atom_site_dict, atom_to_res, res_to_chain, n_chain,
-        atom_features, bonds, residue_features, chain_features,
+        atom_site_dict,
+        atom_to_res,
+        res_to_chain,
+        n_chain,
+        atom_features,
+        bonds,
+        residue_features,
+        chain_features,
     )
 
 
-def build_disordered_template_mols(templates_atom_site_dict: dict, ccd_db_path: Path) -> dict:
+def build_disordered_template_mols(
+    templates_atom_site_dict: dict, ccd_db_path: Path
+) -> dict:
     """Per-query disordered templates -> ``{hit_id: template mol}`` (template_mols).
 
     Each disordered query folder holds one ``<id>_<chain>.npz`` atom table per

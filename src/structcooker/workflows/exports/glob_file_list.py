@@ -1,4 +1,5 @@
 """Recipe: the sorted files matching several ``<dir>::<glob>`` sources, one per line."""
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.filelists import glob_file_list

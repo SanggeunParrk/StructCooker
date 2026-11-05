@@ -1,8 +1,8 @@
 from datacooker import RecipeBook
 
+from structcooker.instructions.mols import CIFMol
 from structcooker.instructions.transforms.cifmol import convert_to_cifmol_dict
 from structcooker.instructions.transforms.metadata import extract_metadata
-from structcooker.instructions.mols import CIFMol
 
 """Extract metadata from cifmol"""
 

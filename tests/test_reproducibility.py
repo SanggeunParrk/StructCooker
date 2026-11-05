@@ -26,9 +26,15 @@ def test_stale_sidecar_cannot_prove_completion(tmp_path):
 def test_duplicate_writes_fail_in_both_completion_orders(tmp_path):
     for i, values in enumerate([(b"a", b"b"), (b"b", b"a")]):
         with lmdb.open(str(tmp_path / str(i)), map_size=1048576) as env:
-            with patch.object(core, "iter_parallel_chunks", return_value=iter([[(b"key", v, None) for v in values]])):
+            with patch.object(
+                core,
+                "iter_parallel_chunks",
+                return_value=iter([[(b"key", v, None) for v in values]]),
+            ):
                 with pytest.raises(ValueError, match="Duplicate output key"):
-                    core._parallel_write(env=env, items=[1, 2], chunk_size=2, n_jobs=1, process_item=None)
+                    core._parallel_write(
+                        env=env, items=[1, 2], chunk_size=2, n_jobs=1, process_item=None
+                    )
             assert env.stat()["entries"] == 0
 
 
@@ -66,9 +72,13 @@ def test_template_corruption_fails_and_absence_is_accounted(tmp_path):
         mols, report = template.load_templates_with_report(tmp_path, hits, 20)
         assert mols == {}
         assert report["missing_chain_hits"] == ["1abc_A"]
-        assert not schemas.get("D").validate({"template_mols": mols, "template_report": report})
+        assert not schemas.get("D").validate(
+            {"template_mols": mols, "template_report": report}
+        )
         report["candidate_count"] = 2
-        assert schemas.get("D").validate({"template_mols": mols, "template_report": report})
+        assert schemas.get("D").validate(
+            {"template_mols": mols, "template_report": report}
+        )
         with pytest.raises(ValueError, match="Missing reference"):
             template.load_templates_from_chain_db(tmp_path, hits, 20)
 
@@ -78,9 +88,17 @@ def test_declared_reader_references_include_recovery_payload(tmp_path):
 
     manifest, recovered = tmp_path / "overrides.json", tmp_path / "recovered.npz"
     manifest.write_text(json.dumps({"original": str(recovered)}))
-    cfg = {"runtime_environment": {"OPENFOLD_STRUCTURE_OVERRIDES": str(manifest),
-                                   "MONOMER_SEQID_MAP": str(tmp_path / "ids.tsv")}}
-    assert set(preflight.input_paths(cfg)) == {manifest, recovered, tmp_path / "ids.tsv"}
+    cfg = {
+        "runtime_environment": {
+            "OPENFOLD_STRUCTURE_OVERRIDES": str(manifest),
+            "MONOMER_SEQID_MAP": str(tmp_path / "ids.tsv"),
+        }
+    }
+    assert set(preflight.input_paths(cfg)) == {
+        manifest,
+        recovered,
+        tmp_path / "ids.tsv",
+    }
 
 
 def test_admission_recovers_on_shared_node():

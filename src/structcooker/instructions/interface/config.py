@@ -10,7 +10,13 @@ import yaml
 from structcooker.instructions.interface.detect import ContactCfg, UnitCfg
 from structcooker.instructions.interface.ligands import load_excluded
 
-DEFAULT = Path(__file__).resolve().parents[4] / "db_configs" / "interface" / "params" / "interface.yaml"
+DEFAULT = (
+    Path(__file__).resolve().parents[4]
+    / "db_configs"
+    / "interface"
+    / "params"
+    / "interface.yaml"
+)
 
 
 @dataclass
@@ -35,12 +41,23 @@ def load_config(path: Path | str = DEFAULT, overrides: dict | None = None) -> Co
         d[last] = v
     u = cfg["unit"]
     unit = UnitCfg(
-        max_polymer_chains=u["max_polymer_chains"], max_ligands=u["max_ligands"], max_ions=u["max_ions"],
-        join_min_residues=u["join_min_residues"], allowed_pairs=frozenset(tuple(p) for p in u["allowed_pairs"]),
-        max_polymer_chains_in_assembly=cfg["assembly"]["max_polymer_chains"], max_units=cfg["assembly"]["max_units"],
-        weight_bucket=cfg["dedup"]["weight_bucket"], max_forced_polymer=u.get("max_forced_polymer", 10),
+        max_polymer_chains=u["max_polymer_chains"],
+        max_ligands=u["max_ligands"],
+        max_ions=u["max_ions"],
+        join_min_residues=u["join_min_residues"],
+        allowed_pairs=frozenset(tuple(p) for p in u["allowed_pairs"]),
+        max_polymer_chains_in_assembly=cfg["assembly"]["max_polymer_chains"],
+        max_units=cfg["assembly"]["max_units"],
+        weight_bucket=cfg["dedup"]["weight_bucket"],
+        max_forced_polymer=u.get("max_forced_polymer", 10),
     )
     return Config(
-        ContactCfg(**cfg["contact"]), unit, load_excluded(cfg["ligand"]["exclude_categories"]),
-        cfg["ligand"]["min_heavy_atoms"], cfg["water"]["near"], cfg["water"]["bridge"], cfg["duplex"], cfg,
+        ContactCfg(**cfg["contact"]),
+        unit,
+        load_excluded(cfg["ligand"]["exclude_categories"]),
+        cfg["ligand"]["min_heavy_atoms"],
+        cfg["water"]["near"],
+        cfg["water"]["bridge"],
+        cfg["duplex"],
+        cfg,
     )

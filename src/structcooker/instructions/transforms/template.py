@@ -14,8 +14,8 @@ import numpy as np
 import zstandard
 from biomol.core.index import IndexTable
 
-from structcooker.instructions.readers.io import load_bytes, load_raw_data
 from structcooker.instructions.mols import CIFMol
+from structcooker.instructions.readers.io import load_bytes, load_raw_data
 from structcooker.utils.seq_id import seq_id_from_name, seq_id_shard_path
 
 if TYPE_CHECKING:
@@ -84,7 +84,9 @@ def load_a3m_list(
     stay on whichever nodes held them; dropping finished ones first spreads the rest evenly.
     """
     result = []
-    done = _finished_files(Path(done_dir), done_suffix) if done_dir is not None else set()
+    done = (
+        _finished_files(Path(done_dir), done_suffix) if done_dir is not None else set()
+    )
 
     def _scan(dir_path: Path) -> None:
         with os.scandir(dir_path) as it:
@@ -239,7 +241,9 @@ def _open_a3m_text(path: Path) -> "io.TextIOBase":
     if path.suffix != ".zst":
         return path.open("r")
     raw = path.open("rb")
-    return io.TextIOWrapper(zstandard.ZstdDecompressor().stream_reader(raw, closefd=True))
+    return io.TextIOWrapper(
+        zstandard.ZstdDecompressor().stream_reader(raw, closefd=True)
+    )
 
 
 def list_afm_msa_wo_lower(
@@ -256,8 +260,11 @@ def list_afm_msa_wo_lower(
     lists what is left. An entity the release does not ship is read from
     ``generated_msa_dir`` (materials/intermediate), where the MSA we generated for it lives.
     """
-    generated = {p.name: p for p in Path(generated_msa_dir).glob("AF-*-msa_v1.a3m.zst")} \
-        if generated_msa_dir is not None else {}
+    generated = (
+        {p.name: p for p in Path(generated_msa_dir).glob("AF-*-msa_v1.a3m.zst")}
+        if generated_msa_dir is not None
+        else {}
+    )
     chosen: dict[str, Path] = {}
     with Path(afm_msa_seqid_path).open() as handle:
         for line in handle:
@@ -415,7 +422,8 @@ def cif_record_to_chains(record: dict) -> dict[str, object]:
     best: dict[str, tuple[float, str]] = {}
     for cif_key, item in assemblies.items():
         occupancy = np.asarray(
-            item["atoms"]["nodes"]["occupancy"]["value"], dtype=np.float64,
+            item["atoms"]["nodes"]["occupancy"]["value"],
+            dtype=np.float64,
         )
         occup_sum = float(np.nan_to_num(occupancy, nan=0.0).sum())
         chain_ids = item["chains"]["nodes"]["chain_id"]["value"]
@@ -702,21 +710,26 @@ def build_seqid_template_mols(
         if tseq is None or len(tseq) < min_seq_len:
             continue
         aligned_query, aligned_template, coverage = run_kalign(
-            query_seq=query_seq, template_seq=tseq,
+            query_seq=query_seq,
+            template_seq=tseq,
         )
         if min_query_coverage <= coverage <= max_query_coverage:
             align_results[tid] = (aligned_query, aligned_template)
             if max_keep is not None and len(mols) + len(align_results) >= max_keep:
                 if not allow_missing_chains:
                     break
-                loaded, _ = load_templates_with_report(Path(cif_chain_db_path), align_results)
+                loaded, _ = load_templates_with_report(
+                    Path(cif_chain_db_path), align_results
+                )
                 mols.update(loaded)
                 align_results = {}
                 if len(mols) >= max_keep:
                     break
     if allow_missing_chains:
         if align_results:
-            loaded, _ = load_templates_with_report(Path(cif_chain_db_path), align_results)
+            loaded, _ = load_templates_with_report(
+                Path(cif_chain_db_path), align_results
+            )
             mols.update(loaded)
         return mols, list(mols.keys())
     mols = load_templates_from_chain_db(Path(cif_chain_db_path), align_results)
@@ -837,9 +850,13 @@ def load_templates_with_report(
             template_mols[full_id] = to_template_mol(cifmol, align_result)
         except IndexError:
             misaligned.append(full_id)
-    report = {"candidate_count": len(align_results), "loaded_hits": list(template_mols),
-              "missing_chain_hits": missing, "misaligned_hits": misaligned,
-              "not_selected_hits": unselected}
+    report = {
+        "candidate_count": len(align_results),
+        "loaded_hits": list(template_mols),
+        "missing_chain_hits": missing,
+        "misaligned_hits": misaligned,
+        "not_selected_hits": unselected,
+    }
     return template_mols, report
 
 
@@ -849,7 +866,9 @@ def load_templates_from_chain_db(
     max_keep: int | None = None,
 ) -> dict:
     """Strict compatibility API; use the reported API to allow absent reference chains."""
-    mols, report = load_templates_with_report(cif_chain_db_path, align_results, max_keep)
+    mols, report = load_templates_with_report(
+        cif_chain_db_path, align_results, max_keep
+    )
     if report["missing_chain_hits"]:
         msg = f"Missing reference template chains: {report['missing_chain_hits']}"
         raise ValueError(msg)
@@ -870,23 +889,37 @@ def adapt_cif_record_to_chain_inputs(data: dict) -> dict:
         return {}
     best: dict[str, tuple[float, str]] = {}
     # Numeric assembly/model order makes ties independent of dict/hash order.
-    ordered = sorted(assemblies, key=lambda key: tuple(
-        (0, int(part)) if part.isdecimal() else (1, part)
-        for part in key.split("_")
-    ))
+    ordered = sorted(
+        assemblies,
+        key=lambda key: tuple(
+            (0, int(part)) if part.isdecimal() else (1, part) for part in key.split("_")
+        ),
+    )
     for key in ordered:
         item = assemblies[key]
-        score = float(np.nan_to_num(np.asarray(
-            item["atoms"]["nodes"]["occupancy"]["value"], dtype=float,
-        ), nan=0.0).sum())
+        score = float(
+            np.nan_to_num(
+                np.asarray(
+                    item["atoms"]["nodes"]["occupancy"]["value"],
+                    dtype=float,
+                ),
+                nan=0.0,
+            ).sum()
+        )
         for chain in item["chains"]["nodes"]["chain_id"]["value"]:
             base = str(chain).split("_")[0]
             if base not in best or score > best[base][0]:
                 best[base] = score, key
     model_cache: dict = {}
-    return {chain: {"record": data, "chain_id": chain, "cif_key": key,
-                    "model_cache": model_cache}
-            for chain, (_, key) in best.items()}
+    return {
+        chain: {
+            "record": data,
+            "chain_id": chain,
+            "cif_key": key,
+            "model_cache": model_cache,
+        }
+        for chain, (_, key) in best.items()
+    }
 
 
 def extract_selected_chain(
@@ -897,26 +930,37 @@ def extract_selected_chain(
     model_cache: dict | None = None,
 ) -> dict:
     """Extract a chain, optionally preserving a reference dataset's model choice."""
-    if reference_selection_path is not None and _selection_reference_exists(reference_selection_path):
+    if reference_selection_path is not None and _selection_reference_exists(
+        reference_selection_path
+    ):
         from datacooker.lmdb import read_lmdb_raw
 
         pdbid = str(record["metadata_dict"]["id"][0]).lower()
         selected = read_lmdb_raw(reference_selection_path, f"{pdbid}_{chain_id}")
         # A reference choice pointing at an assembly above the atom cap is not honoured:
         # decoding it is what the cap exists to prevent.
-        if selected is not None and selected.decode() in _within_atom_cap(record["assembly_dict"]):
+        if selected is not None and selected.decode() in _within_atom_cap(
+            record["assembly_dict"]
+        ):
             cif_key = selected.decode()
     cache_state = model_cache if model_cache is not None else {}
     if cache_state.get("record") is not record or cache_state.get("cif_key") != cif_key:
         assembly_id, model_id, alt_id = cif_key.split("_")
         biomol = copy.deepcopy(record["assembly_dict"][cif_key])
-        biomol["metadata"] = {**record["metadata_dict"], "assembly_id": assembly_id,
-                              "model_id": model_id, "alt_id": alt_id}
+        biomol["metadata"] = {
+            **record["metadata_dict"],
+            "assembly_id": assembly_id,
+            "model_id": model_id,
+            "alt_id": alt_id,
+        }
         # This cache belongs to one adapter result, so it dies with the record.
         # Retain only the most recent model, even when references choose many models.
         cache_state.clear()
-        cache_state.update(record=record, cif_key=cif_key,
-                           cifmol=CIFMol.from_dict(cast("BioMolDict", biomol)))
+        cache_state.update(
+            record=record,
+            cif_key=cif_key,
+            cifmol=CIFMol.from_dict(cast("BioMolDict", biomol)),
+        )
     cifmol = cache_state["cifmol"]
     full = find_first(f"{chain_id}_", cifmol.chains.chain_id.value)
     if full is None:

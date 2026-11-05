@@ -10,7 +10,9 @@ def test_legacy_frame_without_content_size():
     normal = to_bytes(source)
     raw = ZstdDecompressor().decompress(normal)
     streaming = ZstdCompressor(write_content_size=False).compress(raw)
-    np.testing.assert_array_equal(from_bytes(streaming)["msa_dict"]["array"], source["msa_dict"]["array"])
+    np.testing.assert_array_equal(
+        from_bytes(streaming)["msa_dict"]["array"], source["msa_dict"]["array"]
+    )
     with pytest.raises(ValueError, match="Truncated"):
         from_bytes(streaming[:-3])
 

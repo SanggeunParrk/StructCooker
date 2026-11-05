@@ -1,4 +1,5 @@
 """Template Phase 3 seq maps — seqid_to_seq + chain_to_seq (the sequences kalign needs)."""
+
 from datacooker import RecipeBook
 
 from structcooker.instructions.transforms.template_candidates import precompute_seqs

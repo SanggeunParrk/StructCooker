@@ -104,8 +104,12 @@ def _parse_each_chem_comp(
 
         edge_values = {
             "bond_type": chem_comp_bond_dict["value_order"].astype(str)[valid_mask],
-            "bond_aromatic": chem_comp_bond_dict["pdbx_aromatic_flag"].astype(str)[valid_mask],
-            "bond_stereo": chem_comp_bond_dict["pdbx_stereo_config"].astype(str)[valid_mask],
+            "bond_aromatic": chem_comp_bond_dict["pdbx_aromatic_flag"].astype(str)[
+                valid_mask
+            ],
+            "bond_stereo": chem_comp_bond_dict["pdbx_stereo_config"].astype(str)[
+                valid_mask
+            ],
         }
     else:
         src_indices = np.array([], dtype=int)
@@ -194,12 +198,16 @@ def _compare_each_chem_comp(
         # CIF and CCD tables may list the same atoms in different orders. Align
         # inherited node features and bond endpoints by ID, never by row number.
         positions = {atom_id: i for i, atom_id in enumerate(ideal_ids)}
-        ideal_atom = ideal_atom.crop(np.array([positions[atom_id] for atom_id in cif_ids]))
+        ideal_atom = ideal_atom.crop(
+            np.array([positions[atom_id] for atom_id in cif_ids])
+        )
     ideal_atom_dict = ideal_atom.to_dict()
     # alt_atom_id lives on the ideal CCD only for the openfold ingest's name lookup;
     # drop it here so merged cif records keep their original atom-node schema.
     ideal_node_key_list = [
-        k for k in ideal_atom_dict["nodes"] if k not in {"alt_atom_id", "component_atom_id"}
+        k
+        for k in ideal_atom_dict["nodes"]
+        if k not in {"alt_atom_id", "component_atom_id"}
     ]
     ideal_edge_key_list = list(ideal_atom_dict["edges"].keys())
     atom_features = {}
@@ -236,7 +244,9 @@ def _match_ccd_atom_aliases(component: dict, cif_ids: set[str]) -> None:
             if len(values) == len(cif_ids) and set(values) == cif_ids:
                 matches.append(aliases)
     if matches:
-        if any(not np.array_equal(matches[0]["value"], m["value"]) for m in matches[1:]):
+        if any(
+            not np.array_equal(matches[0]["value"], m["value"]) for m in matches[1:]
+        ):
             msg = "CCD atom alias tables disagree on the CIF atom mapping."
             raise ValueError(msg)
         nodes["id"] = matches[0]
@@ -256,7 +266,9 @@ def compare_chem_comp(
         ideal_chem_comp = read_lmdb(ccd_db_path, chem_comp_id)["chem_comp_dict"]
         cif_chem_comp = chem_comp_dict[chem_comp_id]
         if cif_chem_comp is not None:
-            _match_ccd_atom_aliases(ideal_chem_comp, set(cif_chem_comp["atom"]["id"].value))
+            _match_ccd_atom_aliases(
+                ideal_chem_comp, set(cif_chem_comp["atom"]["id"].value)
+            )
         # alt_atom_id lives on the CCD only for the openfold ingest's name lookup; strip it
         # here so it never reaches cif records -- whether the ideal is merged with an
         # entry's chem_comp or (when the entry has none) used verbatim below.
@@ -276,10 +288,15 @@ def compare_chem_comp(
             # Never silently discard those observed atoms or invent their chemistry.
             reference = None
             if ccd_reference_path is not None:
-                candidate = read_lmdb(ccd_reference_path, chem_comp_id)["chem_comp_dict"]
+                candidate = read_lmdb(ccd_reference_path, chem_comp_id)[
+                    "chem_comp_dict"
+                ]
                 if candidate:
                     _match_ccd_atom_aliases(candidate, cif_ids)
-                if candidate and set(candidate["atom"]["nodes"]["id"]["value"]) == cif_ids:
+                if (
+                    candidate
+                    and set(candidate["atom"]["nodes"]["id"]["value"]) == cif_ids
+                ):
                     candidate["atom"]["nodes"].pop("alt_atom_id", None)
                     candidate["atom"]["nodes"].pop("component_atom_id", None)
                     reference = {
@@ -368,8 +385,7 @@ def _parse_each_asym_id(
 
 
 def parse_scheme_dict(
-    asym_scheme_dict: dict[str, dict[str, NDArray]]
-    | None,  # {asym_id : scheme_dict}
+    asym_scheme_dict: dict[str, dict[str, NDArray]] | None,  # {asym_id : scheme_dict}
 ) -> dict[str, NDArray] | None:
     """Parse a CIF ``*_scheme`` table into per-asym_id residue records (None-safe)."""
     if asym_scheme_dict is None:
@@ -395,9 +411,7 @@ def _parse_each_entity(
     if entity_type in {"polymer", "branched"}:  # Polymer or Branched
         seq_num_list = entity_dict["num"]
         chem_comp_list = (
-            entity_dict["mon_id"]
-            if "mon_id" in entity_dict
-            else entity_dict["comp_id"]
+            entity_dict["mon_id"] if "mon_id" in entity_dict else entity_dict["comp_id"]
         )
         hetero_list = entity_dict["hetero"]
     else:  # Non-polymer
@@ -449,9 +463,7 @@ def _parse_each_entity(
         sequence_split = re.findall(r"\(.*?\)|.", one_letter_code)
         one_letter_code = np.array(sequence_split)
         if len(sequence_split) != len(one_letter_code_can):
-            sequence_split = [
-                seq if "(" not in seq else "X" for seq in sequence_split
-            ]
+            sequence_split = [seq if "(" not in seq else "X" for seq in sequence_split]
             one_letter_code_can = np.array(sequence_split)
 
     one_letter_code_can = np.array(one_letter_code_can)
@@ -707,10 +719,14 @@ def _rearrange_each_asym_id(
     # which is wildcard in general.
 
     output = {}
-    determinants = np.asarray([
-        f"{atom}.{auth_idx}"
-        for atom, auth_idx in zip(rearranged_dict["atom"], rearranged_dict["auth_idx"], strict=True)
-    ])
+    determinants = np.asarray(
+        [
+            f"{atom}.{auth_idx}"
+            for atom, auth_idx in zip(
+                rearranged_dict["atom"], rearranged_dict["auth_idx"], strict=True
+            )
+        ]
+    )
     groups, inverse = np.unique(determinants, return_inverse=True)
     alt_id_array = rearranged_dict["alt_id"]
     alt_masks = {}
@@ -727,7 +743,9 @@ def _rearrange_each_asym_id(
                 has_target[inverse[target]] = True
                 # Preserve the existing cross-model altloc grouping convention.
                 # Group membership replaces one full atom-array scan per atom ID.
-                alt_masks[_alt_id] = target | ((alt_id_array == ".") & ~has_target[inverse])
+                alt_masks[_alt_id] = target | (
+                    (alt_id_array == ".") & ~has_target[inverse]
+                )
             mask = alt_masks[_alt_id]
             combined_mask = model_mask & mask
             output[model_id][str(_alt_id)] = {}
@@ -759,8 +777,7 @@ def _resolve_residue_chem_comp_ids(
     auth_idx_list = asym_dict["auth_idx"]
     full_chem_comp_list = asym_dict["chem_comp_id"]
     auth_idx_to_chem_comp = {
-        str(aa): cc
-        for aa, cc in zip(auth_idx_list, full_chem_comp_list, strict=False)
+        str(aa): cc for aa, cc in zip(auth_idx_list, full_chem_comp_list, strict=False)
     }
     atom_auth_idx = atom_site_dict["auth_idx"]
     atom_chem_comp = atom_site_dict["chem_comp_id"]
@@ -881,6 +898,7 @@ def _build_residue_and_atom_bonds(
     """Add inter-residue (canonical/branch) bonds at atom and residue level."""
     auth_idx_list = asym_dict["auth_idx"]
     cif_idx_list = asym_dict["cif_idx"]
+
     def find_atom_index(residue_idx: int, atom_id: str) -> int | None:
         chem_comp = chem_comp_list[residue_idx]
         chem_comp_atom_id = chem_comp["atom"]["id"]
@@ -1037,11 +1055,20 @@ def _parse_atom_site_dict(
         auth_idx_to_atom_idx,
         residue_count,
     ) = _resolve_residue_chem_comp_ids(asym_dict, atom_site_dict, chem_comp_dict)
-    atom_features, chem_comp_residue_container, chem_comp_list = _scatter_atom_site_coords(
-        chem_comp_id_list, atom_site_dict, chem_comp_dict, auth_idx_to_atom_idx,
+    atom_features, chem_comp_residue_container, chem_comp_list = (
+        _scatter_atom_site_coords(
+            chem_comp_id_list,
+            atom_site_dict,
+            chem_comp_dict,
+            auth_idx_to_atom_idx,
+        )
     )
     atom_features, residue_bond = _build_residue_and_atom_bonds(
-        asym_dict, atom_features, chem_comp_list, auth_idx_to_atom_idx, residue_count,
+        asym_dict,
+        atom_features,
+        chem_comp_list,
+        auth_idx_to_atom_idx,
+        residue_count,
     )
     atom_container = FeatureContainer(features=atom_features)
     residue_features = chem_comp_residue_container._features  # noqa: SLF001  # reuse container's feature dict
@@ -1338,8 +1365,7 @@ def _build_assembly_model(
         if model_alt_id not in asym_id_to_model_alt_id[asym_id]:
             if (
                 wildcard_model_alt_id is not None
-                and wildcard_model_alt_id
-                in asym_id_to_model_alt_id[asym_id]
+                and wildcard_model_alt_id in asym_id_to_model_alt_id[asym_id]
             ):
                 asym_container = asym_dict[asym_id][wildcard_model_alt_id]
             else:
@@ -1381,8 +1407,7 @@ def _build_assembly_model(
         asym_containers[asym_id]["chain"] for asym_id in asym_containers
     ]
     atom_to_residue_idx_list = [
-        asym_containers[asym_id]["atom_to_residue_idx"]
-        for asym_id in asym_containers
+        asym_containers[asym_id]["atom_to_residue_idx"] for asym_id in asym_containers
     ]
     atom_container = FeatureContainer.concat(atom_container_list)
     residue_container = FeatureContainer.concat(residue_container_list)
@@ -1393,8 +1418,7 @@ def _build_assembly_model(
     )
     offsets = np.concatenate([[0], np.cumsum(increments[:-1])])
     atom_to_residue_idx = [
-        arr + off
-        for arr, off in zip(atom_to_residue_idx_list, offsets, strict=False)
+        arr + off for arr, off in zip(atom_to_residue_idx_list, offsets, strict=False)
     ]
     atom_to_residue_idx = np.concatenate(atom_to_residue_idx)
 
@@ -1634,16 +1658,21 @@ def extract_release_date(
         return bool(r) and str(r)[0].isdigit()
 
     init = [
-        r for i, r in enumerate(revs)
-        if i < len(dct) and dct[i] == "Structure model"
-        and i < len(major) and str(major[i]).strip() == "1"
-        and i < len(minor) and str(minor[i]).strip() == "0"
+        r
+        for i, r in enumerate(revs)
+        if i < len(dct)
+        and dct[i] == "Structure model"
+        and i < len(major)
+        and str(major[i]).strip() == "1"
+        and i < len(minor)
+        and str(minor[i]).strip() == "0"
         and _valid(r)
     ]
     if init:
         return min(init)
     sm = [
-        r for i, r in enumerate(revs)
+        r
+        for i, r in enumerate(revs)
         if i < len(dct) and dct[i] == "Structure model" and _valid(r)
     ]
     if sm:

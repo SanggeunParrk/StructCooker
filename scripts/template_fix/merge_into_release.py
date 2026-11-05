@@ -7,6 +7,7 @@ were not) gets the union of the old and the new template mols, so Phase 4 can be
 (pdb id lower-case, chain id as is), values are copied byte for byte. The ``.index.tsv`` and ``.meta.json`` next to each DB
 are rewritten from the merged sizes; the old pair is kept as ``*.pre_template_fix``.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,11 +52,17 @@ def write_index(path: Path, name: str, sizes: dict[str, int]) -> None:
     vals = [n for _, n in order]
     total = sum(vals)
     with path.open("w") as f:
-        f.write(f"# db\t{name}\n# entries\t{len(vals)}\n# total_bytes\t{total}\t{human(total)}\n")
+        f.write(
+            f"# db\t{name}\n# entries\t{len(vals)}\n# total_bytes\t{total}\t{human(total)}\n"
+        )
         f.write(f"# max_bytes\t{vals[0]}\t{human(vals[0])}\t{order[0][0]}\n")
         med = int(statistics.median(vals))
-        f.write(f"# median_bytes\t{med}\t{human(med)}\n# n_value_gt_100MB\t{sum(v > 100 * 2**20 for v in vals)}\n")
-        f.write(f"# n_value_gt_1GB\t{sum(v > 2**30 for v in vals)}\nkey\tvalue_bytes\tvalue_human\n")
+        f.write(
+            f"# median_bytes\t{med}\t{human(med)}\n# n_value_gt_100MB\t{sum(v > 100 * 2**20 for v in vals)}\n"
+        )
+        f.write(
+            f"# n_value_gt_1GB\t{sum(v > 2**30 for v in vals)}\nkey\tvalue_bytes\tvalue_human\n"
+        )
         for k, n in order:
             f.write(f"{k}\t{n}\t{human(n)}\n")
 
@@ -74,9 +81,25 @@ def is_empty(value: bytes) -> bool:
     return not from_bytes(value).get("template_mols")
 
 
-def merge(delta: Path, rel: Path, name: str, keyfn, apply: bool, union: bool = False, replace_empty: bool = False) -> dict:
-    src = lmdb.open(str(delta / f"{name}.lmdb"), readonly=True, lock=False, readahead=False)
-    dst = lmdb.open(str(rel / f"{name}.lmdb"), map_size=int(300e9), readahead=False, metasync=True, sync=True)
+def merge(
+    delta: Path,
+    rel: Path,
+    name: str,
+    keyfn,
+    apply: bool,
+    union: bool = False,
+    replace_empty: bool = False,
+) -> dict:
+    src = lmdb.open(
+        str(delta / f"{name}.lmdb"), readonly=True, lock=False, readahead=False
+    )
+    dst = lmdb.open(
+        str(rel / f"{name}.lmdb"),
+        map_size=int(300e9),
+        readahead=False,
+        metasync=True,
+        sync=True,
+    )
     sizes = read_index(rel / f"{name}.lmdb.index.tsv")
     added = skipped = merged = 0
     batch: list[tuple[bytes, bytes]] = []
@@ -103,7 +126,12 @@ def merge(delta: Path, rel: Path, name: str, keyfn, apply: bool, union: bool = F
                 else:
                     skipped += 1
                 continue
-            if old is not None and replace_empty and is_empty(bytes(old)) and not is_empty(bytes(v)):
+            if (
+                old is not None
+                and replace_empty
+                and is_empty(bytes(old))
+                and not is_empty(bytes(v))
+            ):
                 merged += 1
                 sizes[nk.decode()] = len(v)
                 if apply:
@@ -133,16 +161,36 @@ def merge(delta: Path, rel: Path, name: str, keyfn, apply: bool, union: bool = F
         vals = list(sizes.values())
         meta.update(entries=len(vals), total_bytes=sum(vals), max_bytes=max(vals))
         mp.write_text(json.dumps(meta, indent=2))
-    return {"db": name, "added": added, "unioned": merged, "already_present": skipped, "entries_after": len(sizes)}
+    return {
+        "db": name,
+        "added": added,
+        "unioned": merged,
+        "already_present": skipped,
+        "entries_after": len(sizes),
+    }
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("delta"), ap.add_argument("release"), ap.add_argument("--apply", action="store_true")
-    ap.add_argument("--replace-empty", action="store_true", help="replace release chain records that hold no template")
+    (
+        ap.add_argument("delta"),
+        ap.add_argument("release"),
+        ap.add_argument("--apply", action="store_true"),
+    )
+    ap.add_argument(
+        "--replace-empty",
+        action="store_true",
+        help="replace release chain records that hold no template",
+    )
     a = ap.parse_args()
-    d, r = Path(a.delta) / "lmdb/chain/template", Path(a.release) / "lmdb/chain/template"
-    out = [merge(d, r, "seqid_template_mols", lambda k: k, a.apply, union=True), merge(d, r, "template", chain_key, a.apply, replace_empty=a.replace_empty)]
+    d, r = (
+        Path(a.delta) / "lmdb/chain/template",
+        Path(a.release) / "lmdb/chain/template",
+    )
+    out = [
+        merge(d, r, "seqid_template_mols", lambda k: k, a.apply, union=True),
+        merge(d, r, "template", chain_key, a.apply, replace_empty=a.replace_empty),
+    ]
     print(json.dumps(out, indent=1))
     return 0
 

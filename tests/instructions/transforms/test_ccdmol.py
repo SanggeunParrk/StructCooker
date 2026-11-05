@@ -5,14 +5,35 @@ from structcooker.instructions.transforms.ccdmol import convert_chem_comp_to_ccd
 
 
 def _record(n_atoms, bonds):
-    src, dst = (np.array([b[0] for b in bonds]), np.array([b[1] for b in bonds])) if bonds else (np.array([]), np.array([]))
-    nodes = {k: {"value": np.array(v)} for k, v in {
-        "id": [f"A{i}" for i in range(n_atoms)], "element": ["C"] * n_atoms, "aromatic": [False] * n_atoms,
-        "stereo": ["N"] * n_atoms, "charge": [0] * n_atoms, "model_xyz": np.zeros((n_atoms, 3))}.items()}
-    edges = {k: {"value": np.array([1] * len(bonds)), "src_indices": src, "dst_indices": dst}
-             for k in ("bond_type", "bond_aromatic", "bond_stereo")}
-    residue = {"nodes": {"id": {"value": np.array(["X"])}, "formula": {"value": np.array(["C2"])}}}
-    return {"chem_comp_dict": {"atom": {"nodes": nodes, "edges": edges}, "residue": residue}}
+    src, dst = (
+        (np.array([b[0] for b in bonds]), np.array([b[1] for b in bonds]))
+        if bonds
+        else (np.array([]), np.array([]))
+    )
+    nodes = {
+        k: {"value": np.array(v)}
+        for k, v in {
+            "id": [f"A{i}" for i in range(n_atoms)],
+            "element": ["C"] * n_atoms,
+            "aromatic": [False] * n_atoms,
+            "stereo": ["N"] * n_atoms,
+            "charge": [0] * n_atoms,
+            "model_xyz": np.zeros((n_atoms, 3)),
+        }.items()
+    }
+    edges = {
+        k: {"value": np.array([1] * len(bonds)), "src_indices": src, "dst_indices": dst}
+        for k in ("bond_type", "bond_aromatic", "bond_stereo")
+    }
+    residue = {
+        "nodes": {
+            "id": {"value": np.array(["X"])},
+            "formula": {"value": np.array(["C2"])},
+        }
+    }
+    return {
+        "chem_comp_dict": {"atom": {"nodes": nodes, "edges": edges}, "residue": residue}
+    }
 
 
 def test_reshape_keeps_primary_fields_and_one_residue_chain():

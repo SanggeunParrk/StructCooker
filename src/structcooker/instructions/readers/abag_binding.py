@@ -3,6 +3,7 @@
 AbRank carries its unit in the column header: ``Affinity_Kd [nM]`` is a Kd, ``IC50 [ug/mL]`` a neutralisation concentration, ``escape`` /
 ``log(Kd_ratio)`` the loss of binding of an RBD mutant (no verdict on their own). POISK carries free text in ``affinity_value``.
 """
+
 from __future__ import annotations
 
 import math
@@ -21,9 +22,12 @@ def _number(value: object) -> float | None:
     return None if math.isnan(number) else number
 
 
-def abrank_verdict(kd_nm: object, ic50_ug_ml: object, operator: str = "=") -> bool | None:
+def abrank_verdict(
+    kd_nm: object, ic50_ug_ml: object, operator: str = "="
+) -> bool | None:
     """``Affinity_Kd [nM]`` <= 1000 binds, above does not; without a Kd, a measured ``IC50 [ug/mL]`` (operator ``=``) <= 10 binds (above: no verdict);
-    an IC50 beyond the tested range (``>`` / ``<``), ``escape`` and ``log(Kd_ratio)`` alone give no verdict."""
+    an IC50 beyond the tested range (``>`` / ``<``), ``escape`` and ``log(Kd_ratio)`` alone give no verdict.
+    """
     kd = _number(kd_nm)
     if kd is not None:
         return kd <= KD_MAX_M * 1e9
@@ -33,11 +37,24 @@ def abrank_verdict(kd_nm: object, ic50_ug_ml: object, operator: str = "=") -> bo
     return None
 
 
-_UNITS = {"pm": 1e-12, "nm": 1e-9, "um": 1e-6, "µm": 1e-6, "μm": 1e-6, "mm": 1e-3, "m": 1.0}
+_UNITS = {
+    "pm": 1e-12,
+    "nm": 1e-9,
+    "um": 1e-6,
+    "µm": 1e-6,
+    "μm": 1e-6,
+    "mm": 1e-3,
+    "m": 1.0,
+}
 _NUM = r"(\d+(?:[.,]\d+)?(?:\s*[x×*]\s*10\s*\^?\s*[-−–]?\s*\d+)?)"
-_MOLAR = re.compile(r"([<>≤≥~=]*)\s*" + _NUM + r"\s*(pM|nM|[uµμ]M|mM|M)(?![\w^-])", re.IGNORECASE)
+_MOLAR = re.compile(
+    r"([<>≤≥~=]*)\s*" + _NUM + r"\s*(pM|nM|[uµμ]M|mM|M)(?![\w^-])", re.IGNORECASE
+)
 _MASS = re.compile(r"([<>≤≥~=]*)\s*" + _NUM + r"\s*[uµμ]g\s*/\s*m[lL]", re.IGNORECASE)
-_NEGATIVE = re.compile(r"not\s+detect|no\s+(?:detectable\s+)?bind|non[- ]?bind|\bnegative\b|no\s+affinity", re.IGNORECASE)
+_NEGATIVE = re.compile(
+    r"not\s+detect|no\s+(?:detectable\s+)?bind|non[- ]?bind|\bnegative\b|no\s+affinity",
+    re.IGNORECASE,
+)
 _KD = re.compile(r"\bK\s*_?\s*D\b|\bKd\b|dissociation", re.IGNORECASE)
 _IC50 = re.compile(r"\bIC\s*50\b", re.IGNORECASE)
 _EC50 = re.compile(r"\bEC\s*50\b", re.IGNORECASE)
@@ -47,7 +64,11 @@ def _value(text: str) -> float | None:
     number = text.replace(",", ".").replace("−", "-").replace("–", "-").replace(" ", "")
     power = re.match(r"([\d.]+)[x×*]10\^?(-?\d+)", number)
     try:
-        return float(power.group(1)) * 10 ** int(power.group(2)) if power else float(number)
+        return (
+            float(power.group(1)) * 10 ** int(power.group(2))
+            if power
+            else float(number)
+        )
     except ValueError:
         return None
 
@@ -71,13 +92,21 @@ def poisk_verdict(text: str, audit_verdict: str) -> tuple[bool, bool | None]:
     molar, mass = _MOLAR.findall(text), _MASS.findall(text)
     if len(molar) + len(mass) != 1:
         return True, None
-    kd, ic50, ec50 = bool(_KD.search(text)), bool(_IC50.search(text)), bool(_EC50.search(text))
+    kd, ic50, ec50 = (
+        bool(_KD.search(text)),
+        bool(_IC50.search(text)),
+        bool(_EC50.search(text)),
+    )
     if mass:
         operator, number = mass[0]
         value = _value(number)
         if value is None or not (ic50 or ec50) or kd or (ic50 and ec50):
             return True, None
-        return True, (True if value <= IC50_MAX_UG_ML and ">" not in operator and "≥" not in operator else None)
+        return True, (
+            True
+            if value <= IC50_MAX_UG_ML and ">" not in operator and "≥" not in operator
+            else None
+        )
     operator, number, unit = molar[0]
     value = _value(number)
     if value is None:

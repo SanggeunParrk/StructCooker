@@ -14,6 +14,7 @@ flags against the training set, nothing is dropped:
   novel_pair            the unit's cluster_key40 (set of c40 clusters) does not occur in train
   ligands_seen_in_train every ligand CCD id of the unit occurs in train
 """
+
 import csv
 import sys
 from collections import Counter
@@ -47,10 +48,29 @@ for r in rows:
         continue
     tr_c.update(c for c in r["node_c40"].split("|") if c)
     tr_pair.add(r["cluster_key40"])
-    tr_lig.update(c for k, c in zip(r["node_kinds"].split("|"), r["node_ccd"].split("|"), strict=True) if k == "ligand")
+    tr_lig.update(
+        c
+        for k, c in zip(
+            r["node_kinds"].split("|"), r["node_ccd"].split("|"), strict=True
+        )
+        if k == "ligand"
+    )
 
-cols = ["unit_id", "pdb_id", "split", "reason", "release_date", "resolution", "type", "n_prot_c40_in_train",
-        "n_protein", "novel_protein", "novel_pair", "ligands_seen_in_train", "cluster_key40"]
+cols = [
+    "unit_id",
+    "pdb_id",
+    "split",
+    "reason",
+    "release_date",
+    "resolution",
+    "type",
+    "n_prot_c40_in_train",
+    "n_protein",
+    "novel_protein",
+    "novel_pair",
+    "ligands_seen_in_train",
+    "cluster_key40",
+]
 cnt, flags = Counter(), Counter()
 with open(db / "split.tsv", "w") as fo:
     fo.write("\t".join(cols) + "\n")
@@ -61,24 +81,56 @@ with open(db / "split.tsv", "w") as fo:
             n_in = sum(c in tr_c for c in cl)
             novel_p = int(n_in == 0)
             novel_pair = int(r["cluster_key40"] not in tr_pair)
-            ligs = [c for k, c in zip(r["node_kinds"].split("|"), r["node_ccd"].split("|"), strict=True) if k == "ligand"]
+            ligs = [
+                c
+                for k, c in zip(
+                    r["node_kinds"].split("|"), r["node_ccd"].split("|"), strict=True
+                )
+                if k == "ligand"
+            ]
             lig_seen = int(all(c in tr_lig for c in ligs)) if ligs else ""
             flags[(r["split"], "novel_protein")] += novel_p
             flags[(r["split"], "novel_pair")] += novel_pair
         cnt[r["split"]] += 1
         if r["split"] == "none":
             cnt["none:" + r["reason"]] += 1
-        out = dict(r, n_prot_c40_in_train=n_in, novel_protein=novel_p, novel_pair=novel_pair, ligands_seen_in_train=lig_seen)
+        out = dict(
+            r,
+            n_prot_c40_in_train=n_in,
+            novel_protein=novel_p,
+            novel_pair=novel_pair,
+            ligands_seen_in_train=lig_seen,
+        )
         fo.write("\t".join(str(out[c]) for c in cols) + "\n")
 
-ents = {s: len({r["pdb_id"] for r in rows if r["split"] == s}) for s in ("train", "valid", "test")}
-lines = ["# Split summary", "", f"train: release < {TRAIN_END}, resolution <= 9.0; valid: {TRAIN_END} .. {VALID_END}, resolution <= 4.5; "
-         f"test: after {VALID_END}, resolution <= 4.5", "", "| split | units | entries |", "|---|---:|---:|"]
+ents = {
+    s: len({r["pdb_id"] for r in rows if r["split"] == s})
+    for s in ("train", "valid", "test")
+}
+lines = [
+    "# Split summary",
+    "",
+    f"train: release < {TRAIN_END}, resolution <= 9.0; valid: {TRAIN_END} .. {VALID_END}, resolution <= 4.5; "
+    f"test: after {VALID_END}, resolution <= 4.5",
+    "",
+    "| split | units | entries |",
+    "|---|---:|---:|",
+]
 for s in ("train", "valid", "test", "none"):
     lines.append(f"| {s} | {cnt[s]:,} | {ents.get(s, '') if s != 'none' else ''} |")
-lines += ["", "excluded: " + ", ".join(f"{k.split(':')[1]} {v:,}" for k, v in cnt.items() if k.startswith("none:")), "",
-          "| split | units with no train-seen protein cluster | units with a novel cluster pair |", "|---|---:|---:|"]
+lines += [
+    "",
+    "excluded: "
+    + ", ".join(
+        f"{k.split(':')[1]} {v:,}" for k, v in cnt.items() if k.startswith("none:")
+    ),
+    "",
+    "| split | units with no train-seen protein cluster | units with a novel cluster pair |",
+    "|---|---:|---:|",
+]
 for s in ("valid", "test"):
-    lines.append(f"| {s} | {flags[(s, 'novel_protein')]:,} | {flags[(s, 'novel_pair')]:,} |")
+    lines.append(
+        f"| {s} | {flags[(s, 'novel_protein')]:,} | {flags[(s, 'novel_pair')]:,} |"
+    )
 (db / "split_summary.md").write_text("\n".join(lines) + "\n")
 print("\n".join(lines))

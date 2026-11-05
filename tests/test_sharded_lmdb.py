@@ -20,7 +20,9 @@ def make_db(path, items):
     return path
 
 
-@pytest.mark.parametrize(("count", "merged"), [(4_999_999, True), (5_000_000, True), (5_000_001, False)])
+@pytest.mark.parametrize(
+    ("count", "merged"), [(4_999_999, True), (5_000_000, True), (5_000_001, False)]
+)
 def test_five_million_boundary(count, merged):
     assert should_merge(count) is merged
 
@@ -33,11 +35,22 @@ def test_collection_reads_indexes_and_fingerprints(tmp_path):
     assert not (output / "data.mdb").exists()
     assert count_lmdb_entries(output) == 3
     assert extract_lmdb_keys(output) == ["a", "b", "c"]
-    with open_env(output, readonly=True, lock=False) as env, env.begin(buffers=True) as txn:
+    with (
+        open_env(output, readonly=True, lock=False) as env,
+        env.begin(buffers=True) as txn,
+    ):
         assert bytes(txn.get(b"c")) == b"45"
         assert txn.get(b"missing") is None
-        assert [bytes(v) for v in txn.cursor().iternext(keys=False)] == [b"123", b"6789", b"45"]
-    assert {s.key: s.value_bytes for s in scan_sizes(output)} == {"a": 3, "b": 4, "c": 2}
+        assert [bytes(v) for v in txn.cursor().iternext(keys=False)] == [
+            b"123",
+            b"6789",
+            b"45",
+        ]
+    assert {s.key: s.value_bytes for s in scan_sizes(output)} == {
+        "a": 3,
+        "b": 4,
+        "c": 2,
+    }
     assert write_index(output).entries == 3
     from datacooker.lmdb.core import rekey_lmdb
 

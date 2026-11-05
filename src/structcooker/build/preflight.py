@@ -13,6 +13,7 @@ tells you exactly which external inputs are missing and, when known, the
 ``structcooker download`` target that fetches them -- so a newcomer knows what to get
 before running build-all.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -32,7 +33,7 @@ _PRIMARY_OUTPUT_KEYS = ("new_env_path", "env_path", "output_data_path", "output_
 # Keys inside `inputs` that are this node's *side-effect* outputs (a multi-output
 # materialize writes out_* files; a parallel op fans out to a directory), so a
 # downstream node reading one of them depends on this node, not on a raw input.
-_SIDE_OUTPUT_KEYS = frozenset({"output_dir", "hmm_output_dir"})   # + any `out_*` key
+_SIDE_OUTPUT_KEYS = frozenset({"output_dir", "hmm_output_dir"})  # + any `out_*` key
 # Keys inside `inputs`/`metadata_input` that are NOT prerequisites to check: this
 # node's own scratch/outputs, or the optional seq_id seed (absent == fresh id space).
 _NON_INPUT_KEYS = frozenset(
@@ -40,13 +41,25 @@ _NON_INPUT_KEYS = frozenset(
     # work_dir: a search's scratch (mmseqs), rewritten while the stage runs.
     # relative_to: the base a written list's lines are made relative to (afm_msa_filelist: ``materials``); it is not read, and
     # as an input it would fingerprint the whole tree other stages are writing into.
-    {"tmp_dir", "work_dir", "output_dir", "hmm_output_dir", "done_dir", "out_path", "old_seq_id_map_path", "relative_to"},
+    {
+        "tmp_dir",
+        "work_dir",
+        "output_dir",
+        "hmm_output_dir",
+        "done_dir",
+        "out_path",
+        "old_seq_id_map_path",
+        "relative_to",
+    },
 )
 
 # External binaries the recipes shell out to (name -> optional/licensed).
 _BIN_TOOLS: tuple[tuple[str, bool], ...] = (
-    ("hmmbuild", False), ("hmmsearch", False), ("mmseqs", False),
-    ("cd-hit", False), ("signalp6", True),
+    ("hmmbuild", False),
+    ("hmmsearch", False),
+    ("mmseqs", False),
+    ("cd-hit", False),
+    ("signalp6", True),
 )
 # Tools imported as Python modules (kalign-python, anarci), not PATH binaries.
 _PY_TOOLS: tuple[tuple[str, bool], ...] = (("kalign", False), ("anarci", False))
@@ -54,10 +67,16 @@ _PY_TOOLS: tuple[tuple[str, bool], ...] = (("kalign", False), ("anarci", False))
 # BIOMOL_ROOT-relative prefixes a downloader can fetch -> `structcooker download` target.
 _DOWNLOADABLE: tuple[tuple[str, str], ...] = (
     ("materials/raw/cif", "mmcif"),
-    ("materials/raw/openfold_distillation", "openfold"),   # huge -- code-only, warns before fetching
+    (
+        "materials/raw/openfold_distillation",
+        "openfold",
+    ),  # huge -- code-only, warns before fetching
     ("materials/raw/sabdab", "sabdab"),
     ("materials/raw/ccd", "ccd"),
-    ("materials/intermediate/ccd", "ccd"),        # split from the raw download by `download ccd`
+    (
+        "materials/intermediate/ccd",
+        "ccd",
+    ),  # split from the raw download by `download ccd`
 )
 
 
@@ -66,9 +85,9 @@ class NodeReport:
     """Readiness of one db config."""
 
     name: str
-    upstream: list[str] = field(default_factory=list)     # inputs built by other nodes
-    present: list[str] = field(default_factory=list)      # external inputs that exist
-    missing: list[str] = field(default_factory=list)      # external inputs absent
+    upstream: list[str] = field(default_factory=list)  # inputs built by other nodes
+    present: list[str] = field(default_factory=list)  # external inputs that exist
+    missing: list[str] = field(default_factory=list)  # external inputs absent
 
     @property
     def ready(self) -> bool:
@@ -96,18 +115,31 @@ def input_paths(cfg: Mapping[str, object]) -> list[Path]:
             paths.append(Path(str(value)))
 
     for key, value in cfg.items():
-        if key in (*_PRIMARY_OUTPUT_KEYS, "recipe", "recipe_path", "metadata_recipe") or key.endswith("_recipe_path"):
+        if key in (
+            *_PRIMARY_OUTPUT_KEYS,
+            "recipe",
+            "recipe_path",
+            "metadata_recipe",
+        ) or key.endswith("_recipe_path"):
             continue
         if key in ("data_dir", "file_list") or key.endswith(("_path", "_paths")):
             collect(value)
-    for block in ("inputs", "metadata_input", "additional_inputs", "parameters", "runtime_environment"):
+    for block in (
+        "inputs",
+        "metadata_input",
+        "additional_inputs",
+        "parameters",
+        "runtime_environment",
+    ):
         section = cfg.get(block)
         if isinstance(section, dict):
             collect(section)
     runtime = cfg.get("runtime_environment", {})
     for var in ("OPENFOLD_STRUCTURE_OVERRIDES", "AFM_CIF_OVERRIDES"):
         if isinstance(runtime, dict) and runtime.get(var):
-            from structcooker.instructions.readers.openfold import load_structure_overrides
+            from structcooker.instructions.readers.openfold import (
+                load_structure_overrides,
+            )
 
             manifest = Path(str(runtime[var]))
             if manifest.is_file():
@@ -130,15 +162,19 @@ def output_paths(cfg: Mapping[str, object]) -> list[Path]:
     section = cfg.get("inputs")
     if isinstance(section, dict):
         for key, value in section.items():
-            if (key.startswith("out_") or key in _SIDE_OUTPUT_KEYS) and _is_pathish(value):
+            if (key.startswith("out_") or key in _SIDE_OUTPUT_KEYS) and _is_pathish(
+                value
+            ):
                 outs.append(Path(str(value)))
     return outs
 
 
 def download_hint(path: Path, root: str) -> str | None:
     """Return the ``structcooker download`` target for a missing external path, if any."""
-    for base, target in ((mmcif_root(root), "mmcif"),
-                         (distillation_root(root), "openfold")):
+    for base, target in (
+        (mmcif_root(root), "mmcif"),
+        (distillation_root(root), "openfold"),
+    ):
         if path == base or base in path.parents:
             return target
     try:
@@ -222,7 +258,8 @@ def check_tools() -> list[tuple[str, bool, bool]]:
     Binaries are looked up on ``PATH``; kalign / anarci are Python modules.
     """
     found: list[tuple[str, bool, bool]] = [
-        (tool, shutil.which(tool) is not None, optional) for tool, optional in _BIN_TOOLS
+        (tool, shutil.which(tool) is not None, optional)
+        for tool, optional in _BIN_TOOLS
     ]
     found += [
         (f"{mod} (py)", importlib.util.find_spec(mod) is not None, optional)
@@ -233,12 +270,18 @@ def check_tools() -> list[tuple[str, bool, bool]]:
 
 def check_env() -> dict[str, str | None]:
     """Return deployment roots and supplied-input overrides."""
-    return {name: os.environ.get(name) for name in (
-        "BIOMOL_ROOT", "SEQ_DB_ROOT",
-    )}
+    return {
+        name: os.environ.get(name)
+        for name in (
+            "BIOMOL_ROOT",
+            "SEQ_DB_ROOT",
+        )
+    }
 
 
-def missing_externals(reports: Iterable[NodeReport], root: str) -> dict[str, str | None]:
+def missing_externals(
+    reports: Iterable[NodeReport], root: str
+) -> dict[str, str | None]:
     """Return every missing external path -> its download hint (deduped)."""
     out: dict[str, str | None] = {}
     for report in reports:

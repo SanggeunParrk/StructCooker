@@ -5,7 +5,14 @@ from structcooker.instructions.design.ss import assign8, max_run, to_three
 
 def build(phi, psi, n):
     """Backbone N CA C O of an n-residue chain with constant phi / psi (NeRF)."""
-    ang = {"N-CA": 1.458, "CA-C": 1.525, "C-N": 1.329, "CA-C-N": 116.2, "C-N-CA": 121.7, "N-CA-C": 111.0}
+    ang = {
+        "N-CA": 1.458,
+        "CA-C": 1.525,
+        "C-N": 1.329,
+        "CA-C-N": 116.2,
+        "C-N-CA": 121.7,
+        "N-CA-C": 111.0,
+    }
     pts = [np.array([0.0, 0.0, 0.0]), np.array([1.458, 0.0, 0.0])]
     a = np.radians(111.0)
     pts.append(pts[1] + 1.525 * np.array([-np.cos(a), np.sin(a), 0.0]))
@@ -28,7 +35,11 @@ def build(phi, psi, n):
         v = p[i, 2] - p[i, 1]
         u = p[i, 1] - p[i, 0]
         w = v / np.linalg.norm(v) - u / np.linalg.norm(u)
-        o[i] = p[i, 2] + 1.23 * w / np.linalg.norm(w) if i == n - 1 else p[i, 2] + 1.23 * _perp(p, i)
+        o[i] = (
+            p[i, 2] + 1.23 * w / np.linalg.norm(w)
+            if i == n - 1
+            else p[i, 2] + 1.23 * _perp(p, i)
+        )
     return np.concatenate([p, o[:, None]], axis=1)
 
 
@@ -42,7 +53,13 @@ def _perp(p, i):
 
 def run(x):
     n = len(x)
-    return assign8(x, np.zeros(n, dtype=int), np.arange(n), np.zeros(n, dtype=bool), np.ones(n, dtype=bool))
+    return assign8(
+        x,
+        np.zeros(n, dtype=int),
+        np.arange(n),
+        np.zeros(n, dtype=bool),
+        np.ones(n, dtype=bool),
+    )
 
 
 def test_alpha_helix():

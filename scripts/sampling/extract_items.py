@@ -14,6 +14,7 @@ No sampling happens here; ``compare_sampling.py`` turns these tables into sampli
 
     python extract_items.py --db <cif_attached.lmdb> --out <dir> [--workers 32] [--limit N]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,17 +40,33 @@ def _keys(index_tsv: Path) -> list[tuple[str, int]]:
                 continue
             key, size = line.rstrip("\n").split("\t")[:2]
             rows.append((key, int(size)))
-    rows.sort(key=lambda r: -r[1])          # biggest first: the tail of the pool balances the workers
+    rows.sort(
+        key=lambda r: -r[1]
+    )  # biggest first: the tail of the pool balances the workers
     return rows
 
 
 def _init(db: str, out: str) -> None:
     pid = os.getpid()
     sj = Path(db) / "shards.json"
-    paths = [str(Path(db) / x["path"]) for x in json.loads(sj.read_text())["shards"]] if sj.exists() else [db]
-    _STATE["envs"] = [lmdb.open(p, readonly=True, lock=False, readahead=False, max_readers=512, subdir=Path(p).is_dir()) for p in paths]
-    _STATE["chains"] = open(Path(out) / f"chains.{pid}.tsv", "a", buffering=1 << 20)       # noqa: SIM115
-    _STATE["ifaces"] = open(Path(out) / f"interfaces.{pid}.tsv", "a", buffering=1 << 20)   # noqa: SIM115
+    paths = (
+        [str(Path(db) / x["path"]) for x in json.loads(sj.read_text())["shards"]]
+        if sj.exists()
+        else [db]
+    )
+    _STATE["envs"] = [
+        lmdb.open(
+            p,
+            readonly=True,
+            lock=False,
+            readahead=False,
+            max_readers=512,
+            subdir=Path(p).is_dir(),
+        )
+        for p in paths
+    ]
+    _STATE["chains"] = open(Path(out) / f"chains.{pid}.tsv", "a", buffering=1 << 20)  # noqa: SIM115
+    _STATE["ifaces"] = open(Path(out) / f"interfaces.{pid}.tsv", "a", buffering=1 << 20)  # noqa: SIM115
 
 
 def _assembly(entry: str, asm: str, d: dict, chains_out, ifaces_out) -> tuple[int, int]:
@@ -70,7 +87,9 @@ def _assembly(entry: str, asm: str, d: dict, chains_out, ifaces_out) -> tuple[in
     res_per_chain = np.bincount(res_to_chain[res_ok], minlength=n_chains)
     valid = atoms_per_chain > 0
     for i in np.nonzero(valid)[0]:
-        chains_out.write(f"{entry}\t{asm}\t{chain_id[i]}\t{etype[i]}\t{cluster[i]}\t{res_per_chain[i]}\t{atoms_per_chain[i]}\t{seq_id[i]}\n")
+        chains_out.write(
+            f"{entry}\t{asm}\t{chain_id[i]}\t{etype[i]}\t{cluster[i]}\t{res_per_chain[i]}\t{atoms_per_chain[i]}\t{seq_id[i]}\n"
+        )
 
     contact = d["chains"]["edges"]["contact"]
     s6 = np.asarray(contact["src_indices"])
@@ -84,7 +103,9 @@ def _assembly(entry: str, asm: str, d: dict, chains_out, ifaces_out) -> tuple[in
         if not (valid[s] and valid[t]):
             continue
         in5 = int((min(s, t) * n_chains + max(s, t)) in near)
-        ifaces_out.write(f"{entry}\t{asm}\t{chain_id[s]}\t{chain_id[t]}\t{cluster[s]}\t{cluster[t]}\t{in5}\t{seq_id[s]}\t{seq_id[t]}\n")
+        ifaces_out.write(
+            f"{entry}\t{asm}\t{chain_id[s]}\t{chain_id[t]}\t{cluster[s]}\t{cluster[t]}\t{in5}\t{seq_id[s]}\t{seq_id[t]}\n"
+        )
         n_if += 1
     return int(valid.sum()), n_if
 
@@ -103,7 +124,9 @@ def _work(keys: list[str]) -> tuple[int, int, int]:
             continue
         record = from_bytes(bytes(raw))
         for asm, wrapped in record.items():
-            c, i = _assembly(key, asm, wrapped["cifmol_attached_dict"], chains_out, ifaces_out)
+            c, i = _assembly(
+                key, asm, wrapped["cifmol_attached_dict"], chains_out, ifaces_out
+            )
             n_asm += 1
             n_ch += c
             n_if += i
@@ -117,28 +140,42 @@ def main() -> None:
     ap.add_argument("--db", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--workers", type=int, default=32)
-    ap.add_argument("--limit", type=int, default=0, help="only the N smallest entries (smoke test)")
+    ap.add_argument(
+        "--limit", type=int, default=0, help="only the N smallest entries (smoke test)"
+    )
     ap.add_argument("--chunk", type=int, default=16)
-    ap.add_argument("--part", default="0/1", help="i/n: every n-th entry from i (one job per part, then one --out per part)")
+    ap.add_argument(
+        "--part",
+        default="0/1",
+        help="i/n: every n-th entry from i (one job per part, then one --out per part)",
+    )
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     rows = _keys(Path(str(args.db) + ".index.tsv"))
     if args.limit:
-        rows = rows[-args.limit:]
+        rows = rows[-args.limit :]
     keys = [k for k, _ in rows]
     pi, pn = map(int, args.part.split("/"))
     keys = keys[pi::pn]
-    chunks = [keys[i:i + args.chunk] for i in range(0, len(keys), args.chunk)]
-    print(f"{len(keys):,} entries in {len(chunks):,} chunks, {args.workers} workers", flush=True)
+    chunks = [keys[i : i + args.chunk] for i in range(0, len(keys), args.chunk)]
+    print(
+        f"{len(keys):,} entries in {len(chunks):,} chunks, {args.workers} workers",
+        flush=True,
+    )
     tot = [0, 0, 0]
     ctx = mp.get_context("forkserver")
-    with ctx.Pool(args.workers, initializer=_init, initargs=(str(args.db), str(args.out))) as pool:
+    with ctx.Pool(
+        args.workers, initializer=_init, initargs=(str(args.db), str(args.out))
+    ) as pool:
         for n, (a, c, i) in enumerate(pool.imap_unordered(_work, chunks), 1):
             tot[0] += a
             tot[1] += c
             tot[2] += i
             if n % 500 == 0 or n == len(chunks):
-                print(f"  {n}/{len(chunks)} chunks  assemblies {tot[0]:,}  chains {tot[1]:,}  interfaces {tot[2]:,}", flush=True)
+                print(
+                    f"  {n}/{len(chunks)} chunks  assemblies {tot[0]:,}  chains {tot[1]:,}  interfaces {tot[2]:,}",
+                    flush=True,
+                )
     print(f"done: assemblies {tot[0]:,}  chains {tot[1]:,}  interfaces {tot[2]:,}")
 
 

@@ -11,6 +11,7 @@ status string; they are driven by a materialize recipe whose ``output_data_path`
 Logic preserved verbatim from the scripts (date filters, top-k, reduced-hmm framing)
 so the outputs reproduce exactly.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -270,7 +271,14 @@ def precompute_candidates(
         "list[list[tuple[str, list[str]]]]",
         Parallel(n_jobs=n_jobs, verbose=10)(
             delayed(_process_seqid)(
-                sid, cs, hmm_dir, out_reduced_hmm_dir, dates, cutoff, day_diff, topk,
+                sid,
+                cs,
+                hmm_dir,
+                out_reduced_hmm_dir,
+                dates,
+                cutoff,
+                day_diff,
+                topk,
             )
             for sid, cs in items
         ),
@@ -311,7 +319,10 @@ def precompute_seqs(
 
     n = 0
     Path(out_seqid_seq).parent.mkdir(parents=True, exist_ok=True)
-    with Path(seq_id_map).open(encoding="utf-8") as f, Path(out_seqid_seq).open("w", encoding="utf-8") as out:
+    with (
+        Path(seq_id_map).open(encoding="utf-8") as f,
+        Path(out_seqid_seq).open("w", encoding="utf-8") as out,
+    ):
         for line in f:
             p = line.rstrip("\n").split("\t")
             if len(p) >= 2 and p[0] in needed:
@@ -323,7 +334,10 @@ def precompute_seqs(
     is_prot = False
     buf: list[str] = []
     Path(out_chain_seq).parent.mkdir(parents=True, exist_ok=True)
-    with Path(cif_fasta).open(encoding="utf-8") as f, Path(out_chain_seq).open("w", encoding="utf-8") as out:
+    with (
+        Path(cif_fasta).open(encoding="utf-8") as f,
+        Path(out_chain_seq).open("w", encoding="utf-8") as out,
+    ):
         for line in f:
             if line.startswith(">"):
                 if cur is not None and is_prot:
@@ -377,7 +391,10 @@ def _select_chunk(
     date_cutoff: dt.date,
     max_candidates: int,
 ) -> list[tuple[str, list[str]]]:
-    return [_select_seqid(s, hmm_dir, reduced_dir, pdb_dates, date_cutoff, max_candidates) for s in seq_ids]
+    return [
+        _select_seqid(s, hmm_dir, reduced_dir, pdb_dates, date_cutoff, max_candidates)
+        for s in seq_ids
+    ]
 
 
 def precompute_seqid_candidates(
@@ -416,27 +433,33 @@ def precompute_seqid_candidates(
     # and at one task per seq_id that dispatch serialised the whole run at ~200 seq_ids
     # per minute whatever the core count.
     chunk = max(1, -(-len(seq_ids) // (n_jobs * 8)))
-    chunks = [seq_ids[i:i + chunk] for i in range(0, len(seq_ids), chunk)]
+    chunks = [seq_ids[i : i + chunk] for i in range(0, len(seq_ids), chunk)]
     per_chunk = cast(
         "list[list[tuple[str, list[str]]]]",
         Parallel(n_jobs=n_jobs, verbose=10)(
-            delayed(_select_chunk)(c, hmm_dir, out_reduced_hmm_dir, dates, cutoff, max_candidates)
+            delayed(_select_chunk)(
+                c, hmm_dir, out_reduced_hmm_dir, dates, cutoff, max_candidates
+            )
             for c in chunks
         ),
     )
     results = [r for rs in per_chunk for r in rs]
     Path(out_seqid_templates).parent.mkdir(parents=True, exist_ok=True)
     n_with = 0
-    with Path(out_seqid_templates).open("w", encoding="utf-8") as out, \
-            Path(out_seqid_list).open("w", encoding="utf-8") as lst:
+    with (
+        Path(out_seqid_templates).open("w", encoding="utf-8") as out,
+        Path(out_seqid_list).open("w", encoding="utf-8") as lst,
+    ):
         for sid, tids in results:
             out.write(f"{sid}\t{','.join(tids)}\n")
             if tids:
                 n_with += 1
                 lst.write(f"{sid}\n")
     m = _write_chain_seqs(cif_fasta, out_chain_seq)
-    return (f"candidates: {len(results)} seq_ids, {n_with} with >=1 template; "
-            f"chain_to_seq={m} -> {out_seqid_templates}")
+    return (
+        f"candidates: {len(results)} seq_ids, {n_with} with >=1 template; "
+        f"chain_to_seq={m} -> {out_seqid_templates}"
+    )
 
 
 def _write_chain_seqs(cif_fasta: str | Path, out_chain_seq: str | Path) -> int:
@@ -446,7 +469,10 @@ def _write_chain_seqs(cif_fasta: str | Path, out_chain_seq: str | Path) -> int:
     is_prot = False
     buf: list[str] = []
     Path(out_chain_seq).parent.mkdir(parents=True, exist_ok=True)
-    with Path(cif_fasta).open(encoding="utf-8") as f, Path(out_chain_seq).open("w", encoding="utf-8") as out:
+    with (
+        Path(cif_fasta).open(encoding="utf-8") as f,
+        Path(out_chain_seq).open("w", encoding="utf-8") as out,
+    ):
         for line in f:
             if line.startswith(">"):
                 if cur is not None and is_prot:
@@ -462,4 +488,3 @@ def _write_chain_seqs(cif_fasta: str | Path, out_chain_seq: str | Path) -> int:
             out.write(f"{cur}\t{''.join(buf)}\n")
             m += 1
     return m
-

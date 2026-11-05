@@ -11,11 +11,25 @@ from __future__ import annotations
 from pathlib import Path
 
 # complementary chain types that are always bundled
-PAIR_PARTNERS = {"H": ("K", "L"), "K": ("H",), "L": ("H",), "A": ("B",), "B": ("A",), "G": ("D",), "D": ("G",)}
+PAIR_PARTNERS = {
+    "H": ("K", "L"),
+    "K": ("H",),
+    "L": ("H",),
+    "A": ("B",),
+    "B": ("A",),
+    "G": ("D",),
+    "D": ("G",),
+}
 
 
 class AntibodyClassifier:
-    def __init__(self, cache_tsv: str | Path | None = None, min_len: int = 70, max_len: int = 600, lazy: bool = True):
+    def __init__(
+        self,
+        cache_tsv: str | Path | None = None,
+        min_len: int = 70,
+        max_len: int = 600,
+        lazy: bool = True,
+    ):
         self.cache: dict[str, str | None] = {}
         self.min_len, self.max_len, self.lazy = min_len, max_len, lazy
         if cache_tsv and Path(cache_tsv).exists():
@@ -39,4 +53,6 @@ class AntibodyClassifier:
         return res
 
     def save(self, path: str | Path) -> None:
-        Path(path).write_text("".join(f"{s}\t{t or ''}\n" for s, t in self.cache.items()))
+        Path(path).write_text(
+            "".join(f"{s}\t{t or ''}\n" for s, t in self.cache.items())
+        )

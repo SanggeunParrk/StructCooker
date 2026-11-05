@@ -7,6 +7,7 @@ union merges each node's dependency lists. ``structcooker build-all --manifest
 db_configs/MANIFEST_all.yaml`` is then the end-to-end build; ``write`` regenerates that file and a
 test keeps it equal to the union of its sources.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

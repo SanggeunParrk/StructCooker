@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from datacooker import RecipeBook
 
 from structcooker.instructions.readers.abag_final import load_seq_id_maps

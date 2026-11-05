@@ -18,8 +18,8 @@ from biomol.core.feature import EdgeFeature
 from biomol.enums import StructureLevel
 from datacooker import RecipeBook
 
-from structcooker.instructions.transforms.geometry import chain_contacts_grid
 from structcooker.instructions.mols import CIFMolAttached
+from structcooker.instructions.transforms.geometry import chain_contacts_grid
 
 if TYPE_CHECKING:
     from biomol.core.types import BioMolDict
@@ -36,7 +36,9 @@ def attach_chain_contacts(cifmol: CIFMolAttached) -> BioMolDict:
     """
     xyz = cifmol.atoms.xyz.value
     chain_idx = cifmol.index_table.atoms_to_chains(np.arange(xyz.shape[0]))
-    src, dst, counts = chain_contacts_grid(xyz, chain_idx, _D_THR, count_atom_pairs_once=True)
+    src, dst, counts = chain_contacts_grid(
+        xyz, chain_idx, _D_THR, count_atom_pairs_once=True
+    )
     contact = EdgeFeature(
         value=counts.astype(np.int32),
         src_indices=src.astype(chain_idx.dtype),

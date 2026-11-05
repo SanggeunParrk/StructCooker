@@ -79,8 +79,15 @@ def run_mmseqs_msa_search(
     ]
     if not pending:
         return {"queries": len(chunk), "searched": 0, "written": 0}
-    written, retried = _search_with_retry(pending, work_dir, output_dir, db_uniref, mmseqs_bin, threads)
-    return {"queries": len(chunk), "searched": len(pending), "written": written, "retried_parts": retried}
+    written, retried = _search_with_retry(
+        pending, work_dir, output_dir, db_uniref, mmseqs_bin, threads
+    )
+    return {
+        "queries": len(chunk),
+        "searched": len(pending),
+        "written": written,
+        "retried_parts": retried,
+    }
 
 
 def _search_with_retry(
@@ -93,16 +100,29 @@ def _search_with_retry(
 ) -> tuple[int, int]:
     """``_search_chunk``; on a failure split ``pending`` in four and retry each part. Returns (written, parts retried)."""
     try:
-        return _search_chunk(pending, work_dir, output_dir, db_uniref, mmseqs_bin, threads), 0
+        return _search_chunk(
+            pending, work_dir, output_dir, db_uniref, mmseqs_bin, threads
+        ), 0
     except RuntimeError as exc:
         if len(pending) == 1:
             raise
-        shutil.rmtree(work_dir, ignore_errors=True)  # the failed batch's scratch; the parts get their own
-        print(f"[msa_search] {len(pending)} queries failed ({str(exc)[:200]}); retrying in 4 parts")  # noqa: T201
+        shutil.rmtree(
+            work_dir, ignore_errors=True
+        )  # the failed batch's scratch; the parts get their own
+        print(
+            f"[msa_search] {len(pending)} queries failed ({str(exc)[:200]}); retrying in 4 parts"
+        )  # noqa: T201
         size = -(-len(pending) // 4)
         written = retried = 0
         for i in range(0, len(pending), size):
-            w, r = _search_with_retry(pending[i : i + size], work_dir / f"part_{i // size}", output_dir, db_uniref, mmseqs_bin, threads)
+            w, r = _search_with_retry(
+                pending[i : i + size],
+                work_dir / f"part_{i // size}",
+                output_dir,
+                db_uniref,
+                mmseqs_bin,
+                threads,
+            )
             written += w
             retried += r + 1
         shutil.rmtree(work_dir, ignore_errors=True)
@@ -122,32 +142,90 @@ def _search_chunk(
         shutil.rmtree(work_dir)  # a partial previous attempt must not be reused
     fasta = write_chunk_fasta(pending, work_dir)
     mm = str(mmseqs_bin)
-    qdb, res, exp, aln, msa = (work_dir / n for n in ("qdb", "res", "exp", "aln", "msa"))
+    qdb, res, exp, aln, msa = (
+        work_dir / n for n in ("qdb", "res", "exp", "aln", "msa")
+    )
     tmp = work_dir / "tmp"
     common = ["--threads", str(threads)]
 
     _run([mm, "createdb", str(fasta), str(qdb)])
-    _run([
-        mm, "search", str(qdb), str(db_uniref), str(res), str(tmp),
-        "--num-iterations", str(_NUM_ITERATIONS), "-s", str(_SENSITIVITY),
-        "-e", str(_EVALUE), "--max-seqs", str(_MAX_SEQS), "-a",
-        "--db-load-mode", "2", *common,
-    ])
+    _run(
+        [
+            mm,
+            "search",
+            str(qdb),
+            str(db_uniref),
+            str(res),
+            str(tmp),
+            "--num-iterations",
+            str(_NUM_ITERATIONS),
+            "-s",
+            str(_SENSITIVITY),
+            "-e",
+            str(_EVALUE),
+            "--max-seqs",
+            str(_MAX_SEQS),
+            "-a",
+            "--db-load-mode",
+            "2",
+            *common,
+        ]
+    )
     # A UniRef30 hit represents a cluster; expandaln pulls in the cluster's members so the
     # alignment depth matches an unclustered search.
-    _run([
-        mm, "expandaln", str(qdb), f"{db_uniref}_seq", str(res), f"{db_uniref}_aln",
-        str(exp), "--expansion-mode", "0", "-e", "inf", "--db-load-mode", "2", *common,
-    ])
-    _run([
-        mm, "align", str(qdb), f"{db_uniref}_seq", str(exp), str(aln),
-        "-e", "10", "--max-accept", str(_MAX_SEQS), "--alt-ali", "10", "-a",
-        "--db-load-mode", "2", *common,
-    ])
-    _run([
-        mm, "result2msa", str(qdb), f"{db_uniref}_seq", str(aln), str(msa),
-        "--msa-format-mode", "6", "--db-load-mode", "2", *common,
-    ])
+    _run(
+        [
+            mm,
+            "expandaln",
+            str(qdb),
+            f"{db_uniref}_seq",
+            str(res),
+            f"{db_uniref}_aln",
+            str(exp),
+            "--expansion-mode",
+            "0",
+            "-e",
+            "inf",
+            "--db-load-mode",
+            "2",
+            *common,
+        ]
+    )
+    _run(
+        [
+            mm,
+            "align",
+            str(qdb),
+            f"{db_uniref}_seq",
+            str(exp),
+            str(aln),
+            "-e",
+            "10",
+            "--max-accept",
+            str(_MAX_SEQS),
+            "--alt-ali",
+            "10",
+            "-a",
+            "--db-load-mode",
+            "2",
+            *common,
+        ]
+    )
+    _run(
+        [
+            mm,
+            "result2msa",
+            str(qdb),
+            f"{db_uniref}_seq",
+            str(aln),
+            str(msa),
+            "--msa-format-mode",
+            "6",
+            "--db-load-mode",
+            "2",
+            *common,
+        ]
+    )
     unpack = work_dir / "unpacked"
     _run([mm, "unpackdb", str(msa), str(unpack), "--unpack-suffix", ".a3m"])
 

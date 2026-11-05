@@ -2,6 +2,7 @@ from datetime import date
 
 from datacooker import RecipeBook
 
+from structcooker.instructions.mols import CIFMol
 from structcooker.instructions.transforms.filtering import (
     filter_by_resolution_and_date,
     filter_cifmol_by_polymer_chain_count,
@@ -9,7 +10,6 @@ from structcooker.instructions.transforms.filtering import (
     filter_signalp_by_sequence,
 )
 from structcooker.instructions.transforms.sequence import filter_water
-from structcooker.instructions.mols import CIFMol
 
 """Rebuild a CIF lmdb to train AF3"""
 
