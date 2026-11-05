@@ -9,7 +9,7 @@ from structcooker.instructions.fragdb.extract import (
     valid_windows,
     virtual_cb,
 )
-from structcooker.instructions.potential.pairs import residue_types
+from structcooker.instructions.mols.backbone import residue_types
 
 
 def _two(same_cluster=False, n=8):

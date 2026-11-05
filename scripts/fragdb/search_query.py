@@ -22,7 +22,7 @@ import numpy as np
 
 from structcooker.instructions.fragdb.extract import extract_pairs
 from structcooker.instructions.mols import CIFMolAttached
-from structcooker.instructions.potential.pairs import AA
+from structcooker.instructions.mols.backbone import AA
 from structcooker.instructions.transforms.codecs import from_bytes
 
 ROOT = Path(os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"))

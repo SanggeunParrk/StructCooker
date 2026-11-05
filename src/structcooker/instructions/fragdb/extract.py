@@ -6,7 +6,7 @@ peptide bonds (C-N < 2.0 A). A *pair* is two fragments whose *center* residues t
 fragments must not overlap (centers at least k residues apart in the sequence).
 
 Each pair is stored once, with A the earlier residue (a query for (b, a) is answered from the stored (a, b) by re-expressing the
-coordinates in B's frame). Coordinates are in the backbone frame of A's center residue (AF2 convention, see ``potential.frames``),
+coordinates in B's frame). Coordinates are in the backbone frame of A's center residue (AF2 convention, see ``mols.backbone``),
 as int16 in units of 0.01 A: shape ``(2, k, 5, 3)`` for the atoms N, CA, C, O, CB of fragment A then B. CB is the real Cβ, or for
 Gly the virtual Cβ built from N, CA, C. Within one assembly a pair that is identical by (30% cluster, center position) on both
 sides is stored once (copies of a homo-oligomer).
@@ -20,8 +20,7 @@ from typing import Any
 import numpy as np
 
 from structcooker.instructions.interface.detect import inter_node_pairs
-from structcooker.instructions.potential.frames import frames
-from structcooker.instructions.potential.pairs import AA, BACKBONE, residue_types
+from structcooker.instructions.mols.backbone import AA, BACKBONE, frames, residue_types
 
 ATOMS = ("N", "CA", "C", "O", "CB")
 SCALE = 100.0  # int16 coordinates in 0.01 A

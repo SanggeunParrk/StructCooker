@@ -43,7 +43,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "design"))
 from build_stats import shard_paths  # noqa: E402
 
 from structcooker.instructions.mols import CIFMolAttached  # noqa: E402
-from structcooker.instructions.potential.pairs import (  # noqa: E402
+from structcooker.instructions.mols.backbone import (  # noqa: E402
     AA,
     TYPES,
     representative_atoms,

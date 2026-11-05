@@ -1,12 +1,13 @@
 import numpy as np
 from fake_cifmol import chain, make_mol, protein_chain, residue
 
-from structcooker.instructions.potential.frames import (
+from structcooker.instructions.mols.backbone import (
+    TYPE_INDEX,
     frame_atom_names,
     frames,
+    residue_types,
     to_local,
 )
-from structcooker.instructions.potential.pairs import TYPE_INDEX, residue_types
 
 
 def test_frame_atoms_depend_on_polymer_kind():
@@ -77,3 +78,23 @@ def test_to_local_inverts_the_frame():
     local = to_local(origin, rot, x)
     back = np.einsum("nij,nj->ni", rot, local) + origin
     assert np.allclose(back, x)
+
+
+def test_representative_atom_is_cb_and_ca_for_glycine():
+    from structcooker.instructions.mols.backbone import representative_atoms
+
+    mol = make_mol([protein_chain("A", 2, seq="AG")])
+    rtype, _ = residue_types(mol)
+    rep = representative_atoms(mol, rtype)
+    names = mol.atoms.id.value
+    assert names[rep[0]] == "CB"
+    assert names[rep[1]] == "CA"
+
+
+def test_residue_without_its_representative_atom_has_none():
+    from structcooker.instructions.mols.backbone import representative_atoms
+
+    mol = make_mol([protein_chain("A", 1)])
+    rtype, _ = residue_types(mol)
+    mol.atoms.id.value = np.where(mol.atoms.id.value == "CB", "XX", mol.atoms.id.value)
+    assert representative_atoms(mol, rtype)[0] == -1
