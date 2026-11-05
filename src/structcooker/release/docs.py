@@ -1,12 +1,12 @@
 """Write a release tree's own documentation: ``<BIOMOL_ROOT>/docs``.
 
-Hand-written pages (``release_docs/README.md``, ``provenance.md``, ``licenses.md``) are copied;
+Hand-written pages (``docs/release/README.md``, ``provenance.md``, ``licenses.md``) are copied;
 the rest is generated from this tree, so it cannot drift from what is on disk:
 
 * ``databases.md`` -- every database (the release DAG's, ``db_configs/MANIFEST_all.yaml``, and any
   other ``<db>.lmdb`` with a ``.meta.json``): path, schema, entries, size on disk (its
   ``data.mdb`` files) and what it is built from;
-* ``scenarios.md`` -- ``release_docs/scenarios.yaml`` with the sizes of this tree;
+* ``scenarios.md`` -- ``docs/release/scenarios.yaml`` with the sizes of this tree;
 * ``check.md`` -- the latest ``release_check.json``;
 * ``index.html`` -- all of the above on one page (overview, sets, what to copy, every DB).
 
@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[3]
-SOURCES = REPO / "release_docs"
+SOURCES = REPO / "docs" / "release"
 PAGES = ("README.md", "provenance.md", "licenses.md")
 
 

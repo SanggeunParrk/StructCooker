@@ -26,4 +26,4 @@ Sequence ids are assigned counters: keep `materials/reference/seq_id_map_seed.ts
 other supplied reference inputs, [docs/e2e-build.md §3](docs/e2e-build.md#3-reference-inputs))
 to reproduce this release's ids; without them a build is self-consistent but different.
 
-Code: MIT. The data keep their sources' terms (`release_docs/licenses.md`).
+Code: MIT. The data keep their sources' terms (`docs/release/licenses.md`).

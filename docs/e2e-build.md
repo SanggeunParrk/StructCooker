@@ -150,8 +150,8 @@ structcooker release-docs      # writes $BIOMOL_ROOT/docs/
 configured path, a shard collection's shards inside its own directory, entry counts agreeing
 with `.meta.json` and `.index.tsv`, and a sample of 200 records per DB decoding and passing the
 build's checks. `release-docs` writes the release's own README, provenance and licences
-(copied from `release_docs/`), the database list, the what-to-copy scenarios with this tree's
-sizes (`release_docs/scenarios.yaml`) and a summary of `release_check.json`. Both default to
+(copied from `docs/release/`), the database list, the what-to-copy scenarios with this tree's
+sizes (`docs/release/scenarios.yaml`) and a summary of `release_check.json`. Both default to
 `db_configs/MANIFEST_all.yaml`; rerun them after a build, a patch or a move.
 
 ## 6. Sampled end-to-end check

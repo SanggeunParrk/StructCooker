@@ -49,6 +49,10 @@ nav:
       - Binding filter (Kd <= 1 uM): abag_distillation/affinity-filter.md
       - Heavy-light pairing: abag_distillation/light-chain-pairing.md
       - Basic pair filters: abag_distillation/pair-filters.md
+  - Release data pages:
+      - Overview: release/README.md
+      - Provenance: release/provenance.md
+      - Licenses: release/licenses.md
   - Development: development.md
   - History:
       - Roadmap: history/roadmap.md

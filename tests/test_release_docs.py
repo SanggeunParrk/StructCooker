@@ -41,7 +41,7 @@ def test_every_scenario_path_is_a_release_path(monkeypatch, tmp_path):
         outputs |= {p.relative_to(tmp_path).as_posix()
                     for p in preflight.output_paths(load_config(REPO / "db_configs" / f"{name}.yaml"))}
     extra = {"lmdb/ccd/ccd_inference.lmdb", "lmdb/foldbench/msa_edge.lmdb"}
-    for item in yaml.safe_load((REPO / "release_docs/scenarios.yaml").read_text()):
+    for item in yaml.safe_load((REPO / "docs/release/scenarios.yaml").read_text()):
         for entry in [*(item.get("take") or []), *(item.get("optional") or [])]:
             path = entry["path"]
             assert path in outputs or path in extra or path.startswith("materials/"), (item["id"], path)

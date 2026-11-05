@@ -67,7 +67,7 @@ src/structcooker/
                             verification), preflight (input/output paths, dependency errors), workflow_ops (op inference and the
                             SLURM job), schemas (value type and expansion factor), downloads, cluster (node size)
   release/                  release level: dag (build-all: frozen definition, plan / verify jobs per stage, resume), check
-                            (release-check), docs (release-docs, pages from release_docs/), manifests (MANIFEST_all.yaml = the
+                            (release-check), docs (release-docs, pages from docs/release/), manifests (MANIFEST_all.yaml = the
                             union of the per-set manifests), key_contracts, sample_e2e (e2e-sample), foldbench
   instructions/readers/     loaders and key builders: cif, a3m, openfold, teddymer, afdb, lmdb, asd, abag
   instructions/transforms/  adapters, codecs, msa, template, pruning, sequence, ...
@@ -80,7 +80,7 @@ src/structcooker/
 libs/datacooker/            the engine (submodule)
 scripts/cluster/cssb.env    this cluster's settings
 scripts/staging/            raw-input staging (e2e-build §2), build_inference_ccd.py, consolidate_shards.py
-release_docs/               hand-written release pages and scenarios.yaml
+docs/release/               hand-written pages of the released data tree and scenarios.yaml (release-docs copies them)
 ```
 
 The engine has two layers, **instructions** (the functions) and **workflows** (the recipes a config points at with `recipe_path`); everything else in `src/structcooker/` is the machinery
