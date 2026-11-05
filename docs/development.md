@@ -74,7 +74,7 @@ src/structcooker/
   instructions/writers/     projections: FASTA / TSV materializers
   instructions/mols/        CIFMol, CIFMolAttached, TemplateMol
   instructions/interface/   the interface-unit DB (detect, duplex, adapt, ...; its parameters are db_configs/interface/params/)
-  instructions/design/, fragdb/   the design set, the fragment DB (both use the residue types and frames of mols/backbone.py)
+  instructions/design/      the design set (secondary structure; uses the residue types of mols/backbone.py)
   workflows/                recipes: ingest/, metadata/, search/, filters/, exports/
   utils/                    seq_id and DB-code helpers
 libs/datacooker/            the engine (submodule)
