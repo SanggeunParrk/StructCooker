@@ -13,7 +13,7 @@ import sys
 
 import pyarrow.parquet as pq
 
-from structcooker.instructions.readers.asd_basic import PdbComplexIndex
+from structcooker.instructions.readers.abag_basic import PdbComplexIndex
 
 asd, pairs_basic, seq_id_map, sab, fasta = sys.argv[1:6]
 seq = dict(l.rstrip("\n").split("\t") for l in open(seq_id_map))
