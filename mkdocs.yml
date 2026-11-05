@@ -49,10 +49,6 @@ nav:
       - Binding filter (Kd <= 1 uM): abag_distillation/affinity-filter.md
       - Heavy-light pairing: abag_distillation/light-chain-pairing.md
       - Basic pair filters: abag_distillation/pair-filters.md
-  - Release data pages:
-      - Overview: release/README.md
-      - Provenance: release/provenance.md
-      - Licenses: release/licenses.md
   - Development: development.md
   - History:
       - Roadmap: history/roadmap.md
@@ -70,3 +66,7 @@ nav:
       - 2026-09-17 reproducibility review: history/reproducibility-review-2026-09-17.md
       - RNA MSA sanitized exceptions: history/rna_msa_sanitized_exceptions.md
       - db_configs/ ledger and release notes (to 2026-10-13): history/status-ledger-2026-10.md
+
+# the pages of the released data tree (docs/release/) link to files only that tree has; `structcooker release-docs` publishes them there
+exclude_docs: |
+  release/
