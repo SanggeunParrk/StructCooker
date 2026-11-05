@@ -2,19 +2,29 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from structcooker.instructions.interface.adapt import build_assembly
+from structcooker.instructions.interface.adapt import Assembly, build_assembly
 from structcooker.instructions.interface.config import Config
 from structcooker.instructions.interface.detect import (
+    Unit,
     dedup,
     drop_ion_subsets,
     find_units,
 )
 from structcooker.instructions.interface.duplex import find_duplex
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
-def extract_units(cm, cfg: Config, ab_lookup=None):
+    from structcooker.instructions.mols import CIFMol
+
+
+def extract_units(
+    cm: CIFMol, cfg: Config, ab_lookup: Callable[[str], str | None] | None = None
+) -> tuple[Assembly, list[Unit], dict[tuple[int, int], int]]:
     """Return ``(assembly, units, duplex)``; units are ion-subset- and symmetry-deduplicated."""
     asm = build_assembly(cm, cfg.excluded, cfg.min_heavy)
     if not len(asm.kinds):

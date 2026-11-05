@@ -23,13 +23,15 @@ PAIR_PARTNERS = {
 
 
 class AntibodyClassifier:
+    """Classify sequences as antibody / TCR chains with ANARCI, with a per-sequence cache."""
+
     def __init__(
         self,
         cache_tsv: str | Path | None = None,
         min_len: int = 70,
         max_len: int = 600,
         lazy: bool = True,
-    ):
+    ) -> None:
         self.cache: dict[str, str | None] = {}
         self.min_len, self.max_len, self.lazy = min_len, max_len, lazy
         if cache_tsv and Path(cache_tsv).exists():
@@ -38,6 +40,7 @@ class AntibodyClassifier:
                 self.cache[s] = t or None
 
     def __call__(self, seq: str) -> str | None:
+        """Return the ANARCI chain type of ``seq`` (cached), or None."""
         if seq in self.cache:
             return self.cache[seq]
         res = None
@@ -53,6 +56,7 @@ class AntibodyClassifier:
         return res
 
     def save(self, path: str | Path) -> None:
+        """Write the cache as a ``seq<TAB>type`` TSV."""
         Path(path).write_text(
             "".join(f"{s}\t{t or ''}\n" for s, t in self.cache.items())
         )

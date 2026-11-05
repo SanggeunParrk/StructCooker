@@ -37,7 +37,9 @@ def _contains(a: str, b: str, min_length: int) -> bool:
 
 
 class PdbComplexIndex:
-    """Antibody-antigen complexes with an experimental structure: the SAbDab entries (heavy chain, light chain, antigen chains), their sequences taken
+    """Antibody-antigen complexes with an experimental structure.
+
+    The SAbDab entries (heavy chain, light chain, antigen chains), their sequences taken
     from the PDB fasta (``polypeptide(L)`` records, matched on PDB id and author chain id).
 
     ``find(heavy, light, antigen)`` returns the PDB id of a complex that is **this antibody with this antigen**, else ``None``:
@@ -55,7 +57,9 @@ class PdbComplexIndex:
     ) -> None:
         entries = []
         wanted: set[tuple[str, str]] = set()
-        for line in list(Path(sabdab_summary_path).open())[1:]:
+        with Path(sabdab_summary_path).open() as handle:
+            table_lines = list(handle)[1:]
+        for line in table_lines:
             fields = line.rstrip("\n").split("\t")
             pdb, heavy_chain, light_chain, antigen_chain, antigen_type = (
                 fields[0].upper(),
@@ -86,15 +90,16 @@ class PdbComplexIndex:
             wanted.update((pdb, c) for c in [heavy_chain, light_chain, *antigens])
         chain: dict[tuple[str, str], str] = {}
         key = None
-        for line in Path(pdb_fasta_path).open():
-            if line.startswith(">"):
-                parts = line[1:].split(" | ")
-                key = None
-                if len(parts) > 2 and "polypeptide(L)" in parts[1]:
-                    candidate = (parts[0].split("_")[0], parts[2].strip()[5:])
-                    key = candidate if candidate in wanted else None
-            elif key:
-                chain.setdefault(key, _normalize(line))
+        with Path(pdb_fasta_path).open() as handle:
+            for line in handle:
+                if line.startswith(">"):
+                    parts = line[1:].split(" | ")
+                    key = None
+                    if len(parts) > 2 and "polypeptide(L)" in parts[1]:
+                        candidate = (parts[0].split("_")[0], parts[2].strip()[5:])
+                        key = candidate if candidate in wanted else None
+                elif key:
+                    chain.setdefault(key, _normalize(line))
         self.entries = []
         for pdb, heavy_chain, light_chain, antigens in entries:
             heavy = chain.get((pdb, heavy_chain))
@@ -131,6 +136,7 @@ class PdbComplexIndex:
     def find(
         self, heavy: str, light: str, antigen: str, match: str = "exact"
     ) -> str | None:
+        """Return the PDB id of a complex that is this antibody with this antigen, else ``None``."""
         if match == "exact":
             for pdb, antigens in self.exact.get((heavy, light), ()):
                 if antigen in antigens:
@@ -162,7 +168,7 @@ def load_basic_pairs(
     pdb_fasta_path: str | Path,
     structure_match: str = "exact",
 ) -> list[tuple[str, ...]]:
-    """The pair table with the chain status (``abag/pairs/pairs_chains.tsv``) after the basic filters, each one a column so nothing is lost:
+    """Filter the pair table with the chain status (``abag/pairs/pairs_chains.tsv``), each filter a column so nothing is lost.
 
     * duplicates: a pair is one (heavy, light, antigen) sequence triple; after the light chains are filled two rows can be the same triple (a filled light
       chain that a source also holds): merged, their datasets joined;
@@ -174,21 +180,20 @@ def load_basic_pairs(
     The first row is the header (``HEADER``).
     """
     sequence, id_of = {}, {}
-    for line in Path(seq_id_map_path).open():
-        seq_id, text = line.rstrip("\n").split("\t")
-        sequence[seq_id] = text
-        id_of[text] = seq_id
-    pairs = [
-        line.rstrip("\n").split("\t")
-        for line in list(Path(pairs_chains_path).open())[1:]
-    ]
+    with Path(seq_id_map_path).open() as handle:
+        for line in handle:
+            seq_id, text = line.rstrip("\n").split("\t")
+            sequence[seq_id] = text
+            id_of[text] = seq_id
+    with Path(pairs_chains_path).open() as handle:
+        pairs = [line.rstrip("\n").split("\t") for line in list(handle)[1:]]
     merged: dict[tuple[str, str, str], list] = {}
     for antigen, heavy, light_id, light_seq, status, source, datasets, names in pairs:
         light = sequence[light_id] if light_id else light_seq
         if (
             light_seq and light in id_of
         ):  # a recovered light chain a source also holds: it has a seq_id after all
-            light_id, light_seq = id_of[light], ""
+            light_id, light_seq = id_of[light], ""  # noqa: PLW2901 (the pair is rewritten in place)
         key = (heavy, light_id or light_seq, antigen)
         if key in merged:
             merged[key][6] = ",".join(

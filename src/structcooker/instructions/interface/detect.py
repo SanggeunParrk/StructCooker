@@ -12,6 +12,7 @@ symmetry copies are removed by ``unit_signature``.
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -25,6 +26,8 @@ _OFFSETS = (
 
 @dataclass
 class ContactCfg:
+    """Thresholds for deciding that two nodes are in contact."""
+
     cutoff: float = 5.0
     min_residues: int = 5  # polymer-polymer: contacting residues on BOTH sides
     min_ligand_atoms: int = 3  # polymer-ligand: ligand atoms in contact
@@ -37,6 +40,8 @@ class ContactCfg:
 
 @dataclass
 class UnitCfg:
+    """Limits and rules for assembling contacting nodes into units."""
+
     max_polymer_chains: int = 6
     max_ligands: int = 4
     max_ions: int = 8
@@ -60,6 +65,8 @@ class UnitCfg:
 
 @dataclass
 class Edge:
+    """Contact between two nodes: residue pairs, contacting atoms and minimum distance."""
+
     a: int
     b: int
     n_atom_pairs: int
@@ -70,19 +77,24 @@ class Edge:
 
     @property
     def res_a(self) -> np.ndarray:
+        """Unique contacting residues on side a."""
         return np.unique(self.res_pairs[:, 0])
 
     @property
     def res_b(self) -> np.ndarray:
+        """Unique contacting residues on side b."""
         return np.unique(self.res_pairs[:, 1])
 
     @property
     def weight(self) -> int:
+        """Number of contacting residues on both sides."""
         return len(self.res_a) + len(self.res_b)
 
 
 @dataclass
 class Unit:
+    """A set of nodes joined by significant edges (one interface unit)."""
+
     nodes: list[int]
     edges: list[Edge] = field(default_factory=list)
     seeds: list[tuple[int, int]] = field(default_factory=list)
@@ -90,10 +102,13 @@ class Unit:
 
     @property
     def weight(self) -> int:
+        """Total weight of the unit's edges."""
         return sum(e.weight for e in self.edges)
 
 
-def inter_node_pairs(xyz: np.ndarray, node_idx: np.ndarray, cutoff: float):
+def inter_node_pairs(
+    xyz: np.ndarray, node_idx: np.ndarray, cutoff: float
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Atom pairs (i < j) of different nodes within ``cutoff`` (cell list, exact)."""
     ok = np.flatnonzero(np.isfinite(xyz).all(axis=1))
     if ok.size < 2:
@@ -114,7 +129,7 @@ def inter_node_pairs(xyz: np.ndarray, node_idx: np.ndarray, cutoff: float):
         key
     )  # ucell is lexsorted so already ordered, kept explicit for safety
     key_sorted = key[ks]
-    I, J = [], []
+    ii, jj = [], []
     for off in _OFFSETS:
         nk = (ucell + off - lo) @ np.array([span[1] * span[2], span[2], 1])
         pos = np.searchsorted(key_sorted, nk)
@@ -130,13 +145,13 @@ def inter_node_pairs(xyz: np.ndarray, node_idx: np.ndarray, cutoff: float):
         within = np.arange(tot.sum()) - np.repeat(np.cumsum(tot) - tot, tot)
         ia = starts[ca][pid] + within // nb[pid]
         ib = starts[cb][pid] + within % nb[pid]
-        I.append(order[ia])
-        J.append(order[ib])
-    if not I:
+        ii.append(order[ia])
+        jj.append(order[ib])
+    if not ii:
         e = np.empty(0, dtype=np.int64)
         return e, e, np.empty(0)
-    i = ok[np.concatenate(I)]
-    j = ok[np.concatenate(J)]
+    i = ok[np.concatenate(ii)]
+    j = ok[np.concatenate(jj)]
     keep = (i < j) & (node_idx[i] != node_idx[j])
     i, j = i[keep], j[keep]
     d = np.linalg.norm(xyz[i] - xyz[j], axis=1)
@@ -145,7 +160,12 @@ def inter_node_pairs(xyz: np.ndarray, node_idx: np.ndarray, cutoff: float):
 
 
 def node_edges(
-    xyz, node_idx, res_idx, kinds, ccfg: ContactCfg, donor=None
+    xyz: np.ndarray,
+    node_idx: np.ndarray,
+    res_idx: np.ndarray,
+    kinds: list[str],
+    ccfg: ContactCfg,
+    donor: np.ndarray | None = None,
 ) -> dict[tuple[int, int], Edge]:
     """All node-node contacts (no significance filter yet), keyed ``(a, b)`` with a < b.
 
@@ -174,7 +194,7 @@ def node_edges(
     pair_s = pair[order]
     cut = np.concatenate(([0], np.flatnonzero(np.diff(pair_s)) + 1, [len(pair_s)]))
     out = {}
-    for lo, hi in zip(cut[:-1], cut[1:], strict=True):
+    for lo, hi in itertools.pairwise(cut):
         m = order[lo:hi]
         p = int(pair_s[lo])
         a, b = p // nn, p % nn
@@ -207,10 +227,12 @@ def _side(e: Edge, node: int) -> int:
     return 0 if e.a == node else 1
 
 
-def _touch(c: int, R: dict[int, np.ndarray], sig: dict[tuple[int, int], Edge]) -> int:
-    """Residues of node ``c`` that contact a residue of R (R maps node -> residue ids)."""
+def _touch(
+    c: int, rset: dict[int, np.ndarray], sig: dict[tuple[int, int], Edge]
+) -> int:
+    """Residues of node ``c`` that contact a residue of R (``rset`` maps node -> residue ids)."""
     mine = [np.empty(0, dtype=np.int64)]
-    for m, rm in R.items():
+    for m, rm in rset.items():
         e = sig.get((min(c, m), max(c, m)))
         if e is None:
             continue
@@ -242,7 +264,7 @@ def find_units(
     from structcooker.instructions.interface.antibody import PAIR_PARTNERS
 
     ccfg, ucfg = ccfg or ContactCfg(), ucfg or UnitCfg()
-    ab_class = ab_class or [None] * len(kinds)
+    abc: list[str | None] = ab_class or [None] * len(kinds)
     duplex = duplex or {}
     if sum(k in ("protein", "na") for k in kinds) > ucfg.max_polymer_chains_in_assembly:
         return []
@@ -259,10 +281,10 @@ def find_units(
 
     def forced(n: int) -> set[int]:
         out = set(dup_partners.get(n, ()))
-        if ab_class[n]:
+        if abc[n]:
             best, best_w = None, 0
             for m in partners.get(n, ()):
-                if ab_class[m] in PAIR_PARTNERS.get(ab_class[n], ()):
+                if abc[m] in PAIR_PARTNERS.get(abc[n] or "", ()):
                     w = sig[(min(n, m), max(n, m))].weight
                     if w > best_w:
                         best, best_w = m, w
@@ -270,13 +292,9 @@ def find_units(
                 out.add(best)
         return out
 
-    def is_bundle_edge(key) -> bool:
+    def is_bundle_edge(key: tuple[int, int]) -> bool:
         a, b = key
-        return bool(
-            ab_class[a]
-            and ab_class[b]
-            and ab_class[b] in PAIR_PARTNERS.get(ab_class[a], ())
-        )
+        return bool(abc[a] and abc[b] and abc[b] in PAIR_PARTNERS.get(abc[a] or "", ()))
 
     # an ion alone is not an interface: it seeds only when it bridges >= 2 nodes
     seeds = [
@@ -292,7 +310,7 @@ def find_units(
     by_nodes: dict[tuple[int, ...], Unit] = {}
     bundle_only: dict[tuple[int, ...], bool] = {}
 
-    def close(group, truncated):
+    def close(group: list[int], truncated: bool) -> bool:
         queue = list(group)
         while queue:
             for p in forced(queue.pop()):
@@ -428,6 +446,7 @@ def drop_ion_subsets(units: list[Unit], kinds: list[str]) -> list[Unit]:
 
 
 def dedup(units: list[Unit], node_keys: list[str], bucket: int = 5) -> list[Unit]:
+    """Drop units with a signature already seen, keeping the first."""
     seen, out = set(), []
     for u in units:
         s = unit_signature(u, node_keys, bucket)

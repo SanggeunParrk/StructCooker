@@ -21,6 +21,8 @@ DEFAULT = (
 
 @dataclass
 class Config:
+    """Interface-extraction settings loaded from ``interface.yaml``."""
+
     contact: ContactCfg
     unit: UnitCfg
     excluded: frozenset
@@ -32,6 +34,7 @@ class Config:
 
 
 def load_config(path: Path | str = DEFAULT, overrides: dict | None = None) -> Config:
+    """Load the YAML config, applying dotted-key ``overrides`` (e.g. ``unit.max_ligands``)."""
     cfg = yaml.safe_load(Path(path).read_text())
     for dotted, v in (overrides or {}).items():
         d = cfg

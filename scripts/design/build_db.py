@@ -198,6 +198,7 @@ def main():
     with mp.get_context("fork").Pool(a.workers) as p:
         res = p.map(work, tasks, chunksize=1)
     print("written", sum(res))
+    return None
 
 
 if __name__ == "__main__":

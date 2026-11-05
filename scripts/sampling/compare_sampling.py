@@ -602,9 +602,9 @@ def mixture_section(out: list[str]) -> None:
     out.append(
         "| source | AF3 weight | AF3 share | MiniWorld weight | MiniWorld share |\n|---|---:|---:|---:|---:|"
     )
-    for name in af3:
+    for name, w_af3 in af3.items():
         out.append(
-            f"| {name} | {af3[name]} | {af3[name] / sa:.2%} | {mw[name]} | {mw[name] / sm:.2%} |"
+            f"| {name} | {w_af3} | {w_af3 / sa:.2%} | {mw[name]} | {mw[name] / sm:.2%} |"
         )
     out.append(f"| sum | {sa:.3f} | | {sm:.3f} | |\n")
 

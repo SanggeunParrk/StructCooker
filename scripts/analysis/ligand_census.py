@@ -90,7 +90,7 @@ def main():
     keys = []
     for p in [index] if index.exists() else Path(a.db).glob("*.index.tsv"):
         for ln in p.open():
-            if ln.startswith("#") or ln.startswith("key\t"):
+            if ln.startswith(("#", "key\t")):
                 continue
             keys.append(ln.split("\t")[0])
     keys = keys[:: a.every]

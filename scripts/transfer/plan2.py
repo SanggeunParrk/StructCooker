@@ -89,7 +89,7 @@ def main(target: str, k: int) -> None:
     elif target == "h100":
         add_release(items, PDB_CIF + CCD + OTHER_CIF + META_H100, 1)
     else:
-        add_release(items, PDB_CIF + ["lmdb/ccd/ccd_inference.lmdb"] + META_CSSB, 1)
+        add_release(items, [*PDB_CIF, "lmdb/ccd/ccd_inference.lmdb", *META_CSSB], 1)
     for f in (
         walk(TR / f"{target}_meta" / "metadata" / "resources.lmdb")
         if target in ("h100", "cssb")

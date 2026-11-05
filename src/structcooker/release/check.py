@@ -25,6 +25,8 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
+import click
+
 SAMPLE = 200
 
 
@@ -44,6 +46,7 @@ def _files_outside(target: Path) -> list[str]:
 def check_lmdb(
     name: str, target: str, schema: str, max_depth: int | None
 ) -> dict[str, Any]:
+    """Check one LMDB output: files, index, meta.json and a sampled record decode."""
     from datacooker.lmdb.sharded import open_env
 
     from structcooker.build.build_verify import _check_records
@@ -95,7 +98,9 @@ def check_lmdb(
         problems.append(f"index rows {len(keys)} != {report['entries']}")
     if meta.get("schema") and meta["schema"] != schema:
         problems.append(f"meta.json schema {meta['schema']} != config {schema}")
-    sample = random.Random(name).sample(keys, min(SAMPLE, len(keys)))
+    sample = random.Random(name).sample(  # noqa: S311 - seeded sampling, not security
+        keys, min(SAMPLE, len(keys))
+    )
     try:
         report["sampled"] = _check_records(target, sample, schema, max_depth)
     except Exception as exc:  # noqa: BLE001 - a bad record is a finding, not a crash
@@ -104,6 +109,7 @@ def check_lmdb(
 
 
 def check_files(name: str, paths: list[str]) -> dict[str, Any]:
+    """Check that a file or directory output exists and is non-empty."""
     problems = []
     for p in map(Path, paths):
         if p.is_dir():
@@ -115,6 +121,7 @@ def check_files(name: str, paths: list[str]) -> dict[str, Any]:
 
 
 def run(manifest: Path, out: Path) -> dict[str, Any]:
+    """Run every stage check of a manifest, write the report to out and return it."""
     import yaml
     from datacooker.config import load_config
 
@@ -157,6 +164,7 @@ def run(manifest: Path, out: Path) -> dict[str, Any]:
 
 
 def main() -> None:
+    """Run the release check inside a SLURM job and print one line per stage."""
     if not os.environ.get("SLURM_JOB_ID"):
         msg = "release-check reads every output; submit it with `structcooker release-check`"
         raise RuntimeError(msg)
@@ -169,14 +177,14 @@ def main() -> None:
             if "entries" in r
             else ""
         )
-        print(f"{mark} {r['stage']:42} {detail}  {'; '.join(r['problems'])}")
+        click.echo(f"{mark} {r['stage']:42} {detail}  {'; '.join(r['problems'])}")
     for c in result["key_contracts"]:
         mark = "OK  " if not c["problems"] else "FAIL"
-        print(
+        click.echo(
             f"{mark} key contract {c['contract']:16} {c.get('hit', 0)}/{c.get('chains', 0)} chains find their template  "
             f"{'; '.join(c['problems'])}"
         )
-    print(
+    click.echo(
         f"{result['stages']} stages, {result['with_problems']} with problems, "
         f"{result['key_contracts_failed']} key contracts failed -> {out}"
     )

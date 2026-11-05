@@ -10,10 +10,15 @@ three-state reduction anyway. Checked against mkdssp in scripts/design/check_ss.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 
 from structcooker.instructions.interface.detect import inter_node_pairs
 from structcooker.instructions.potential.pairs import residue_types
+
+if TYPE_CHECKING:
+    from structcooker.instructions.mols import CIFMol
 
 Q1Q2F = 0.084 * 332.0
 HB_CUT = -0.5
@@ -21,7 +26,9 @@ PEPTIDE = 2.0
 CA_RANGE = 9.0
 
 
-def backbone(cm):
+def backbone(
+    cm: CIFMol,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """``(x (R, 4, 3) N CA C O or NaN, chain (R,), cif index (R,), residue type (R,), chem_comp_id (R,))``."""
     at, ix, rs = cm.atoms, cm.index_table, cm.residues
     rtype, _ = residue_types(cm)
@@ -37,7 +44,7 @@ def backbone(cm):
     return x, chain, rs.cif_idx.value.astype(np.int64), rtype, rs.chem_comp_id.value
 
 
-def _best2(who, e):
+def _best2(who: np.ndarray, e: np.ndarray) -> np.ndarray:
     """Mask of the two lowest-energy entries for every value of ``who``."""
     order = np.lexsort((e, who))
     w = who[order]
@@ -50,7 +57,13 @@ def _best2(who, e):
     return keep
 
 
-def assign8(x, chain, cif, proline, usable):
+def assign8(
+    x: np.ndarray,
+    chain: np.ndarray,
+    cif: np.ndarray,
+    proline: np.ndarray,
+    usable: np.ndarray,
+) -> np.ndarray:
     """8-state codes (``H G I E B -``) for every residue; unusable residues are ``-``."""
     n = len(chain)
     link = np.zeros(n, dtype=bool)  # link[r]: r and r + 1 are joined by a peptide bond
@@ -97,7 +110,7 @@ def assign8(x, chain, cif, proline, usable):
         a, b, e = a[k], b[k], e[k]
     hb = np.sort(a.astype(np.int64) * n + b)  # hb(a, b): CO(a) ... NH(b)
 
-    def H(p, q):
+    def hbonded(p: Any, q: Any) -> np.ndarray:
         p, q = np.asarray(p, dtype=np.int64), np.asarray(q, dtype=np.int64)
         inside = (p >= 0) & (p < n) & (q >= 0) & (q < n)
         key = np.where(inside, p * n + q, -1)
@@ -108,7 +121,9 @@ def assign8(x, chain, cif, proline, usable):
             else np.zeros(p.shape, dtype=bool)
         )
 
-    def chained(lo_, k):  # residues lo_ .. lo_ + k all linked in a row
+    def chained(
+        lo_: Any, k: int
+    ) -> np.ndarray:  # residues lo_ .. lo_ + k all linked in a row
         lo_ = np.asarray(lo_, dtype=np.int64)
         inside = (lo_ >= 0) & (lo_ + k <= n - 1)
         out = np.zeros(lo_.shape, dtype=bool)
@@ -117,7 +132,7 @@ def assign8(x, chain, cif, proline, usable):
 
     idx = np.arange(n)
     for m, code in ((4, "H"), (3, "G"), (5, "I")):
-        t = H(idx, idx + m) & chained(idx, m)  # an m-turn starts at i
+        t = hbonded(idx, idx + m) & chained(idx, m)  # an m-turn starts at i
         for s in (
             np.flatnonzero(t[1:] & t[:-1]) + 1
         ):  # two consecutive m-turns: residues s .. s + m - 1
@@ -128,8 +143,14 @@ def assign8(x, chain, cif, proline, usable):
     p, q = p[far], q[far]
     interior = lambda r: (r >= 1) & (r <= n - 2) & chained(r - 1, 2)  # noqa: E731
     base = interior(p) & interior(q)
-    par = base & ((H(p - 1, q) & H(q, p + 1)) | (H(q - 1, p) & H(p, q + 1)))
-    anti = base & ((H(p, q) & H(q, p)) | (H(p - 1, q + 1) & H(q - 1, p + 1)))
+    par = base & (
+        (hbonded(p - 1, q) & hbonded(q, p + 1))
+        | (hbonded(q - 1, p) & hbonded(p, q + 1))
+    )
+    anti = base & (
+        (hbonded(p, q) & hbonded(q, p))
+        | (hbonded(p - 1, q + 1) & hbonded(q - 1, p + 1))
+    )
     bridges = {(int(u), int(w), 0) for u, w in zip(p[par], q[par], strict=False)} | {
         (int(u), int(w), 1) for u, w in zip(p[anti], q[anti], strict=False)
     }
@@ -150,13 +171,15 @@ def assign8(x, chain, cif, proline, usable):
     return state
 
 
-def to_three(s8):
+def to_three(s8: np.ndarray) -> np.ndarray:
+    """Fold 8-state codes to three states: H (H G I), E (E B), C (rest)."""
     return np.where(
         np.isin(s8, ["H", "G", "I"]), "H", np.where(np.isin(s8, ["E", "B"]), "E", "C")
     )
 
 
-def max_run(mask):
+def max_run(mask: np.ndarray) -> int:
+    """Return the length of the longest run of True values in ``mask``."""
     best = cur = 0
     for v in mask:
         cur = cur + 1 if v else 0
@@ -164,7 +187,7 @@ def max_run(mask):
     return best
 
 
-def secondary_structure(cm):
+def secondary_structure(cm: CIFMol) -> tuple[np.ndarray, dict[str, float | int]]:
     """``(codes per residue (R,): 'H' helix, 'E' strand, 'C' coil, '-' not assessed, summary dict)`` of a CIFMol / CIFMolAttached.
 
     Summary: ``helix``, ``strand``, ``coil`` fractions over the residues DSSP could assess (standard amino acids with N, CA, C, O),

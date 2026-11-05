@@ -55,10 +55,12 @@ def asd_dir(tmp_path):
 def test_antibody_fasta_has_distinct_chains_by_role(asd_dir):
     fasta = load_asd_fasta(asd_dir, "antibody")
     assert sorted(fasta.values()) == sorted([VH, VL])
-    heavy = [h for h, s in fasta.items() if s == VH][0]
-    assert heavy.startswith("ASDH_") and heavy.endswith("| polypeptide(L) | Auth:H")
-    light = [h for h, s in fasta.items() if s == VL][0]
-    assert light.startswith("ASDL_") and light.endswith("Auth:L")
+    heavy = next(h for h, s in fasta.items() if s == VH)
+    assert heavy.startswith("ASDH_")
+    assert heavy.endswith("| polypeptide(L) | Auth:H")
+    light = next(h for h, s in fasta.items() if s == VL)
+    assert light.startswith("ASDL_")
+    assert light.endswith("Auth:L")
 
 
 def test_antigen_fasta_skips_empty_chains(asd_dir):
@@ -76,7 +78,8 @@ def test_fasta_order_is_deterministic(asd_dir):
 def test_batched_cdr_extraction_matches_one_call_per_sequence():
     batch = _extract_H3L3_batch("H3", [VH, "", "GGGGGGGG", VH], ncpu=2)
     assert batch[0] == batch[3] == _extract_H3L3_sequence("H3", VH) != ""
-    assert batch[1] == "" and batch[2] == ""
+    assert batch[1] == ""
+    assert batch[2] == ""
     assert (
         _extract_H3L3_batch("L3", [VL], ncpu=1)[0]
         == _extract_H3L3_sequence("L3", VL)

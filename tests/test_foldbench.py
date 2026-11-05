@@ -108,13 +108,10 @@ def test_build_then_verify_resolves_every_lookup(tmp_path):
     )
     assert json.loads((out / "foldbench_build.json").read_text())["keys"]["rna"] == 1
     copies = {c["name"]: c for c in summary["copies"]}
-    assert (
-        copies["protein_msa"]["written"] == 2
-        and copies["protein_msa"]["from_fallback"] == 1
-    )
-    assert copies["template"]["missing"] == ["t1xx_Z"] and copies["ccd"]["missing"] == [
-        "ACE"
-    ]
+    assert copies["protein_msa"]["written"] == 2
+    assert copies["protein_msa"]["from_fallback"] == 1
+    assert copies["template"]["missing"] == ["t1xx_Z"]
+    assert copies["ccd"]["missing"] == ["ACE"]
     v = fb.verify(pkg, out, decode_sample=0)
     assert v["msa_slots"] == {
         "found": 3,

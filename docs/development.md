@@ -88,6 +88,23 @@ around them. A config is `db_configs/<group>/<name>.yaml`; nothing about a DB is
 
 `logs/` keeps job logs and recovery evidence; nothing in a build imports from it.
 
+## Quality gates
+
+Every push runs the same four checks (`.github/workflows/ci.yml`); run them before you commit:
+
+```bash
+pixi run ruff check src tests scripts          # lint: select = ALL minus the principled ignores in pyproject.toml
+pixi run ruff format --check src tests scripts
+pixi run pyright                               # types of src/ (the engine is checked in its own repository)
+pixi run pytest tests -q --cov=src/structcooker   # 812 tests, 66% of the statements (the recipes in workflows/ are glue, covered by e2e-sample)
+```
+
+- **Library code (`src/`)** has no suppressions beyond a justified `# noqa: <rule>  (reason)` on the line (subprocess with a fixed argv, seeded sampling that is not security, a signature the engine fixes).
+- **Tests** may use bare asserts, skip docstrings and annotations, touch private helpers (`SLF001`) and use fakes with the signature of what they replace (`ARG001/2`).
+- **Scripts (`scripts/`)** are one-off drivers, not library code: no annotations or docstrings, `print`, `open()` and short names are fine; correctness and security rules stay on.
+- The recipes (`workflows/`) are glue the engine runs from a config; `tests/workflows/test_recipes.py` checks that each loads, declares `RECIPE` / `TARGETS`, and is used by a config. Their behaviour is
+  covered by `structcooker e2e-sample` and `release-check`, not by the unit-test coverage figure.
+
 ## LMDB storage
 
 - **Merge or shard.** After a build, the output records are counted. At most 5,000,000

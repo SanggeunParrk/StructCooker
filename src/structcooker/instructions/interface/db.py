@@ -16,7 +16,7 @@ class InterfaceDB:
     published shard collection; before ``finalize`` a plain ``shards/``) next to ``manifest.tsv``.
     """
 
-    def __init__(self, root: str | Path):
+    def __init__(self, root: str | Path) -> None:
         self.root = Path(root)
         coll = self.root / "interface_pdb.lmdb" / "shards"
         shard_dir = coll if coll.is_dir() else self.root / "shards"

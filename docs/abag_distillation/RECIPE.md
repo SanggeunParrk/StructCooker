@@ -12,10 +12,10 @@ Three sources: **ASD v2.0, AbRank, POISK**. All paths are under `$BIOMOL_ROOT` (
 
 | Source | How | Result |
 |---|---|---|
-| ASD v2.0 | the Drive folder `1iSF3BZdDu2jjxIz3sSz5wjJMbPsAkPDM`, **downloaded by hand in a browser** (gdown fails on the quota); put the four zips in `asd/download/`, then `sbatch scripts/staging/unpack_asd.sbatch` and `sbatch scripts/staging/stage_asd.sbatch` | `asd/v2.0/` (the live Delta table, 20 parquet files, 1,177,819 rows), `asd/SOURCE.tsv` |
-| AbRank | `sbatch scripts/staging/copy_abrank.sbatch` (copy from cssb-master, sha256 checked; the Kaggle original needs a login) | `abrank/AbRank_dataset_updated_v2.csv` (a TSV, 342,362 rows) |
-| POISK | `sbatch scripts/staging/download_poisk.sbatch` (Zenodo 19883049, md5 checked) | `poisk/zenodo_19883049/poisk_dataset.csv` (89,074 rows) |
-| AntiBinder | `sbatch scripts/staging/download_antibinder.sbatch` (git clone, MIT) | `antibinder/repo/` |
+| ASD v2.0 | the Drive folder `1iSF3BZdDu2jjxIz3sSz5wjJMbPsAkPDM`, **downloaded by hand in a browser** (gdown fails on the quota); put the four zips in `asd/download/`, then `sbatch scripts/abag/unpack_asd.sbatch` and `sbatch scripts/abag/stage_asd.sbatch` | `asd/v2.0/` (the live Delta table, 20 parquet files, 1,177,819 rows), `asd/SOURCE.tsv` |
+| AbRank | `sbatch scripts/abag/copy_abrank.sbatch` (copy from cssb-master, sha256 checked; the Kaggle original needs a login) | `abrank/AbRank_dataset_updated_v2.csv` (a TSV, 342,362 rows) |
+| POISK | `sbatch scripts/abag/download_poisk.sbatch` (Zenodo 19883049, md5 checked) | `poisk/zenodo_19883049/poisk_dataset.csv` (89,074 rows) |
+| AntiBinder | `sbatch scripts/abag/download_antibinder.sbatch` (git clone, MIT) | `antibinder/repo/` |
 | SAbDab summary | `sabdab/sabdab_summary_all.tsv` (already there); the PDB sequences are `materials/intermediate/fasta/cif_pdb.fasta` | |
 
 Each folder has a `README.md` (provenance, licence) and a `SOURCE.tsv` (checksums). ASD and AbRank licences are not checked (AbRank is CC BY-NC 4.0 by its paper).
@@ -55,7 +55,7 @@ by the MSA search (an a3m that exists is kept), the other 8,753 (median 223 aa) 
 | `abag/ag_template_candidates_20210930` and `..._2026` | per seq_id candidates released up to **2021-09-30** and up to **2026-02-18**, 60 candidates, from the same hmmsearch output |
 | `abag/ag_template_20210930` and `abag/ag_template_2026` | `abag/lmdb/template/template_ag_20210930.lmdb`, `template_ag_2026.lmdb`: schema D, up to 20 templates per seq_id |
 
-Then the keep list of antigens (`scripts/analysis/asd_msa_depth.py`, `asd_template_counts.py`, `abag_ag_keep.py`): **an antigen is dropped when its MSA depth is 50 or less and it has no
+Then the keep list of antigens (`scripts/abag/asd_msa_depth.py`, `asd_template_counts.py`, `abag_ag_keep.py`): **an antigen is dropped when its MSA depth is 50 or less and it has no
 template in the 2021-09-30 version** -> `abag/worklists/ag_keep.txt`. The 2026 templates are for use; the filter is on the 2021 ones so that it does not depend on structures newer than the AF3 cutoff.
 
 ## 4. The final chains: fasta, seq_ids, clusters, the final pair table  (`run.sh final`, about 40 minutes)
@@ -75,7 +75,7 @@ light chains included, and ends in one table with a seq_id and a cluster for eve
 
 The two fastas first, then `final_seq_id_map`, then the three clusterings (in parallel), then `final_pairs`. Cluster ids are `cABG_<rep seq_id>` / `cABA_<rep seq_id>` **of this subset**.
 
-## 5. Checks and analyses  (`scripts/analysis/`)
+## 5. Checks and analyses  (`scripts/abag/`)
 
 | Script | Answers |
 |---|---|

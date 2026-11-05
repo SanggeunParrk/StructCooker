@@ -181,7 +181,7 @@ def disordered_template_links(
             link.parent.mkdir(parents=True, exist_ok=True)
             # relative, so that renaming the release root does not break the links
             link.symlink_to(
-                os.path.relpath(os.path.abspath(src), os.path.abspath(link.parent))
+                os.path.relpath(src, link.parent)  # relpath makes both absolute
             )
             links.append(f"{entry}/{link.name}")
         stat["unused_files"] = len(files) - len(used)
@@ -196,7 +196,8 @@ def disordered_template_links(
     links = [link for ls, _ in results for link in ls]
     keys = [Path(link).stem for link in links]
     if len(set(keys)) != len(keys):
-        raise ValueError("two template files would write the same chain key")
+        msg = "two template files would write the same chain key"
+        raise ValueError(msg)
     totals = {
         k: sum(st[k] for _, st in results)
         for k in ("by_label", "by_entity", "unused_files")

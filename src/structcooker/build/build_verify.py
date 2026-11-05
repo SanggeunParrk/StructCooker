@@ -123,7 +123,7 @@ def _check_records(
 def _check_msa(key: str, value: Any, max_depth: int | None) -> None:
     if not isinstance(value, dict):
         msg = f"Invalid MSA payload type for {key}"
-        raise ValueError(msg)
+        raise ValueError(msg)  # noqa: TRY004 - callers catch ValueError for bad payloads
     msa = value["msa_dict"]
     sequence = msa["sequences"]
     aligned = sequence["aligned_sequences"]

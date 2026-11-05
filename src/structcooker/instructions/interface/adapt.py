@@ -14,9 +14,15 @@ CCD canonical one-letter code (``one_letter_code_can``); unknown -> ``X`` / ``N`
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
 from biomol.exceptions import FeatureKeyError
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from structcooker.instructions.mols import CIFMol
 
 NA_TYPES = {
     "polydeoxyribonucleotide",
@@ -26,7 +32,7 @@ NA_TYPES = {
 WATER = {"HOH", "DOD"}
 
 
-def pick_alt_keys(keys) -> list[str]:
+def pick_alt_keys(keys: Iterable[str]) -> list[str]:
     """One key per (assembly, model): the no-altloc ``.`` entry if present, else the first altloc.
 
     Altloc entries in cif_pdb are full copies of the assembly (same atoms, alternate conformers),
@@ -42,6 +48,8 @@ def pick_alt_keys(keys) -> list[str]:
 
 @dataclass
 class Assembly:
+    """Node-level view of one assembly: atoms grouped into protein / NA / ligand / ion nodes."""
+
     xyz: np.ndarray  # (n, 3) atoms that belong to a node (may hold NaN)
     node_idx: np.ndarray  # (n,) compact node index
     res_idx: np.ndarray  # (n,) global residue index
@@ -57,7 +65,10 @@ class Assembly:
     stats: dict = field(default_factory=dict)
 
 
-def build_assembly(cm, excluded: frozenset[str], min_heavy: int = 6) -> Assembly:
+def build_assembly(
+    cm: CIFMol, excluded: frozenset[str], min_heavy: int = 6
+) -> Assembly:
+    """Turn a CIFMol into interface nodes and atom arrays, dropping excluded ligands."""
     ch, rs, at, ix = cm.chains, cm.residues, cm.atoms, cm.index_table
     n_atom = len(at.xyz.value)
     all_atoms = np.arange(n_atom)
@@ -125,7 +136,7 @@ def build_assembly(cm, excluded: frozenset[str], min_heavy: int = 6) -> Assembly
         node_of_atom[a] = n
     parent = list(range(len(kinds)))
 
-    def find(x):
+    def find(x: int) -> int:
         while parent[x] != x:
             parent[x] = parent[parent[x]]
             x = parent[x]
@@ -141,7 +152,7 @@ def build_assembly(cm, excluded: frozenset[str], min_heavy: int = 6) -> Assembly
         for s, d, t in zip(sc.src_indices, sc.dst_indices, types, strict=True):
             if t != "covale":
                 continue
-            a, b = node_of_atom[s], node_of_atom[d]
+            a, b = int(node_of_atom[s]), int(node_of_atom[d])
             if a < 0 or b < 0 or a == b:
                 continue
             ka, kb = kinds[a], kinds[b]

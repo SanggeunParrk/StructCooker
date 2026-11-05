@@ -32,23 +32,27 @@ class Row(NamedTuple):
 
 
 def normalize(sequence: str | None) -> str:
+    """Return the sequence without whitespace, upper-cased."""
     return "".join((sequence or "").split()).upper()
 
 
 def abag_header(tag: str, sequence: str) -> str:
-    """The FASTA header of a chain of the antibody-antigen set: ``ABAG<H|L|T>_<sha1[:12]> | polypeptide(L) | Auth:<H|L|A>``."""
+    """Return the FASTA header of a chain of the antibody-antigen set: ``ABAG<H|L|T>_<sha1[:12]> | polypeptide(L) | Auth:<H|L|A>``."""
     digest = hashlib.sha1(sequence.encode()).hexdigest()[:12]  # noqa: S324 (a name, not a secret)
     return f"ABAG{tag}_{digest} | polypeptide(L) | Auth:{_AUTH[tag]}"
 
 
 def columns_swapped(heavy: str, light: str) -> bool:
-    """AbRank's heavy and light columns are swapped in 807 rows: the heavy column ends in a light FR4 *and* the light column in a heavy FR4 (both, so a
+    """Tell whether AbRank's heavy and light columns are swapped (807 rows).
+
+    The heavy column ends in a light FR4 *and* the light column in a heavy FR4 (both, so a
     rare J variant of one chain is not taken for a swap).
     """
     return bool(_LIGHT_FR4.search(heavy[-20:]) and _HEAVY_FR4.search(light[-20:]))
 
 
 def iter_asd_rows(asd_dir: str | Path) -> Iterator[Row]:
+    """Yield the rows of the ASD parquet parts."""
     import pyarrow.parquet as pq  # not needed by any other reader
 
     files = sorted(Path(asd_dir).glob("part-*.parquet"))
@@ -112,6 +116,7 @@ def iter_abrank_rows(path: str | Path) -> Iterator[Row]:
 
 
 def iter_poisk_rows(path: str | Path) -> Iterator[Row]:
+    """Yield the rows of the POISK csv."""
     csv.field_size_limit(10**9)
     with Path(path).open(newline="") as handle:
         for row in csv.DictReader(handle):
@@ -136,13 +141,14 @@ def iter_poisk_rows(path: str | Path) -> Iterator[Row]:
 def iter_rows(
     asd_dir: str | Path, abrank_path: str | Path, poisk_path: str | Path
 ) -> Iterator[Row]:
+    """Yield the rows of ASD, AbRank and POISK in turn."""
     yield from iter_asd_rows(asd_dir)
     yield from iter_abrank_rows(abrank_path)
     yield from iter_poisk_rows(poisk_path)
 
 
 def valid(row: Row) -> bool:
-    """A usable row: a heavy chain and an antigen, every chain A-Z only."""
+    """Tell whether a row is usable: a heavy chain and an antigen, every chain A-Z only."""
     return bool(
         row.heavy
         and row.antigen

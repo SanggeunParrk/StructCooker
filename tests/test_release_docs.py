@@ -113,9 +113,13 @@ def test_html_and_markdown_render_the_same_rows(tmp_path):
         "reports": [],
     }
     page = release_docs.render_html(tmp_path, rows, items, report)
-    assert "94/94 OK" in page and "5.0 MB" in page and "1,234" in page
-    assert "x&lt;y&gt;" in page and "x<y>" not in page  # paths are escaped
+    assert "94/94 OK" in page
+    assert "5.0 MB" in page
+    assert "1,234" in page
+    assert "x&lt;y&gt;" in page
+    assert "x<y>" not in page
     md = release_docs.databases_md(rows)
-    assert "## `lmdb/ccd`" in md and "| 1,234 |" in md
+    assert "## `lmdb/ccd`" in md
+    assert "| 1,234 |" in md
     assert "**needed** — 5.0 MB" in release_docs.scenarios_md(items)
     assert "not run" in release_docs.render_html(tmp_path, rows, items, None)

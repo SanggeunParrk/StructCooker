@@ -1,4 +1,4 @@
-"""Key contracts: can a consumer find a chain's template from the chain's structure record?
+"""Check that a chain's template key can be derived from its structure record.
 
 A template DB only helps if the key a consumer derives from a structure record is the key the DB was written
 under. Every DB below is keyed differently (by chain, by sequence, by entry), and a mismatch is silent: the lookup
@@ -31,6 +31,8 @@ SAMPLE_RECORDS = 300
 
 @dataclass(frozen=True)
 class Contract:
+    """One structure DB / template DB pair and the rule that derives the template key."""
+
     name: str
     structure: (
         str  # attached cif DB, relative to ``<BIOMOL_ROOT>/lmdb``, without ``.lmdb``
@@ -83,15 +85,15 @@ CONTRACTS = (
 )
 
 
-def _label(record: str, chain_id: str, seq_id: str) -> str:
+def _label(record: str, chain_id: str, _seq_id: str) -> str:
     return f"{record}_{chain_id.rsplit('_', 1)[0]}"
 
 
-def _record(record: str, chain_id: str, seq_id: str) -> str:
+def _record(record: str, _chain_id: str, _seq_id: str) -> str:
     return record
 
 
-def _seq_id(record: str, chain_id: str, seq_id: str) -> str:
+def _seq_id(_record: str, _chain_id: str, seq_id: str) -> str:
     return seq_id
 
 
@@ -153,7 +155,9 @@ def check(
         names = [
             ln.split("\t", 1)[0] for ln in handle if not ln.startswith(("#", "key\t"))
         ]
-    chosen = random.Random(contract.name).sample(names, min(records, len(names)))
+    chosen = random.Random(contract.name).sample(  # noqa: S311 - seeded sampling, not security
+        names, min(records, len(names))
+    )
     chains = hit = 0
     missing: list[str] = []
     with (
@@ -187,4 +191,5 @@ def check(
 
 
 def check_all(lmdb_root: Path, records: int = SAMPLE_RECORDS) -> list[dict[str, Any]]:
+    """Check every key contract against the release LMDB tree."""
     return [check(c, lmdb_root, records) for c in CONTRACTS]

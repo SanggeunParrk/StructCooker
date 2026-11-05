@@ -58,9 +58,9 @@ ag_keep() {
     local W=$A/abag/worklists j
     j=$(sbatch --parsable -p cpu-short --qos=cpu-short-q -c 2 --mem=16g -t 01:00:00 -J abag_agkeep --wrap "
         set -e
-        python3 -I scripts/analysis/asd_msa_depth.py $A/abag/msa/ag $W/ag_msa_depth.tsv
-        pixi run python scripts/analysis/asd_template_counts.py $A/abag/lmdb/template/template_ag_20210930.lmdb $W/ag_template_counts.tsv
-        python3 -I scripts/analysis/abag_ag_keep.py $W/seq_id_map_AG.tsv $W/ag_msa_depth.tsv $W/ag_template_counts.tsv 50 $W/ag_keep.txt")
+        python3 -I scripts/abag/asd_msa_depth.py $A/abag/msa/ag $W/ag_msa_depth.tsv
+        pixi run python scripts/abag/asd_template_counts.py $A/abag/lmdb/template/template_ag_20210930.lmdb $W/ag_template_counts.tsv
+        python3 -I scripts/abag/abag_ag_keep.py $W/seq_id_map_AG.tsv $W/ag_msa_depth.tsv $W/ag_template_counts.tsv 50 $W/ag_keep.txt")
     wait_for "$j"
 }
 final() {

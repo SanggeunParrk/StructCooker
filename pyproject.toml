@@ -57,9 +57,14 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 # Tests use bare asserts and don't need docstrings/annotations on helpers.
-"tests/**" = ["S101", "D101", "D103", "ANN", "INP001", "PLR2004", "TC003"]
+"tests/**" = ["S101", "D101", "D103", "ANN", "INP001", "PLR2004", "TC003", "SLF001", "ARG001", "ARG002"]  # SLF001: tests exercise private helpers; ARG*: fakes mirror the signature they replace
 # Maintenance/ops scripts: print-based progress logs and inline magic values are fine.
-"scripts/**" = ["T201", "INP001", "PLR2004", "PLR0913", "PLR0915", "D103"]
+# Maintenance/ops scripts are one-off drivers, not library code: no annotations or docstrings, print progress, open() and short names are fine.
+# Correctness and security rules (F, B except B007, S except S101/S311, RUF, UP, I, ...) stay on.
+"scripts/**" = [
+    "ANN", "D", "T201", "INP001", "PTH", "SIM115", "E701", "E702", "E731", "E741", "B007", "S101", "S311", "PERF",
+    "PLR2004", "PLR0913", "PLR0915", "PLW0603", "PLW2901", "SLF001", "ARG", "EM101", "EM102", "TRY003",
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
@@ -87,6 +92,7 @@ mmseqs2 = "*"   # protein sequence clustering (seq_cluster); cd-hit is for antib
 foldseek = "*"   # structure clustering (design training DB)
 dssp = "*"   # reference secondary-structure assignment (mkdssp), used to check structcooker.instructions.design.ss
 pyarrow = ">=26.0.0,<27"
+pytest-cov = ">=7.1.0,<8"
 
 
 [tool.hatch.metadata]
@@ -99,7 +105,7 @@ packages = [
 
 
 [tool.pyright]
-include = ["src", "libs/datacooker/src"]
+include = ["src"]  # the engine (libs/datacooker) is type-checked in its own repository
 extraPaths = ["src", "libs/datacooker/src"]
 venvPath = ".pixi/envs"
 venv = "default"

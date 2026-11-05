@@ -14,7 +14,7 @@ structures) as helpers. It is outside the `build-all` DAG, like the [interface D
 | AntiBinder (`antibinder/repo/`) | | ASD's covid-19, hiv, biomap and met rows as they were before ASD kept the heavy chain only: the light chains |
 | SAbDab (`sabdab/`), PDB (`materials/intermediate/fasta/cif_pdb.fasta`) | | the antibody-antigen complexes with an experimental structure |
 
-ASD is read from `asd/v2.0/` (the live Delta table staged by `scripts/staging/stage_asd.py`), never from `download/extract/` (it also holds superseded parquet files).
+ASD is read from `asd/v2.0/` (the live Delta table staged by `scripts/abag/stage_asd.py`), never from `download/extract/` (it also holds superseded parquet files).
 AbRank: the 807 rows whose heavy and light columns are swapped are put right (both columns end in the other chain's FR4); an antigen of several chains (`:`, 1,141 rows) is
 not a single chain and is left out. POISK: a row POISK's own audit calls `CONTRADICTED` or `NOT_FOUND` is dropped. The binding rules per source are in
 [affinity-filter.md](affinity-filter.md). Licences: ASD and AbRank (CC BY-NC 4.0 by its paper) are not checked; POISK is CC BY 4.0; AntiBinder is MIT.
@@ -52,7 +52,7 @@ Antigens first, antibodies later (after the pairs are filtered). The antigens ar
 | **Templates, two versions** `abag/ag_template_candidates_20210930`, `_2026` | `abag/worklists/template_AG_<version>/` | up to 60 hits released up to **2021-09-30** (AF3's cutoff) and up to **2026-02-18** (the newest release of the PDB snapshot), from the same hmmsearch output |
 | `abag/ag_template_20210930`, `abag/ag_template_2026` | `abag/lmdb/template/template_ag_<version>.lmdb` | schema D, keyed by seq_id, up to 20 template mols each |
 
-Then the antigen keep list (`scripts/analysis/abag_ag_keep.py`): **an antigen is dropped when its MSA depth is 50 or less and it has no template in the 2021-09-30 version** ->
+Then the antigen keep list (`scripts/abag/abag_ag_keep.py`): **an antigen is dropped when its MSA depth is 50 or less and it has no template in the 2021-09-30 version** ->
 `abag/worklists/ag_keep.txt`. The final pair table only uses these antigens.
 
 - **Polyproteins out.** An antigen over 3,000 aa is not in the table (the polyproteins and the giant single chains); peptides under 10 aa have nothing to align.

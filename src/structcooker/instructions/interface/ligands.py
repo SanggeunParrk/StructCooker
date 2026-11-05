@@ -31,5 +31,5 @@ def load_excluded(
 def is_binding_ligand(
     ccd_id: str, n_heavy: int, excluded: frozenset[str], min_heavy: int
 ) -> bool:
-    """True if the component may act as a ligand party."""
+    """Return True if the component may act as a ligand party."""
     return ccd_id.upper() not in excluded and n_heavy >= min_heavy

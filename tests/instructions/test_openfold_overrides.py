@@ -28,8 +28,9 @@ def test_explicit_structure_recovery_keeps_entry_identity(tmp_path, monkeypatch)
 
 
 def test_relative_overrides_resolve_under_any_root(tmp_path, monkeypatch):
-    """Keys are paths under the OpenFold root and values relative to the manifest, so the
-    same manifest serves the release tree and a sampled copy of it.
+    """Resolve override keys under the OpenFold root and values relative to the manifest.
+
+    The same manifest then serves the release tree and a sampled copy of it.
     """
     rel = "monomer_distillation_sets_v2/long_monomers/preprocessed/MGYP1/structure.npz"
     store = tmp_path / "intermediate" / "long_recovered"

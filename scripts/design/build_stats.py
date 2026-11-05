@@ -133,7 +133,7 @@ def work(task):
                             [key.decode(), ak],
                         )
                         n += 1
-            except Exception:
+            except Exception:  # noqa: BLE001  (a failed record is counted)
                 fail += 1
                 if fail <= 3:
                     traceback.print_exc()

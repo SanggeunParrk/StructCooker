@@ -14,10 +14,12 @@ class FakeExecutor:
         self.calls = []
 
     def run_once(self, **kw):
+        """Record a single job and return a fake handle."""
         self.calls.append(("once", kw))
         return SimpleNamespace(job_id="1")
 
     def run_tier_shards(self, **kw):
+        """Record an array job and return a fake handle."""
         self.calls.append(("array", kw))
         return SimpleNamespace(job_id="2")
 

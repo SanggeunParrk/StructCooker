@@ -356,17 +356,19 @@ def run_mmseqs2(
     gets an empty table: mmseqs createdb refuses an empty input.
     """
     out = Path(f"{tmp_dir}_cluster.tsv")
-    if not any(line.startswith(">") for line in Path(fasta_path).open()):
+    with Path(fasta_path).open() as handle:
+        has_sequence = any(line.startswith(">") for line in handle)
+    if not has_sequence:
         out.write_text("")
         return
     print(f"Running MMSeqs2 clustering for {fasta_path}...")  # noqa: T201 (CLI progress)
     subprocess.run(  # noqa: S603
-        [
+        [  # noqa: S607 (mmseqs on PATH)
             "mmseqs",
             "easy-cluster",
             str(fasta_path),
             str(tmp_dir),
-            f"{tmp_dir}/tmp/",  # noqa: S607
+            f"{tmp_dir}/tmp/",  # noqa: S108 (scratch dir inside tmp_dir)
             "--min-seq-id",
             str(mmseqs2_seq_id),
             "-c",
@@ -725,13 +727,15 @@ def run_CDHIT(  # noqa: N802 (referenced by dotted-path)
     a piece of a longer one would join it at "100%"; this way only identical sequences share a cluster.
     """
     cutoff = 1.0 if seq_id >= 1.0 else 0.8
-    if not any(line.startswith(">") for line in Path(input_fasta).open()):
+    with Path(input_fasta).open() as handle:
+        has_sequence = any(line.startswith(">") for line in handle)
+    if not has_sequence:
         # No antibody chain of this type in the build: an empty cluster file, as cd-hit
         # rejects an empty input.
         Path(f"{output_path}.clstr").write_text("")
         return
     subprocess.run(  # noqa: S603
-        [
+        [  # noqa: S607 (cd-hit on PATH)
             "cd-hit",
             "-i",
             str(input_fasta),
@@ -740,7 +744,7 @@ def run_CDHIT(  # noqa: N802 (referenced by dotted-path)
             "-c",
             str(seq_id),
             "-n",
-            "2",  # noqa: S607
+            "2",
             "-M",
             "256000",
             "-d",

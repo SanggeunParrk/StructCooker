@@ -21,3 +21,5 @@ site/
 
 # job stdout scratch dumps
 *.out
+.coverage
+htmlcov/

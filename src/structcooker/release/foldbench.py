@@ -43,7 +43,9 @@ import time
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any
 
+import click
 import lmdb
 
 KEY_WIDTH = 21  # a seq_id key: one letter (P protein, R RNA, D/Q/N other nucleic acids) + 20 zero-padded digits
@@ -76,6 +78,7 @@ class FoldBenchKeys:
     ccd: list[str] = field(default_factory=list)
 
     def counts(self) -> dict[str, int]:
+        """Count the keys of each kind."""
         return {k: len(v) for k, v in asdict(self).items()}
 
 
@@ -141,7 +144,7 @@ class CopyReport:
     seconds: float = 0.0
 
 
-def _open_read(path: Path):
+def _open_read(path: Path) -> Any:
     from datacooker.lmdb.sharded import (
         open_env,  # an ordinary LMDB or an immutable shard collection
     )
@@ -183,14 +186,18 @@ def copy_keys(
             else:
                 report.missing.append(k)
         dst.mkdir(parents=True, exist_ok=True)
-        with lmdb.open(
-            str(dst), map_size=max(1 << 26, int(total * 1.5) + (1 << 24)), subdir=True
-        ) as out:
-            with out.begin(write=True) as wtxn:
-                for k, i in where.items():
-                    wtxn.put(k.encode(), bytes(txns[i].get(k.encode())))
-                    report.written += 1
-                    report.from_fallback += i > 0
+        with (
+            lmdb.open(
+                str(dst),
+                map_size=max(1 << 26, int(total * 1.5) + (1 << 24)),
+                subdir=True,
+            ) as out,
+            out.begin(write=True) as wtxn,
+        ):
+            for k, i in where.items():
+                wtxn.put(k.encode(), bytes(txns[i].get(k.encode())))
+                report.written += 1
+                report.from_fallback += i > 0
         report.value_bytes = total
     finally:
         for txn in txns:
@@ -317,13 +324,14 @@ def verify(package: Path, out: Path, *, decode_sample: int = 20) -> dict:
                 tmpl["missing"] += (
                     1  # a chain with no template before the cutoff has no key: not an error
                 )
-    decoded = {}
+    decoded: dict[str, Any] = {}
     try:
         from structcooker.instructions.transforms.codecs import from_bytes
-
-        if decode_sample <= 0:
-            raise ImportError
-
+    except ImportError:
+        from_bytes = None
+    if from_bytes is None or decode_sample <= 0:
+        decoded = {"skipped": "decode_sample=0 or codecs not importable"}
+    else:
         for p, txn in txns.items():
             n = bad = 0
             for _, v in txn.cursor():
@@ -335,8 +343,6 @@ def verify(package: Path, out: Path, *, decode_sample: int = 20) -> dict:
                 if n >= decode_sample:
                     break
             decoded[str(p)] = {"decoded": n - bad, "failed": bad}
-    except ImportError:
-        decoded = {"skipped": "decode_sample=0 or codecs not importable"}
     for e in envs.values():
         e.close()
     return {
@@ -349,8 +355,10 @@ def verify(package: Path, out: Path, *, decode_sample: int = 20) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the FoldBench command line and return the exit status."""
     p = argparse.ArgumentParser(
-        prog="structcooker.release.foldbench", description=__doc__.split("\n", 1)[0]
+        prog="structcooker.release.foldbench",
+        description=(__doc__ or "").split("\n", 1)[0],
     )
     sub = p.add_subparsers(dest="cmd", required=True)
     k = sub.add_parser(
@@ -387,7 +395,7 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     if a.cmd == "keys":
         keys = load_keys(a.package)
-        print(json.dumps(keys.counts()))
+        click.echo(json.dumps(keys.counts()))
         if a.out:
             a.out.write_text(json.dumps(asdict(keys), indent=1))
     elif a.cmd == "build":
@@ -397,12 +405,12 @@ def main(argv: list[str] | None = None) -> int:
             Sources.from_release(a.release, ccd=a.ccd, fallback=a.fallback),
         )
         for c in out["copies"]:
-            print(
+            click.echo(
                 f"{c['name']:<12} requested {c['requested']:>5}  written {c['written']:>5}  fallback {c['from_fallback']:>3}  "
                 f"missing {len(c['missing']):>4}  {c['value_bytes'] / 2**20:8.1f} MiB  {c['seconds']}s"
             )
     else:
-        print(json.dumps(verify(a.package, a.out), indent=1))
+        click.echo(json.dumps(verify(a.package, a.out), indent=1))
     return 0
 
 

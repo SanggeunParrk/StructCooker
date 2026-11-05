@@ -69,7 +69,7 @@ def _intra_residue_bonds(
 
     pairs: list[tuple[int, int]] = []
     for lo, hi in zip(starts, ends, strict=True):
-        edges = edges_by_res.get(res_name[lo])
+        edges = edges_by_res.get(str(res_name[lo]))
         if not edges:
             continue
         index_of = {atom_name[i]: i for i in range(lo, hi)}

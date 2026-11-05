@@ -18,20 +18,20 @@ DEFAULT_SEQ_DB_ROOT = "/data/shared/cssb_data/seq_db"
 
 
 def biomol_root() -> Path:
-    """The release tree (``BIOMOL_ROOT``)."""
+    """Return the release tree (``BIOMOL_ROOT``)."""
     return Path(os.environ.get("BIOMOL_ROOT", DEFAULT_ROOT))
 
 
 def seq_db_root() -> Path:
-    """The shared sequence search databases (``SEQ_DB_ROOT``)."""
+    """Return the shared sequence search databases (``SEQ_DB_ROOT``)."""
     return Path(os.environ.get("SEQ_DB_ROOT", DEFAULT_SEQ_DB_ROOT))
 
 
 def mmcif_root(root: str | Path) -> Path:
-    """The mmCIF mirror, matching db_configs/pdb/cif.yaml."""
+    """Return the mmCIF mirror, matching db_configs/pdb/cif.yaml."""
     return Path(root) / "materials/raw/cif"
 
 
 def distillation_root(root: str | Path) -> Path:
-    """The OpenFold distillation download, matching db_configs/distillation."""
+    """Return the OpenFold distillation download, matching db_configs/distillation."""
     return Path(root) / "materials/raw/openfold_distillation"

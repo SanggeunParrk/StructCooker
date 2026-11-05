@@ -234,7 +234,7 @@ def main() -> None:
                 )
         out.append("")
 
-    f = lambda v: f"{v:.1%}"  # noqa: E731
+    f = lambda v: f"{v:.1%}"
     tbl(
         "Entries and keys per entry (MiniWorld pool, 6 A)",
         res_mw,
@@ -253,7 +253,7 @@ def main() -> None:
         "Share of entries per key-count bin (MiniWorld pool)",
         res_mw,
         [
-            (bname(lo, hi), (lambda i: lambda r: f(r["nkeys_hist"][i]))(i))
+            (bname(lo, hi), (lambda i: lambda r: f(r["nkeys_hist"][i]))(i))  # noqa: PLC3002 (binds i per column)
             for i, (lo, hi) in enumerate(BINS)
         ],
     )
@@ -274,7 +274,7 @@ def main() -> None:
         res_mw,
         [("mean", lambda r: f"{r['combos_mean']:.2f}")]
         + [
-            (bname(lo, hi), (lambda i: lambda r: f(r["combos_hist"][i]))(i))
+            (bname(lo, hi), (lambda i: lambda r: f(r["combos_hist"][i]))(i))  # noqa: PLC3002 (binds i per column)
             for i, (lo, hi) in enumerate(BINS)
         ]
         + [("max models in one assembly", lambda r: str(r["models_per_asm_max"]))],

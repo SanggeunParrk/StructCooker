@@ -117,4 +117,7 @@ def submit(
         handle = executor.run_once(
             name=name, argv=argv, mem_gb=mem_gb, cores=cores, depends_on=depends_on
         )
+    if handle.job_id is None:
+        msg = f"SLURM did not return a job id for {name}"
+        raise RuntimeError(msg)
     return handle.job_id

@@ -32,12 +32,7 @@ db, index, n, seed, out = (
 )
 max_mb = float(sys.argv[6]) if len(sys.argv) > 6 else 200
 out.mkdir(parents=True, exist_ok=True)
-ov = {
-    k: yaml_v
-    for k, yaml_v in (
-        kv.split("=") for kv in os.environ.get("IF_OVERRIDES", "").split(",") if kv
-    )
-}
+ov = dict(kv.split("=") for kv in os.environ.get("IF_OVERRIDES", "").split(",") if kv)
 ov = {k: (float(v) if "." in v else int(v)) for k, v in ov.items()}
 cfg = load_config(overrides=ov)
 ab = AntibodyClassifier()

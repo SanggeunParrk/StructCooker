@@ -22,7 +22,7 @@ from pathlib import Path  # noqa: E402
 import lmdb  # noqa: E402
 import numpy as np  # noqa: E402
 
-from structcooker.instructions.interface.antibody import (
+from structcooker.instructions.interface.antibody import (  # noqa: E402
     AntibodyClassifier,
 )
 from structcooker.instructions.interface.config import load_config  # noqa: E402
@@ -186,7 +186,7 @@ def main():
         k, b = line.split("\t")[:2]
         sizes[k] = int(b)
     done_p = out / "done.tsv"
-    done = set(l.split("\t")[0] for l in open(done_p)) if done_p.exists() else set()
+    done = {l.split("\t")[0] for l in open(done_p)} if done_p.exists() else set()
     if a.keys:
         keys = [l.strip() for l in open(a.keys) if l.strip()]
     else:

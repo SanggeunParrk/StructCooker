@@ -21,8 +21,9 @@ codes count with their number, so H3 includes 100A, 100B... The H2 extent is the
 from __future__ import annotations
 
 import csv
+from operator import itemgetter
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from anarci import run_anarci
 
@@ -215,7 +216,9 @@ def extract_cdr_table(
     if missing:
         msg = f"{len(missing)} sequences of {fasta_path} have no seq_id in {seq_id_map_path}, e.g. {missing[0][:40]}"
         raise ValueError(msg)
-    rows, extra_rows, failed = [], [], []
+    rows: list[Any] = []
+    extra_rows: list[list[Any]] = []
+    failed: list[Any] = []
     for start in range(0, len(sequences), batch_size):
         chunk = sequences[start : start + batch_size]
         for sequence, domains in zip(
@@ -247,7 +250,7 @@ def extract_cdr_table(
         with Path(extra_path).open("w", encoding="utf-8", newline="") as out:
             writer = csv.writer(out)
             writer.writerow(["seqid", "domain", "chain_type", *CDR_COLUMNS])
-            writer.writerows(sorted(extra_rows, key=lambda r: (r[0], r[1])))
+            writer.writerows(sorted(extra_rows, key=itemgetter(0, 1)))
     if failed_path is not None:
         Path(failed_path).write_text(
             "".join(f"{s}\n" for s in sorted(failed)), encoding="utf-8"

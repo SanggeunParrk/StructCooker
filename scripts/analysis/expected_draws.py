@@ -9,21 +9,21 @@ import re
 import sys
 from collections import Counter, defaultdict
 
-SAMPLER = dict(
-    protein_protein=25.0,
-    protein_ligand=25,
-    protein_dna=10,
-    protein_rna=10,
-    antibody_protein=15,
-    dna_dna=5,
-    rna_rna=5,
-    dna_rna=0.5,
-    antibody_antibody=0.5,
-    antibody_ligand=1.0,
-    na_ligand=1.0,
-    etc_interface=1.0,
-    sole=1.0,
-)
+SAMPLER = {
+    "protein_protein": 25.0,
+    "protein_ligand": 25,
+    "protein_dna": 10,
+    "protein_rna": 10,
+    "antibody_protein": 15,
+    "dna_dna": 5,
+    "rna_rna": 5,
+    "dna_rna": 0.5,
+    "antibody_antibody": 0.5,
+    "antibody_ligand": 1.0,
+    "na_ligand": 1.0,
+    "etc_interface": 1.0,
+    "sole": 1.0,
+}
 P_SRC = (
     0.5 / 1.02
 )  # pdb among pdb 0.5, disordered 0.02, long 0.495, short 0.005 (all four loaded)

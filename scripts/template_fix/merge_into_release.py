@@ -40,7 +40,7 @@ def read_index(path: Path) -> dict[str, int]:
     sizes: dict[str, int] = {}
     with path.open() as f:
         for line in f:
-            if line.startswith("#") or line.startswith("key\t"):
+            if line.startswith(("#", "key\t")):
                 continue
             k, n, *_ = line.rstrip("\n").split("\t")
             sizes[k] = int(n)

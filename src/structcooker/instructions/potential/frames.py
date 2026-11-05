@@ -10,6 +10,8 @@ and the contacts of many residues of one type can be pooled in 3D.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from structcooker.instructions.potential.pairs import AA
@@ -20,7 +22,7 @@ def frame_atom_names(type_idx: int) -> tuple[str, str, str]:
     return ("C", "CA", "N") if type_idx < len(AA) + 1 else ("C1'", "C3'", "C4'")
 
 
-def frames(cm, rtype: np.ndarray):
+def frames(cm: Any, rtype: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Per residue: origin (R, 3), rotation (R, 3, 3) with columns e1 e2 e3, and a validity mask."""
     at, ix = cm.atoms, cm.index_table
     name, xyz = at.id.value, at.xyz.value
@@ -46,7 +48,7 @@ def frames(cm, rtype: np.ndarray):
     e2 /= np.linalg.norm(e2, axis=1, keepdims=True)
     e3 = np.cross(e1, e2)
     rot = np.stack([e1, e2, e3], axis=2)
-    ok = np.isfinite(rot).all(axis=(1, 2)) & np.isfinite(o).all(axis=1)
+    ok = np.asarray(np.isfinite(rot).all(axis=(1, 2)) & np.isfinite(o).all(axis=1))
     return o, rot, ok
 
 

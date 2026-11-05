@@ -34,7 +34,8 @@ def test_fasta_holds_the_kept_chains_only(tmp_path):
     assert list(load_final_fasta(pairs, seq_map, "antigen").values()) == [AG]
     antibody = load_final_fasta(pairs, seq_map, "antibody")
     assert set(antibody.values()) == {H1, H2, L1, L2}  # the recovered light chain is in
-    assert asd_header("H", H1) in antibody and asd_header("L", L2) in antibody
+    assert asd_header("H", H1) in antibody
+    assert asd_header("L", L2) in antibody
 
 
 def test_final_pairs_give_the_recovered_light_chain_its_id_and_clusters(tmp_path):
@@ -56,7 +57,8 @@ def test_final_pairs_give_the_recovered_light_chain_its_id_and_clusters(tmp_path
         "light_cluster_cdr100",
     )
     assert len(final) == 3  # the pair with a structure is gone
-    assert final[2][:3] == ("P1", "P3", "P5") and final[2][-2:] == (
+    assert final[2][:3] == ("P1", "P3", "P5")
+    assert final[2][-2:] == (
         "cASB_A2",
         "cASB_A5",
     )

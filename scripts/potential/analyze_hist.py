@@ -55,7 +55,7 @@ def near_jsd(p, marg, cut=8.0):
     return jsd(p[k] / p[k].sum(), marg[k] / marg[k].sum())
 
 
-def pair_hist(H, s):
+def pair_hist(H, s):  # noqa: N803 (histogram matrix)
     """{(i, j): counts over the 40 bins} for the unordered amino-acid pairs, overflow dropped."""
     return {(i, j): H[s, i, j, :NB] + (0 if i == j else H[s, j, i, :NB]) for i, j in iu}
 

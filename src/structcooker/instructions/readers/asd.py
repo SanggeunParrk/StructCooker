@@ -14,7 +14,7 @@ _LETTERS = re.compile(r"[A-Z]+")
 
 
 def asd_header(tag: str, sequence: str) -> str:
-    """The FASTA header of an ASD chain: ``ASD<H|L|T>_<sha1[:12]> | polypeptide(L) | Auth:<H|L|A>``."""
+    """Return the FASTA header of an ASD chain: ``ASD<H|L|T>_<sha1[:12]> | polypeptide(L) | Auth:<H|L|A>``."""
     digest = hashlib.sha1(sequence.encode()).hexdigest()[:12]  # noqa: S324 (a name, not a secret)
     return f"ASD{tag}_{digest} | polypeptide(L) | Auth:{_AUTH[tag]}"
 

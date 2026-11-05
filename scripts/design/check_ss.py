@@ -78,7 +78,7 @@ def main():
         ]
     random.Random(a.seed).shuffle(keys)
     agree = tot = done = 0
-    fr_err, rows = [], []
+    fr_err, _rows = [], []
     for key in keys:
         if done >= a.n:
             break
@@ -97,8 +97,8 @@ def main():
             continue
         pdb = work / f"{key.decode()}.pdb"
         use = write_pdb(cm, pdb)
-        res = subprocess.run(
-            [
+        res = subprocess.run(  # noqa: S603  (fixed argv)
+            [  # noqa: S607  (fixed argv)
                 "pixi",
                 "run",
                 "mkdssp",

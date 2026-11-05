@@ -29,7 +29,9 @@ for r in csv.DictReader(open(ROOT / "manifest_full.tsv"), delimiter="\t"):
     ):
         continue
     rows.append(r)
-rows.sort(key=lambda r: hashlib.md5(r["unit_id"].encode()).hexdigest())
+rows.sort(
+    key=lambda r: hashlib.md5(r["unit_id"].encode(), usedforsecurity=False).hexdigest()
+)
 print(
     f"{len(rows)} antibody-antigen units (H + L + antigen) released in 2026, resolution <= 3.5 A, 3,000-9,000 atoms"
 )

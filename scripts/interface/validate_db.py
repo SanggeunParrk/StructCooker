@@ -33,7 +33,7 @@ db = InterfaceDB(root)
 bad = {}
 
 
-def block_pairs(P, Q, cut, mask_q=None, mask_p=None, block=512):
+def block_pairs(P, Q, cut, mask_q=None, mask_p=None, block=512):  # noqa: N803 (coordinate matrices)
     """(n_pairs, min_d, flag_p, flag_q, n_lo, n_hi): P-Q distances < cut (and within 1e-3 of it), in row blocks."""
     n, dmin, n_lo, n_hi = 0, np.inf, 0, 0
     fp, fq = np.zeros(len(P), bool), np.zeros(len(Q), bool)

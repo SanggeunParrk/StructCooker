@@ -1,6 +1,7 @@
 """Antigens with a shallow MSA: seq_id, depth, length, and what ASD calls them (target_name, uniprot, dataset, rows)."""
 
 import collections
+import glob
 import sys
 
 import pyarrow.parquet as pq
@@ -16,8 +17,6 @@ depth = {k: int(v) for k, v in (l.split() for l in open(depth_tsv))}
 seq_of = dict(l.rstrip("\n").split("\t") for l in open(worklist))
 want = {seq_of[k]: k for k, v in depth.items() if v <= max_depth}
 info = {k: collections.defaultdict(collections.Counter) for k in want.values()}
-import glob
-
 for f in sorted(glob.glob(f"{asd}/part-*.parquet")):
     t = pq.read_table(f, columns=["dataset", "chains", "metadata"]).to_pylist()
     for r in t:

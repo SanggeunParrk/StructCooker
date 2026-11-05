@@ -32,9 +32,9 @@ def _run_command(
     *,
     env: dict[str, str] | None = None,
 ) -> None:
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603 (argv list built by the caller, no shell)
         command, capture_output=True, text=True, env=env, check=False
-    )  # noqa: S603 (fixed internal tool argv)
+    )
     if result.returncode != 0:
         cmd = " ".join(command)
         msg = (

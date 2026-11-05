@@ -41,6 +41,7 @@ def disk_bytes(path: Path) -> int | None:
 
 
 def human(n: float | None) -> str:
+    """Format a byte count with decimal units."""
     if n is None:
         return "—"
     for unit in ("B", "KB", "MB", "GB", "TB"):
@@ -136,18 +137,22 @@ def scenario_data(root: Path, spec: Path) -> list[dict[str, Any]]:
 
 
 def check_data(root: Path) -> dict[str, Any] | None:
+    """Load the release check report with its modification time, or None if absent."""
     path = root / "release_check.json"
     if not path.exists():
         return None
     report = json.loads(path.read_text())
-    report["when"] = datetime.datetime.fromtimestamp(path.stat().st_mtime).strftime(
-        "%Y-%m-%d %H:%M"
+    report["when"] = (
+        datetime.datetime.fromtimestamp(path.stat().st_mtime, tz=datetime.timezone.utc)
+        .astimezone()
+        .strftime("%Y-%m-%d %H:%M")
     )
     return report
 
 
 # --------------------------------------------------------------------------- markdown
 def databases_md(rows: list[dict[str, Any]]) -> str:
+    """Render the database table as markdown."""
     total = sum(r["size"] or 0 for r in rows)
     lines = [
         "# Databases",
@@ -178,6 +183,7 @@ def databases_md(rows: list[dict[str, Any]]) -> str:
 
 
 def scenarios_md(items: list[dict[str, Any]]) -> str:
+    """Render the what-to-copy scenarios as markdown."""
     out = [
         "# What to copy",
         "",
@@ -209,6 +215,7 @@ def scenarios_md(items: list[dict[str, Any]]) -> str:
 
 
 def check_md(report: dict[str, Any] | None) -> str:
+    """Render the release check summary as markdown."""
     if report is None:
         return "# Release check\n\nNo `release_check.json` yet: run `structcooker release-check`.\n"
     lines = [
@@ -270,6 +277,7 @@ def render_html(
     items: list[dict[str, Any]],
     report: dict[str, Any] | None,
 ) -> str:
+    """Render the docs index page as HTML."""
     total = sum(r["size"] or 0 for r in rows)
     records = sum(r["entries"] or 0 for r in rows)
     groups: dict[str, dict[str, Any]] = {}
@@ -283,7 +291,11 @@ def render_html(
         check = f'<span class="bad">{report["with_problems"]} problem(s)</span>'
     else:
         check = f'<span class="ok">{report["stages"]}/{report["stages"]} OK</span>'
-    when = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    when = (
+        datetime.datetime.now(datetime.timezone.utc)
+        .astimezone()
+        .strftime("%Y-%m-%d %H:%M")
+    )
     out = [
         f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>BioMol release</title><style>{_CSS}</style></head>
@@ -360,6 +372,7 @@ tr.style.display=tr.textContent.toLowerCase().includes(q)?'':'none'}}</script></
 
 
 def write(root: Path, manifest: Path) -> list[Path]:
+    """Write the docs pages under <root>/docs and return their paths."""
     out = root / "docs"
     out.mkdir(exist_ok=True)
     written = []

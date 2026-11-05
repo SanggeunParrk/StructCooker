@@ -27,7 +27,9 @@ def load_abag_pairs(
     min_antigen: int = MIN_ANTIGEN,
     max_antigen: int = MAX_ANTIGEN,
 ) -> list[tuple[str, ...]]:
-    """The antibody-antigen pairs of ASD, AbRank and POISK that bind with Kd <= 1 uM (the rule per source: ``asd_binding``, ``abag_binding``).
+    """Return the antibody-antigen pairs of ASD, AbRank and POISK that bind with Kd <= 1 uM.
+
+    The rule per source is in ``asd_binding`` and ``abag_binding``.
 
     * a row needs a heavy chain and an antigen, every chain A-Z only (S2);
     * the antigen is ``min_antigen``..``max_antigen`` aa;
@@ -39,9 +41,10 @@ def load_abag_pairs(
     The first row is the header. ``seq_id_map_path`` maps every chain sequence to its seq_id (``abag/seq_id_map``).
     """
     id_of: dict[str, str] = {}
-    for line in Path(seq_id_map_path).open():
-        seq_id, sequence = line.rstrip("\n").split("\t")
-        id_of[sequence] = seq_id
+    with Path(seq_id_map_path).open() as handle:
+        for line in handle:
+            seq_id, sequence = line.rstrip("\n").split("\t")
+            id_of[sequence] = seq_id
     evidence: dict[tuple[str, str, str], list] = defaultdict(list)
     for row in iter_rows(asd_dir, abrank_path, poisk_path):
         if not valid(row) or not min_antigen <= len(row.antigen) <= max_antigen:

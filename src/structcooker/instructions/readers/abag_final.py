@@ -31,7 +31,9 @@ def load_final_fasta(
     chain_set: str,
     antigen_keep_path: str | Path | None = None,
 ) -> dict[str, str]:
-    """The FASTA of the chains of the kept pairs (``abag/pairs/pairs_basic.tsv``, ``keep == 1``): ``chain_set`` is ``antigen`` or ``antibody``.
+    """Return the FASTA of the chains of the kept pairs (``abag/pairs/pairs_basic.tsv``, ``keep == 1``).
+
+    ``chain_set`` is ``antigen`` or ``antibody``.
 
     ``antigen_keep_path`` (one seq_id a line): only pairs of these antigens (the antigens with an MSA deep enough or a template). The header is the one
     ``abag/antigen_fasta`` / ``abag/antibody_fasta`` give, so a chain that was in them has the same header; a recovered light chain (``light_sequence``) gets the
@@ -69,7 +71,7 @@ def load_final_pairs(
     antibody_cluster_paths: dict[str, str | Path],
     antigen_keep_path: str | Path | None = None,
 ) -> list[tuple[str, ...]]:
-    """The kept pairs with every chain a seq_id and every chain a cluster: the final pair table.
+    """Return the final pair table: the kept pairs with every chain a seq_id and a cluster.
 
     Columns: ``antigen_seq_id, heavy_seq_id, light_seq_id, chain_status, light_source, datasets, antigen_cluster40`` and, for each antibody clustering
     name in ``antibody_cluster_paths`` (``cdr100``, ``cdr90``), ``heavy_cluster_<name>, light_cluster_<name>``. A recovered light chain gets the seq_id the final
@@ -80,10 +82,11 @@ def load_final_pairs(
 
     def clusters(path: str | Path) -> dict[str, str]:
         member: dict[str, str] = {}
-        for line in Path(path).open():
-            cluster, members = line.rstrip("\n").split("\t")
-            for seq_id in members.split(","):
-                member.setdefault(seq_id, cluster)
+        with Path(path).open() as handle:
+            for line in handle:
+                cluster, members = line.rstrip("\n").split("\t")
+                for seq_id in members.split(","):
+                    member.setdefault(seq_id, cluster)
         return member
 
     antigen_cluster = clusters(antigen_cluster_path)
@@ -140,7 +143,9 @@ def load_antigen_worklist(
 
 
 def load_seq_id_maps(seq_id_map_paths: list[str | Path]) -> dict[str, str]:
-    """The union of seq_id maps (``seq_id<TAB>sequence``), keyed the way ``build_seq_id_map`` reads its seed: ``<type letter><sequence>`` -> seq_id.
+    """Merge seq_id maps (``seq_id<TAB>sequence``) into one.
+
+    The keys are those ``build_seq_id_map`` reads as its seed: ``<type letter><sequence>`` -> seq_id.
 
     The first map to hold a sequence decides its id; a later map that gives the same sequence another id is an error (one id space means one id per sequence).
     A missing map is skipped, as ``load_seq_id_map`` does.
@@ -149,10 +154,13 @@ def load_seq_id_maps(seq_id_map_paths: list[str | Path]) -> dict[str, str]:
     for path in seq_id_map_paths:
         if not Path(path).exists():
             continue
-        for line in Path(path).open():
-            seq_id, text = line.rstrip("\n").split("\t")
-            key = seq_id[0] + text
-            if merged.setdefault(key, seq_id) != seq_id:
-                msg = f"one sequence has two ids: {merged[key]} and {seq_id} ({path})"
-                raise ValueError(msg)
+        with Path(path).open() as handle:
+            for line in handle:
+                seq_id, text = line.rstrip("\n").split("\t")
+                key = seq_id[0] + text
+                if merged.setdefault(key, seq_id) != seq_id:
+                    msg = (
+                        f"one sequence has two ids: {merged[key]} and {seq_id} ({path})"
+                    )
+                    raise ValueError(msg)
     return merged

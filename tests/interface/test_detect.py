@@ -71,7 +71,8 @@ def test_cap_flags_truncated():
     ]
     xyz, node, res, kinds = _build(chains, ["protein"] * 7)
     units = find_units(xyz, node, res, kinds, ucfg=UnitCfg(max_polymer_chains=3))
-    assert all(len(u.nodes) <= 3 for u in units) and any(u.truncated for u in units)
+    assert all(len(u.nodes) <= 3 for u in units)
+    assert any(u.truncated for u in units)
 
 
 def test_small_contact_rejected():
@@ -157,7 +158,8 @@ def test_waters_ignore_unit_unit_contacts():
     xyz = np.array([[0.0, 0, 0], [3.0, 0, 0]])
     node = np.array([0, 1])
     keep, bridge = select_waters(xyz, node, np.array([[1.5, 3.0, 0.0], [50.0, 0, 0]]))
-    assert keep.tolist() == [0] and bridge.tolist() == [True]
+    assert keep.tolist() == [0]
+    assert bridge.tolist() == [True]
 
 
 def test_waters_context_and_bridging():
@@ -166,7 +168,8 @@ def test_waters_context_and_bridging():
     node = np.array([0, 1])
     w = np.array([[3.0, 0, 0], [0.0, 3.8, 0], [30.0, 0, 0]])
     keep, bridge = select_waters(xyz, node, w)
-    assert keep.tolist() == [0, 1] and bridge.tolist() == [True, False]
+    assert keep.tolist() == [0, 1]
+    assert bridge.tolist() == [True, False]
 
 
 def test_homodimer_symmetry_dedups():
@@ -189,7 +192,7 @@ def _helix_strands(n_bp):
     names, xyz, res, strand = [], [], [], []
     for k in range(n_bp):
         x = 3.4 * k
-        for sid, y_c1, y_n, code in ((0, 0.0, 3.5, "A"), (1, 10.4, 6.6, "T")):
+        for sid, y_c1, y_n, _code in ((0, 0.0, 3.5, "A"), (1, 10.4, 6.6, "T")):
             n_a, n_b = ("N1", "N6") if sid == 0 else ("N3", "O4")
             names += ["C1'", n_a, n_b]
             xyz += [[x, y_c1, 0.0], [x, y_n, 0.0], [x + 1.2, y_n, 0.0]]

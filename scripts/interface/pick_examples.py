@@ -20,7 +20,7 @@ if (root / "split.tsv").exists():
     for r in csv.DictReader(open(root / "split.tsv"), delimiter="\t"):
         split[r["unit_id"]] = (r["split"], r["novel_protein"], r["novel_pair"])
 by_id = {r["unit_id"]: r for r in rows}
-f = lambda r, k: float(r[k]) if r[k] not in ("", "None") else 99.0  # noqa: E731
+f = lambda r, k: float(r[k]) if r[k] not in ("", "None") else 99.0
 base = [
     r
     for r in rows

@@ -25,7 +25,9 @@ def _number(value: object) -> float | None:
 def abrank_verdict(
     kd_nm: object, ic50_ug_ml: object, operator: str = "="
 ) -> bool | None:
-    """``Affinity_Kd [nM]`` <= 1000 binds, above does not; without a Kd, a measured ``IC50 [ug/mL]`` (operator ``=``) <= 10 binds (above: no verdict);
+    """Return the verdict of an AbRank row.
+
+    ``Affinity_Kd [nM]`` <= 1000 binds, above does not; without a Kd, a measured ``IC50 [ug/mL]`` (operator ``=``) <= 10 binds (above: no verdict);
     an IC50 beyond the tested range (``>`` / ``<``), ``escape`` and ``log(Kd_ratio)`` alone give no verdict.
     """
     kd = _number(kd_nm)
@@ -46,7 +48,7 @@ _UNITS = {
     "mm": 1e-3,
     "m": 1.0,
 }
-_NUM = r"(\d+(?:[.,]\d+)?(?:\s*[x×*]\s*10\s*\^?\s*[-−–]?\s*\d+)?)"
+_NUM = r"(\d+(?:[.,]\d+)?(?:\s*[x\u00d7*]\s*10\s*\^?\s*[-\u2212\u2013]?\s*\d+)?)"
 _MOLAR = re.compile(
     r"([<>≤≥~=]*)\s*" + _NUM + r"\s*(pM|nM|[uµμ]M|mM|M)(?![\w^-])", re.IGNORECASE
 )
@@ -61,8 +63,13 @@ _EC50 = re.compile(r"\bEC\s*50\b", re.IGNORECASE)
 
 
 def _value(text: str) -> float | None:
-    number = text.replace(",", ".").replace("−", "-").replace("–", "-").replace(" ", "")
-    power = re.match(r"([\d.]+)[x×*]10\^?(-?\d+)", number)
+    number = (
+        text.replace(",", ".")
+        .replace("\u2212", "-")
+        .replace("\u2013", "-")
+        .replace(" ", "")
+    )
+    power = re.match(r"([\d.]+)[x\u00d7*]10\^?(-?\d+)", number)
     try:
         return (
             float(power.group(1)) * 10 ** int(power.group(2))

@@ -109,9 +109,9 @@ def _search_with_retry(
         shutil.rmtree(
             work_dir, ignore_errors=True
         )  # the failed batch's scratch; the parts get their own
-        print(
+        print(  # noqa: T201 (CLI progress)
             f"[msa_search] {len(pending)} queries failed ({str(exc)[:200]}); retrying in 4 parts"
-        )  # noqa: T201
+        )
         size = -(-len(pending) // 4)
         written = retried = 0
         for i in range(0, len(pending), size):

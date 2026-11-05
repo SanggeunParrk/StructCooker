@@ -110,7 +110,8 @@ def test_disordered_links_fall_back_to_the_first_file_of_the_entity(tmp_path):
     assert (tmp_path / "links/1a0o/1a0o_2.npz").resolve() == (
         tmp_path / "templates/1a0o/1a0o_D.npz"
     ).resolve()
-    assert "2 by entity" in msg and "2 template files unused" in msg
+    assert "2 by entity" in msg
+    assert "2 template files unused" in msg
 
 
 def test_disordered_links_chain_without_a_template_gets_no_key(tmp_path):

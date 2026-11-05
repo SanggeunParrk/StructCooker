@@ -40,11 +40,12 @@ if (
     DERIVE = {c: list(m) for c, m in CLASSES}
     COLOR_GROUPS = AA
 else:
-    GROUPS = (
-        [("all", None)]
-        + CLASSES
-        + [("DNA", ["DA", "DC", "DG", "DT"]), ("RNA", ["RA", "RC", "RG", "RU"])]
-    )
+    GROUPS = [
+        ("all", None),
+        *CLASSES,
+        ("DNA", ["DA", "DC", "DG", "DT"]),
+        ("RNA", ["RA", "RC", "RG", "RU"]),
+    ]
     DISPLAY = [g for g, _ in GROUPS]
     DERIVE = {}
     COLOR_GROUPS = [c for c, _ in CLASSES] + ["DNA", "RNA"]

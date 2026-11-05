@@ -73,7 +73,8 @@ with open(ROOT / "metadata/cif_metadata.tsv") as f:
     for r in csv.DictReader(f, delimiter="\t"):
         meta.setdefault(r["cif_id"].split("_")[0], r)
 
-cols = list(rows[0]) + [
+cols = [
+    *list(rows[0]),
     "node_seq_ids",
     "node_c40",
     "cluster_key40",
@@ -99,7 +100,7 @@ with open(db / "manifest_full.tsv", "w") as fo:
             sid.append(i or "")
             c40.append(id2c40.get(i, "") if i else "")
         r["node_seq_ids"], r["node_c40"] = "|".join(sid), "|".join(c40)
-        r["cluster_key40"] = "+".join(sorted(set(x for x in c40 if x)))
+        r["cluster_key40"] = "+".join(sorted({x for x in c40 if x}))
         r["n_unmapped_protein"] = unm
         r["including_NA_entry"] = meta.get(r["pdb_id"], {}).get("including_NA", "")
         fo.write("\t".join(str(r[c]) for c in cols) + "\n")
@@ -123,7 +124,7 @@ def dist(vals):
     vals = sorted(vals)
     if not vals:
         return "-"
-    q = lambda p: vals[min(len(vals) - 1, int(p * len(vals)))]  # noqa: E731
+    q = lambda p: vals[min(len(vals) - 1, int(p * len(vals)))]
     return f"min {vals[0]:g} · p25 {q(0.25):g} · median {q(0.5):g} · p75 {q(0.75):g} · p95 {q(0.95):g} · max {vals[-1]:g}"
 
 
@@ -183,7 +184,7 @@ out += [
     "",
     f"- protein nodes without a seq_id: {miss['unmapped_protein_nodes']:,}",
     f"- units with every protein node mapped: {sum(1 for r in rows if str(r['n_unmapped_protein']) == '0'):,}",
-    f"- distinct c40 cluster keys: {len(set(r['cluster_key40'] for r in rows)):,}",
+    f"- distinct c40 cluster keys: {len({r['cluster_key40'] for r in rows}):,}",
     "",
 ]
 ccd, ions = Counter(), Counter()

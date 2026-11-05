@@ -13,7 +13,9 @@ def _normalize(sequence: str | None) -> str:
 
 
 class AntiBinderIndex:
-    """The AntiBinder raw tables (Brief Bioinform 26(1) bbaf008), the original source of ASD's covid-19, hiv and biomap rows, as lookups
+    """The AntiBinder raw tables (Brief Bioinform 26(1) bbaf008).
+
+    The original source of ASD's covid-19, hiv and biomap rows, as lookups
     from (heavy chain, antigen) to the light chains the source gives.
 
     * covid: ``CoV-AbDab_only_sars2_filter.csv``, columns ``Heavy``, ``Light``, ``antigen``;
@@ -61,7 +63,7 @@ class AntiBinderIndex:
                 self.biomap.setdefault((second, antigen), set()).add(first)
 
     def candidates(self, heavy: str, antigen: str) -> dict[str, set[str]]:
-        """The light chains each source gives for this heavy chain and antigen: ``{source: {light, ...}}``, empty sources left out."""
+        """Return the light chains each source gives for this heavy chain and antigen: ``{source: {light, ...}}``, empty sources left out."""
         found = {
             "covid": set(self.covid.get((heavy, antigen), ())),
             "hiv": {
@@ -84,7 +86,9 @@ def classify_chains(
     antibinder: AntiBinderIndex,
     antigen: str,
 ) -> tuple[str, str, str]:
-    """``(chain_status, light_source, light_sequence)`` of one pair. The rules, in order (SelfDistillation, Paired-set-build, 3):
+    """Classify one pair into ``(chain_status, light_source, light_sequence)``.
+
+    The rules, in order (SelfDistillation, Paired-set-build, 3):
 
     ``paired_original`` ASD holds a light chain; ``scfv`` the scfv flag or a ``(G{3,5}S){2,}`` linker in the heavy chain; ``vhh`` the nanobody flag;
     ``filled_covid`` / ``filled_hiv`` / ``filled_biomap`` AntiBinder gives exactly one light chain for this heavy chain and antigen;
@@ -110,16 +114,19 @@ def load_pair_chains(
     seq_id_map_path: str | Path,
     antibinder_dir: str | Path,
 ) -> list[tuple[str, ...]]:
-    """The pair table (``abag/pairs/pairs_binding.tsv``) with the chain status of each pair:
+    """Return the pair table (``abag/pairs/pairs_binding.tsv``) with the chain status of each pair.
+
+    Rows are
     ``(antigen_seq_id, heavy_seq_id, light_seq_id, light_sequence, chain_status, light_source, datasets, names)``.
 
     The nanobody and scfv flags are columns of the pair table. A recovered light chain is a new sequence, so it has no seq_id yet: ``light_seq_id`` is
     empty and ``light_sequence`` holds it. The first row is the header.
     """
     sequence = {}
-    for line in Path(seq_id_map_path).open():
-        seq_id, text = line.rstrip("\n").split("\t")
-        sequence[seq_id] = text
+    with Path(seq_id_map_path).open() as handle:
+        for line in handle:
+            seq_id, text = line.rstrip("\n").split("\t")
+            sequence[seq_id] = text
     index = AntiBinderIndex(antibinder_dir)
     out: list[tuple[str, ...]] = [
         (
@@ -133,7 +140,9 @@ def load_pair_chains(
             "names",
         )
     ]
-    for line in list(Path(pairs_path).open())[1:]:
+    with Path(pairs_path).open() as handle:
+        table_lines = list(handle)[1:]
+    for line in table_lines:
         antigen, heavy, light, nanobody, scfv, datasets, names = line.rstrip(
             "\n"
         ).split("\t")

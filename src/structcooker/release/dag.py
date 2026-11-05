@@ -322,12 +322,12 @@ def reconcile(run: Path) -> None:
             )
         stage_active = False
         for job in jobs:
-            result = subprocess.run(
-                ["scontrol", "show", "job", "-o", job],
+            result = subprocess.run(  # noqa: S603 - fixed scontrol argv
+                ["scontrol", "show", "job", "-o", job],  # noqa: S607
                 capture_output=True,
                 text=True,
                 check=False,
-            )  # noqa: S603, S607 - scheduler argv
+            )
             found = re.findall(r"JobState=(\S+)", result.stdout)
             if result.returncode or not found:
                 receipts = list(run.rglob(f"{job}.exit.json"))
@@ -464,12 +464,12 @@ def plan_stage(run: Path, name: str) -> None:
                 )
             )
         else:
-            result = subprocess.run(
+            result = subprocess.run(  # noqa: S603 - argv built from our own config
                 [
                     sys.executable,
                     "-m",
                     "datacooker.cli.lmdb",
-                    "pipeline",  # noqa: S603 - captured config argv
+                    "pipeline",
                     str(attempt / "engine.yaml"),
                     "--workdir",
                     str(attempt),

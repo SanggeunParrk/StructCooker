@@ -19,26 +19,27 @@ from structcooker.instructions.transforms.codecs import from_bytes
 
 B = Path("/data/shared/cssb_data/BioMol_clean/lmdb")
 SRC = {
-    "pdb": dict(
-        cif=B / "pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb",
-        msa=[B / "pdb/msa/a3m.lmdb"],
-        tpl=B / "chain/template/template.lmdb",
-    ),
-    "protein_monomer": dict(
-        cif=B / "distillation_long/cif_attached/cif_long_attached.lmdb",
-        msa=[B / "distillation_long/msa/msa_long_d2k.lmdb"],
-        tpl=B / "distillation_long/template/template_topn_long.lmdb",
-    ),
-    "short_protein_monomer": dict(
-        cif=B / "distillation_short/cif_attached/cif_short_attached.lmdb",
-        msa=[B / "distillation_short/msa/msa_short_d2k.lmdb"],
-        tpl=B / "distillation_short/template/template_topn_short.lmdb",
-    ),
-    "disordered_pdb": dict(
-        cif=B / "distillation_disordered/cif_attached/cif_disordered_attached.lmdb",
-        msa=[B / "distillation_disordered/msa/msa_disordered_d2k.lmdb"],
-        tpl=B / "distillation_disordered/template/template_disordered.lmdb",
-    ),
+    "pdb": {
+        "cif": B
+        / "pdb/cif_attached/cif_pdb_attached_train_20210930_res9_chain300.lmdb",
+        "msa": [B / "pdb/msa/a3m.lmdb"],
+        "tpl": B / "chain/template/template.lmdb",
+    },
+    "protein_monomer": {
+        "cif": B / "distillation_long/cif_attached/cif_long_attached.lmdb",
+        "msa": [B / "distillation_long/msa/msa_long_d2k.lmdb"],
+        "tpl": B / "distillation_long/template/template_topn_long.lmdb",
+    },
+    "short_protein_monomer": {
+        "cif": B / "distillation_short/cif_attached/cif_short_attached.lmdb",
+        "msa": [B / "distillation_short/msa/msa_short_d2k.lmdb"],
+        "tpl": B / "distillation_short/template/template_topn_short.lmdb",
+    },
+    "disordered_pdb": {
+        "cif": B / "distillation_disordered/cif_attached/cif_disordered_attached.lmdb",
+        "msa": [B / "distillation_disordered/msa/msa_disordered_d2k.lmdb"],
+        "tpl": B / "distillation_disordered/template/template_disordered.lmdb",
+    },
 }
 
 

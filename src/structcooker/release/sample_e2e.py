@@ -37,6 +37,8 @@ from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import click
+
 from structcooker.paths import biomol_root
 
 if TYPE_CHECKING:
@@ -92,7 +94,7 @@ EXACT_SCHEMAS = frozenset({"A", "E", "G"})
 
 # --------------------------------------------------------------------------- helpers
 def pick(items: Iterable[str], n: int, salt: str = "") -> list[str]:
-    """The ``n`` items first in seeded-hash order: deterministic, spread over the set.
+    """Return the ``n`` items first in seeded-hash order: deterministic, spread over the set.
 
     Picks from overlapping sets need different salts: unsalted, the first train entries
     are the first PDB entries too, and a seed pick would add nothing to the random one.
@@ -131,8 +133,8 @@ def read_fasta(path: Path) -> Iterator[tuple[str, str]]:
     """``(header without '>', sequence)`` pairs."""
     header, chunks = None, []
     with path.open() as handle:
-        for line in handle:
-            line = line.rstrip("\n")
+        for raw in handle:
+            line = raw.rstrip("\n")
             if line.startswith(">"):
                 if header is not None:
                     yield header, "".join(chunks)
@@ -160,12 +162,13 @@ def index_keys(index: Path) -> Iterator[str]:
     """Keys of a published ``<db>.index.tsv``."""
     with index.open() as handle:
         for line in handle:
-            if line.startswith("#") or line.startswith("key\t"):
+            if line.startswith(("#", "key\t")):
                 continue
             yield line.split("\t", 1)[0]
 
 
 def tsv_rows(path: Path) -> Iterator[list[str]]:
+    """Yield the tab-separated fields of each line of a TSV file."""
     with path.open() as handle:
         for line in handle:
             yield line.rstrip("\n").split("\t")
@@ -188,6 +191,7 @@ class Sampler:
         self.report: dict[str, Any] = {}
 
     def run(self) -> dict[str, Any]:
+        """Draw the sample, write sample.json and return the report."""
         if (self.root / "sample.json").exists():
             msg = f"{self.root} already holds a sample; use a new root"
             raise FileExistsError(msg)
@@ -203,7 +207,7 @@ class Sampler:
         return self.report
 
     def shared(self) -> None:
-        """Inputs linked whole: CCD, SabDab, the seq_id seed and reference DBs (SEQ_DB_ROOT stays shared)."""
+        """Link whole inputs: CCD, SabDab, the seq_id seed and reference DBs (SEQ_DB_ROOT stays shared)."""
         link(
             self.raw / "sabdab/sabdab_summary_all.tsv",
             self.s_raw / "sabdab/sabdab_summary_all.tsv",
@@ -220,6 +224,7 @@ class Sampler:
 
     # -- PDB --------------------------------------------------------------------------
     def pdb(self) -> None:
+        """Sample the PDB inputs (mmCIF files and derived tables)."""
         cif_root = self.raw / "cif"
         sizes = {
             p.name.split(".")[0]: p.stat().st_size
@@ -305,6 +310,7 @@ class Sampler:
 
     # -- OpenFold distillation --------------------------------------------------------
     def ofd(self) -> None:
+        """Sample the OpenFold distillation inputs."""
         ofd_raw = self.raw / "openfold_distillation"
         s_ofd_raw = self.s_raw / "openfold_distillation"
         fasta, s_fasta = (
@@ -414,6 +420,7 @@ class Sampler:
 
     # -- teddymer ---------------------------------------------------------------------
     def teddymer(self) -> None:
+        """Sample the teddymer inputs."""
         root = self.raw / "teddymer"
         names = {
             r[0]: Path(r[1]).name
@@ -454,6 +461,7 @@ class Sampler:
 
     # -- AFDB multimer ----------------------------------------------------------------
     def afm(self) -> None:
+        """Sample the AFDB multimer inputs."""
         root, s_root = self.raw / "afdb_multimer", self.s_raw / "afdb_multimer"
         afm_inter, s_afm_inter = (
             self.inter / "afdb_multimer",
@@ -533,18 +541,20 @@ def sample_environment(root: Path) -> dict[str, str]:
 
 
 def escaping_paths(configs: dict[str, dict], root: Path) -> list[str]:
-    """Inputs or outputs of a sampled run that resolve outside the sample root (or SEQ_DB_ROOT)."""
+    """List inputs or outputs of a sampled run that resolve outside the sample root (or SEQ_DB_ROOT)."""
     from structcooker.build import preflight
     from structcooker.paths import seq_db_root
 
     bad = []
     for name, cfg in configs.items():
-        for path in [*preflight.input_paths(cfg), *preflight.output_paths(cfg)]:
+        bad.extend(
+            f"{name}: {path}"
+            for path in [*preflight.input_paths(cfg), *preflight.output_paths(cfg)]
             if not (
                 Path(path).is_relative_to(root)
                 or Path(path).is_relative_to(seq_db_root())
-            ):
-                bad.append(f"{name}: {path}")
+            )
+        )
     return bad
 
 
@@ -651,9 +661,10 @@ def compare_lmdb(
         s_env.begin() as s_txn,
         p_env.begin() as p_txn,
     ):
-        for key, value in s_txn.cursor():
+        for raw_key, value in s_txn.cursor():
             counts["records"] += 1
-            key = table.get(key.decode(), key.decode()).encode()
+            name = bytes(raw_key).decode()
+            key = table.get(name, name).encode()
             other = p_txn.get(key)
             if other is None:
                 counts["absent_in_release"] += 1
@@ -697,8 +708,8 @@ def compare_lines(
     }
     found = 0
     with prod.open() as handle:
-        for line in handle:
-            line = line.rstrip("\n")
+        for raw in handle:
+            line = raw.rstrip("\n")
             if line in lines:
                 found += 1
                 lines.discard(line)
@@ -802,7 +813,7 @@ def main() -> None:
     if action == "prepare":
         counts = json.loads(sys.argv[3]) if len(sys.argv) > 3 else DEFAULT_COUNTS
         report = Sampler(root, {**DEFAULT_COUNTS, **counts}).run()
-        print(
+        click.echo(
             json.dumps(
                 {
                     k: (len(v) if isinstance(v, (list, dict)) else v)
@@ -812,7 +823,7 @@ def main() -> None:
         )
     elif action == "verify":
         report = verify(root, Path(sys.argv[3]), Path(sys.argv[4]))
-        print(
+        click.echo(
             json.dumps(
                 {"complete": report["complete"], "failures": report["failures"]},
                 indent=1,

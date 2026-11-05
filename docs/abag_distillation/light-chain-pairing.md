@@ -28,7 +28,7 @@ Their result: the 132,747 pairs without a light chain became 61,428 on hold (54%
 
 SAbDab (8,010 PDB entries, 5,184 distinct heavy-light pairs taken from the crystal structures) is a ground truth for pairing. A pairing counts as
 consistent when its light chain is, or contains, a light chain SAbDab pairs with that heavy chain (containment either way: the PDB chain carries a
-constant domain or a tag). `scripts/analysis/asd_pairing_gold.py`:
+constant domain or a tag). `scripts/abag/asd_pairing_gold.py`:
 
 | pairing | heavy chain in SAbDab | consistent |
 |---|---:|---:|

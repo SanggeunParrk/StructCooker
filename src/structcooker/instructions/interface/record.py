@@ -23,10 +23,16 @@ Only resolved atoms (finite xyz) are stored. Hydrogens are absent in cif_pdb.
 from __future__ import annotations
 
 import hashlib
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from structcooker.instructions.interface.detect import select_waters
+from structcooker.instructions.interface.detect import Unit, select_waters
+
+if TYPE_CHECKING:
+    from structcooker.instructions.interface.adapt import Assembly
+    from structcooker.instructions.interface.config import Config
+    from structcooker.instructions.mols import CIFMol
 
 SCHEMA = 1
 
@@ -35,7 +41,7 @@ def _md5(s: str) -> str:
     return hashlib.md5(s.encode()).hexdigest()[:16]  # noqa: S324
 
 
-def asm_fields(cm, asm):
+def asm_fields(cm: CIFMol, asm: Assembly) -> dict[str, Any]:
     """Per-assembly arrays shared by all units of the assembly."""
     at, rs, ch, ix = cm.atoms, cm.residues, cm.chains, cm.index_table
     f = {
@@ -61,8 +67,16 @@ def asm_fields(cm, asm):
 
 
 def unit_to_record(
-    asm, f, unit, duplex, cfg, meta: dict, ab_class: list, unit_idx: int
+    asm: Assembly,
+    f: dict[str, Any],
+    unit: Unit,
+    duplex: dict[tuple[int, int], int],
+    cfg: Config,
+    meta: dict,
+    ab_class: list,
+    unit_idx: int,
 ) -> dict:
+    """Build the stored record (a dict of arrays and metadata) of one unit."""
     ix = f["ix"]
     k = len(unit.nodes)
     local = {n: i for i, n in enumerate(unit.nodes)}
@@ -240,7 +254,7 @@ def manifest_row(rec: dict) -> dict:
     meta, nodes, at, rs = rec["meta"], rec["nodes"], rec["atoms"], rec["residues"]
     kinds = nodes["kind"]
     ed = rec["edges"]
-    row = {
+    return {
         **{
             k: meta.get(k)
             for k in (
@@ -289,4 +303,3 @@ def manifest_row(rec: dict) -> dict:
         ),
         "node_chains": "|".join(nodes["auth_asym_id"]),
     }
-    return row

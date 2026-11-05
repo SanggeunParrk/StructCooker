@@ -147,9 +147,8 @@ def test_exclusive_waits_when_asked(tmp_path):
         thread.start()
         time.sleep(1)
         assert not entered
-        with pytest.raises(RuntimeError, match="Another build owns"):
-            with exclusive(lock):
-                pass
+        with pytest.raises(RuntimeError, match="Another build owns"), exclusive(lock):
+            pass
     thread.join()
     assert entered
 

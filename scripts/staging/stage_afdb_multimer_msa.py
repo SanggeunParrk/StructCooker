@@ -108,9 +108,12 @@ def _inventory() -> dict[str, tuple[str, str, str]]:
                 tars.append(entry.path)
 
     def names(p: str) -> tuple[str, list[str]]:
-        out = subprocess.run(
-            ["tar", "tf", p], capture_output=True, text=True, check=True
-        )  # noqa: S603, S607
+        out = subprocess.run(  # noqa: S603  (fixed argv)
+            ["tar", "tf", p],  # noqa: S607  (fixed argv)
+            capture_output=True,
+            text=True,
+            check=True,
+        )
         return p, out.stdout.split()
 
     with ThreadPoolExecutor(8) as pool:
@@ -248,9 +251,10 @@ def stage(task: int, ntasks: int) -> None:
         scratch.mkdir(parents=True, exist_ok=True)
         lst = scratch / "members.txt"
         lst.write_text("".join(m + "\n" for _, m in members))
-        subprocess.run(
-            ["tar", "xf", tar, "-C", str(scratch), "-T", str(lst)], check=True
-        )  # noqa: S603, S607
+        subprocess.run(  # noqa: S603  (fixed argv)
+            ["tar", "xf", tar, "-C", str(scratch), "-T", str(lst)],  # noqa: S607  (fixed argv)
+            check=True,
+        )
         for ent, mem in members:
             shutil.move(str(scratch / mem), _dest(ent))
             extracted += 1

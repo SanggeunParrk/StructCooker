@@ -36,7 +36,7 @@ def _keys(index_tsv: Path) -> list[tuple[str, int]]:
     rows = []
     with index_tsv.open() as handle:
         for line in handle:
-            if line.startswith("#") or line.startswith("key\t"):
+            if line.startswith(("#", "key\t")):
                 continue
             key, size = line.rstrip("\n").split("\t")[:2]
             rows.append((key, int(size)))
@@ -65,8 +65,8 @@ def _init(db: str, out: str) -> None:
         )
         for p in paths
     ]
-    _STATE["chains"] = open(Path(out) / f"chains.{pid}.tsv", "a", buffering=1 << 20)  # noqa: SIM115
-    _STATE["ifaces"] = open(Path(out) / f"interfaces.{pid}.tsv", "a", buffering=1 << 20)  # noqa: SIM115
+    _STATE["chains"] = open(Path(out) / f"chains.{pid}.tsv", "a", buffering=1 << 20)
+    _STATE["ifaces"] = open(Path(out) / f"interfaces.{pid}.tsv", "a", buffering=1 << 20)
 
 
 def _assembly(entry: str, asm: str, d: dict, chains_out, ifaces_out) -> tuple[int, int]:

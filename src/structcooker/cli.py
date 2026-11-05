@@ -467,6 +467,9 @@ def patch(
     apply = [*lmdb_cli, "patch", "--target", str(target)]
     for o in outs:
         apply += ["--patch", str(o)]
+    if b.job_id is None:
+        msg = f"SLURM did not return a job id for {target.stem}_patch_build"
+        raise RuntimeError(msg)
     a = execu.run_once(
         name=f"{target.stem}_patch_apply",
         argv=apply,
@@ -642,12 +645,12 @@ def release_check(manifest: Path) -> None:
     show_default=True,
 )
 def release_docs(manifest: Path) -> None:
-    """Write BIOMOL_ROOT/docs: README, provenance, databases, what-to-copy scenarios, check, index.html.
+    """Write BIOMOL_ROOT/docs: README, provenance, databases, scenarios, check, index.html.
 
     The database list, the scenario sizes and the check summary are generated from the tree
     (configs, .meta.json, data.mdb sizes, release_check.json); rerun after a build or a move.
     """
-    from structcooker.release import docs as docs
+    from structcooker.release import docs
 
     for path in docs.write(biomol_root(), manifest.resolve()):
         click.echo(f"wrote {path}")
@@ -655,7 +658,7 @@ def release_docs(manifest: Path) -> None:
 
 @cli.group("e2e-sample")
 def e2e_sample() -> None:
-    """Sampled end-to-end check: the release DAG on a few hundred inputs.
+    """Run the sampled end-to-end check: the release DAG on a few hundred inputs.
 
     prepare (SLURM job) -> run (build-all on the sample) -> status -> verify (SLURM job).
     See structcooker.release.sample_e2e and docs/e2e-build.md.
@@ -666,12 +669,16 @@ def _sample_job(root: Path, name: str, argv: list[str], mem_gb: int) -> str:
     from datacooker.executors.slurm import SlurmExecutor
 
     execu = SlurmExecutor(workdir=root / "jobs" / name, repo=REPO)
-    return execu.run_once(
+    job_id = execu.run_once(
         name=f"e2e_{name}",
         argv=[sys.executable, "-u", "-m", "structcooker.release.sample_e2e", *argv],
         mem_gb=mem_gb,
         cores=8,
     ).job_id
+    if job_id is None:
+        msg = f"SLURM did not return a job id for e2e_{name}"
+        raise RuntimeError(msg)
+    return job_id
 
 
 @e2e_sample.command("prepare")
@@ -774,8 +781,8 @@ def e2e_sample_status(root: Path) -> None:
                 p.read_text().strip() for p in Path(state["attempt"]).rglob("*.job-id")
             ]
             shown = (
-                subprocess.run(
-                    ["sacct", "-n", "-P", "-o", "State", "-j", ",".join(jobs)],  # noqa: S603, S607
+                subprocess.run(  # noqa: S603 - fixed sacct argv, job ids from our own files
+                    ["sacct", "-n", "-P", "-o", "State", "-j", ",".join(jobs)],  # noqa: S607
                     capture_output=True,
                     text=True,
                     check=False,

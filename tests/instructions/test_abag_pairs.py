@@ -116,10 +116,8 @@ def test_pairs(sources):
     )
     pairs = {r[:3]: r for r in rows[1:]}
     # patents + AbRank AlphaSeq: one pair with both datasets; the ASD hiv row (no) is another triple and does not matter here
-    assert (
-        pairs[("P1", "A1", "A4")][5] == "abrank:AlphaSeq,asd:patents"
-        and pairs[("P1", "A1", "A4")][6] == "SARS-CoV-2;Spike"
-    )
+    assert pairs[("P1", "A1", "A4")][5] == "abrank:AlphaSeq,asd:patents"
+    assert pairs[("P1", "A1", "A4")][6] == "SARS-CoV-2;Spike"
     assert ("P1", "A2", "A4") not in pairs  # the hiv row says no
     assert pairs[("P2", "A3", "")][3] == "1"  # the alphaseq row is a nanobody
     assert ("P2", "A2", "A4") not in pairs  # Kd 5000 nM
@@ -140,14 +138,15 @@ def test_pairs(sources):
 
 def test_the_antigen_has_to_be_long_enough_and_one_chain(sources):
     antigens = {r[0] for r in load_abag_pairs(*sources)[1:]}
-    assert "P1" in antigens and antigens <= {"P1", "P2", "P3"}
+    assert "P1" in antigens
+    assert antigens <= {"P1", "P2", "P3"}
 
 
 def test_fasta_holds_every_usable_chain_once(sources):
     asd, abrank, poisk, _ = sources
     antigens = load_abag_fasta(asd, abrank, poisk, "antigen")
-    assert (
-        set(antigens.values()) >= {AG1, AG2, AG3} and abag_header("T", AG1) in antigens
-    )
+    assert set(antigens.values()) >= {AG1, AG2, AG3}
+    assert abag_header("T", AG1) in antigens
     antibody = load_abag_fasta(asd, abrank, poisk, "antibody")
-    assert H1 in antibody.values() and abag_header("L", L1) in antibody
+    assert H1 in antibody.values()
+    assert abag_header("L", L1) in antibody

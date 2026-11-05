@@ -83,7 +83,7 @@ def identity(qa, qb):
 
 def one_query(args):
     qi, qseq, qcoord, topk, want = args
-    rng = np.random.default_rng(qi)
+    np.random.default_rng(qi)
     s1, s2 = identity(qseq[0], qseq[1])
     score = np.maximum(s1, s2)
     if want >= 0:  # same kind of pair only: between chains, or inside one chain

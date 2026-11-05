@@ -43,7 +43,7 @@ UNIT_UNCERTAIN_DATASETS = frozenset({"flab_warszawski2019"})
 def binding_verdict(
     affinity_type: str | None, affinity: object, dataset: str | None = None
 ) -> bool | None:
-    """``True`` binds (Kd <= 1 uM), ``False`` does not, ``None`` the row cannot say.
+    """Return ``True`` if binds (Kd <= 1 uM), ``False`` if not, ``None`` if the row cannot say.
 
     ``bool``: the label. ``alphaseq``: log10(Kd nM) <= 3 (a missing score is unknown). ``-log Kd (M)``: >= 6.
     ``fuzzy`` (Buzz): ``h`` binds, ``m`` / ``l`` do not. ``Kd (nM)`` / ``Kd (M)``: <= 1000 nM / 1e-6 M. ``EC50 (nM)``: <= 1000 nM binds, above gives no verdict. ``delta_g``: <= -8.185 kcal/mol (25 C). ``-log Kd (nM)`` is
@@ -76,5 +76,5 @@ def binding_verdict(
 
 
 def pair_binds(verdicts: list[bool | None]) -> bool:
-    """A pair binds when some row says so and none says it does not."""
+    """Tell whether a pair binds: some row says so and none says it does not."""
     return True in verdicts and False not in verdicts

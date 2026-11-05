@@ -15,6 +15,7 @@ sides is stored once (copies of a homo-oligomer).
 from __future__ import annotations
 
 import re
+from typing import Any
 
 import numpy as np
 
@@ -34,7 +35,7 @@ def virtual_cb(n: np.ndarray, ca: np.ndarray, c: np.ndarray) -> np.ndarray:
     return -0.58273431 * a + 0.56802827 * b - 0.54067466 * cc + ca
 
 
-def residue_coords(cm, rtype: np.ndarray) -> np.ndarray:
+def residue_coords(cm: Any, rtype: np.ndarray) -> np.ndarray:
     """(R, 5, 3) coordinates of N, CA, C, O, CB per residue (NaN where missing; CB virtual when absent)."""
     at, ix = cm.atoms, cm.index_table
     name, xyz = at.id.value, at.xyz.value
@@ -51,7 +52,7 @@ def residue_coords(cm, rtype: np.ndarray) -> np.ndarray:
     return out
 
 
-def valid_windows(cm, rtype: np.ndarray, x: np.ndarray, k: int) -> np.ndarray:
+def valid_windows(cm: Any, rtype: np.ndarray, x: np.ndarray, k: int) -> np.ndarray:
     """Boolean (R,): a k-mer centred on this residue is complete, contiguous and made of standard amino acids."""
     rs, ix = cm.residues, cm.index_table
     n, half = len(rtype), k // 2
@@ -79,11 +80,14 @@ def valid_windows(cm, rtype: np.ndarray, x: np.ndarray, k: int) -> np.ndarray:
 
 
 def cluster_number(s: str) -> int:
+    """Return the trailing integer of a cluster id, 0 if it has none."""
     m = re.search(r"(\d+)$", str(s))
     return int(m.group(1)) if m else 0
 
 
-def extract_pairs(cm, k: int = 7, contact: float = 5.0):
+def extract_pairs(
+    cm: Any, k: int = 7, contact: float = 5.0
+) -> dict[str, np.ndarray] | None:
     """Pairs of touching k-mers of one assembly -> dict of arrays, or None. See the module docstring."""
     rs, ch, at, ix = cm.residues, cm.chains, cm.atoms, cm.index_table
     rtype, poly = residue_types(cm)

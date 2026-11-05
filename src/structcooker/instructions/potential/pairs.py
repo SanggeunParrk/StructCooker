@@ -23,6 +23,8 @@ a pair.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from structcooker.instructions.interface.detect import inter_node_pairs
@@ -37,7 +39,7 @@ SCOPES = ("intra", "inter")
 _DNA_COMP = {"DA", "DC", "DG", "DT", "DU", "DI", "DN"}
 
 
-def residue_types(cm) -> tuple[np.ndarray, np.ndarray]:
+def residue_types(cm: Any) -> tuple[np.ndarray, np.ndarray]:
     """``(type index (R,), is_polymer (R,))``; -1 for residues that are not polymer residues."""
     rs, ch, ix = cm.residues, cm.chains, cm.index_table
     one = rs.one_letter_code_can.value
@@ -59,7 +61,7 @@ def residue_types(cm) -> tuple[np.ndarray, np.ndarray]:
     return out, out >= 0
 
 
-def representative_atoms(cm, rtype: np.ndarray) -> np.ndarray:
+def representative_atoms(cm: Any, rtype: np.ndarray) -> np.ndarray:
     """Atom index of each residue's pseudo-beta atom, -1 if absent or without coordinates."""
     at, ix = cm.atoms, cm.index_table
     name = at.id.value
@@ -82,13 +84,13 @@ def representative_atoms(cm, rtype: np.ndarray) -> np.ndarray:
 
 
 def count_assembly(
-    cm,
+    cm: Any,
     contact: float = 5.0,
     min_sep: int = 3,
     weight: float = 1.0,
-    hist=None,
+    hist: np.ndarray | None = None,
     dedup: bool = True,
-):
+) -> np.ndarray:
     """Add this assembly's pairs to ``hist`` (``(2, T, T, NBIN + 1)`` float64, created if None)."""
     if hist is None:
         hist = np.zeros((2, T, T, NBIN + 1))
@@ -137,13 +139,13 @@ def count_assembly(
 
 
 def count_assembly_all(
-    cm,
+    cm: Any,
     rmax: float = 15.0,
     min_sep: int = 3,
     weight: float = 1.0,
-    hist=None,
+    hist: np.ndarray | None = None,
     dedup: bool = True,
-):
+) -> np.ndarray:
     """Definition B: every residue pair whose representative atoms are within ``rmax``.
 
     ``hist`` is ``(2, T, T, int(rmax / BIN) + 1)``; the last bin is never filled (distances are < ``rmax``).
@@ -198,16 +200,17 @@ BACKBONE = np.array(["N", "CA", "C", "O", "OXT"])
 
 
 def count_frame_contacts(
-    cm,
+    cm: Any,
     contact: float = 5.0,
     min_sep: int = 3,
-    grid=None,
-    wgrid=None,
+    grid: np.ndarray | None = None,
+    wgrid: np.ndarray | None = None,
     weight: float = 1.0,
     sidechain: bool = False,
-):
-    """For every touching residue pair (definition A), add the partner's representative atom to the grid of the
-    other residue's frame, in both directions. ``grid`` is ``(2, T, T, NV, NV, NV)`` float32 indexed by
+) -> tuple[np.ndarray, int, int]:
+    """Add the partner of every touching residue pair (definition A) to the grid of the other's frame.
+
+    The partner's representative atom is added in both directions. ``grid`` is ``(2, T, T, NV, NV, NV)`` float32 indexed by
     ``[scope, reference type, partner type, x, y, z]``; ``wgrid`` (same shape) receives the same samples times
     ``weight``. Returns ``(grid, n_added, n_outside)``.
 

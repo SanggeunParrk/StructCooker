@@ -261,7 +261,7 @@ def compare(ref, mod):
         moved = (rs_["xyz"][isl] - pc) @ rot + qc
         out["lrmsd"] = rmsd(moved, mms["xyz"][ms_[isl]])
     f, i, l = out["fnat"], out["irmsd"], out["lrmsd"]
-    lo = lambda x, t: bool(np.isfinite(x) and x <= t)  # noqa: E731
+    lo = lambda x, t: bool(np.isfinite(x) and x <= t)
     if f >= 0.5 and (lo(l, 1) or lo(i, 1)):
         out["cls"] = "high"
     elif f >= 0.3 and (lo(l, 5) or lo(i, 2)):
@@ -282,7 +282,7 @@ def work(task):
     for e, asm, ca, cb in members:
         try:
             m = load_member(e, asm, ca, cb)
-        except Exception:
+        except Exception:  # noqa: BLE001  (a unit that cannot be loaded is skipped)
             m = None
         loaded.append((e, m))
     rows = []

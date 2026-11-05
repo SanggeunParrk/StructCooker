@@ -43,10 +43,10 @@ def find_duplex(
     base &= ~(
         (atom_name == "N1") & np.isin(res_code, list(PYRIMIDINES))
     )  # N1 is glycosidic there
-    by_res: dict[int, list] = {}
+    atoms_of_res: dict[int, list] = {}
     for a in np.flatnonzero(base):
-        by_res.setdefault(int(res_idx[a]), []).append(a)
-    by_res = {r: np.array(v) for r, v in by_res.items()}
+        atoms_of_res.setdefault(int(res_idx[a]), []).append(a)
+    by_res = {r: np.array(v) for r, v in atoms_of_res.items()}
     scored = []
     for a, b, dist in zip(i.tolist(), j.tolist(), d.tolist(), strict=True):
         ra, rb = int(res_idx[a]), int(res_idx[b])

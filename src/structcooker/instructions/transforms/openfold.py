@@ -57,7 +57,7 @@ RNA_MSA_SOURCES = frozenset(
 def resolve_a3m_type(
     msa_sources: dict[str, dict[str, np.ndarray]], a3m_type: str | None = "protein"
 ) -> str:
-    """The alphabet of one alignment file: ``rna`` when it carries RNA search sources, else the configured type.
+    """Return the alphabet of one alignment file: ``rna`` when it carries RNA search sources, else the configured type.
 
     The disordered set mixes protein and RNA chains in one MSA config. Configured ``protein``, its RNA records were
     tokenised with the protein table (A=0, C=4, G=7, U=other): a chain of RNA read as amino acids.

@@ -44,7 +44,7 @@ def main():
             cm = CIFMolAttached.from_dict(rec[sorted(rec)[0]]["cifmol_attached_dict"])
             _, s = secondary_structure(cm)
             name = key.decode()
-            use = write_backbone_pdb(cm, work / "pdb" / f"{name}.pdb")
+            write_backbone_pdb(cm, work / "pdb" / f"{name}.pdb")
             plddt = float(np.mean(cm.atoms.b_factor.value))
             rows.append(
                 {
@@ -61,8 +61,8 @@ def main():
         w.writeheader()
         w.writerows(rows)
     t0 = time.time()
-    r = subprocess.run(
-        [
+    r = subprocess.run(  # noqa: S603  (fixed argv)
+        [  # noqa: S607  (fixed argv)
             "pixi",
             "run",
             "foldseek",

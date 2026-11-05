@@ -39,8 +39,10 @@ def test_a_failed_batch_is_split_until_it_passes(tmp_path, monkeypatch):
     fake, calls = _fake_search(max_ok=5)
     monkeypatch.setattr(msa_mmseqs, "_search_chunk", fake)
     result = _run(tmp_path, 25)
-    assert result["written"] == 25 and result["searched"] == 25
-    assert calls[0] == 25 and max(calls[1:]) <= 7  # 25 -> four parts of 7, 7, 7, 4
+    assert result["written"] == 25
+    assert result["searched"] == 25
+    assert calls[0] == 25
+    assert max(calls[1:]) <= 7
     assert len(list((tmp_path / "out").rglob("*.a3m"))) == 25
 
 
@@ -55,4 +57,5 @@ def test_a_finished_batch_is_not_searched_again(tmp_path, monkeypatch):
     fake, calls = _fake_search(max_ok=100)
     monkeypatch.setattr(msa_mmseqs, "_search_chunk", fake)
     _run(tmp_path, 10)
-    assert _run(tmp_path, 10)["searched"] == 0 and calls == [10]
+    assert _run(tmp_path, 10)["searched"] == 0
+    assert calls == [10]

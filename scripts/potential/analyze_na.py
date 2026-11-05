@@ -24,7 +24,7 @@ ti = {t: T.index(t) for t in T}
 
 def jsd(p, q):
     m = 0.5 * (p + q)
-    kl = lambda a, b: float((a[a > 0] * np.log2(a[a > 0] / b[a > 0])).sum())  # noqa: E731
+    kl = lambda a, b: float((a[a > 0] * np.log2(a[a > 0] / b[a > 0])).sum())
     return 0.5 * kl(p, m) + 0.5 * kl(q, m)
 
 
@@ -49,7 +49,7 @@ def near_jsd(p, marg, cut=8.0):
     return jsd(p[k] / p[k].sum(), marg[k] / marg[k].sum())
 
 
-def cell(H, s, a, b):
+def cell(H, s, a, b):  # noqa: N803 (histogram matrix)
     i, j = sorted((ti[a], ti[b]))
     v = H[s, i, j, :NB].copy()
     return v + (H[s, j, i, :NB] if i != j else 0)
