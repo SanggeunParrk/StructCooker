@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from structcooker.instructions.interface.detect import inter_node_pairs
+from structcooker.instructions.unit.detect import inter_node_pairs
 from structcooker.instructions.mols.backbone import residue_types
 
 if TYPE_CHECKING:

@@ -22,7 +22,7 @@ Structures below are the ones observed across ``/data/shared/cssb_data/BioMol``:
   F  raw scalar bytes/str (e.g. a sequence or a seqid)
   H  {atoms,residues,chains,index_table,metadata}   (one assembly-model-altloc/key)
   I  {<assm>: {cifmol_dict:{atoms,residues,chains,index_table,metadata}}}
-  J  {meta,nodes,atoms,residues,edges,duplex,water}               (one interface unit/key)
+  J  {meta,nodes,atoms,residues,edges,duplex,water}               (one unit/key)
 """
 
 from __future__ import annotations
@@ -164,7 +164,7 @@ def _v_I(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
 
 
 def _v_J(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
-    """Validate one interface-unit record (``instructions/interface/record.py``)."""
+    """Validate one unit record (``instructions/unit/record.py``)."""
     if not _is_dict(v):
         return [f"not a dict: {type(v).__name__}"]
     issues = [
@@ -241,12 +241,12 @@ SCHEMAS: dict[str, Schema] = {
     "I": Schema(
         "I", "filtered CIFMol (per assembly)", "pdbid", Codec.biomol_zstd, 100.0, _v_I
     ),
-    # One interface unit: 2..N touching molecules of one assembly, their atoms and the waters
+    # One unit: 2..N touching molecules of one assembly, their atoms and the waters
     # around them. Built from a cif_pdb entry, so the planner's E is the source's (the old driver
     # measured a 21 GB peak on the 1.3 GB entry 5j7v, well inside E x entry bytes).
     "J": Schema(
         "J",
-        "interface unit",
+        "unit",
         "pdbid_assembly_model_unit",
         Codec.biomol_zstd,
         100.0,

@@ -1,0 +1,18 @@
+# Unit DB of the PDB (docs/unit-db.md) as a dependency DAG.
+#
+# Units of 2..N touching molecules of a PDB bioassembly, stored with their waters. The shared PDB nodes it
+# reads (pdb/cif, the protein fasta, seq_id_map, the 40% clusters, cif_metadata) are listed as roots so the set builds alone.
+ccd/ccd: []
+pdb/cif: [ccd/ccd]
+metadata/cif_fasta: [pdb/cif]
+metadata/cif_metadata: [pdb/cif]
+metadata/pdb_polypeptide_L: [metadata/cif_fasta]
+metadata/seq_id_map: [metadata/cif_fasta]
+metadata/pdb_seq_cluster40: [metadata/seq_id_map, metadata/cif_fasta]
+
+# ---- units ----
+unit/antibody_cache: [metadata/pdb_polypeptide_L]
+unit/unit_pdb: [pdb/cif, unit/antibody_cache]
+unit/manifest: [unit/unit_pdb]
+unit/manifest_full: [unit/manifest, metadata/pdb_polypeptide_L, metadata/seq_id_map, metadata/pdb_seq_cluster40, metadata/cif_metadata]
+unit/split: [unit/manifest_full]

@@ -16,7 +16,7 @@ release), then compares what came out with the published DBs.
   cleared, so no path can resolve to the release; only SEQ_DB_ROOT stays shared) and parallel
   searches capped at one node.
 * ``verify`` reads every output and compares it with the release, key by key. Records
-  that depend only on their own inputs (structures, MSAs, CCD, interface units: schemas A/E/G/J) must be
+  that depend only on their own inputs (structures, MSAs, CCD, units: schemas A/E/G/J) must be
   byte- or value-identical; the rest (attached metadata, clusters, templates, train and
   valid sets) depend on what else is in the build, so they are reported, not required
   to match.
@@ -89,7 +89,7 @@ OFD_LONG_RECOVERED = ("MGYP000485802788", "MGYP006508416081")
 # The AFM homodimer whose MSA the release lacks; we generate it (docs/e2e-build.md §2).
 AFM_GENERATED_MSA_ENTITY = "AF-0000000208803231"
 # Schemas whose record is a function of that record's own inputs: must equal the release.
-# (J: the interface units of one cif_pdb entry)
+# (J: the units of one cif_pdb entry)
 EXACT_SCHEMAS = frozenset({"A", "E", "G", "J"})
 
 

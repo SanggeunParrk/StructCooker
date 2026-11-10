@@ -364,23 +364,23 @@ example after adding teddymer entries); it reads the search databases under `SEQ
 structcooker build teddymer/msa_search
 ```
 
-## Interface units
+## Unit DB
 
-`db_configs/interface/` holds five stages (set manifest `MANIFEST_interface.yaml`); rules, schema, split and reproduction
-are in [Interface DB](interface-db.md). They run on the PDB protein fasta, `cif_pdb` (waters included, which
+`db_configs/unit/` holds five stages (set manifest `MANIFEST_unit.yaml`); rules, schema, split and reproduction
+are in [Unit DB](unit-db.md). They run on the PDB protein fasta, `cif_pdb` (waters included, which
 `cif_pdb_attached` drops), the 40% PDB clusters and `cif_metadata`.
 
 | Stage | Op | Reads | Writes |
 |---|---|---|---|
-| `interface/antibody_cache` | materialize | `fasta/pdb_polypeptide_L.fasta` | `materials/intermediate/interface/antibody_cache.tsv` (ANARCI type of every unique sequence) |
-| `interface/interface_pdb` | rebuild, `explode_entries`, schema J | `lmdb/pdb/cif/cif_pdb.lmdb`, the cache | `lmdb/interface/pdb/interface_pdb.lmdb`, one record per unit |
-| `interface/manifest` | extract | `interface_pdb.lmdb` | `manifest.tsv` |
-| `interface/manifest_full` | materialize | manifest, protein fasta, `seq_id_map.tsv`, `seq_cluster40_PDB.tsv`, `cif_metadata.tsv` | `manifest_full.tsv`, `report.md` |
-| `interface/split` | materialize | `manifest_full.tsv` | `split.tsv`, `split_summary.md` |
+| `unit/antibody_cache` | materialize | `fasta/pdb_polypeptide_L.fasta` | `materials/intermediate/unit/antibody_cache.tsv` (ANARCI type of every unique sequence) |
+| `unit/unit_pdb` | rebuild, `explode_entries`, schema J | `lmdb/pdb/cif/cif_pdb.lmdb`, the cache | `lmdb/unit/pdb/unit_pdb.lmdb`, one record per unit |
+| `unit/manifest` | extract | `unit_pdb.lmdb` | `manifest.tsv` |
+| `unit/manifest_full` | materialize | manifest, protein fasta, `seq_id_map.tsv`, `seq_cluster40_PDB.tsv`, `cif_metadata.tsv` | `manifest_full.tsv`, `report.md` |
+| `unit/split` | materialize | `manifest_full.tsv` | `split.tsv`, `split_summary.md` |
 
-`interface_pdb` is the 1:N case of the rebuild: the reader adapter `instructions.interface.units.explode_units` sees a
+`unit_pdb` is the 1:N case of the rebuild: the reader adapter `instructions.unit.units.explode_units` sees a
 whole entry (the first model of each assembly, units repeated across assemblies dropped) and returns one sub-entry per
-unit; the recipe `workflows/filters/interface_units.py` builds each record and the engine writes it as
+unit; the recipe `workflows/filters/unit_records.py` builds each record and the engine writes it as
 `<pdb id>_<assembly>_<model>_<index>`.
 
 

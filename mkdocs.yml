@@ -41,7 +41,7 @@ nav:
   - Raw materials: raw-materials.md
   - seq_id and cluster scheme: seq-id-and-cluster-scheme.md
   - FoldBench DBs: foldbench.md
-  - Interface DB: interface-db.md
+  - Unit DB: unit-db.md
   - Antibody-antigen set (abag_distillation):
       - Overview: abag_distillation/README.md
       - Recipe: abag_distillation/RECIPE.md

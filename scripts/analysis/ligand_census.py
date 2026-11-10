@@ -83,7 +83,7 @@ def main():
     root = Path(__file__).resolve().parents[2]
     tab = yaml.safe_load(
         (
-            root / "src/structcooker/instructions/interface/params/af3_si_tables.yaml"
+            root / "src/structcooker/instructions/unit/params/af3_si_tables.yaml"
         ).read_text()
     )
     t9 = {str(c).upper() for c in tab["table9_crystallization_aids"]}

@@ -1,7 +1,7 @@
 # Sources, sequences, ids, antigen MSA and templates
 
 The antibody-antigen distillation set (`abag`) is built from three sources of antibody-antigen pairs, **ASD v2.0**, **AbRank** and **POISK**, with AntiBinder (light chains), SAbDab and the PDB (experimental
-structures) as helpers. It is outside the `build-all` DAG, like the [interface DB](../interface-db.md): its stages live in `db_configs/abag/` and run one by one with `structcooker build abag/<name>`
+structures) as helpers. It is outside the `build-all` DAG, like the [unit DB](../unit-db.md): its stages live in `db_configs/abag/` and run one by one with `structcooker build abag/<name>`
 ([RECIPE.md](RECIPE.md)). Outputs go to their own tree, `$BIOMOL_ROOT/abag/`, so nothing of the release is rewritten.
 
 ## Sources  (`materials/raw/`, each folder has a `README.md` and a `SOURCE.tsv` with checksums)

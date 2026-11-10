@@ -1,9 +1,0 @@
-# antibody_cache — ANARCI chain type (H / K / L / TCR A B G D, or none) of every unique PDB protein sequence of
-# length 70-600, as `sequence<TAB>type` lines. MATERIALIZE op. Read by interface/interface_pdb to type antibody and
-# TCR chains from sequence (docs/interface-db.md); a sequence missing from the cache is classified live.
-recipe_path: ${p:src/structcooker/workflows/exports/interface_antibody_cache.py}
-output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/interface/antibody_cache.tsv}
-inputs:
-  fasta_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/fasta/pdb_polypeptide_L.fasta}
-  out_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/interface/antibody_cache.tsv}
-  n_jobs: 64              # ANARCI workers (one process each); declared here so the job gets the cores

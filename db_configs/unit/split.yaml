@@ -1,0 +1,10 @@
+# split — date split of the units, AF3 style, with leakage flags: train (release < 2021-09-30, resolution <= 9),
+# valid (to 2023-01-12) and test (later), both resolution <= 4.5; the rest is "none". Per PDB entry, so all units of an
+# entry share the split. valid / test units carry n_prot_c40_in_train, novel_protein, novel_pair, ligands_seen_in_train
+# against the train units (nothing is dropped). MATERIALIZE op, two outputs: split.tsv, split_summary.md.
+recipe_path: ${p:src/structcooker/workflows/exports/unit_split.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/unit/pdb/split.tsv}
+inputs:
+  manifest_full_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/unit/pdb/manifest_full.tsv}
+  out_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/unit/pdb/split.tsv}
+  out_summary: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/unit/pdb/split_summary.md}

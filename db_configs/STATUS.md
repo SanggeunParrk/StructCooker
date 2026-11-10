@@ -20,15 +20,15 @@ MSA and template DBs are keyed by seq_id, so they count distinct sequences, not 
 | AFDB homodimer | 1,750,755 / 1,750,755 | 1,721,635 (+d2k), shared with heterodimers | 1,720,477, shared | pLDDT |
 | AFDB heterodimer | 80,248 / 80,248 | (above) | (above) | pLDDT |
 
-Interface units (`interface/` stages of the DAG, [docs/interface-db.md](../docs/interface-db.md)): 850,925 units from 249,676 PDB
-entries in `lmdb/interface/pdb` (train 488,379 · valid 86,897 · test 248,054 by release date).
+Units (`unit/` stages of the DAG, [docs/unit-db.md](../docs/unit-db.md)): 850,925 units from 249,676 PDB
+entries in `lmdb/unit/pdb` (train 488,379 · valid 86,897 · test 248,054 by release date).
 
 Derived sets: train_20210930 167,912 · train_20260301 233,579 · mpnn 484,383 · valid1 21,527 ·
 valid2 617 · cif_chain 4,162,929 chains · CCD 50,782 components (+ inference CCD 50,781).
 
 ## Known gaps
 
-- **Interface units**: the AF3 crystallisation-aid list (16 CCD ids) was transcribed from memory of the AF3
+- **Units**: the AF3 crystallisation-aid list (16 CCD ids) was transcribed from memory of the AF3
   SI and is not checked against the PDF; detergents / lipids are excluded by our choice; no buried SASA, no
   experimental method column.
 - **PDB templates** are the 2026-07-30 build: the 293 entries (51,895 chains) `cif_chain`
@@ -47,9 +47,9 @@ valid2 617 · cif_chain 4,162,929 chains · CCD 50,782 components (+ inference C
 
 ## Recent changes
 
-- 2026-10-21: interface-unit DB of the PDB (`lmdb/interface/pdb`): units of 2..N touching molecules (ions and ligands
+- 2026-10-21: unit DB of the PDB (`lmdb/unit/pdb`): units of 2..N touching molecules (ions and ligands
   as nodes, antibody / TCR pairs and base-paired duplexes always bundled, waters stored), date split
-  train / valid / test; since 2026-11 built by the `interface/` stages of the DAG (formerly `structcooker interface`).
+  train / valid / test; since 2026-11 built by the `unit/` stages of the DAG (formerly `structcooker interface`).
 - 2026-10-13: one root (`BIOMOL_ROOT`) holding raw, reference and intermediate inputs; teddymer
   MSAs and the seq_id seed became supplied inputs (no search in the release build); OFD long
   shards gathered inside their DBs; PDB templates and FoldBench assets moved in; cluster

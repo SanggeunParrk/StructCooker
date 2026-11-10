@@ -59,7 +59,7 @@ submitting shell's environment), or copy it for another cluster.
 db_configs/                         one config per DB, in a folder per set: db_configs/<group>/<name>.yaml
 db_configs/MANIFEST_*.yaml          the release DAG (per set) and MANIFEST_all.yaml (the whole release)
 db_configs/release-exceptions.json  inputs a release stage may fail on: key, reason, SHA256
-db_configs/<group>/params/          parameter tables of a DB (not engine configs; `structcooker list` skips them), (none now: the interface set's live next to its code, `instructions/interface/params/`)
+db_configs/<group>/params/          parameter tables of a DB (not engine configs; `structcooker list` skips them), (none now: the unit set's live next to its code, `instructions/unit/params/`)
 src/structcooker/
   cli.py                    the `structcooker` commands
   paths.py                  BIOMOL_ROOT / SEQ_DB_ROOT
@@ -73,7 +73,7 @@ src/structcooker/
   instructions/transforms/  adapters, codecs, msa, template, pruning, sequence, ...
   instructions/writers/     projections: FASTA / TSV materializers
   instructions/mols/        CIFMol, CIFMolAttached, TemplateMol
-  instructions/interface/   the interface-unit DB (detect, duplex, adapt, units, tables, ...; its parameters are `instructions/interface/params/`)
+  instructions/unit/   the unit DB (detect, duplex, adapt, units, tables, ...; its parameters are `instructions/unit/params/`)
   instructions/design/      the design set: statistics, foldseek clustering, items table, DB annotation (docs/design-db.md; ss.py uses the residue types of mols/backbone.py)
   workflows/                recipes: ingest/, metadata/, search/, filters/, exports/, design/
   utils/                    seq_id and DB-code helpers

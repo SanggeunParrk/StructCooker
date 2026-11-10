@@ -64,7 +64,7 @@ engine: `structcooker` materializes a schema-stripped `engine.yaml` in the workd
 | G      | `{chem_comp_dict}`                 | comp_id       | 5     |
 | H      | pruned CIFMol                      | pdbid_assembly_model_altloc | 100 |
 | I      | `{assembly: {cifmol_dict: ...}}`   | pdbid         | 100   |
-| J      | interface-unit record              | pdbid_assembly_model_unit | 100 |
+| J      | unit record                        | pdbid_assembly_model_unit | 100 |
 
 ## Targets
 
@@ -89,6 +89,6 @@ db_configs/
   distillation/   …        # OpenFold distillation (OFD): short / long / rna / disordered
   teddymer/       cif  cif_attached  msa  msa_d2k  msa_wo_lower  hmmsearch  (msa_search: by hand)
   afdb_multimer/  {homo,hetero}dimer_cif(_attached)  msa  msa_d2k
-  interface/      antibody_cache  interface_pdb (J, 1:N explode)  manifest  manifest_full  split
+  unit/           antibody_cache  unit_pdb (J, 1:N explode)  manifest  manifest_full  split
   metadata/       …        # fasta / seq_id_map (shared) / <db>_seq_cluster40 (per DB)
 ```

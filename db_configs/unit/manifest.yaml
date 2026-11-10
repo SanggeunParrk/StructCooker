@@ -1,0 +1,11 @@
+# manifest — one row per unit (type, node counts, atom / residue / contact / water counts, node hashes and ccd ids)
+# from unit_pdb -> manifest.tsv. EXTRACT op. Feeds unit/manifest_full. No schema (a .tsv, not an LMDB).
+db_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/unit/pdb/unit_pdb.lmdb}
+extract_recipe_path: ${p:src/structcooker/workflows/metadata/unit_manifest.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/unit/pdb/manifest.tsv}
+
+reader:
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  materializer: structcooker.instructions.unit.tables.write_manifest
