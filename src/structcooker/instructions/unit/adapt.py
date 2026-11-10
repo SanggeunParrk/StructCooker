@@ -1,7 +1,7 @@
 """CIFMol -> interface nodes (arrays for ``detect``), plus unit extraction.
 
 Node rules
-- polymer chain -> node ``protein`` (polypeptide) or ``na`` (DNA / RNA / hybrid); other polymer types are skipped
+- polymer chain -> node ``protein`` (polypeptide) or ``na`` (DNA / RNA / hybrid); other polymer types (PNA, `other`: 15 chains in the whole PDB) are skipped
 - branched chain (glycan) / non-polymer residue -> node ``ligand``; a single-atom non-polymer -> ``ion``
 - water (HOH / DOD) is never a node; it is returned separately
 - anything in the exclusion set, or a ligand below ``min_heavy_atoms``, is dropped (atoms ignored)

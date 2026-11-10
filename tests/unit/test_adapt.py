@@ -65,6 +65,17 @@ def test_unknown_polymer_types_are_skipped():
     assert asm.stats["dropped"]["skipped_polymer"] == 1
 
 
+def test_d_peptide_and_pna_types():
+    d = chain("D", protein_chain("D", 5)["residues"], etype="polypeptide(D)")
+    pna = chain("N", protein_chain("N", 5)["residues"], etype="peptide nucleic acid")
+    asm = build_assembly(make_mol([protein_chain("A", 4), d, pna]), EXCLUDED)
+    assert asm.kinds == [
+        "protein",
+        "protein",
+    ]  # (D)-peptides are protein nodes, PNA is not a node
+    assert asm.stats["dropped"]["skipped_polymer"] == 1
+
+
 def test_nucleic_acid_chain_is_na_node_with_sequence_key():
     dna = chain(
         "D",

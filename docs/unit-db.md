@@ -81,6 +81,14 @@ two or more different unit nodes. Waters never enter edges or residue sets. Wate
 (it has no sequence, so it cannot get a seq_id and would break the chain set the FASTA / cluster tables are built
 on); the unit DB reads the base `cif_pdb` instead, which keeps it.
 
+**Polymer types.** Only `polypeptide(L)`, `polypeptide(D)` (protein nodes) and the DNA / RNA / hybrid types (NA nodes) are
+nodes; any other polymer type is dropped and counted as `skipped_polymer`. Census of `cif_pdb` (assembly 1 of every entry,
+`scripts/unit/polymer_type_census.py`, 2026-11-10): 1,523,044 `polypeptide(L)` chains, 773 `polypeptide(D)` (159 entries), 35,143 DNA,
+30,429 RNA, 422 hybrid; the dropped types are `peptide nucleic acid` (12 chains in 7 entries, 9% standard one-letter codes) and
+`other` (3 chains in 3 entries). `cyclic-pseudo-peptide` and `peptide-like` do not occur: cyclic peptides (cyclosporin, kalata B1,
+...) are typed `polypeptide(L)` / `(D)` and are ordinary protein nodes, a non-standard residue reading as `X`. Nothing worth a
+node type is lost, so the rule stays as it is.
+
 **Other rules.** First model of each assembly (NMR entries: model 1); altloc: the no-altloc `.` entry, else the first;
 modified residues map to their parent through the CCD canonical one-letter code (unknown -> `X` / `N`); atoms with no
 coordinates are not stored; every bioassembly of an entry is processed, and units repeated across assemblies are kept once.
