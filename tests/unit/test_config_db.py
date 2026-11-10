@@ -2,9 +2,9 @@ import lmdb
 import pytest
 import yaml
 
+from structcooker.instructions.transforms.codecs import to_bytes
 from structcooker.instructions.unit.config import DEFAULT, load_config
 from structcooker.instructions.unit.db import UnitDB
-from structcooker.instructions.transforms.codecs import to_bytes
 
 
 def test_default_config_file_exists_and_loads():

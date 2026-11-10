@@ -1,4 +1,4 @@
-# unit_pdb — the unit DB of the PDB: one record per unit (2..N touching molecules of one bioassembly, with
+# unit_pdb — the unit DB of the PDB: one record per unit (2..N touching molecules of one bioassembly, or a monomer: a chain that touches nothing, with
 # the waters around them). Schema J. Rebuild, 1:N (explode_entries), docs/unit-db.md.
 #
 # Source = cif_pdb (schema A; it keeps the waters, cif_pdb_attached does not). The reader adapter

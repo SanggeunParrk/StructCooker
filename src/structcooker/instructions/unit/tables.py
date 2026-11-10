@@ -177,10 +177,19 @@ def _dist(vals: list[float]) -> str:
     )
 
 
+def _is_monomer(r: Row) -> bool:
+    """Tell whether a unit has no contact edge: a polymer chain (or a base-paired duplex) on its own."""
+    return str(r.get("n_seed_edges", "")) == "0"
+
+
 CLASS_TOTALS: list[tuple[str, Callable[[Row], bool]]] = [
+    ("monomer units (no contact edge, n_seed_edges = 0)", _is_monomer),
     (
         "protein-protein only (no NA / ligand / ion)",
-        lambda r: r["n_na"] == "0" and r["n_ligand"] == "0" and r["n_ion"] == "0",
+        lambda r: r["n_na"] == "0"
+        and r["n_ligand"] == "0"
+        and r["n_ion"] == "0"
+        and not _is_monomer(r),
     ),
     ("with NA", lambda r: r["n_na"] != "0"),
     ("with ligand", lambda r: r["n_ligand"] != "0"),

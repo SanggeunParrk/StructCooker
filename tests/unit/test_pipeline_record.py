@@ -92,9 +92,14 @@ def test_na_chain_triggers_duplex_search_without_pairs_for_a_single_strand(cfg):
         ],
         etype="polydeoxyribonucleotide",
     )
-    asm, units, duplex = extract_units(make_mol([dna]), cfg)
+    off = load_config(overrides={"monomer.enabled": False})
+    asm, units, duplex = extract_units(make_mol([dna]), off)
     assert asm.kinds == ["na"]
     assert units == []
+    assert duplex == {}
+    # with monomers on, the lone strand is a unit of its own
+    _, units, duplex = extract_units(make_mol([dna]), cfg)
+    assert [u.nodes for u in units] == [[0]]
     assert duplex == {}
 
 

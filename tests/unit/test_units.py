@@ -9,6 +9,7 @@ from datacooker.writers import WriterHooks
 from fake_cifmol import chain, make_mol, protein_chain, residue
 
 from structcooker.build import schemas
+from structcooker.instructions.transforms.codecs import from_bytes, to_bytes
 from structcooker.instructions.unit import units
 from structcooker.instructions.unit.config import load_config
 from structcooker.instructions.unit.units import (
@@ -20,7 +21,6 @@ from structcooker.instructions.unit.units import (
     explode_units,
     select_assembly_keys,
 )
-from structcooker.instructions.transforms.codecs import from_bytes, to_bytes
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -113,12 +113,13 @@ def test_assemblies_with_too_many_polymer_chains_are_skipped():
     assert entry_units(_entry(), small, None) == {}
 
 
-def test_assembly_without_unit_gives_no_sub_entry(cfg):
+def test_assembly_without_contact_unit_gives_no_sub_entry_when_monomers_are_off():
     lone = {
         "assembly_dict": {"1_1_.": {"mol": make_mol([protein_chain("A", 8)])}},
         "metadata_dict": _entry()["metadata_dict"],
     }
-    assert entry_units(lone, cfg, None) == {}
+    off = load_config(overrides={"monomer.enabled": False})
+    assert entry_units(lone, off, None) == {}
 
 
 def test_missing_or_nan_resolution_is_stored_as_none(cfg):

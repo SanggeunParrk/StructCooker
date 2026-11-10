@@ -9,13 +9,13 @@ from collections import Counter
 
 import numpy as np
 
+from structcooker.instructions.readers.lmdb import read_lmdb
+from structcooker.instructions.transforms.cifmol import convert_to_cifmol_dict
 from structcooker.instructions.unit.adapt import pick_alt_keys
 from structcooker.instructions.unit.antibody import AntibodyClassifier
 from structcooker.instructions.unit.config import load_config
 from structcooker.instructions.unit.detect import select_waters
 from structcooker.instructions.unit.pipeline import extract_units
-from structcooker.instructions.readers.lmdb import read_lmdb
-from structcooker.instructions.transforms.cifmol import convert_to_cifmol_dict
 
 db, cache, keys = sys.argv[1], sys.argv[2], sys.argv[3:]
 cfg = load_config()

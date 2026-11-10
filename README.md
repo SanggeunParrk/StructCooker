@@ -18,7 +18,7 @@ pixi run structcooker build-all --manifest db_configs/MANIFEST_all.yaml --workdi
 - [docs/e2e-build.md](docs/e2e-build.md) — the build runbook: downloads, staging, reference
   inputs, `build-all`, release check, patching.
 - [docs/stages.md](docs/stages.md) — what each stage builds and with which parameters.
-- [docs/unit-db.md](docs/unit-db.md) — the unit DB of the PDB (2..N touching molecules, waters
+- [docs/unit-db.md](docs/unit-db.md) — the unit DB of the PDB (units of touching molecules and monomers, waters
   included; train / valid / test by release date), built by the `unit/` stages of the release DAG.
 - [db_configs/STATUS.md](db_configs/STATUS.md) — what the current release holds, its known gaps and checks.
 

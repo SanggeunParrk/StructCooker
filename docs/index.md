@@ -64,6 +64,6 @@ Every command submits SLURM jobs and returns; nothing heavy runs where you type 
 - [seq_id and cluster scheme](seq-id-and-cluster-scheme.md) — one id space, per-DB clusters.
 - [FoldBench DBs](foldbench.md) — key-list subsets for FoldBench inference.
 - [Antibody-antigen set](abag_distillation/README.md) — the antibody-antigen self-distillation pairs from ASD, AbRank and POISK: recipe, filters, an [overview page](abag_distillation/overview.html).
-- [Unit DB](unit-db.md) — the PDB cut into units of touching molecules (2..N, waters included), with a date split.
+- [Unit DB](unit-db.md) — the PDB cut into units (touching molecules and monomers, waters included), with a date split.
 - [Development](development.md) — tests, cluster settings, code layout, LMDB storage.
 - History — dated reports and superseded guides, kept as records.

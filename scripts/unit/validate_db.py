@@ -80,6 +80,9 @@ for r in rows[:n]:
     if len(xyz) != int(r[ix["n_atoms"]]) or len(w["xyz"]) != int(r[ix["n_water"]]):
         fail("manifest_mismatch", uid)
     donor = np.isin(at["element"], ["N", "O", "S"])
+    is_monomer = "n_seed_edges" in ix and int(r[ix["n_seed_edges"]]) == 0
+    if is_monomer and (len(ed["a"]) or at["contact"].any() or rs["interface"].any()):
+        fail("monomer_with_contacts", uid)
     for e in range(len(ed["a"])):
         a, b = int(ed["a"][e]), int(ed["b"][e])
         A, B = np.flatnonzero(at["node"] == a), np.flatnonzero(at["node"] == b)

@@ -373,7 +373,7 @@ are in [Unit DB](unit-db.md). They run on the PDB protein fasta, `cif_pdb` (wate
 | Stage | Op | Reads | Writes |
 |---|---|---|---|
 | `unit/antibody_cache` | materialize | `fasta/pdb_polypeptide_L.fasta` | `materials/intermediate/unit/antibody_cache.tsv` (ANARCI type of every unique sequence) |
-| `unit/unit_pdb` | rebuild, `explode_entries`, schema J | `lmdb/pdb/cif/cif_pdb.lmdb`, the cache | `lmdb/unit/pdb/unit_pdb.lmdb`, one record per unit |
+| `unit/unit_pdb` | rebuild, `explode_entries`, schema J | `lmdb/pdb/cif/cif_pdb.lmdb`, the cache | `lmdb/unit/pdb/unit_pdb.lmdb`, one record per unit (contact units, then monomer units) |
 | `unit/manifest` | extract | `unit_pdb.lmdb` | `manifest.tsv` |
 | `unit/manifest_full` | materialize | manifest, protein fasta, `seq_id_map.tsv`, `seq_cluster40_PDB.tsv`, `cif_metadata.tsv` | `manifest_full.tsv`, `report.md` |
 | `unit/split` | materialize | `manifest_full.tsv` | `split.tsv`, `split_summary.md` |

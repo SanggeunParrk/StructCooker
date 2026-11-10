@@ -53,19 +53,19 @@ CATS = [
         lambda r: r["n_na"] == "2"
         and int(r["n_duplex_pairs"]) >= 1
         and int(r["n_ion"]) >= 1
-        and int(r["n_protein"]) <= 2,
+        and 1 <= int(r["n_protein"]) <= 2,
     ),
     (
         "protein - dsDNA",
         lambda r: r["n_na"] == "2"
         and int(r["n_duplex_pairs"]) >= 1
         and r["n_ion"] == "0"
-        and int(r["n_protein"]) <= 2,
+        and 1 <= int(r["n_protein"]) <= 2,
     ),
     (
         "protein - single-strand NA",
         lambda r: r["n_na"] == "1"
-        and int(r["n_protein"]) <= 2
+        and 1 <= int(r["n_protein"]) <= 2
         and r["n_ligand"] == "0",
     ),
     (
@@ -98,6 +98,18 @@ CATS = [
         and f(r, "resolution") <= 1.8,
     ),
     ("homotrimer", lambda r: r["type"] == "3protein" and int(r["n_water"]) >= 100),
+    (
+        "protein monomer",
+        lambda r: r["n_seed_edges"] == "0"
+        and r["type"] == "1protein"
+        and int(r["n_water"]) >= 100,
+    ),
+    (
+        "isolated dsDNA / dsRNA",
+        lambda r: r["n_seed_edges"] == "0"
+        and r["type"] == "2na"
+        and int(r["n_duplex_pairs"]) >= 1,
+    ),
 ]
 MUST = ["3hfm_1_1_0", "1tsr_1_1_0"]
 picked = []

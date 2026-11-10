@@ -20,8 +20,10 @@ MSA and template DBs are keyed by seq_id, so they count distinct sequences, not 
 | AFDB homodimer | 1,750,755 / 1,750,755 | 1,721,635 (+d2k), shared with heterodimers | 1,720,477, shared | pLDDT |
 | AFDB heterodimer | 80,248 / 80,248 | (above) | (above) | pLDDT |
 
-Units (`unit/` stages of the DAG, [docs/unit-db.md](../docs/unit-db.md)): 850,925 units from 249,676 PDB
-entries in `lmdb/unit/pdb` (train 488,379 · valid 86,897 · test 248,054 by release date).
+Units (`unit/` stages of the DAG, [docs/unit-db.md](../docs/unit-db.md)): the stages now also write monomer
+units (a polymer chain in no contact unit), and `lmdb/unit/pdb` is **not built yet**. The last build, contact
+units only, is in `lmdb/interface/pdb`: 850,925 units from 249,676 PDB entries (train 488,379 · valid 86,897 ·
+test 248,054 by release date). Build: `structcooker build-all --manifest db_configs/MANIFEST_unit.yaml --workdir <run dir>`.
 
 Derived sets: train_20210930 167,912 · train_20260301 233,579 · mpnn 484,383 · valid1 21,527 ·
 valid2 617 · cif_chain 4,162,929 chains · CCD 50,782 components (+ inference CCD 50,781).
@@ -47,7 +49,9 @@ valid2 617 · cif_chain 4,162,929 chains · CCD 50,782 components (+ inference C
 
 ## Recent changes
 
-- 2026-10-21: unit DB of the PDB (`lmdb/unit/pdb`): units of 2..N touching molecules (ions and ligands
+- 2026-11-10: the interface DB is renamed the unit DB (`unit/` stages, `lmdb/unit/pdb`, `instructions/unit`) and gains
+  monomer units (polymer chains in no contact unit, `monomer` in `params/unit.yaml`); not rebuilt yet.
+- 2026-10-21: interface-unit DB of the PDB (`lmdb/interface/pdb`): units of 2..N touching molecules (ions and ligands
   as nodes, antibody / TCR pairs and base-paired duplexes always bundled, waters stored), date split
   train / valid / test; since 2026-11 built by the `unit/` stages of the DAG (formerly `structcooker interface`).
 - 2026-10-13: one root (`BIOMOL_ROOT`) holding raw, reference and intermediate inputs; teddymer

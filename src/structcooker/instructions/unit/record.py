@@ -1,6 +1,9 @@
 """Unit -> self-contained record (a dict of numpy arrays + JSON-able scalars).
 
-Schema v1, one record per unit (``to_bytes`` / ``from_bytes`` of ``instructions.transforms.codecs``)::
+Schema v1, one record per unit. A unit is a contact group of 2..N nodes, or a *monomer unit*: a polymer
+node that no contact group holds (``n_seed_edges`` 0, empty ``edges``, ``contact`` / ``interface`` all
+False; one node, or the base-paired strands of an isolated duplex). Stored with ``to_bytes`` /
+``from_bytes`` of ``instructions.transforms.codecs``::
 
     meta       pdb_id, assembly_id, model_id, alt_id, unit_id, resolution, release_date,
                deposition_date, signature, truncated, n_seed_edges, schema
@@ -30,9 +33,9 @@ import numpy as np
 from structcooker.instructions.unit.detect import Unit, select_waters
 
 if TYPE_CHECKING:
+    from structcooker.instructions.mols import CIFMol
     from structcooker.instructions.unit.adapt import Assembly
     from structcooker.instructions.unit.config import Config
-    from structcooker.instructions.mols import CIFMol
 
 SCHEMA = 1
 

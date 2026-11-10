@@ -13,6 +13,7 @@ from structcooker.instructions.unit.detect import (
     dedup,
     drop_ion_subsets,
     find_units,
+    monomer_units,
 )
 from structcooker.instructions.unit.duplex import find_duplex
 
@@ -22,10 +23,24 @@ if TYPE_CHECKING:
     from structcooker.instructions.mols import CIFMol
 
 
+def _resolved_residues(asm: Assembly) -> np.ndarray:
+    """Per node, the number of residues with at least one resolved (finite) atom."""
+    ok = np.isfinite(asm.xyz).all(axis=1)
+    n = np.zeros(len(asm.kinds), dtype=np.int64)
+    if ok.any():
+        pairs = np.unique(np.stack([asm.node_idx[ok], asm.res_idx[ok]], axis=1), axis=0)
+        np.add.at(n, pairs[:, 0], 1)
+    return n
+
+
 def extract_units(
     cm: CIFMol, cfg: Config, ab_lookup: Callable[[str], str | None] | None = None
 ) -> tuple[Assembly, list[Unit], dict[tuple[int, int], int]]:
-    """Return ``(assembly, units, duplex)``; units are ion-subset- and symmetry-deduplicated."""
+    """Return ``(assembly, units, duplex)``; units are ion-subset- and symmetry-deduplicated.
+
+    Contact units come first (heaviest first); the monomer units (polymer nodes in no contact unit,
+    ``cfg.monomer_*``) follow, so the index of a contact unit does not depend on them.
+    """
     asm = build_assembly(cm, cfg.excluded, cfg.min_heavy)
     if not len(asm.kinds):
         return asm, [], {}
@@ -61,5 +76,10 @@ def extract_units(
         duplex=duplex,
     )
     units = dedup(drop_ion_subsets(units, asm.kinds), asm.keys, cfg.unit.weight_bucket)
+    if cfg.monomer_enabled:
+        mono = monomer_units(
+            units, asm.kinds, _resolved_residues(asm), duplex, cfg.monomer_min_residues
+        )
+        units += dedup(mono, asm.keys, cfg.unit.weight_bucket)
     asm.stats["ab_class"] = ab
     return asm, units, duplex

@@ -1,4 +1,4 @@
-"""One ``cif_pdb`` entry -> its unit records (the ``unit/unit_pdb`` rebuild).
+"""One ``cif_pdb`` entry -> its unit records, complexes and monomers (the ``unit/unit_pdb`` rebuild).
 
 The stage is an exploding rebuild (``split_entries`` + ``explode_entries``): the engine writes one
 record per sub-entry of the entry the reader hands to the recipe, keyed ``<pdb id>_<sub-entry>``.
@@ -24,11 +24,11 @@ from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 
+from structcooker.instructions.mols import CIFMol
 from structcooker.instructions.unit.antibody import AntibodyClassifier
 from structcooker.instructions.unit.config import Config, load_config
 from structcooker.instructions.unit.pipeline import extract_units
 from structcooker.instructions.unit.record import asm_fields, unit_to_record
-from structcooker.instructions.mols import CIFMol
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -104,7 +104,9 @@ def entry_units(
 
     Per assembly: its first model (altloc ``.`` preferred); an assembly with more polymer chains than
     ``assembly.max_polymer_chains`` is skipped; a unit equal in node sequences and (bucketed) contact
-    size to one already kept in this entry is dropped (symmetry copies, repeated assemblies).
+    size to one already kept in this entry is dropped (symmetry copies, repeated assemblies). The
+    units include the monomer units (``monomer`` in the params): a chain in no contact unit is a unit
+    of its own, equal chains of other assemblies collapse like any other symmetry copy.
     """
     md = entry["metadata_dict"]
     base_meta = {

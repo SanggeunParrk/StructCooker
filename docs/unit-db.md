@@ -1,9 +1,15 @@
 # Unit DB (PDB)
 
-A DB of **units**: groups of 2..N molecules of one PDB bioassembly that are in contact,
-stored with all their heavy-atom coordinates **and the surrounding waters**. A unit is the sample
-for models that need "a binder and its target" (antibody + antigen, protein + dsDNA, protein +
-ligand + ions, ...). Voxelisation or cropping is left to the consumer.
+A DB of **units**: the pieces of one PDB bioassembly a model is trained on, stored with all their
+heavy-atom coordinates **and the surrounding waters**. A unit is either a group of 2..N molecules in
+contact (the sample for models that need "a binder and its target": antibody + antigen, protein + dsDNA,
+protein + ligand + ions, ...) or a **monomer unit**: a polymer chain that touches nothing. The PDB is
+cut into units once; which units a model sees (monomers only, complexes only, a class of chains) is a
+filter on the manifest, not another DB. Voxelisation or cropping is left to the consumer.
+
+> **State.** `lmdb/unit/pdb` has not been built yet. The units of the 2026-10-28 release (850,925, all contact
+> units, no monomers) sit in the earlier tree `lmdb/interface/pdb`; the counts below that name a number
+> describe that build. Build the new one with the command under [Reproduce](#reproduce).
 
 Code: `src/structcooker/instructions/unit/` · thresholds: `src/structcooker/instructions/unit/params/` ·
 stages: `db_configs/unit/` (set manifest `db_configs/MANIFEST_unit.yaml`, part of `MANIFEST_all.yaml`) ·
@@ -52,6 +58,24 @@ crystallisation aids (SO4, GOL, EDO, PO4, ACT, PEG, DMS, TRS, PGE, PG4, FMT, EPE
 from the AF3 SI from memory, not yet checked against the PDF), further common additives, water, monovalent
 ions / halides, detergents and lipids. Other ions are nodes. Ligands below 6 heavy atoms are dropped.
 
+**Monomer units** (`monomer` in `params/unit.yaml`, on by default). After the contact units are found, every
+protein / NA node that no unit holds becomes a unit of its own: one node, no edges (`n_seed_edges` = 0, `edges`
+empty, `contact` / `interface` all False), `min_residues` = 4 resolved residues. Free NA strands that base-pair stay
+together as one unit, as in a contact unit; this is the only way a monomer unit holds two nodes, so a loader filters
+monomers on `n_seed_edges == 0`, not on `n_nodes == 1`. Ligands and ions never make a unit. A ligand that is
+covalently bonded to the chain is part of its node, so glycosylated, lipidated and otherwise modified chains arrive
+whole; a non-covalent ligand or an ion that only touches the chain is not stored (a chain with a significant
+protein-ligand contact is a contact unit instead). A chain of a complex is already in that complex's unit and is not
+repeated as a monomer, but a *copy* of its sequence that touches nothing is one (it counts as a monomer of that
+sequence). Monomers dedup like every unit: equal sequences within an entry, including the other assemblies,
+are kept once, and they are numbered after the contact units, so a contact unit keeps its index. Waters are stored
+around a monomer by the same 4.0 A rule; none is `bridging` (that needs two nodes). `novel_pair` of a monomer is
+`novel_protein` (its cluster set is one cluster). Switch off with `monomer.enabled: false`, which reproduces the
+earlier DB record for record.
+Size: in a random sample of 3,000 entries (< 100 MB, `scripts/unit/monomer_census.py`, 2026-11-10) the monomers add 1,109 units
+to 11,346 contact units (+9.8%; 1,004 protein, 105 NA); 990 entries (33%) gain at least one, and 646 entries (21.5%) are
+monomer-only, i.e. had no unit before (17 still have none: assemblies over the 60-chain cap, or no polymer of 4 resolved residues).
+
 **Water.** Stored as context: every water O within 4.0 A of any unit atom. `bridging` = within 3.5 A of atoms of
 two or more different unit nodes. Waters never enter edges or residue sets. Water is absent from `cif_pdb_attached`
 (it has no sequence, so it cannot get a seq_id and would break the chain set the FASTA / cluster tables are built
@@ -87,7 +111,7 @@ changes the code the release refuses to resume with.
 
 ```
 $BIOMOL_ROOT/lmdb/unit/pdb/
-  unit_pdb.lmdb             the units: 850,925 records (a merged LMDB below 5M records, else a shard collection)
+  unit_pdb.lmdb             the units (a merged LMDB below 5M records, else a shard collection); the earlier build had 850,925
   unit_pdb.lmdb.index.tsv / .meta.json   written by the engine; what release-docs lists
   manifest.tsv / manifest_full.tsv   one row per unit; _full adds seq_ids and 40% clusters
   split.tsv, split_summary.md    date split with leakage flags
@@ -95,7 +119,7 @@ $BIOMOL_ROOT/lmdb/unit/pdb/
 $BIOMOL_ROOT/materials/intermediate/unit/antibody_cache.tsv   ANARCI type of every PDB protein sequence
 ```
 
-The release published on 2026-10-28 was built by the earlier driver and is a 141-shard collection with a `shard` column in
+The release published on 2026-10-28 (`lmdb/interface/pdb`, contact units only) was built by the earlier driver and is a 141-shard collection with a `shard` column in
 the manifests and a per-entry `done.tsv`; the stages produce the same records (checked) but one merged LMDB, no `shard`
 column and no `done.tsv` (entries without a unit are counted from `cif_metadata` in `report.md`).
 
@@ -136,7 +160,7 @@ Date based, as in AF3, and per PDB entry (every unit of an entry lands in the sa
 | test | after 2023-01-12, resolution <= 4.5 A | 248,054 | 40,566 |
 | none | no release date, no resolution (NMR), or above the cut | 27,595 | |
 
-valid and test units carry leakage flags against the training set (nothing is dropped): `n_prot_c40_in_train`,
+The numbers are those of the earlier build without monomers. valid and test units carry leakage flags against the training set (nothing is dropped): `n_prot_c40_in_train`,
 `novel_protein` (no protein of the unit has its 40% cluster in train), `novel_pair` (the unit's set of clusters
 does not occur in train), `ligands_seen_in_train`. Of the valid units, 8,184 have no protein cluster seen in train and
 22,179 have a new cluster combination; filter on these for a strict evaluation set.
@@ -149,7 +173,8 @@ structcooker build unit/unit_pdb     # the units: rebuild of cif_pdb, sized by t
 structcooker build unit/manifest          # manifest.tsv
 structcooker build unit/manifest_full     # manifest_full.tsv, report.md
 structcooker build unit/split             # split.tsv, split_summary.md
-# or all of it with its upstream: structcooker build-all --manifest db_configs/MANIFEST_unit.yaml --workdir <run dir>
+# or all of it with its upstream (this is what builds lmdb/unit/pdb, which does not exist yet):
+#   structcooker build-all --manifest db_configs/MANIFEST_unit.yaml --workdir <run dir>
 pixi run python scripts/unit/export_unit.py $BIOMOL_ROOT/lmdb/unit/pdb /path/to/cifs 1tsr_1_1_0
 pixi run python scripts/unit/validate_db.py $BIOMOL_ROOT/lmdb/unit/pdb 1000   # recompute contacts / flags / waters (a check, not a stage)
 ```
@@ -157,7 +182,8 @@ pixi run python scripts/unit/validate_db.py $BIOMOL_ROOT/lmdb/unit/pdb 1000   # 
 `structcooker build NAME --show` prints the resolved invocation, `--dry-run` writes the sbatch without submitting. A
 change of the thresholds (`params/unit.yaml`) is a code change: rebuild `unit/unit_pdb` and everything after
 it into a new tree. `structcooker e2e-sample` builds these stages with the rest of the DAG on a sample and requires its unit
-records to equal the release's, key by key. Peak memory is ~16x the compressed record (5j7v, a 1.3 GB entry, needed 21 GB
+records to equal the release's, key by key (so it needs the rebuilt `lmdb/unit/pdb`; against the earlier,
+monomer-less tree every monomer unit is an extra key). Peak memory is ~16x the compressed record (5j7v, a 1.3 GB entry, needed 21 GB
 in the earlier driver); the engine plans memory from the entry size (schema `J`, E = 100). `scripts/unit/run_stats.py`
 and `run_sample.py` are the sampling tools used to choose the thresholds; `make_viewer.py` builds a 3D viewer page of
 example units (`pick_examples.py` selects them).
@@ -168,6 +194,6 @@ bridging), 0 the rest (`--keep-bfactor` keeps the real ones).
 ## Checks
 
 `tests/unit/` (synthetic geometry: contact search against brute force, joining, caps, forced partners,
-duplex, ions, waters; the unit adapter / recipe / explode chain, the antibody cache, manifest, report and split). `validate_db.py` recomputes every edge's min distance, atom-pair count (within 1e-3 A of the
+duplex, ions, waters, monomer units (`test_monomer.py`); the unit adapter / recipe / explode chain, the antibody cache, manifest, report and split). `validate_db.py` recomputes every edge's min distance, atom-pair count (within 1e-3 A of the
 cutoff: coordinates are stored as float32), the contact flags, water distances and the bridging flag from the stored
 coordinates alone.

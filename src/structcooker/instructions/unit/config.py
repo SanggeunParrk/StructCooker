@@ -29,6 +29,8 @@ class Config:
     water_bridge: float
     duplex: dict
     raw: dict
+    monomer_enabled: bool = True
+    monomer_min_residues: int = 4
 
 
 def load_config(path: Path | str = DEFAULT, overrides: dict | None = None) -> Config:
@@ -61,4 +63,6 @@ def load_config(path: Path | str = DEFAULT, overrides: dict | None = None) -> Co
         cfg["water"]["bridge"],
         cfg["duplex"],
         cfg,
+        monomer_enabled=bool(cfg.get("monomer", {}).get("enabled", False)),
+        monomer_min_residues=int(cfg.get("monomer", {}).get("min_residues", 4)),
     )

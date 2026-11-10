@@ -445,6 +445,44 @@ def drop_ion_subsets(units: list[Unit], kinds: list[str]) -> list[Unit]:
     return keep
 
 
+def monomer_units(
+    units: list[Unit],
+    kinds: list[str],
+    sizes: list[int] | np.ndarray,
+    duplex: dict[tuple[int, int], int] | None = None,
+    min_residues: int = 1,
+) -> list[Unit]:
+    """Edge-less units for the polymer nodes no unit holds.
+
+    ``sizes[n]`` is the number of resolved residues of node ``n``. Every protein / NA node that is in
+    none of ``units`` and has at least ``min_residues`` resolved residues becomes a unit of its own
+    (no edges, no seeds). Base-paired NA strands stay together, as in :func:`find_units`: free strands
+    joined by ``duplex`` pairs form one unit. Ligands and ions never make a monomer; a ligand
+    covalently bonded to the chain is already part of its node (``adapt.build_assembly``).
+    """
+    covered = {n for u in units for n in u.nodes}
+    free = [
+        n
+        for n, k in enumerate(kinds)
+        if k in ("protein", "na") and n not in covered and sizes[n] >= min_residues
+    ]
+    root = {n: n for n in free}
+
+    def find(x: int) -> int:
+        while root[x] != x:
+            root[x] = root[root[x]]
+            x = root[x]
+        return x
+
+    for a, b in duplex or {}:
+        if a in root and b in root:
+            root[find(max(a, b))] = find(min(a, b))
+    groups: dict[int, list[int]] = {}
+    for n in free:
+        groups.setdefault(find(n), []).append(n)
+    return [Unit(sorted(g)) for _, g in sorted(groups.items())]
+
+
 def dedup(units: list[Unit], node_keys: list[str], bucket: int = 5) -> list[Unit]:
     """Drop units with a signature already seen, keeping the first."""
     seen, out = set(), []

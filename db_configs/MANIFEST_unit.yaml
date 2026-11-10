@@ -1,6 +1,6 @@
 # Unit DB of the PDB (docs/unit-db.md) as a dependency DAG.
 #
-# Units of 2..N touching molecules of a PDB bioassembly, stored with their waters. The shared PDB nodes it
+# Units of a PDB bioassembly: 2..N touching molecules, or one polymer chain (monomer unit), stored with their waters. The shared PDB nodes it
 # reads (pdb/cif, the protein fasta, seq_id_map, the 40% clusters, cif_metadata) are listed as roots so the set builds alone.
 ccd/ccd: []
 pdb/cif: [ccd/ccd]
