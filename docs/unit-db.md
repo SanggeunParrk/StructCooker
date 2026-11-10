@@ -163,15 +163,19 @@ Date based, as in AF3, and per PDB entry (every unit of an entry lands in the sa
 
 | split | rule | units | entries |
 |---|---|---:|---:|
-| train | released before 2021-09-30, resolution <= 9 A (the rule of `train_20210930`) | 488,379 | 134,324 |
-| valid | 2021-09-30 .. 2023-01-12 (AF3's PDB evaluation window), resolution <= 4.5 A | 86,897 | 14,048 |
-| test | after 2023-01-12, resolution <= 4.5 A | 248,054 | 40,566 |
-| none | no release date, no resolution (NMR), or above the cut | 27,595 | |
+| train | released before 2021-09-30, resolution <= 9 A (the rule of `train_20210930`) | 547,053 | 167,321 |
+| valid | 2021-09-30 .. 2023-01-12 (AF3's PDB evaluation window), resolution <= 4.5 A | 92,091 | 16,429 |
+| test | after 2023-01-12, resolution <= 4.5 A | 262,839 | 47,011 |
+| none | no release date, no resolution (NMR), or above the cut | 42,587 | |
 
-The numbers are those of the earlier build without monomers. valid and test units carry leakage flags against the training set (nothing is dropped): `n_prot_c40_in_train`,
+Counts of the build of 2026-11-10 (944,570 units, monomers included). `none` is purely the resolution rule: no_resolution 16,392,
+resolution > 4.5 A 18,408, resolution > 9 A 7,787, and no unit lacks a release date. It grew from 27,595 (the build without monomers,
+which had `none` as well) because 14,992 of the new monomers fall under the rule, 11,893 of them NMR chains without a resolution; they
+are kept in the DB with split `none`, and a consumer that wants them (monomer training) selects `split in (train, none)` itself.
+valid and test units carry leakage flags against the training set (nothing is dropped): `n_prot_c40_in_train`,
 `novel_protein` (no protein of the unit has its 40% cluster in train), `novel_pair` (the unit's set of clusters
-does not occur in train), `ligands_seen_in_train`. Of the valid units, 8,184 have no protein cluster seen in train and
-22,179 have a new cluster combination; filter on these for a strict evaluation set.
+does not occur in train), `ligands_seen_in_train`. Of the valid units, 9,560 have no protein cluster seen in train and
+23,512 have a new cluster combination; filter on these for a strict evaluation set.
 
 ## Reproduce
 
@@ -181,8 +185,9 @@ structcooker build unit/unit_pdb     # the units: rebuild of cif_pdb, sized by t
 structcooker build unit/manifest          # manifest.tsv
 structcooker build unit/manifest_full     # manifest_full.tsv, report.md
 structcooker build unit/split             # split.tsv, split_summary.md
-# or all of it with its upstream (this is what builds lmdb/unit/pdb, which does not exist yet):
-#   structcooker build-all --manifest db_configs/MANIFEST_unit.yaml --workdir <run dir>
+# Chain them with `--depends-on <job id of the previous stage>`: lmdb/unit/pdb of 2026-11-10 was built this way, inside the existing
+# release root. `build-all --manifest db_configs/MANIFEST_unit.yaml --workdir <run dir>` also builds the upstream stages (ccd, pdb/cif,
+# the metadata), so it needs an empty tree: it refuses an existing output ("Untracked output").
 pixi run python scripts/unit/export_unit.py $BIOMOL_ROOT/lmdb/unit/pdb /path/to/cifs 1tsr_1_1_0
 pixi run python scripts/unit/validate_db.py $BIOMOL_ROOT/lmdb/unit/pdb 1000   # recompute contacts / flags / waters (a check, not a stage)
 ```
