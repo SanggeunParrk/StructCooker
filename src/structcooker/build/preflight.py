@@ -58,6 +58,7 @@ _BIN_TOOLS: tuple[tuple[str, bool], ...] = (
     ("hmmbuild", False),
     ("hmmsearch", False),
     ("mmseqs", False),
+    ("foldseek", False),
     ("cd-hit", False),
     ("signalp6", True),
 )

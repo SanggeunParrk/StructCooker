@@ -1,0 +1,26 @@
+# design/monomer_long -- the design training DB of the OFD long monomers. Schema B. Rebuild.
+#
+# The items of distillation/long_cif_attached that pass the filters of design/monomer_long_items, unchanged (same keys, same
+# {assembly key: {cifmol_attached_dict}} layout) with these keys added to the CIFMolAttached metadata: source, length (residues with
+# a complete backbone), mean_plddt, ss_helix / ss_strand / ss_coil (fractions of the assessed residues), ss_max_coil_run, fs_cluster
+# (the foldseek representative) and fs_cluster_size (its members among all items, passing or not). docs/design-db.md.
+schema: B
+
+old_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_long/cif_attached/cif_long_attached.lmdb}
+new_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/design/db_monomer_long/design_monomer_long.lmdb}
+
+recipe: ${p:src/structcooker/workflows/design/annotate.py}
+metadata_recipe: ${p:src/structcooker/workflows/design/annotate_metadata.py}
+metadata_input:
+  items_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/design_monomer_long_items.tsv}
+
+parameters:
+  source: distillation_long
+
+split_entries: true
+
+reader:
+  adapter: structcooker.instructions.transforms.cifmol.convert_to_cifmol_attached_transformed
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

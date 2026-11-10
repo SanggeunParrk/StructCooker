@@ -1,6 +1,7 @@
 """Recompute edge statistics from the stored coordinates and compare them with the stored values.
 
 usage: validate_db.py <db_root> [n_units=300] [seed=0] [max_atoms=15000]
+db_root = $BIOMOL_ROOT/lmdb/interface/pdb (manifest.tsv + interface_pdb.lmdb); a check of a built DB, not a stage.
 Checks per unit: array shapes / index ranges, every atom finite, edge min_dist and n_atom_pairs
 (brute force, cutoff from the config; ion edges: 3.0 A to N/O/S), contact-atom flag, interface-residue
 flag, every water within water.near of a unit atom and the bridging flag, node sequences cover the residues.
@@ -62,7 +63,7 @@ def fail(msg, uid):
 
 for r in rows[:n]:
     uid = r[ix["unit_id"]]
-    rec = db.get(uid, int(r[ix["shard"]]))
+    rec = db.get(uid, int(r[ix["shard"]]) if "shard" in ix else None)
     at, rs, ed, w, nodes = (
         rec["atoms"],
         rec["residues"],

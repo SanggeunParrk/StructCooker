@@ -1,0 +1,29 @@
+# interface_pdb — the interface-unit DB of the PDB: one record per unit (2..N touching molecules of one bioassembly, with
+# the waters around them). Schema J. Rebuild, 1:N (explode_entries), docs/interface-db.md.
+#
+# Source = cif_pdb (schema A; it keeps the waters, cif_pdb_attached does not). The reader adapter
+# structcooker.instructions.interface.units.explode_units sees a whole entry -- it must, to take the first model of each
+# assembly and to drop units repeated across assemblies -- and returns one sub-entry per unit, keyed
+# <assembly>_<model>_<unit index>; the recipe builds each unit's record, and explode writes it as <pdb id>_<assembly>_<model>_<index>.
+# An entry without units writes nothing. Thresholds: src/structcooker/instructions/interface/params/interface.yaml.
+schema: J
+
+old_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/pdb/cif/cif_pdb.lmdb}
+new_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/interface/pdb/interface_pdb.lmdb}
+
+recipe: ${p:src/structcooker/workflows/filters/interface_units.py}
+
+split_entries: true
+explode_entries: true
+explode_value_key: unit_record
+
+reader:
+  adapter: structcooker.instructions.interface.units.explode_units
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
+
+# The ANARCI cache the adapter reads (units.default_classifier); a pinned, fingerprinted input of the stage.
+runtime_environment:
+  INTERFACE_ANTIBODY_CACHE: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/interface/antibody_cache.tsv}

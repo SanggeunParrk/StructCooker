@@ -172,7 +172,13 @@ def verify_output(
         # A projection writes files; a parallel op (and a few multi-output projections)
         # fills a directory.
         outputs = preflight.output_paths(cfg)
-        if not outputs or any(not _nonempty(p) for p in outputs):
+        # The primary target must hold data; side outputs (e.g. a list of failures)
+        # may legitimately be empty but must exist.
+        if (
+            not outputs
+            or not _nonempty(outputs[0])
+            or any(not p.exists() for p in outputs)
+        ):
             msg = "Projection outputs are missing or empty"
             raise ValueError(msg)
         return {

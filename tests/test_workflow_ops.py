@@ -57,7 +57,15 @@ def test_node_cap_runs_a_parallel_op_on_one_node(monkeypatch):
     )
     kind, kw = execu.calls[0]
     assert kind == "once"
-    assert kw["argv"][-2:] == ["parallel-run", "c.yaml"]
+    # the one task takes every item, not the config's 1/8 slice
+    assert kw["argv"][-6:] == [
+        "parallel-run",
+        "c.yaml",
+        "--node-rank",
+        "0",
+        "--node-count",
+        "1",
+    ]
 
 
 def test_materialize_is_sized_by_its_n_jobs(monkeypatch):

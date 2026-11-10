@@ -6,13 +6,7 @@ from pathlib import Path
 
 import yaml
 
-DEFAULT_PATH = (
-    Path(__file__).resolve().parents[4]
-    / "db_configs"
-    / "interface"
-    / "params"
-    / "ligand_exclusion.yaml"
-)
+DEFAULT_PATH = Path(__file__).resolve().parent / "params" / "ligand_exclusion.yaml"
 
 
 def load_excluded(

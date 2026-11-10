@@ -34,6 +34,14 @@
   take:
     - {path: lmdb/pdb/cif/cif_mpnn_train_20210930_res9_chain300.lmdb, note: "pruned to what MPNN reads"}
     - {path: metadata/seq_cluster40_PDB.tsv}
+- id: design
+  title: Backbone design on distillation monomers
+  when: training a structure generator on filtered, clustered monomers (docs/design-db.md)
+  take:
+    - {path: lmdb/design/db_monomer_short/design_monomer_short.lmdb, note: "OFD short, pLDDT >= 80 etc., foldseek cluster in the metadata"}
+    - {path: lmdb/design/db_monomer_long/design_monomer_long.lmdb, note: "OFD long, same filters"}
+    - {path: metadata/design_monomer_short_items.tsv, note: "all items with statistics, cluster and the pass flag"}
+    - {path: metadata/design_monomer_long_items.tsv}
 - id: distillation
   title: PDB plus OpenFold3 distillation
   when: AF3-style training with the distillation sets (MSAs at depth <= 2,000; pick a lower depth to fit the disk)

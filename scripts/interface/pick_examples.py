@@ -120,7 +120,7 @@ LETTERS = "ABCDEFGHIJKLMNOPQRSTUVXYZ"
 db = InterfaceDB(root)
 units = []
 for name, r in picked:
-    rec = db.get(r["unit_id"], int(r["shard"]))
+    rec = db.get(r["unit_id"], int(r["shard"]) if "shard" in r else None)
     meta, nodes, at, rs, w = (
         rec["meta"],
         rec["nodes"],

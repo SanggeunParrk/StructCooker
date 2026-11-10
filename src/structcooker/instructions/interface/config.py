@@ -1,4 +1,8 @@
-"""Load db_db_configs/interface/params/params/interface.yaml into the dataclasses ``detect`` / ``duplex`` / ``adapt`` use."""
+"""Load ``params/interface.yaml`` into the dataclasses ``detect`` / ``duplex`` / ``adapt`` use.
+
+The thresholds sit next to the code (``params/``) rather than in ``db_configs/``: a release runs a
+frozen copy of ``src/`` only, so this is the one place a build reads them from.
+"""
 
 from __future__ import annotations
 
@@ -10,13 +14,7 @@ import yaml
 from structcooker.instructions.interface.detect import ContactCfg, UnitCfg
 from structcooker.instructions.interface.ligands import load_excluded
 
-DEFAULT = (
-    Path(__file__).resolve().parents[4]
-    / "db_configs"
-    / "interface"
-    / "params"
-    / "interface.yaml"
-)
+DEFAULT = Path(__file__).resolve().parent / "params" / "interface.yaml"
 
 
 @dataclass

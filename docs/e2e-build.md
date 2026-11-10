@@ -122,7 +122,7 @@ short/long cif stages, the AFM MSA): the lexicographically first path is kept an
 recorded in the attempt's `input-selection.json`.
 
 `db_configs/MANIFEST_all.yaml` is the union of the per-set manifests (`MANIFEST.yaml`,
-`MANIFEST_{pdb,distillation,teddymer,afdb_multimer,msa,cifcore*}.yaml`); regenerate it after
+`MANIFEST_{pdb,distillation,design,interface,teddymer,afdb_multimer,msa,cifcore*}.yaml`); regenerate it after
 editing one (`python -c 'from structcooker.release.manifests import write; write()'`, enforced by a
 test). Each set's manifest still builds that set alone. What each stage builds is in
 [stages](stages.md).

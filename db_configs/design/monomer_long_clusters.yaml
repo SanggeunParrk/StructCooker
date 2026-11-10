@@ -1,0 +1,17 @@
+# design/monomer_long_clusters -- foldseek clusters of the backbones of design/monomer_long_stats. MATERIALIZE op.
+#
+# foldseek createdb + cluster + createtsv, defaults except -c (coverage of the alignment on both structures, 0.9). Output: one
+# row per item, `representative<TAB>member` (a representative lists itself). n_jobs is also foldseek's thread count and asks for a
+# full node. The work directory is scratch and is removed when the stage ends.
+recipe_path: ${p:src/structcooker/workflows/design/cluster.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/design/monomer_long/clusters.tsv}
+
+inputs:
+  backbone_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/design/monomer_long/backbones}
+  work_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/design/monomer_long/foldseek_work}
+  coverage: 0.9
+  split_memory_limit: 400G
+  n_jobs: 112
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_header_rows

@@ -80,3 +80,30 @@ def test_published_collection_layout_is_preferred_over_plain_shards(tmp_path):
     db = InterfaceDB(tmp_path)
     assert list(db.shards) == [12]
     assert db.get("a")["meta"]["n"] == 2
+
+
+def test_merged_lmdb_inside_the_db_directory_is_read(tmp_path):
+    _write_shard(tmp_path / "interface_pdb.lmdb", {"1abc_1_1_0": REC})
+    db = InterfaceDB(tmp_path)
+    assert db.shards == {}
+    assert db.get("1abc_1_1_0", shard=3)["meta"]["n"] == 3  # the hint is ignored
+    with pytest.raises(KeyError):
+        db.get("nope")
+
+
+def test_the_lmdb_itself_can_be_the_root(tmp_path):
+    _write_shard(tmp_path / "x.lmdb", {"1abc_1_1_0": REC})
+    assert InterfaceDB(tmp_path / "x.lmdb").get("1abc_1_1_0")["meta"]["n"] == 3
+
+
+def test_published_shard_collection_is_read_through_shards_json(tmp_path):
+    from datacooker.lmdb.sharded import publish_shards
+
+    a, b = tmp_path / ".build" / "a.lmdb", tmp_path / ".build" / "b.lmdb"
+    _write_shard(a, {"1abc_1_1_0": REC})
+    _write_shard(b, {"2xyz_1_1_0": {"meta": {"n": 7}}})
+    coll = tmp_path / "interface_pdb.lmdb"
+    publish_shards([a, b], coll)
+    db = InterfaceDB(tmp_path)
+    assert db.get("2xyz_1_1_0")["meta"]["n"] == 7
+    assert db.get("1abc_1_1_0")["meta"]["n"] == 3

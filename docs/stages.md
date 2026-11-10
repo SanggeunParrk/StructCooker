@@ -1,7 +1,7 @@
 # Stages — what each DB is built from
 
 Every output of the release is one stage, one `db_configs/<group>/<name>.yaml`, and the release is
-the DAG of all 96 of them in `db_configs/MANIFEST_all.yaml`. This page goes through it data set by
+the DAG of all of them in `db_configs/MANIFEST_all.yaml`. This page goes through it data set by
 data set: what the stages do, which recipe and reader they use, and the parameters that
 decide the result (quoted from the configs). How to run the whole DAG is the
 [end-to-end build](e2e-build.md); where the inputs live is [raw materials](raw-materials.md).
@@ -304,6 +304,12 @@ RNA has no templates (the set ships none).
   (`intermediate/openfold_distillation/long_recovered/overrides.json`, made by
   `scripts/staging/recover_ofd_long_npz.py`).
 
+## Design monomers
+
+`design/monomer_{long,short}_{stats,clusters,items}` and `design/monomer_{long,short}` filter the OFD long and short monomers (La-Proteina
+thresholds) and add foldseek clusters and secondary-structure statistics to the metadata of the kept items; the DB is
+`$R/lmdb/design/db_monomer_<set>/design_monomer_<set>.lmdb`. Stages, parameters and sizes: [Design DBs](design-db.md).
+
 ## Teddymer (TDM)
 
 510,454 TED domain pairs, each two domains of one AFDB v4 model as chains A/B (a
@@ -358,12 +364,24 @@ example after adding teddymer entries); it reads the search databases under `SEQ
 structcooker build teddymer/msa_search
 ```
 
-## Interface units (outside the release DAG)
+## Interface units
 
-`lmdb/interface/pdb/interface_pdb.lmdb` is not a `db_configs/` config: it is built by `structcooker interface build`
-from `lmdb/pdb/cif/cif_pdb.lmdb` (waters included, which `cif_pdb_attached` drops) with its own multiprocessing
-driver, because one input record fans out into many self-contained unit records. Rules, schema, split and
-reproduction: [Interface DB](interface-db.md).
+`db_configs/interface/` holds five stages (set manifest `MANIFEST_interface.yaml`); rules, schema, split and reproduction
+are in [Interface DB](interface-db.md). They run on the PDB protein fasta, `cif_pdb` (waters included, which
+`cif_pdb_attached` drops), the 40% PDB clusters and `cif_metadata`.
+
+| Stage | Op | Reads | Writes |
+|---|---|---|---|
+| `interface/antibody_cache` | materialize | `fasta/pdb_polypeptide_L.fasta` | `materials/intermediate/interface/antibody_cache.tsv` (ANARCI type of every unique sequence) |
+| `interface/interface_pdb` | rebuild, `explode_entries`, schema J | `lmdb/pdb/cif/cif_pdb.lmdb`, the cache | `lmdb/interface/pdb/interface_pdb.lmdb`, one record per unit |
+| `interface/manifest` | extract | `interface_pdb.lmdb` | `manifest.tsv` |
+| `interface/manifest_full` | materialize | manifest, protein fasta, `seq_id_map.tsv`, `seq_cluster40_PDB.tsv`, `cif_metadata.tsv` | `manifest_full.tsv`, `report.md` |
+| `interface/split` | materialize | `manifest_full.tsv` | `split.tsv`, `split_summary.md` |
+
+`interface_pdb` is the 1:N case of the rebuild: the reader adapter `instructions.interface.units.explode_units` sees a
+whole entry (the first model of each assembly, units repeated across assemblies dropped) and returns one sub-entry per
+unit; the recipe `workflows/filters/interface_units.py` builds each record and the engine writes it as
+`<pdb id>_<assembly>_<model>_<index>`.
 
 
 ## Template key contracts

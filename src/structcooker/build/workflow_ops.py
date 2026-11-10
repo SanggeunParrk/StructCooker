@@ -114,6 +114,10 @@ def submit(
             ],
         )
     else:
+        if op == "parallel" and int(cfg.get("node_count") or 1) > 1:
+            # Capped to one task (a sampled run): that task must take every item, not
+            # only the 1/node_count slice the config's node_count would hand node 0.
+            argv = [*argv, "--node-rank", "0", "--node-count", "1"]
         handle = executor.run_once(
             name=name, argv=argv, mem_gb=mem_gb, cores=cores, depends_on=depends_on
         )

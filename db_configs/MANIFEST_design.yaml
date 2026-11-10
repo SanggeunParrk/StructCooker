@@ -1,0 +1,24 @@
+# Design training DBs: the monomers of the OpenFold long and short distillation sets, filtered (La-Proteina) and clustered
+# (foldseek). docs/design-db.md.
+#
+# Per set: statistics + backbone archives -> foldseek clusters -> items table (the pass flag) -> the DB. The attached
+# distillation DBs they read are built in MANIFEST_distillation.yaml; they and what they need are listed as roots here, as in
+# that manifest, so this set can be built on its own (MANIFEST_all.yaml merges the dependency lists).
+ccd/ccd: []
+metadata/seq_id_map: []
+metadata/ofd_fasta: []
+metadata/ofd_seq_cluster40: [metadata/ofd_fasta, metadata/seq_id_map]
+distillation/long_cif: [ccd/ccd]
+metadata/ofd_long_fasta: [distillation/long_cif]
+distillation/long_cif_attached: [distillation/long_cif, metadata/ofd_long_fasta, metadata/ofd_seq_cluster40, metadata/seq_id_map]
+distillation/short_cif: [ccd/ccd]
+metadata/ofd_short_fasta: [distillation/short_cif]
+distillation/short_cif_attached: [distillation/short_cif, metadata/ofd_short_fasta, metadata/ofd_seq_cluster40, metadata/seq_id_map]
+design/monomer_long_stats: [distillation/long_cif_attached]
+design/monomer_long_clusters: [design/monomer_long_stats]
+design/monomer_long_items: [design/monomer_long_stats, design/monomer_long_clusters, distillation/long_cif_attached]
+design/monomer_long: [design/monomer_long_items, distillation/long_cif_attached]
+design/monomer_short_stats: [distillation/short_cif_attached]
+design/monomer_short_clusters: [design/monomer_short_stats]
+design/monomer_short_items: [design/monomer_short_stats, design/monomer_short_clusters, distillation/short_cif_attached]
+design/monomer_short: [design/monomer_short_items, distillation/short_cif_attached]

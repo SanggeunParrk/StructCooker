@@ -1,0 +1,20 @@
+# design/monomer_short_stats -- per-item statistics and backbone archives of the OFD short monomers. PARALLEL op.
+#
+# The source (distillation/short_cif_attached) is cut into parts of chunk_keys sorted keys; one part is one work item.
+# A part writes stats/part_<n>.tsv (id, length, mean_plddt, ss_helix, ss_strand, ss_coil, ss_max_coil_run), backbones/part_<n>.tar
+# (one N/CA/C/O PDB per item, the input of foldseek createdb) and, for a record that could not be read, stats/part_<n>.failed.tsv.
+# The .tsv is written last: a resumed run lists only the parts without one. docs/design-db.md.
+split_recipe_path: ${p:src/structcooker/workflows/design/stats_parts.py}
+recipe_path: ${p:src/structcooker/workflows/design/stats.py}
+
+inputs:
+  db_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_short/cif_attached/cif_short_attached.lmdb}
+  chunk_keys: 5000
+  output_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/design/monomer_short/stats}
+  out_backbone_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/design/monomer_short/backbones}
+
+n_jobs: -1
+chunk_size: 256
+# Fan out as an 8-task array, one whole node each (items split by key).
+node_count: 8
+test_run: false

@@ -54,7 +54,6 @@ Every command submits SLURM jobs and returns; nothing heavy runs where you type 
 | `structcooker release-docs` | write the release's own docs into `$BIOMOL_ROOT/docs` (Markdown pages + an `index.html` overview) |
 | `structcooker e2e-sample {prepare,run,status,verify} ROOT` | the release DAG on a sample of a few hundred inputs, compared with the release |
 | `structcooker foldbench {keys,build,verify}` | FoldBench inference DBs cut from the release by key |
-| `structcooker interface {annotate,build,finalize,split,validate}` | the PDB interface-unit DB (outside the `build-all` DAG; see [Interface DB](interface-db.md)) |
 
 ## Pages
 

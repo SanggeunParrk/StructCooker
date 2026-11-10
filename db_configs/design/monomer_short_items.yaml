@@ -1,0 +1,24 @@
+# design/monomer_short_items -- one row per item of the OFD short monomers: statistics, foldseek cluster and the pass flag. MATERIALIZE op.
+#
+#   id, length, mean_plddt, helix, strand, coil, max_coil_run, cluster, cluster_size, pass
+#
+# pass = the La-Proteina filters below (apply_filters: false would pass everything, for a set that was filtered when it was
+# made). Refuses the build if a source key has no statistics, if more than max_failed records failed, or if an item with a
+# backbone is in no cluster. Changing a threshold only reruns this stage and design/monomer_short.
+recipe_path: ${p:src/structcooker/workflows/design/items.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/design_monomer_short_items.tsv}
+
+inputs:
+  stats_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/design/monomer_short/stats}
+  clusters_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/design/monomer_short/clusters.tsv}
+  db_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/distillation_short/cif_attached/cif_short_attached.lmdb}
+  min_plddt: 80.0
+  min_length: 32
+  max_length: 512
+  max_coil: 0.5          # coil fraction strictly below
+  max_coil_run: 20
+  apply_filters: true
+  max_failed: 0
+
+writer:
+  materializer: structcooker.instructions.writers.projections.write_header_rows

@@ -82,7 +82,9 @@ def main():
     a = ap.parse_args()
     root = Path(__file__).resolve().parents[2]
     tab = yaml.safe_load(
-        (root / "db_db_configs/interface/params/params/af3_si_tables.yaml").read_text()
+        (
+            root / "src/structcooker/instructions/interface/params/af3_si_tables.yaml"
+        ).read_text()
     )
     t9 = {str(c).upper() for c in tab["table9_crystallization_aids"]}
     t10 = {str(c).upper() for c in tab["table10_ligand_exclusion_list"]}
