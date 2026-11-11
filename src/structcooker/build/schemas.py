@@ -23,6 +23,9 @@ Structures below are the ones observed across ``/data/shared/cssb_data/BioMol``:
   H  {atoms,residues,chains,index_table,metadata}   (one assembly-model-altloc/key)
   I  {<assm>: {cifmol_dict:{atoms,residues,chains,index_table,metadata}}}
   J  {meta,nodes,atoms,residues,edges,duplex,water}               (one unit/key; monomer units have empty edges)
+  K  {assembly_dict, metadata_dict}  (one Re-Glyco record/key; an entry base is a plain frame, every other record a
+     delta against a base record of its entry: codec biomol_zstd_delta, read with transforms.delta_codec.read_record)
+  L  {records:{<sub key>:{key,shard,offset,length,sha256,deposition_date,...}}}   (the Re-Glyco worklist of one entry)
 """
 
 from __future__ import annotations
@@ -38,6 +41,9 @@ class Codec(str, Enum):
 
     biomol_zstd = "biomol_zstd"  # standard frame (content-size present)
     biomol_zstd_streaming = "biomol_zstd_streaming"  # streaming frame (no content-size)
+    # a plain frame for the first record of a group of near-identical records, a delta against a base record for the
+    # rest (the Re-Glyco DB); ``from_bytes`` refuses a delta value, ``delta_codec.read_record`` reads every record
+    biomol_zstd_delta = "biomol_zstd_delta"
     raw = "raw"  # bare bytes
 
 
@@ -184,6 +190,31 @@ def _v_J(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     return issues
 
 
+def _v_K(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
+    """Validate one Re-Glyco record as ``read_record`` returns it (a BioMol value of schema A's shape)."""
+    issues = _v_A(v)
+    if issues:
+        return issues
+    if not v["assembly_dict"]:
+        issues.append("empty assembly_dict")
+    if "deposition_date" not in v["metadata_dict"]:
+        issues.append("metadata_dict has no deposition_date")
+    return issues
+
+
+def _v_L(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
+    """Validate the Re-Glyco worklist of one entry."""
+    if not _is_dict(v) or not _is_dict(v.get("records")) or not v["records"]:
+        return ["missing or empty records"]
+    need = {"key", "shard", "offset", "length", "sha256", "deposition_date"}
+    for sub, rec in v["records"].items():
+        if not _is_dict(rec) or need - rec.keys():
+            return [
+                f"record {sub} lacks {sorted(need - set(rec) if _is_dict(rec) else need)}"
+            ]
+    return []
+
+
 @dataclass(frozen=True)
 class Schema:
     """Place-of-truth record for one BioMol LMDB value schema."""
@@ -252,6 +283,20 @@ SCHEMAS: dict[str, Schema] = {
         Codec.biomol_zstd,
         100.0,
         _v_J,
+    ),
+    # One Re-Glyco record: a glycan rebuilt on a PDB site, the whole assembly. The stored value is a delta against a
+    # base record of its entry (docs/reglyco-compact.md); the planner's E is moot (the rebuild reads a tiny worklist and
+    # converts the CIFs it names, its memory is Ray's measured admission).
+    "K": Schema(
+        "K",
+        "Re-Glyco record (delta-coded)",
+        "pdbid_site_glycan_conf",
+        Codec.biomol_zstd_delta,
+        100.0,
+        _v_K,
+    ),
+    "L": Schema(
+        "L", "Re-Glyco worklist (one entry)", "pdbid", Codec.biomol_zstd, 5.0, _v_L
     ),
 }
 

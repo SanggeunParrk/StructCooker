@@ -1,0 +1,34 @@
+# reglyco — the RFD4-Proteina Re-Glyco set as BioMol records: one key per record, <pdb>_<site>_<glycan>_conf<NNN> (the Hub's
+# file name without .cif). Schema K, codec biomol_zstd_delta: the first record of an entry (by key) is an ordinary to_bytes
+# frame, a group's lowest conformer a delta against it, every other conformer a delta against its group base; the value of a
+# key is read with structcooker.instructions.transforms.delta_codec.read_record / DeltaReader, which return an ordinary
+# {assembly_dict, metadata_dict}. The only DB of the release that is not one plain to_bytes value per key. docs/reglyco-compact.md.
+#
+# Rebuild, 1:N (explode_entries) from the worklist LMDB glycan/reglyco_entries: the reader adapter
+# readers.reglyco.explode_reglyco_entry sees a whole entry, reads each record's CIF from the shard the worklist names
+# (sha256 checked), runs the pdb/cif recipe on it (after adapting the tables an AtomWorks CIF lacks), encodes the deltas and
+# decodes each again against the converted value; the recipe step passes the stored bytes through and explode writes them
+# as <pdb id>_<sub key>. The Hub's other per-record columns are in metadata/reglyco_examples.parquet (key join).
+schema: K
+
+old_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/glycan/reglyco/reglyco_entries.lmdb}
+new_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/glycan/reglyco/reglyco.lmdb}
+
+recipe: ${p:src/structcooker/workflows/ingest/reglyco_records.py}
+
+split_entries: true
+explode_entries: true
+explode_value_key: reglyco_record
+
+reader:
+  adapter: structcooker.instructions.readers.reglyco.explode_reglyco_entry
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.keep_bytes
+
+# The shards the worklist names, and the CCD the pdb/cif recipe resolves components against (pinned, fingerprinted inputs).
+runtime_environment:
+  REGLYCO_BLOB_DIR: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/rfd4_proteina/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/blob/data}
+  REGLYCO_CCD_DB: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/ccd/biomol_CCD.lmdb}
+  REGLYCO_CCD_REFERENCE: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/reference_ccd.lmdb}

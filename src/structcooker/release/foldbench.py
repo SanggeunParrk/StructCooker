@@ -327,16 +327,20 @@ def verify(package: Path, out: Path, *, decode_sample: int = 20) -> dict:
     decoded: dict[str, Any] = {}
     try:
         from structcooker.instructions.transforms.codecs import from_bytes
+        from structcooker.instructions.transforms.delta_codec import is_delta
     except ImportError:
-        from_bytes = None
-    if from_bytes is None or decode_sample <= 0:
+        from_bytes = is_delta = None
+    if from_bytes is None or is_delta is None or decode_sample <= 0:
         decoded = {"skipped": "decode_sample=0 or codecs not importable"}
     else:
         for p, txn in txns.items():
             n = bad = 0
             for _, v in txn.cursor():
                 try:
-                    from_bytes(bytes(v))
+                    if not is_delta(
+                        v
+                    ):  # a Re-Glyco delta value decodes against its base, not alone
+                        from_bytes(bytes(v))
                 except Exception:  # noqa: BLE001 - a diagnostic count
                     bad += 1
                 n += 1

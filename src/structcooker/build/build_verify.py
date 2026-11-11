@@ -27,6 +27,7 @@ from structcooker.instructions.transforms.cifmol import (
     convert_to_cifmol_transformed,
 )
 from structcooker.instructions.transforms.codecs import from_bytes
+from structcooker.instructions.transforms.delta_codec import DeltaReader
 from structcooker.instructions.transforms.msa import msa_statistics
 from structcooker.instructions.transforms.pruning import load_pruned_cifmol
 
@@ -90,6 +91,7 @@ def _verify_workers() -> int:
 
 
 _WORKER_ENVS: dict[str, Any] = {}
+_WORKER_DELTA_READERS: dict[str, Any] = {}
 
 
 def _check_records(
@@ -105,16 +107,24 @@ def _check_records(
         if raw is None:
             msg = f"Record {key} vanished during verification"
             raise ValueError(msg)
-        value = raw if schema.codec == schemas.Codec.raw else from_bytes(raw)
+        if schema.codec == schemas.Codec.raw:
+            value = raw
+        elif schema.codec == schemas.Codec.biomol_zstd_delta:
+            # a delta value only decodes against its base record: read through the DB, not value by value
+            if path not in _WORKER_DELTA_READERS:
+                _WORKER_DELTA_READERS[path] = DeltaReader(_WORKER_ENVS[path])
+            value = _WORKER_DELTA_READERS[path].read(key)
+        else:
+            value = from_bytes(raw)
         issues = schema.validate(value)
         if issues:
             msg = f"Invalid {schema.name} record {key}: {issues}"
             raise ValueError(msg)
-        if schema.name in {"A", "B", "C", "H", "I"}:
+        if schema.name in {"A", "B", "C", "H", "I", "K"}:
             if not isinstance(value, dict):
                 msg = f"Invalid structure payload for {key}"
                 raise ValueError(msg)
-            verify_structure(value, schema.name)
+            verify_structure(value, "A" if schema.name == "K" else schema.name)
         if schema.name == "E":
             _check_msa(key, value, max_depth)
     return len(keys)

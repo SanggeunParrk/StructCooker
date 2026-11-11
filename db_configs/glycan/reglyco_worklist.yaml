@@ -1,0 +1,15 @@
+# reglyco_worklist — one worklist file per PDB entry of the RFD4-Proteina Re-Glyco set, plus the sidecar table. MATERIALIZE op.
+# Reads the Hub's blob/index.parquet (shard, offset, length and CIF sha256 of every record) and examples.parquet (deposition
+# date, resolution and the other columns of each record), writes entries/<pdb>.json (the records of one entry), the list of
+# them (the output_data_path, what glycan/reglyco_entries builds from) and metadata/reglyco_examples.parquet (examples.parquet
+# with a `key` column, plus the glycan-view columns of examples_glycan.parquet): everything the Hub says about a record that
+# the BioMol value does not hold. docs/reglyco-compact.md.
+recipe_path: ${p:src/structcooker/workflows/ingest/reglyco_worklist.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/glycan/reglyco/entries.txt}
+inputs:
+  index_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/rfd4_proteina/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/blob/index.parquet}
+  examples_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/rfd4_proteina/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/examples.parquet}
+  examples_glycan_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/rfd4_proteina/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/examples_glycan.parquet}
+  out_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/glycan/reglyco/entries}
+  out_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/glycan/reglyco/entries.txt}
+  out_sidecar: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/reglyco_examples.parquet}

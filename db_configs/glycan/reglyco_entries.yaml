@@ -1,0 +1,17 @@
+# reglyco_entries — the Re-Glyco worklist as an LMDB: key <pdb id>, value {records: {<sub key>: {key, shard, offset, length,
+# sha256, deposition_date, resolution, example_id}}}. Schema L. Build, one key per entry (tiny values). The source of the
+# exploding rebuild glycan/reglyco: its adapter needs a whole entry at once (the records of an entry are deltas of one
+# another), and only a rebuild can write one key per record.
+schema: L
+
+env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/glycan/reglyco/reglyco_entries.lmdb}
+file_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/glycan/reglyco/entries.txt}
+data_dir: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/glycan/reglyco/entries}
+
+recipe: ${p:src/structcooker/workflows/ingest/reglyco_entries.py}
+
+reader:
+  loader: structcooker.instructions.readers.reglyco.read_worklist
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes

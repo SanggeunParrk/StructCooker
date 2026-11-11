@@ -650,8 +650,13 @@ def compare_lmdb(
 
     from structcooker.build import schemas
     from structcooker.instructions.transforms.codecs import from_bytes
+    from structcooker.instructions.transforms.delta_codec import DeltaReader
 
-    raw = schemas.get(schema).codec == schemas.Codec.raw
+    codec = schemas.get(schema).codec
+    raw = codec == schemas.Codec.raw
+    delta = (
+        codec == schemas.Codec.biomol_zstd_delta
+    )  # compared on the decoded records: the bases may differ
     counts: Counter[str] = Counter()
     paths: Counter[str] = Counter()
     examples: dict[str, str] = {}
@@ -662,6 +667,7 @@ def compare_lmdb(
         s_env.begin() as s_txn,
         p_env.begin() as p_txn,
     ):
+        s_reader, p_reader = DeltaReader(s_env), DeltaReader(p_env)
         for raw_key, value in s_txn.cursor():
             counts["records"] += 1
             name = bytes(raw_key).decode()
@@ -674,13 +680,19 @@ def compare_lmdb(
             if bytes(value) == bytes(other):
                 counts["identical"] += 1
                 continue
-            found = (
-                None
-                if raw
-                else diff(
-                    translate(from_bytes(bytes(value)), table), from_bytes(bytes(other))
+            if delta:
+                found = diff(
+                    translate(s_reader.read(name), table), p_reader.read(key.decode())
                 )
-            )
+            else:
+                found = (
+                    None
+                    if raw
+                    else diff(
+                        translate(from_bytes(bytes(value)), table),
+                        from_bytes(bytes(other)),
+                    )
+                )
             if found is None and not raw:
                 counts["identical"] += 1  # same values, different encoding
                 continue

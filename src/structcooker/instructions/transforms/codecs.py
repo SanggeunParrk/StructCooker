@@ -8,6 +8,10 @@ from biomol.core.container import FeatureContainer
 from biomol.core.index import IndexTable
 from zstandard import ZstdCompressor, ZstdDecompressor, frame_content_size
 
+# First bytes of a Re-Glyco delta value (``transforms.delta_codec``). It is not a zstd frame, so a plain
+# ``from_bytes`` can tell it from a BioMol value and refuse it by name instead of failing inside zstd.
+DELTA_MAGIC = b"BMDELTA1"
+
 
 def flatten_data(data: dict) -> tuple[dict, dict]:
     """Flatten a nested dictionary."""
@@ -41,6 +45,18 @@ def flatten_data(data: dict) -> tuple[dict, dict]:
     return template, flatten
 
 
+def to_raw(data_dict: dict) -> bytes:
+    """Serialize the container to its uncompressed bytes (what ``to_bytes`` compresses)."""
+    template, flattened_data = flatten_data(data_dict)
+    header = {
+        "template": template,
+        "arrays": {key: len(value) for key, value in flattened_data.items()},
+    }
+    header_bytes = json.dumps(header).encode("utf-8")
+    payload = b"".join(flattened_data[key] for key in flattened_data)
+    return len(header_bytes).to_bytes(8, "little") + header_bytes + payload
+
+
 def to_bytes(data_dict: dict, level: int = 6) -> bytes:
     """Serialize the container to zstd-compressed bytes.
 
@@ -49,15 +65,15 @@ def to_bytes(data_dict: dict, level: int = 6) -> bytes:
     level: int, optional
         The compression level for zstd (default is 6).
     """
-    template, flattened_data = flatten_data(data_dict)
-    header = {
-        "template": template,
-        "arrays": {key: len(value) for key, value in flattened_data.items()},
-    }
-    header_bytes = json.dumps(header).encode("utf-8")
-    payload = b"".join(flattened_data[key] for key in flattened_data)
-    raw = len(header_bytes).to_bytes(8, "little") + header_bytes + payload
-    return ZstdCompressor(level=level).compress(raw)
+    return ZstdCompressor(level=level).compress(to_raw(data_dict))
+
+
+def keep_bytes(value: bytes) -> bytes:
+    """Writer serializer for a value that is already stored bytes (a Re-Glyco delta record)."""
+    if not isinstance(value, (bytes, bytearray)):
+        msg = f"keep_bytes expects bytes, got {type(value).__name__}"
+        raise TypeError(msg)
+    return bytes(value)
 
 
 def reconstruct_data(template: dict, flatten: dict) -> dict:
@@ -78,6 +94,12 @@ def reconstruct_data(template: dict, flatten: dict) -> dict:
 
 def from_bytes(byte_data: bytes) -> dict:
     """Deserialize the container from zstd-compressed bytes."""
+    if bytes(byte_data[: len(DELTA_MAGIC)]) == DELTA_MAGIC:
+        msg = (
+            "This value is a Re-Glyco delta record: it can only be decoded against its base record. "
+            "Read it with structcooker.instructions.transforms.delta_codec.read_record(env, key)."
+        )
+        raise ValueError(msg)
     if frame_content_size(byte_data) == -1:
         decoder = ZstdDecompressor().decompressobj()
         raw = decoder.decompress(byte_data)
@@ -86,6 +108,11 @@ def from_bytes(byte_data: bytes) -> dict:
             raise ValueError(msg)
     else:
         raw = ZstdDecompressor().decompress(byte_data)
+    return from_raw(raw)
+
+
+def from_raw(raw: bytes) -> dict:
+    """Deserialize the container from its uncompressed bytes (what ``to_raw`` writes)."""
     if len(raw) < 8:
         msg = "Truncated BioMol header length."
         raise ValueError(msg)

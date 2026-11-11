@@ -1,0 +1,6 @@
+# Re-Glyco (RFD4-Proteina glycan set) as BioMol records, docs/reglyco-compact.md. The raw component is downloaded by
+# scripts/staging/download_rfd4_proteina.py (docs/raw-materials.md); the CCD it converts against is the release's.
+ccd/ccd: []
+glycan/reglyco_worklist: []
+glycan/reglyco_entries: [glycan/reglyco_worklist]
+glycan/reglyco: [glycan/reglyco_entries, ccd/ccd]
