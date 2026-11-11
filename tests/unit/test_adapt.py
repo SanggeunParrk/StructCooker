@@ -146,6 +146,49 @@ def test_covalent_bond_between_two_polymers_does_not_merge_them():
     assert build_assembly(mol, EXCLUDED).kinds == ["protein", "protein"]
 
 
+def _bridge_mol(rows):
+    """Two 3-residue proteins (atoms 0-14, 15-29) and one ligand (30-36)."""
+    return make_mol(
+        [protein_chain("A", 3), protein_chain("B", 3, z=4.0), _lig("L", z=8.0)],
+        struct_conn=rows,
+    )
+
+
+def test_ligand_bonded_to_two_polymers_does_not_fuse_them():
+    # a covalent ligand between two chains (9jjb): two protein nodes, each with its own sequence
+    asm = build_assembly(_bridge_mol([(30, 1, "covale"), (30, 16, "covale")]), EXCLUDED)
+    assert asm.kinds == ["protein", "protein"]
+    assert asm.keys == ["P:AAA", "P:AAA"]
+    assert asm.stats["n_merged"] == 1
+    assert asm.stats["n_bridge_skipped"] == 1
+    # the ligand went with the lower-indexed polymer
+    assert (asm.node_idx == 0).sum() == 15 + 7
+    assert (asm.node_idx == 1).sum() == 15
+
+
+def test_bridging_ligand_goes_to_the_same_polymer_whatever_the_bond_order():
+    fwd = build_assembly(_bridge_mol([(30, 1, "covale"), (30, 16, "covale")]), EXCLUDED)
+    rev = build_assembly(_bridge_mol([(16, 30, "covale"), (1, 30, "covale")]), EXCLUDED)
+    assert fwd.kinds == rev.kinds
+    assert np.array_equal(fwd.node_idx, rev.node_idx)
+
+
+def test_ligand_bonded_ligand_does_not_fuse_two_polymers_either():
+    # L1 on A, L2 on B, L1-L2 bonded: both ligands keep their own polymer
+    mol = make_mol(
+        [
+            protein_chain("A", 3),
+            protein_chain("B", 3, z=4.0),
+            _lig("L", z=8.0),
+            _lig("M", z=12.0),
+        ],
+        struct_conn=[(30, 1, "covale"), (37, 16, "covale"), (30, 37, "covale")],
+    )
+    asm = build_assembly(mol, EXCLUDED)
+    assert asm.kinds == ["protein", "protein"]
+    assert asm.stats["n_bridge_skipped"] == 1
+
+
 def test_two_ligands_bonded_to_each_other_merge_to_the_lower_index():
     n_prot = 3 * 5
     mol = make_mol(

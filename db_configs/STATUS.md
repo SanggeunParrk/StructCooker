@@ -20,17 +20,19 @@ MSA and template DBs are keyed by seq_id, so they count distinct sequences, not 
 | AFDB homodimer | 1,750,755 / 1,750,755 | 1,721,635 (+d2k), shared with heterodimers | 1,720,477, shared | pLDDT |
 | AFDB heterodimer | 80,248 / 80,248 | (above) | (above) | pLDDT |
 
-Units (`unit/` stages of the DAG, [docs/unit-db.md](../docs/unit-db.md)): `lmdb/unit/pdb`, built 2026-11-10 from `lmdb/pdb/cif/cif_pdb.lmdb`:
-944,570 units from 247,987 of the 249,676 PDB entries (the other 1,689 give no unit): 850,925 contact units (the same as the
-earlier contact-only `lmdb/interface/pdb`), 89,904 monomer units (85,898 protein, 4,006 NA) and 3,741 base-paired NA duplexes
-without a contact edge. Split by release date: train 547,053 (167,321 entries) · valid 92,091 (16,429) · test 262,839 (47,011) ·
-none 42,587 (resolution rule: no resolution 16,392, > 4.5 A 18,408, > 9 A 7,787; no unit lacks a date). 160.6 GB. Built stage by stage
-(`structcooker build unit/<stage> --depends-on`), not by `build-all`, which refuses the existing roots. `lmdb/interface/pdb` is the superseded
-contact-only build.
-`scripts/unit/validate_db.py` on 3,000 random units: every check passes except `residue_beyond_sequence` on `9jjb_1_1_0` (two
-protein nodes keyed with the 94-residue sequence of chains B / D, while the node's residues are the 552 resolved residues of the
-605-residue chains, cif_idx up to 597); the same unit with the same numbers is in the earlier build, so monomers did not cause it. Cause
-not found yet; in that entry `auth_asym_id` (A, C, B, D) is permuted against `chain_id` (A_1, B_1, C_1, D_1), a lead for node-to-residue pairing.
+Units (`unit/` stages of the DAG, [docs/unit-db.md](../docs/unit-db.md)): `lmdb/unit/pdb`, built 2026-11-10 from `lmdb/pdb/cif/cif_pdb.lmdb` and
+patched 2026-11-11 (below): 944,828 units from 247,987 of the 249,676 PDB entries (the other 1,689 give no unit): 851,207 contact units,
+89,871 monomer units (85,869 protein, 4,002 NA) and 3,750 base-paired NA duplexes without a contact edge. Split by release date: train
+547,194 (167,321 entries) · valid 92,105 (16,429) · test 262,935 (47,011) · none 42,594 (resolution rule: no resolution 16,399, > 4.5 A
+18,408, > 9 A 7,787; no unit lacks a date). Built stage by stage (`structcooker build unit/<stage> --depends-on`), not by `build-all`, which
+refuses the existing roots. `lmdb/interface/pdb` is the superseded contact-only build.
+Patch of 2026-11-11 (a node-merge bug): a ligand covalently bonded to two polymer chains used to fuse both chains into one node, keyed by the
+sequence of one of them (`9jjb_1_1_0`: a 605- and a 94-residue chain in one node keyed with the 94-residue sequence, found by
+`validate_db.py` as `residue_beyond_sequence`). 228 of the 249,676 entries had such a ligand in an assembly the DB reads
+(`scripts/unit/bridge_entries_scan.py`); their 510 stored units became 768 (`structcooker patch unit/unit_pdb --keys`, then the 44 old ids that
+no rebuilt unit overwrote were deleted with `scripts/unit/drop_unit_ids.py`; manifest, manifest_full and split rebuilt; the pre-patch tables are in
+`lmdb/unit/pdb/.before_bridge_fix/`). A scan of all 944,828 units (`scripts/unit/merged_node_scan.py`) finds no node with more than one chain, and
+`scripts/unit/validate_db.py` on 3,000 random units passes every check. `e2e-sample` and `release-check` have not been run on this build.
 
 Derived sets: train_20210930 167,912 · train_20260301 233,579 · mpnn 484,383 · valid1 21,527 ·
 valid2 617 · cif_chain 4,162,929 chains · CCD 50,782 components (+ inference CCD 50,781).
@@ -57,7 +59,7 @@ valid2 617 · cif_chain 4,162,929 chains · CCD 50,782 components (+ inference C
 ## Recent changes
 
 - 2026-11-10: the interface DB is renamed the unit DB (`unit/` stages, `lmdb/unit/pdb`, `instructions/unit`) and gains
-  monomer units (polymer chains in no contact unit, `monomer` in `params/unit.yaml`); `lmdb/unit/pdb` built the same day (944,570 units).
+  monomer units (polymer chains in no contact unit, `monomer` in `params/unit.yaml`); `lmdb/unit/pdb` built the same day (944,570 units; 944,828 after the patch of 2026-11-11).
 - 2026-10-21: interface-unit DB of the PDB (`lmdb/interface/pdb`): units of 2..N touching molecules (ions and ligands
   as nodes, antibody / TCR pairs and base-paired duplexes always bundled, waters stored), date split
   train / valid / test; since 2026-11 built by the `unit/` stages of the DAG (formerly `structcooker interface`).

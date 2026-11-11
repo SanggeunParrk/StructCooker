@@ -6,7 +6,8 @@ Node rules
 - water (HOH / DOD) is never a node; it is returned separately
 - anything in the exclusion set, or a ligand below ``min_heavy_atoms``, is dropped (atoms ignored)
 - a ligand / glycan covalently bonded (struct_conn ``covale``) to a polymer is merged into that
-  polymer's node: one party. ``metalc`` / ``hydrog`` / ``disulf`` never merge.
+  polymer's node: one party. ``metalc`` / ``hydrog`` / ``disulf`` never merge. A ligand bonded to two
+  polymers joins the one with the lower node index; two polymer nodes are never fused through it.
 Missing (NaN) atoms are ignored in contacts. Modified residues are mapped to their parent via the
 CCD canonical one-letter code (``one_letter_code_can``); unknown -> ``X`` / ``N``.
 """
@@ -147,7 +148,10 @@ def build_assembly(
     except FeatureKeyError:  # entries without any struct_conn row lack the feature
         sc = None
     n_merged = 0
+    n_bridge_skipped = 0
+    poly = {"protein", "na"}
     if sc is not None and len(sc.src_indices):
+        links: list[tuple[int, int]] = []
         types = sc.value[:, 0]
         for s, d, t in zip(sc.src_indices, sc.dst_indices, types, strict=True):
             if t != "covale":
@@ -156,14 +160,26 @@ def build_assembly(
             if a < 0 or b < 0 or a == b:
                 continue
             ka, kb = kinds[a], kinds[b]
-            poly = {"protein", "na"}
             if ka in poly and kb in poly:
                 continue
             if "ion" in (ka, kb):
                 continue
-            # polymer wins as root; otherwise the lower index
+            links.append((a, b))
+
+        def order(ab: tuple[int, int]) -> tuple[int, int, int]:
+            polys = [x for x in ab if kinds[x] in poly]
+            return (0, min(polys), max(ab)) if polys else (1, min(ab), max(ab))
+
+        # ligand-polymer bonds first, by polymer node, so the result does not depend on the order of the
+        # struct_conn rows; ligand-ligand bonds (a glycan chain on a ligand) after them
+        for a, b in sorted(links, key=order):
             ra, rb = find(a), find(b)
             if ra == rb:
+                continue
+            if kinds[ra] in poly and kinds[rb] in poly:
+                # a ligand bonded to two polymers stays with the first one (lowest node index); merging
+                # would fuse the two chains into one node that carries only one of their sequences
+                n_bridge_skipped += 1
                 continue
             n_merged += 1
             if kinds[ra] in poly:
@@ -207,5 +223,6 @@ def build_assembly(
             "excluded_names": excluded_names,
             "n_water": len(w_atoms),
             "n_merged": n_merged,
+            "n_bridge_skipped": n_bridge_skipped,
         },
     )

@@ -24,7 +24,7 @@ A **node** is one of
 |---|---|---|
 | `protein` | a polypeptide chain | `P:<sequence>` (canonical parent letters) |
 | `na` | a DNA / RNA / hybrid chain | `N:<sequence>` |
-| `ligand` | a CCD molecule, or a glycan chain; a ligand covalently bonded (`struct_conn` `covale`) to a polymer is merged into that polymer's node | `L:<ccd>` or `L:<ccd-ccd>` |
+| `ligand` | a CCD molecule, or a glycan chain; a ligand covalently bonded (`struct_conn` `covale`) to a polymer is merged into that polymer's node (a ligand bonded to two polymers joins the one with the lower node index; the polymers are never fused, see *Node merge fix* below) | `L:<ccd>` or `L:<ccd-ccd>` |
 | `ion` | a single-atom non-polymer (Mg, Zn, Ca, ...) | `I:<ccd>` |
 
 Water is never a node.
@@ -163,19 +163,19 @@ Date based, as in AF3, and per PDB entry (every unit of an entry lands in the sa
 
 | split | rule | units | entries |
 |---|---|---:|---:|
-| train | released before 2021-09-30, resolution <= 9 A (the rule of `train_20210930`) | 547,053 | 167,321 |
-| valid | 2021-09-30 .. 2023-01-12 (AF3's PDB evaluation window), resolution <= 4.5 A | 92,091 | 16,429 |
-| test | after 2023-01-12, resolution <= 4.5 A | 262,839 | 47,011 |
-| none | no release date, no resolution (NMR), or above the cut | 42,587 | |
+| train | released before 2021-09-30, resolution <= 9 A (the rule of `train_20210930`) | 547,194 | 167,321 |
+| valid | 2021-09-30 .. 2023-01-12 (AF3's PDB evaluation window), resolution <= 4.5 A | 92,105 | 16,429 |
+| test | after 2023-01-12, resolution <= 4.5 A | 262,935 | 47,011 |
+| none | no release date, no resolution (NMR), or above the cut | 42,594 | |
 
-Counts of the build of 2026-11-10 (944,570 units, monomers included). `none` is purely the resolution rule: no_resolution 16,392,
+Counts of the build of 2026-11-10 as patched on 2026-11-11 (944,828 units, monomers included). `none` is purely the resolution rule: no_resolution 16,399,
 resolution > 4.5 A 18,408, resolution > 9 A 7,787, and no unit lacks a release date. It grew from 27,595 (the build without monomers,
 which had `none` as well) because 14,992 of the new monomers fall under the rule, 11,893 of them NMR chains without a resolution; they
 are kept in the DB with split `none`, and a consumer that wants them (monomer training) selects `split in (train, none)` itself.
 valid and test units carry leakage flags against the training set (nothing is dropped): `n_prot_c40_in_train`,
 `novel_protein` (no protein of the unit has its 40% cluster in train), `novel_pair` (the unit's set of clusters
-does not occur in train), `ligands_seen_in_train`. Of the valid units, 9,560 have no protein cluster seen in train and
-23,512 have a new cluster combination; filter on these for a strict evaluation set.
+does not occur in train), `ligands_seen_in_train`. Of the valid units, 9,559 have no protein cluster seen in train and
+23,516 have a new cluster combination; filter on these for a strict evaluation set.
 
 ## Reproduce
 
@@ -210,3 +210,21 @@ bridging), 0 the rest (`--keep-bfactor` keeps the real ones).
 duplex, ions, waters, monomer units (`test_monomer.py`); the unit adapter / recipe / explode chain, the antibody cache, manifest, report and split). `validate_db.py` recomputes every edge's min distance, atom-pair count (within 1e-3 A of the
 cutoff: coordinates are stored as float32), the contact flags, water distances and the bridging flag from the stored
 coordinates alone.
+
+### Node merge fix (2026-11-11)
+
+The covalent merge of `adapt.build_assembly` joined a ligand to its polymer by a union-find. A ligand bonded to **two**
+polymer chains (a covalent inhibitor or cross-link between two proteins, e.g. `9jjb`) therefore pulled both polymer
+nodes into one: the node held the atoms and residues of both chains but was keyed (`P:<sequence>`) by one of them.
+`validate_db.py` reported it as `residue_beyond_sequence`. Now a ligand joins the polymer with the lowest node index
+(independent of the order of the `struct_conn` rows), ligand-ligand bonds are applied after the ligand-polymer ones, and
+two polymer nodes are never fused (`stats["n_bridge_skipped"]` counts the skipped links).
+
+Extent: 228 of the 249,676 entries had such a ligand in an assembly the DB reads (`scripts/unit/bridge_entries_scan.py`, exact:
+runs `build_assembly` over cif_pdb); `scripts/unit/merged_node_scan.py` finds the same defect from the stored records alone
+(222 of the 228 entries, 421 units: it needs a polymer residue whose `cif_idx` breaks the order, so a fused node that is
+too regular to show escapes it). The 510 units of those entries became 768 (ids shift: a fused node used to hide chains, and
+dedup now sees them). The DB was patched, not rebuilt: `structcooker patch unit/unit_pdb --keys` with the 228 pdb ids, the 44
+old ids no new unit overwrote removed by `scripts/unit/drop_unit_ids.py`, then `unit/manifest`, `unit/manifest_full` and `unit/split`
+rerun. After it, `merged_node_scan.py` over all 944,828 units reports no node with more than one chain. A fresh build gives the
+same units as the patched DB.
