@@ -42,6 +42,7 @@ nav:
   - seq_id and cluster scheme: seq-id-and-cluster-scheme.md
   - FoldBench DBs: foldbench.md
   - Unit DB: unit-db.md
+  - Re-Glyco, stored compactly: reglyco-compact.md
   - Antibody-antigen set (abag_distillation):
       - Overview: abag_distillation/README.md
       - Recipe: abag_distillation/RECIPE.md
