@@ -32,7 +32,7 @@ sequence of one of them (`9jjb_1_1_0`: a 605- and a 94-residue chain in one node
 (`scripts/unit/bridge_entries_scan.py`); their 510 stored units became 768 (`structcooker patch unit/unit_pdb --keys`, then the 44 old ids that
 no rebuilt unit overwrote were deleted with `scripts/unit/drop_unit_ids.py`; manifest, manifest_full and split rebuilt; the pre-patch tables are in
 `lmdb/unit/pdb/.before_bridge_fix/`). A scan of all 944,828 units (`scripts/unit/merged_node_scan.py`) finds no node with more than one chain, and
-`scripts/unit/validate_db.py` on 3,000 random units passes every check. `release-check` (2026-11-12) passes `unit/*` (944,828 units, 200 sampled); `e2e-sample` does not sample the unit stages yet.
+`scripts/unit/validate_db.py` on 3,000 random units passes every check. `release-check` (2026-11-12) passes `unit/*` (944,828 units, 200 sampled); the sampled run of `MANIFEST_unit.yaml` alone builds `unit/unit_pdb` with 184 units equal to the release's but stops at `metadata/seq_id_map` (it needs the other sets' fastas), so the rest of the unit stages are not covered by `e2e-sample`.
 
 Re-Glyco (`glycan/` stages, [docs/reglyco-loader.md](../docs/reglyco-loader.md), [docs/reglyco-compact.md](../docs/reglyco-compact.md)): `lmdb/glycan/reglyco/reglyco.lmdb`,
 built 2026-11-11/12 from the RFD4-Proteina Re-Glyco component (Hub commit `aa86df1e`, sha256-verified): 2,992,448 records of 11,160 PDB entries as

@@ -171,7 +171,10 @@ structcooker e2e-sample verify $R       # job: compare with the release -> $R/ve
 
 **Sample.** By default 30 PDB entries and 20 entries each from OFD short, long, rna and
 disordered (plus 20 disordered template chains), teddymer, and AFM homo- and heterodimers
-(`--count pdb=50` etc.). The
+(`--count pdb=50` etc.) and 40 records of each downloaded RFD4-Proteina set (`--count rfd4=N`; the sample gets a one-shard copy of the
+set's index and examples rows, [docs/rfd4-sets.md](rfd4-sets.md)). Not sampled yet: the `unit/` and `glycan/` stages (the sampled run of
+`MANIFEST_unit.yaml` alone builds `unit/unit_pdb` and its 184 units equal the release's, but stops at `metadata/seq_id_map`, which needs the other
+sets' fastas). The
 selection is a seeded hash order, so the same production data gives the same sample.
 On top of that random selection, the sample also includes these cases on purpose:
 

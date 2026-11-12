@@ -72,6 +72,9 @@ coordinates, and the atom tables of one record must have the same features). Thi
 * Per-residue / per-atom annotations of the CIFs that are not BioMol features: `ig_region`, `cdr` (antibody and TCR sets), the PLIP `condition_*` / `mask_*`
   columns, CATH labels, repair masks, `atom_array_index`. The BioMol record has coordinates, bonds and entities. The per-record summaries
   (`cdr_annotations`, `ig_chains`, `interface_cluster`, ...) are in the sidecars; a per-residue table of `ig_region` / `cdr` could be built from the shards if it is needed.
+* OMol hydrogens: its CIFs carry them (about half of an OMol molecule's atoms; 144 atoms in the CIF of `009018428`, 73 in its record), the PDB recipe drops hydrogens from every
+  record, so an OMol record has none, and the Hub's `n_atoms` (which counts them) is not comparable with the record's atom count. A residue's missing standard atoms are
+  listed from the CCD, as in any PDB record. The CIFs in the shards keep the hydrogens if a consumer needs them.
 * OMol: its `examples.parquet` has 53,485,498 rows for 53,664,160 index records (the Hub removed 836 failed records from the index *and* sampling rows; the rest of the
   difference is index records without a sampling row); both are in the DB / the sidecar as they are. The Hub's own warning stands: OMol's source metadata
   identifiers, categories, charges and energies are not reconciled with the CIF block `lmdb_idx` retrieves.
@@ -103,9 +106,9 @@ inferring bonds from the coordinates would invent chemistry), and 54 have an emp
 
 Checks (all 2026-11-12):
 
-* every worklist key but those 8,096 is in its DB (`validate_db.py`: *lacking 0* for the six others), and a decoded sample of each (40,000; antibody 8,000; tcr all) has an assembly
+* every worklist key but those 8,096 is in its DB (`validate_db.py`: *lacking 0* for the six others), and a decoded sample of each (40,000; antibody 8,000; tcr all; omol 50,000) has an assembly
   and a date, with residue counts equal to the sidecar's: protein / RNA / DNA residue counts match in every sampled record once the Hub's "non-standard" and "other" residues are
-  added to the protein count (the NCAA sets count a modified residue as *other*); the atom count of a record is never below the Hub's (it is above it: the residue lists the CCD's atoms);
+  added to the protein count (the NCAA sets count a modified residue as *other*); the atom count of a record is never below the Hub's (it is above it: the residue lists the CCD's atoms). OMol is the exception on both: its 1,890 of 50,000 sampled records differ in protein residues (peptide fragments with custom cap residues, `A:N` / `A:C`, that the Hub does not count as standard amino acids), and its atom counts are not comparable (hydrogens, above);
 * the sampled end-to-end run (`e2e-sample prepare ... --count rfd4=40`, `run` and `verify --manifest db_configs/MANIFEST_rfd4.yaml`; 15 stages complete): 40 of 40 sampled records of each of the
   seven sets are identical to the release's, and every sampled sidecar row's key is in the release's sidecar;
 * `release-check` (127 stages): every `rfd4/*` stage passes (entry counts agree with `.meta.json` and `.index.tsv`, 200 sampled records decode); the 10 stages it reports as problems are `design/*`, `metadata/ab_seq` and `metadata/cdr_region`, which are not part of this.

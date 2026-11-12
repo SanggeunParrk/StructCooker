@@ -92,7 +92,10 @@ def main() -> None:
         keys = random.Random(a.seed).sample(keys, a.sample)
     side_path = f"{root}/metadata/rfd4_{a.name}_examples.parquet"
     names = pq.ParquetFile(side_path).schema_arrow.names
-    have = [c for c in [*list(RESIDUE_COLUMNS), "n_atoms"] if c in names]
+    # OMol's CIFs carry hydrogens (about half of their atoms) and the sidecar counts them; the BioMol record, like every
+    # PDB record, has none, so its atom count is not comparable
+    atoms = [] if a.name == "omol" else ["n_atoms"]
+    have = [c for c in [*list(RESIDUE_COLUMNS), *atoms] if c in names]
     extra_cols = [c for c in PROTEIN_EXTRA if c in names]
     # only the rows of the keys checked (OMol's sidecar has 53M rows)
     side = pq.read_table(side_path, columns=["key", *have, *extra_cols])

@@ -5,7 +5,7 @@
 #SBATCH --partition=cpu-short
 #SBATCH --qos=cpu-short-q
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=48G
+#SBATCH --mem=96G
 #SBATCH --time=04:00:00
 #SBATCH --exclude=node01,node04,node07
 #SBATCH --output=logs/rfd4_validate_%j.out
