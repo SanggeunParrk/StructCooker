@@ -20,7 +20,7 @@ from datacooker.executors.slurm import SlurmExecutor
 from datacooker.utils.paths import scan_paths
 from omegaconf import OmegaConf
 
-from structcooker.build import preflight, workflow_ops
+from structcooker.build import preflight, schemas, workflow_ops
 from structcooker.build.build_state import (
     Fingerprints,
     claim_output,
@@ -475,6 +475,8 @@ def plan_stage(run: Path, name: str) -> None:
                     str(attempt),
                     "--schema",
                     str(cfg["schema"]),
+                    "--codec",
+                    schemas.get(str(cfg["schema"])).codec.value,
                     "--repo",
                     definition["repo"],
                 ],
