@@ -1,0 +1,17 @@
+# RFD4-Proteina structure sets as BioMol records, docs/rfd4-sets.md. The raw components are downloaded by
+# scripts/staging/download_rfd4_proteina.py (docs/raw-materials.md); the CCD they convert against is the release's.
+ccd/ccd: []
+rfd4/omol_worklist: []
+rfd4/rna_monomer_worklist: []
+rfd4/na_complex_worklist: []
+rfd4/antibody_distill_worklist: []
+rfd4/tcr_distill_worklist: []
+rfd4/synthetic_ncaa_worklist: []
+rfd4/ncaa_scaffolds_worklist: []
+rfd4/omol: [rfd4/omol_worklist, ccd/ccd]
+rfd4/rna_monomer: [rfd4/rna_monomer_worklist, ccd/ccd]
+rfd4/na_complex: [rfd4/na_complex_worklist, ccd/ccd]
+rfd4/antibody_distill: [rfd4/antibody_distill_worklist, ccd/ccd]
+rfd4/tcr_distill: [rfd4/tcr_distill_worklist, ccd/ccd]
+rfd4/synthetic_ncaa: [rfd4/synthetic_ncaa_worklist, ccd/ccd]
+rfd4/ncaa_scaffolds: [rfd4/ncaa_scaffolds_worklist, ccd/ccd]

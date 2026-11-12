@@ -336,7 +336,13 @@ def explode_reglyco_entry(entry: dict[str, Any]) -> dict[str, dict[str, bytes]]:
     is decoded again and compared).
     """
     recs = entry["records"]
-    blob_dir = Path(os.environ[BLOB_ENV])
+    blob_dir = Path(
+        os.environ.get(BLOB_ENV)
+        or os.path.join(  # noqa: PTH118
+            os.environ.get("BIOMOL_ROOT", "/data/shared/cssb_data/BioMol_clean"),
+            "materials/raw/rfd4_proteina/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/blob/data",
+        )
+    )
     by_key = {r["key"]: r for r in recs.values()}
     refs = [split_key(k) for k in by_key]
 

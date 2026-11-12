@@ -407,6 +407,20 @@ written. The recipe step passes the stored bytes through (`keep_bytes` writer) a
 that is not one plain `to_bytes` value per key (codec `biomol_zstd_delta`).
 
 
+## RFD4-Proteina structure sets
+
+`db_configs/rfd4/` holds two stages per set (set manifest `MANIFEST_rfd4.yaml`) for seven downloaded components: `omol`, `rna_monomer`, `na_complex`,
+`antibody_distill`, `tcr_distill`, `synthetic_ncaa`, `ncaa_scaffolds` ([docs/rfd4-sets.md](rfd4-sets.md)). Each becomes one LMDB of ordinary
+BioMol records made by the PDB's own recipe.
+
+| Stage | Op | Reads | Writes |
+|---|---|---|---|
+| `rfd4/<set>_worklist` | materialize | the component's `blob/index.parquet`, `examples.parquet` | `materials/intermediate/rfd4/<set>/worklist.lmdb` (one row per record: shard, offset, length, sha256, date) and the sidecar `metadata/rfd4_<set>_examples.parquet` |
+| `rfd4/<set>` | rebuild (1:1), schema M | the worklist, the shards, `lmdb/ccd/biomol_CCD.lmdb` | `lmdb/rfd4/<set>/<set>.lmdb`, one record per Hub record |
+
+The reader adapter `instructions.readers.rfd4.rfd4_record_to_cif_inputs` reads a record's CIF from its shard (sha256 checked), derives the entity tables
+a thin CIF lacks from `_atom_site`, and hands the `pdb/cif` recipe (`workflows/ingest/cif.py`) its inputs.
+
 ## Template key contracts
 
 A template lookup that finds nothing is silent: the model trains without templates. `structcooker release-check`

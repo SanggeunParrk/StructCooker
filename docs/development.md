@@ -50,7 +50,7 @@ submitting shell's environment), or copy it for another cluster.
 | `DATACOOKER_PARTITION`, `DATACOOKER_QOS` | `cpu-long`, `cpu-long-q` | every submitted job |
 | `DATACOOKER_EXCLUDE_NODES` | `node01,node04,node07` | nodes whose `/dev/shm` cannot hold joblib's semaphores |
 | `DATACOOKER_CPUS_PER_NODE`, `DATACOOKER_NODE_MEM_GB` | `112`, `490` | a full-node job (planner, parallel searches, verification) |
-| `DATACOOKER_ADMISSION_START` | unset (1); `32` for `glycan/reglyco` | initial active-task budget of a Ray fan-out, which otherwise grows by one task per finished wave: a stage whose every item takes minutes to hours (Re-Glyco) leaves most cores idle without it. Needs the DataCooker commit `be00865`, which is not yet pushed to its remote; the memory gate still applies |
+| `DATACOOKER_ADMISSION_START` | unset (1); `32` for `glycan/reglyco` | initial active-task budget of a Ray fan-out, which otherwise grows by one task per finished wave: a stage whose every item takes minutes to hours (Re-Glyco) leaves most cores idle without it. Needs the DataCooker commit `be00865` (pushed to its remote, and the `libs/datacooker` pointer is at it); the memory gate still applies |
 
 `STRUCTCOOKER_MAX_NODES` caps every config's `node_count` (the sampled e2e run sets 1).
 

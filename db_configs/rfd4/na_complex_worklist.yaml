@@ -1,0 +1,12 @@
+# rfd4/na_complex_worklist — worklist of the RFD4-Proteina component 2026_09_22_protein_dna_esmfold2: protein-DNA complex predictions (ESMFold2, 20k). MATERIALIZE op.
+# Reads the Hub's blob/index.parquet and examples.parquet; writes the worklist LMDB (one tiny row per record: where its CIF
+# is in the shards, its date) that rfd4/na_complex builds from, the sidecar metadata/rfd4_na_complex_examples.parquet (everything else the
+# Hub says about a record, joined on `key`) and the one-line list file that is this stage's output_data_path. docs/rfd4-sets.md.
+recipe_path: ${p:src/structcooker/workflows/ingest/rfd4_worklist.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/rfd4/na_complex/worklist.txt}
+inputs:
+  name: na_complex
+  root: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/rfd4_proteina}
+  out_lmdb: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/rfd4/na_complex/worklist.lmdb}
+  out_sidecar: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/rfd4_na_complex_examples.parquet}
+  out_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/rfd4/na_complex/worklist.txt}

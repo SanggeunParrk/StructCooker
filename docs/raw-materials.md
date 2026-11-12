@@ -133,8 +133,8 @@ rfd4_proteina/
 | `reglyco` | `glycans/2026_09_27_reglyco` | 1,574.6 GB |
 
 The other Hub components (AFDB monomers, PDB interfaces, PLINDER, TED dimers, CPSea, ...) are not downloaded: the PDB-derived
-ones overlap the release's own PDB sets. Only `reglyco` is read by the release DAG so far (`glycan/*` stages,
-[Re-Glyco](stages.md#re-glyco)); the others are staged raw. `omol` carries a known identity mismatch in its source metadata
+ones overlap the release's own PDB sets. The eight downloaded components are all read by the release DAG: `reglyco` by the `glycan/*` stages ([Re-Glyco](stages.md#re-glyco)), the other seven by
+the `rfd4/*` stages ([RFD4 sets](rfd4-sets.md)). `omol` carries a known identity mismatch in its source metadata
 (its component README: in a 128-record audit, 126 `path` values did not match the CIF block `lmdb_idx` retrieves): its structures
 are consistent, its identifiers, categories, charges and energies are not reconciled.
 

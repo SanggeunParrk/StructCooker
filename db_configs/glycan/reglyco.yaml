@@ -32,8 +32,5 @@ reader:
 writer:
   serializer: structcooker.instructions.transforms.codecs.keep_bytes
 
-# The shards the worklist names, and the CCD the pdb/cif recipe resolves components against (pinned, fingerprinted inputs).
-runtime_environment:
-  REGLYCO_BLOB_DIR: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/rfd4_proteina/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco/blob/data}
-  REGLYCO_CCD_DB: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/ccd/biomol_CCD.lmdb}
-  REGLYCO_CCD_REFERENCE: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/reference/reference_ccd.lmdb}
+# The shards are found from BIOMOL_ROOT (readers.reglyco, REGLYCO_BLOB_DIR overrides) and the CCD from the `ccd/ccd` edge: a directory
+# cannot be a pinned reader input of the release DAG, so none is declared.

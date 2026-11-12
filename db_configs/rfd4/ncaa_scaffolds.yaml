@@ -1,0 +1,25 @@
+# rfd4/ncaa_scaffolds — NCAA scaffold peptides (ESMFold2, 288k) as BioMol records: one key per record (the key rule is rfd4_worklist.COMPONENTS), schema M.
+# 1:1 rebuild from the worklist LMDB rfd4/ncaa_scaffolds_worklist: the reader adapter readers.rfd4.rfd4_record_to_cif_inputs reads a
+# record's CIF from the shard the worklist names (sha256 checked), derives the entity tables the thin CIF lacks and hands the
+# PDB's own recipe (pdb/cif) its inputs. The value is an ordinary schema-A BioMol value {assembly_dict, metadata_dict}.
+# docs/rfd4-sets.md.
+schema: M
+
+# No serial smoke test: a bad record fails alone and is counted (as in pdb/cif); the parallel run converts the sample again.
+test_run: false
+
+old_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/rfd4/ncaa_scaffolds/worklist.lmdb}
+new_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/rfd4/ncaa_scaffolds/ncaa_scaffolds.lmdb}
+
+recipe: ${p:src/structcooker/workflows/ingest/cif.py}
+
+reader:
+  adapter: structcooker.instructions.readers.rfd4.rfd4_record_to_cif_inputs
+  deserializer: structcooker.instructions.transforms.codecs.from_bytes
+  key_transform: structcooker.instructions.readers.cif.dot_transform
+
+writer:
+  serializer: structcooker.instructions.transforms.codecs.to_bytes
+
+# The shards are found from BIOMOL_ROOT and the worklist row's `set` (readers.rfd4.blob_dir), the CCD from the `ccd/ccd` edge:
+# a directory cannot be a pinned reader input of the release DAG, so none is declared.

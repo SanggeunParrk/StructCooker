@@ -215,6 +215,26 @@ def _v_L(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
     return []
 
 
+def _v_M(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
+    """Validate one record of an RFD4-Proteina set: schema A's shape, a non-empty assembly, a deposition date."""
+    issues = _v_A(v)
+    if issues:
+        return issues
+    if not v["assembly_dict"]:
+        issues.append("empty assembly_dict")
+    if "deposition_date" not in v["metadata_dict"]:
+        issues.append("metadata_dict has no deposition_date")
+    return issues
+
+
+def _v_N(v: Any) -> list[str]:  # noqa: N802 (schema letter, referenced by name)
+    """Validate one worklist row of an RFD4-Proteina set."""
+    need = {"key", "shard", "offset", "length", "date"}
+    if not _is_dict(v) or need - v.keys():
+        return [f"worklist row lacks {sorted(need - set(v) if _is_dict(v) else need)}"]
+    return []
+
+
 @dataclass(frozen=True)
 class Schema:
     """Place-of-truth record for one BioMol LMDB value schema."""
@@ -297,6 +317,13 @@ SCHEMAS: dict[str, Schema] = {
     ),
     "L": Schema(
         "L", "Re-Glyco worklist (one entry)", "pdbid", Codec.biomol_zstd, 5.0, _v_L
+    ),
+    # One record of an RFD4-Proteina set (docs/rfd4-sets.md): schema A's shape, converted by the PDB's own recipe from an
+    # annotated mmCIF. The key is the record's id in its set (not a PDB id). Ray's measured admission sizes the work.
+    "M": Schema("M", "RFD4 set record", "record id", Codec.biomol_zstd, 100.0, _v_M),
+    # The worklist of a set: one tiny row per record (where its CIF is in the shards).
+    "N": Schema(
+        "N", "RFD4 set worklist (one record)", "record id", Codec.biomol_zstd, 5.0, _v_N
     ),
 }
 

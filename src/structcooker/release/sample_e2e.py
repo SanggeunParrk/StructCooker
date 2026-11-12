@@ -68,6 +68,7 @@ DEFAULT_COUNTS = {
     "teddymer": 20,
     "afm_homodimer": 20,
     "afm_heterodimer": 20,
+    "rfd4": 40,  # records of each RFD4-Proteina set (the Re-Glyco component has its own entry sampler, none here)
 }
 # Random PDB picks above this size are skipped (a capsid's attached record is tens of GB).
 PDB_MAX_BYTES = 2_000_000
@@ -90,7 +91,8 @@ OFD_LONG_RECOVERED = ("MGYP000485802788", "MGYP006508416081")
 AFM_GENERATED_MSA_ENTITY = "AF-0000000208803231"
 # Schemas whose record is a function of that record's own inputs: must equal the release.
 # (J: the units of one cif_pdb entry)
-EXACT_SCHEMAS = frozenset({"A", "E", "G", "J"})
+# (M: one RFD4-Proteina record, a function of its CIF and the CCD)
+EXACT_SCHEMAS = frozenset({"A", "E", "G", "J", "M"})
 
 
 # --------------------------------------------------------------------------- helpers
@@ -201,6 +203,7 @@ class Sampler:
         self.ofd()
         self.teddymer()
         self.afm()
+        self.rfd4()
         self.report["counts"] = self.counts
         (self.root / "sample.json").write_text(
             json.dumps(self.report, indent=1, sort_keys=True)
@@ -532,6 +535,69 @@ class Sampler:
             "heterodimer_msas": linked,
         }
 
+    # -- RFD4-Proteina sets -----------------------------------------------------------
+    def rfd4(self) -> None:
+        """Sample each downloaded RFD4-Proteina set.
+
+        ``rfd4`` records go into one small shard, with the index and the examples rows of exactly those records, in the layout of the Hub (so the worklist stage reads it unchanged).
+        """
+        import pyarrow as pa
+        import pyarrow.compute as pc
+        import pyarrow.parquet as pq
+
+        from structcooker.instructions.transforms import rfd4_worklist as wl
+
+        raw = self.raw / "rfd4_proteina"
+        if not (raw / wl.SYNTHETIC).is_dir():
+            return
+        out: dict[str, Any] = {}
+        for name, comp in wl.COMPONENTS.items():
+            base, s_base = (
+                wl.component_dir(raw, name),
+                wl.component_dir(self.s_raw / "rfd4_proteina", name),
+            )
+            f = pq.ParquetFile(base / "blob/index.parquet")
+            groups = pick(
+                map(str, range(f.metadata.num_row_groups)),
+                min(f.metadata.num_row_groups, 6),
+                salt=name,
+            )
+            idx = pa.concat_tables([f.read_row_group(int(g)) for g in groups])
+            keys = wl.make_keys(idx.column(comp.key_col), comp.key_kind)
+            chosen = set(pick(keys, self.counts["rfd4"], salt=name))
+            rows = [i for i, k in enumerate(keys) if k in chosen]
+            idx = idx.take(rows)
+            rel = wl.resolve_shards(base / "blob", idx.column("shard").to_pylist())
+            blob = bytearray()
+            offsets, lengths = [], []
+            for shard, off, n in zip(
+                idx.column("shard").to_pylist(),
+                idx.column("offset").to_pylist(),
+                idx.column("length").to_pylist(),
+                strict=True,
+            ):
+                with (base / "blob" / rel[shard]).open("rb") as fh:
+                    fh.seek(int(off))
+                    frame = fh.read(int(n))
+                offsets.append(len(blob))
+                lengths.append(len(frame))
+                blob += frame
+            (s_base / "blob/data").mkdir(parents=True, exist_ok=True)
+            (s_base / "blob/data/sample_00000.bin").write_bytes(bytes(blob))
+            cols = {c: idx.column(c) for c in idx.column_names}
+            cols["shard"] = pa.array(["sample_00000.bin"] * len(rows))
+            cols["offset"] = pa.array(offsets, type=idx.schema.field("offset").type)
+            cols["length"] = pa.array(lengths, type=idx.schema.field("length").type)
+            pq.write_table(pa.table(cols), s_base / "blob/index.parquet")
+            ex = pq.read_table(base / "examples.parquet")
+            ex_keys = pa.array(wl.make_keys(ex.column(comp.key_col), comp.key_kind))
+            pq.write_table(
+                ex.filter(pc.is_in(ex_keys, value_set=pa.array(sorted(chosen)))),
+                s_base / "examples.parquet",
+            )
+            out[name] = len(rows)
+        self.report["rfd4"] = out
+
 
 # --------------------------------------------------------------------------- run
 def sample_environment(root: Path) -> dict[str, str]:
@@ -707,6 +773,25 @@ def compare_lmdb(
     }
 
 
+def compare_parquet(sample: Path, release: Path) -> dict[str, Any]:
+    """Compare a sample's sidecar table with the release's: the same columns, and every ``key`` of the sample is a key of the release."""
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+
+    out: dict[str, Any] = {"rows": pq.ParquetFile(sample).metadata.num_rows}
+    if not release.is_file():
+        return {**out, "release": "absent"}
+    s, r = pq.read_table(sample), pq.read_table(release, columns=["key"])
+    out["same_columns"] = s.column_names == pq.ParquetFile(release).schema_arrow.names
+    out["keys_not_in_release"] = (
+        len(s)
+        - pc.sum(
+            pc.is_in(s.column("key"), value_set=r.column("key")).cast("int64")
+        ).as_py()
+    )
+    return out
+
+
 def compare_lines(
     sample: Path, prod: Path, table: dict[str, str] | None = None
 ) -> dict[str, Any]:
@@ -795,7 +880,11 @@ def verify(root: Path, run_dir: Path, manifest: Path) -> dict[str, Any]:
                 files = {}
                 for out in preflight.output_paths(cfg):
                     prod = PROD_ROOT / out.relative_to(out_root)
-                    if out.is_file() and prod.is_file():
+                    if out.suffix == ".parquet" and out.is_file():
+                        files[str(out.relative_to(out_root))] = compare_parquet(
+                            out, prod
+                        )
+                    elif out.is_file() and prod.is_file():
                         files[str(out.relative_to(out_root))] = compare_lines(
                             out, prod, table
                         )

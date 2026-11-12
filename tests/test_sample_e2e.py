@@ -151,3 +151,28 @@ def test_renumbered_seq_ids_are_translated(tmp_path):
     assert sample_e2e.compare_lines(
         tmp_path / "lines", tmp_path / "release.tsv", table
     ) == {"lines": 1, "in_release": 1}
+
+
+def test_a_sidecar_parquet_of_the_sample_is_checked_against_the_release_by_key(
+    tmp_path,
+):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    release = tmp_path / "release.parquet"
+    sample = tmp_path / "sample.parquet"
+    pq.write_table(pa.table({"key": ["a", "b", "c"], "v": [1, 2, 3]}), release)
+    pq.write_table(pa.table({"key": ["b", "b"], "v": [2, 9]}), sample)
+    assert sample_e2e.compare_parquet(sample, release) == {
+        "rows": 2,
+        "same_columns": True,
+        "keys_not_in_release": 0,
+    }
+    pq.write_table(pa.table({"key": ["z"], "w": [1]}), sample)
+    got = sample_e2e.compare_parquet(sample, release)
+    assert got["same_columns"] is False
+    assert got["keys_not_in_release"] == 1
+    assert (
+        sample_e2e.compare_parquet(sample, tmp_path / "none.parquet")["release"]
+        == "absent"
+    )

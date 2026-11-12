@@ -44,6 +44,7 @@ nav:
   - Unit DB: unit-db.md
   - Re-Glyco, stored compactly: reglyco-compact.md
   - Reading the Re-Glyco DB: reglyco-loader.md
+  - RFD4-Proteina sets: rfd4-sets.md
   - Antibody-antigen set (abag_distillation):
       - Overview: abag_distillation/README.md
       - Recipe: abag_distillation/RECIPE.md

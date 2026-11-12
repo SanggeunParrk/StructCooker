@@ -1,0 +1,12 @@
+# rfd4/omol_worklist — worklist of the RFD4-Proteina component omol_annotated: OMol (annotated DFT molecules and complexes, 53.7M records). MATERIALIZE op.
+# Reads the Hub's blob/index.parquet and examples.parquet; writes the worklist LMDB (one tiny row per record: where its CIF
+# is in the shards, its date) that rfd4/omol builds from, the sidecar metadata/rfd4_omol_examples.parquet (everything else the
+# Hub says about a record, joined on `key`) and the one-line list file that is this stage's output_data_path. docs/rfd4-sets.md.
+recipe_path: ${p:src/structcooker/workflows/ingest/rfd4_worklist.py}
+output_data_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/rfd4/omol/worklist.txt}
+inputs:
+  name: omol
+  root: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/raw/rfd4_proteina}
+  out_lmdb: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/rfd4/omol/worklist.lmdb}
+  out_sidecar: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/metadata/rfd4_omol_examples.parquet}
+  out_list: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/rfd4/omol/worklist.txt}
