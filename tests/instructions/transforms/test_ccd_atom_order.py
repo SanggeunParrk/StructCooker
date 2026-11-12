@@ -167,3 +167,37 @@ def test_component_atom_names_are_supported_and_ambiguous_aliases_rejected():
     nodes["alt_atom_id"] = {"value": np.array(["N1", "C1"])}
     with pytest.raises(ValueError, match="alias tables disagree"):
         _match_ccd_atom_aliases({"atom": {"nodes": nodes}}, {"C1", "N1"})
+
+
+def test_component_the_ccd_lacks_is_the_records_own_definition(monkeypatch):
+    """Take an OMol molecule (``A:1``, in no CCD) as the record's own definition.
+
+    A component with no CCD entry and no definition in the record still fails.
+    """
+    from pathlib import Path
+
+    import pytest
+
+    from structcooker.instructions.transforms.cif import compare_chem_comp
+
+    residue = FeatureContainer({"id": NodeFeature(np.array(["A:1"]))})
+    own = {
+        "residue": residue,
+        "atom": FeatureContainer({"id": NodeFeature(np.array(["C1", "H1"]))}),
+    }
+
+    def read_missing(_path, key):
+        msg = f"Key '{key}' not found"
+        raise KeyError(msg)
+
+    monkeypatch.setattr(
+        "structcooker.instructions.transforms.cif.read_lmdb", read_missing
+    )
+    out = compare_chem_comp({"A:1": own}, Path("ccd"))
+    assert out["A:1"]["residue"] is residue
+    np.testing.assert_array_equal(out["A:1"]["atom"]["id"].value, ["C1", "H1"])
+    assert (
+        out["A:1"]["atom"]["model_xyz"].value.tolist() == [["?"] * 3] * 2
+    )  # as a CCD component's keys
+    with pytest.raises(KeyError):
+        compare_chem_comp({"A:1": None}, Path("ccd"))

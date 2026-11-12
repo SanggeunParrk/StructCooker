@@ -263,8 +263,26 @@ def compare_chem_comp(
         if chem_comp_id == "UNL":
             output[chem_comp_id] = None
             continue
-        ideal_chem_comp = read_lmdb(ccd_db_path, chem_comp_id)["chem_comp_dict"]
         cif_chem_comp = chem_comp_dict[chem_comp_id]
+        try:
+            ideal_chem_comp = read_lmdb(ccd_db_path, chem_comp_id)["chem_comp_dict"]
+        except KeyError:
+            if cif_chem_comp is None:
+                raise
+            # The CCD does not know this component but the record defines it (an OMol molecule, a component
+            # newer than the CCD): its own atoms and bonds are the definition, nothing is borrowed. Every CCD
+            # component carries ideal coordinates (model_xyz) and the atom tables of one record must have the same
+            # features, so a definition without them gets the CCD's way of saying "not stated": '?'.
+            atom = cif_chem_comp["atom"].to_dict()
+            if "model_xyz" not in atom["nodes"]:
+                n_atoms = len(atom["nodes"]["id"]["value"])
+                atom["nodes"]["model_xyz"] = {"value": np.full((n_atoms, 3), "?")}
+                cif_chem_comp = {
+                    "residue": cif_chem_comp["residue"],
+                    "atom": FeatureContainer.from_dict(atom),
+                }
+            output[chem_comp_id] = cif_chem_comp
+            continue
         if cif_chem_comp is not None:
             _match_ccd_atom_aliases(
                 ideal_chem_comp, set(cif_chem_comp["atom"]["id"].value)
