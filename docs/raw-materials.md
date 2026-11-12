@@ -105,6 +105,53 @@ not in the long cif DB. Partial files left by interrupted downloads
 
 Staged by `scripts/staging/stage_afdb_multimer.py` and `stage_afdb_multimer_msa.py`.
 
+### rfd4_proteina
+
+Selected components of the Hugging Face dataset [`nvidia/RFD4-Proteina`](https://huggingface.co/datasets/nvidia/RFD4-Proteina)
+(the structure sets behind the RFD4-Proteina model; CC BY 4.0 for its annotations, tables and indices, the structures keep
+their sources' terms: PDB CC0, AFDB / GlycoShape CC BY 4.0, ... see each component's README). Pinned to Hub commit
+`aa86df1eb9e3529a0f39279f216dce3a95bb3dc2` (the file `REVISION`); `streaming-latest` in the paths does not pin the data,
+the commit does, and an index must be used with the shards of the same commit.
+
+```
+rfd4_proteina/
+├── MANIFEST.tsv  TASKS.tsv  REVISION     component, part, path, size, sha256 of every file; the download tasks; the commit
+├── README.md  dataset-inventory.json     the Hub's own
+└── train_datasets/streaming-latest/synthetic/<component>/     the Hub's layout: README.md, provenance/, tables
+    └── blob/index.parquet · blob/data/*.bin     record -> shard, offset, length; one zstd frame per record
+```
+
+| Component (Hub config) | Directory under `synthetic/` | Size |
+|---|---|---:|
+| `omol` | `omol_annotated` | 156.1 GB |
+| `rna_monomer` | `2026_09_21_rna_monomers` | 29.7 GB |
+| `na_complex` | `2026_09_22_protein_dna_esmfold2` | 1.4 GB |
+| `antibody_interfaces_distill` | `2026_09_18_antibody_antigen_esmfold2` | 9.7 GB |
+| `tcr_interfaces_distill` | `2026_09_09_tcr_af2` | 0.3 GB |
+| `synthetic_ncaa` | `ncaa/2026_09_21_ptm_esmfold2` | 8.3 GB |
+| `ncaa_scaffolds` | `ncaa/2026_09_26_ncaa_esmfold2_scaffolds` | 14.4 GB |
+| `reglyco` | `glycans/2026_09_27_reglyco` | 1,574.6 GB |
+
+The other Hub components (AFDB monomers, PDB interfaces, PLINDER, TED dimers, CPSea, ...) are not downloaded: the PDB-derived
+ones overlap the release's own PDB sets. Only `reglyco` is read by the release DAG so far (`glycan/*` stages,
+[Re-Glyco](stages.md#re-glyco)); the others are staged raw. `omol` carries a known identity mismatch in its source metadata
+(its component README: in a 128-record audit, 126 `path` values did not match the CIF block `lmdb_idx` retrieves): its structures
+are consistent, its identifiers, categories, charges and energies are not reconciled.
+
+Downloaded by `scripts/staging/download_rfd4_proteina.py` (standard library only, resumable, sha256 of every file
+checked against the Hub's LFS digest while it is written) as a SLURM array (`download_rfd4_proteina.sbatch`;
+`reglyco` is split into 8 tasks). The Hub caps the transfer at a few MB/s per connection and tens of MB/s in all, so
+1.8 TB took about a day on 8 parallel connections. `verify_rfd4_proteina.sbatch` re-reads every file and compares its
+sha256 with `MANIFEST.tsv`.
+
+```bash
+source scripts/cluster/cssb.env
+python3 scripts/staging/download_rfd4_proteina.py manifest                      # pins the commit, writes MANIFEST.tsv / TASKS.tsv
+N=$(($(wc -l < $BIOMOL_ROOT/materials/raw/rfd4_proteina/TASKS.tsv) - 1))
+sbatch --array=0-$((N-1))%12 scripts/staging/download_rfd4_proteina.sbatch      # rerun the same line to resume
+sbatch --array=0-$((N-1)) scripts/staging/verify_rfd4_proteina.sbatch           # sha256 of everything
+```
+
 ## `materials/reference/` — supplied, not derivable
 
 ```

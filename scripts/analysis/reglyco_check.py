@@ -71,7 +71,12 @@ def cmd_sample(a: argparse.Namespace) -> None:
         {index.column("path")[i].as_py().rsplit("/", 1)[-1][:4] for i in shard_rows}
     )
     wl = build_worklists(index, examples, set(pdbs))
-    pick = sorted(wl, key=lambda p: len(wl[p]))[: a.entries]
+    if a.pdb:  # a chosen entry (any shard), optionally only its first records: a scale and memory test
+        wl = build_worklists(index, examples, {a.pdb})
+        if a.max_records:
+            keep = sorted(wl[a.pdb])[: a.max_records]
+            wl[a.pdb] = {k: wl[a.pdb][k] for k in keep}
+    pick = [a.pdb] if a.pdb else sorted(wl, key=lambda p: len(wl[p]))[: a.entries]
     print(
         f"entries of {a.shard}: {len(pdbs)}; testing {pick} with {[len(wl[p]) for p in pick]} records",
         flush=True,
@@ -155,43 +160,214 @@ def _verify(a: argparse.Namespace, wl_by_key: dict[str, dict]) -> None:
         raise SystemExit(1)
 
 
-def cmd_verify(a: argparse.Namespace) -> None:
+def _sweep_one(args: tuple[dict, str]) -> tuple[str, str | None, float]:
+    rec, blob_dir = args
+    t = time.time()
+    try:
+        value = _fresh(rec, Path(blob_dir))
+        if not value["assembly_dict"]:
+            return rec["key"], "empty assembly_dict", time.time() - t
+    except Exception as e:  # noqa: BLE001 - a failing record is the finding
+        return (
+            rec["key"],
+            f"{type(e).__name__}: {str(e).split(': ', 1)[-1]}"[:200],
+            time.time() - t,
+        )
+    return rec["key"], None, time.time() - t
+
+
+def cmd_sweep(a: argparse.Namespace) -> None:
+    """Convert one random record of N random (entry, site, glycan) groups and group the failures by cause."""
+    import multiprocessing as mp
+
     index, examples = _tables(a)
-    with lmdb.open(a.lmdb, readonly=True, lock=False).begin() as txn:
-        keys = [bytes(k).decode() for k, _ in txn.cursor()]
-    rng = random.Random(0)
-    chosen = set(rng.sample(keys, min(a.n, len(keys))))
+    on_disk = {p.name for p in Path(a.blob_dir).glob("*.bin")}
+    rows = [
+        (p, sh)
+        for p, sh in zip(
+            index.column("path").to_pylist(),
+            index.column("shard").to_pylist(),
+            strict=True,
+        )
+        if sh in on_disk
+    ]
+    groups: dict[str, list[str]] = {}
+    for p, _ in rows:
+        key = p.rsplit("/", 1)[-1].removesuffix(".cif")
+        ref = key.rsplit("_conf", 1)[0]
+        groups.setdefault(ref, []).append(key)
+    rng = random.Random(a.seed)
+    chosen = {
+        rng.choice(v)
+        for v in rng.sample(sorted(groups.values(), key=len), min(a.n, len(groups)))
+    }
     pdbs = {k.split("_", 1)[0] for k in chosen}
     wl = build_worklists(index, examples, pdbs)
-    by_key = {r["key"]: r for e in wl.values() for r in e.values()}
-    os.environ[BLOB_ENV] = str(a.blob_dir)
-    # decode every key once (all of them must decode), then compare the sample with fresh conversions
-    env = lmdb.open(a.lmdb, readonly=True, lock=False)
+    recs = [r for e in wl.values() for r in e.values() if r["key"] in chosen]
+    print(
+        f"groups available {len(groups)}, converting {len(recs)} records of {len(pdbs)} entries",
+        flush=True,
+    )
+    fail: dict[str, list[str]] = {}
+    times = []
+    with mp.get_context("fork").Pool(a.workers) as pool:
+        for i, (key, err, dt) in enumerate(
+            pool.imap_unordered(_sweep_one, [(r, str(a.blob_dir)) for r in recs])
+        ):
+            times.append(dt)
+            if err:
+                fail.setdefault(err, []).append(key)
+            if (i + 1) % 200 == 0:
+                print(
+                    f"  {i + 1}/{len(recs)} failures {sum(map(len, fail.values()))}",
+                    flush=True,
+                )
+    print(
+        f"converted {len(recs) - sum(map(len, fail.values()))}/{len(recs)}; mean {statistics.mean(times):.2f} s/record"
+    )
+    for err, keys in sorted(fail.items(), key=lambda kv: -len(kv[1])):
+        print(f"  {len(keys):5d}  {err}  e.g. {keys[:2]}")
+    if fail:
+        raise SystemExit(1)
+
+
+def _decode_chunk(args: tuple[str, list[str]]) -> dict:
+    """Decode every record of a key-contiguous chunk with one warm reader; count plain / delta values and bytes."""
+    path, keys = args
+    env = lmdb.open(path, readonly=True, lock=False, readahead=False)
     reader = DeltaReader(env)
-    t = time.time()
-    fail = []
-    for i, k in enumerate(keys):
+    out = {
+        "ok": 0,
+        "bad": [],
+        "plain": 0,
+        "delta": 0,
+        "plain_bytes": 0,
+        "delta_bytes": 0,
+        "secs": 0.0,
+    }
+    with env.begin() as txn:
+        sizes = {k: len(bytes(txn.get(k.encode()))) for k in keys}
+        kinds = {k: is_delta(bytes(txn.get(k.encode()))) for k in keys}
+    for k in keys:
+        t = time.time()
         try:
             v = reader.read(k)
-            if "assembly_dict" not in v or not v["assembly_dict"]:
-                fail.append(k)
-        except Exception:  # noqa: BLE001 - a bad record is a finding
-            fail.append(k)
-        if (i + 1) % 100000 == 0:
-            print(
-                f"  decoded {i + 1}/{len(keys)}  {time.time() - t:.0f}s  failures {len(fail)}",
-                flush=True,
+            good = (
+                bool(v.get("assembly_dict")) and "deposition_date" in v["metadata_dict"]
             )
-    print(
-        f"decoded every record: {len(keys) - len(fail)}/{len(keys)} ok in {time.time() - t:.0f}s"
-    )
+        except Exception:  # noqa: BLE001 - a bad record is a finding
+            good = False
+        out["secs"] += time.time() - t
+        if good:
+            out["ok"] += 1
+        elif len(out["bad"]) < 5:
+            out["bad"].append(k)
+        kind = "delta" if kinds[k] else "plain"
+        out[kind] += 1
+        out[f"{kind}_bytes"] += sizes[k]
     env.close()
-    a.n = len(chosen)
-    _verify(
-        argparse.Namespace(lmdb=a.lmdb, n=len(chosen)), {k: by_key[k] for k in chosen}
+    return out
+
+
+def _equal_one(args: tuple[str, dict, str]) -> tuple[str, bool, float, bool]:
+    """One record read with a cold reader against a fresh conversion of its CIF."""
+    path, rec, blob_dir = args
+    env = lmdb.open(path, readonly=True, lock=False, readahead=False)
+    t = time.time()
+    got = DeltaReader(env, cache_bytes=0).read(rec["key"])
+    cold = time.time() - t
+    with env.begin() as txn:
+        delta = is_delta(bytes(txn.get(rec["key"].encode())))
+    env.close()
+    want = _fresh(rec, Path(blob_dir))
+    return rec["key"], canonical_of(got) == canonical_of(want), cold, delta
+
+
+def cmd_verify(a: argparse.Namespace) -> None:
+    """Decode every record of a built DB, compare a random sample with fresh conversions, report sizes and timings."""
+    import multiprocessing as mp
+
+    index_path = Path(a.lmdb + ".index.tsv")
+    keys = [
+        ln.split("\t", 1)[0]
+        for ln in index_path.read_text().splitlines()
+        if not ln.startswith(("#", "key\t"))
+    ]
+    print(f"records in the index: {len(keys)}", flush=True)
+    # 1. decode every record, in key-contiguous chunks (the records of an entry together: the entry base is decoded once)
+    keys_sorted = sorted(keys)
+    chunks, cur, last = [], [], None
+    for k in keys_sorted:
+        pdb = k.split("_", 1)[0]
+        if len(cur) >= a.chunk and pdb != last:
+            chunks.append(cur)
+            cur = []
+        cur.append(k)
+        last = pdb
+    chunks.append(cur)
+    t0 = time.time()
+    tot = {
+        "ok": 0,
+        "bad": [],
+        "plain": 0,
+        "delta": 0,
+        "plain_bytes": 0,
+        "delta_bytes": 0,
+        "secs": 0.0,
+    }
+    with mp.get_context("fork").Pool(a.workers) as pool:
+        for i, r in enumerate(
+            pool.imap_unordered(_decode_chunk, [(a.lmdb, c) for c in chunks])
+        ):
+            for f in ("ok", "plain", "delta", "plain_bytes", "delta_bytes", "secs"):
+                tot[f] += r[f]
+            tot["bad"] += r["bad"]
+            if (i + 1) % 20 == 0:
+                print(
+                    f"  chunks {i + 1}/{len(chunks)}  decoded {tot['ok']}  bad {len(tot['bad'])}  {time.time() - t0:.0f}s",
+                    flush=True,
+                )
+    n = tot["ok"] + len(tot["bad"])
+    print(
+        f"decoded every record: {tot['ok']}/{len(keys)} ok (bad: {tot['bad'][:5]}) in {time.time() - t0:.0f}s wall"
     )
-    if fail:
-        print("failures:", fail[:5])
+    print(
+        f"  plain values {tot['plain']} ({tot['plain_bytes'] / 1e9:.2f} GB), delta values {tot['delta']} ({tot['delta_bytes'] / 1e9:.2f} GB)"
+    )
+    print(
+        f"  warm decode (one reader per chunk): {1e3 * tot['secs'] / max(1, n):.1f} ms/record mean over {n} records"
+    )
+    # 2. a random sample against fresh conversions, each read with a cold reader
+    index, examples = _tables(a)
+    rng = random.Random(a.seed)
+    chosen = set(rng.sample(keys, min(a.n, len(keys))))
+    wl = build_worklists(index, examples, {k.split("_", 1)[0] for k in chosen})
+    recs = [r for e in wl.values() for r in e.values() if r["key"] in chosen]
+    bad, cold, n_delta = [], [], 0
+    t1 = time.time()
+    with mp.get_context("fork").Pool(a.workers) as pool:
+        for i, (key, ok, c, delta) in enumerate(
+            pool.imap_unordered(
+                _equal_one, [(a.lmdb, r, str(a.blob_dir)) for r in recs]
+            )
+        ):
+            cold.append(c)
+            n_delta += delta
+            if not ok:
+                bad.append(key)
+            if (i + 1) % 500 == 0:
+                print(
+                    f"  compared {i + 1}/{len(recs)}  mismatches {len(bad)}  {time.time() - t1:.0f}s",
+                    flush=True,
+                )
+    cold.sort()
+    print(
+        f"equal to a fresh conversion: {len(recs) - len(bad)}/{len(recs)} ({n_delta} of them delta values); mismatches {bad[:5]}\n"
+        f"cold decode ms/record (new reader, no cache): mean {1e3 * statistics.mean(cold):.1f}  median {1e3 * cold[len(cold) // 2]:.1f}  "
+        f"p95 {1e3 * cold[int(0.95 * len(cold))]:.1f}  max {1e3 * cold[-1]:.1f}",
+        flush=True,
+    )
+    if bad or tot["bad"] or tot["ok"] != len(keys):
         raise SystemExit(1)
 
 
@@ -206,12 +382,37 @@ def main() -> None:
     s = sp.add_parser("sample")
     s.add_argument("--shard", default="rs_00005.bin")
     s.add_argument("--entries", type=int, default=1)
+    s.add_argument("--pdb", help="test this entry instead of the smallest of the shard")
+    s.add_argument(
+        "--max-records",
+        type=int,
+        default=0,
+        help="with --pdb: only its first N records",
+    )
     s.add_argument("--verify-n", type=int, default=40)
     s.add_argument("--out", required=True)
     s.set_defaults(fn=cmd_sample)
+    w = sp.add_parser("sweep")
+    w.add_argument(
+        "--n",
+        type=int,
+        default=3000,
+        help="number of (entry, site, glycan) groups to sample",
+    )
+    w.add_argument("--workers", type=int, default=16)
+    w.add_argument("--seed", type=int, default=0)
+    w.set_defaults(fn=cmd_sweep)
     v = sp.add_parser("verify")
     v.add_argument("--lmdb", required=True)
     v.add_argument("--n", type=int, default=5000)
+    v.add_argument("--workers", type=int, default=64)
+    v.add_argument(
+        "--chunk",
+        type=int,
+        default=4000,
+        help="records per decode chunk (cut at an entry boundary)",
+    )
+    v.add_argument("--seed", type=int, default=0)
     v.set_defaults(fn=cmd_verify)
     a = ap.parse_args()
     a.fn(a)

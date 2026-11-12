@@ -34,6 +34,13 @@ no rebuilt unit overwrote were deleted with `scripts/unit/drop_unit_ids.py`; man
 `lmdb/unit/pdb/.before_bridge_fix/`). A scan of all 944,828 units (`scripts/unit/merged_node_scan.py`) finds no node with more than one chain, and
 `scripts/unit/validate_db.py` on 3,000 random units passes every check. `e2e-sample` and `release-check` have not been run on this build.
 
+Re-Glyco (`glycan/` stages, [docs/reglyco-loader.md](../docs/reglyco-loader.md), [docs/reglyco-compact.md](../docs/reglyco-compact.md)): `lmdb/glycan/reglyco/reglyco.lmdb`,
+built 2026-11-11/12 from the RFD4-Proteina Re-Glyco component (Hub commit `aa86df1e`, sha256-verified): 2,992,448 records of 11,160 PDB entries as
+BioMol records stored as deltas (codec `biomol_zstd_delta`, schema K; read with `DeltaReader`), 14.95 GB (the shipped component is 1,574.6 GB). The Hub's per-record
+columns are in `metadata/reglyco_examples.parquet`. Built stage by stage like the unit DB (`structcooker build glycan/<stage> --depends-on`, with
+`DATACOOKER_ADMISSION_START=32`). Checked: every record decodes (2,992,448 / 2,992,448); 5,000 random records equal a fresh conversion of their CIF (5,000 / 5,000);
+a 3,000-group sweep converted without failure. `release-check` and `e2e-sample` have not been run on this build.
+
 Derived sets: train_20210930 167,912 · train_20260301 233,579 · mpnn 484,383 · valid1 21,527 ·
 valid2 617 · cif_chain 4,162,929 chains · CCD 50,782 components (+ inference CCD 50,781).
 

@@ -250,3 +250,26 @@ def test_sample_e2e_compares_delta_dbs_on_the_decoded_records(tmp_path):
     assert canonical_of(
         value_for(KEYS[0], 300)
     )  # the helper used by the checks stays importable
+
+
+def test_a_lone_sugar_is_a_non_polymer_like_in_a_pdb_mmcif():
+    d = {
+        "_entity": {"id": ["1", "2"], "type": ["polymer", "branched"]},
+        "_chem_comp": {"id": ["ASN"], "name": ["ASN"], "type": ["L-peptide linking"]},
+        "_atom_site": {
+            "label_asym_id": ["A", "B"],
+            "label_entity_id": ["1", "2"],
+            "label_seq_id": ["1", "."],
+            "label_comp_id": ["ASN", "NAG"],
+            "auth_seq_id": ["293", "1"],
+            "pdbx_PDB_ins_code": ["?"] * 2,
+            "pdbx_PDB_model_num": ["1"] * 2,
+        },
+        "_entity_poly_seq": {"entity_id": ["1"], "num": ["1"], "mon_id": ["ASN"]},
+    }
+    diag = reglyco.adapt_annotated_cif(d)
+    assert diag["lone_sugar_entities"] == 1
+    assert d["_entity"]["type"] == ["polymer", "non-polymer"]
+    assert d["_pdbx_nonpoly_scheme"]["mon_id"] == ["NAG"]
+    assert d["_pdbx_entity_nonpoly"] == {"entity_id": ["2"], "comp_id": ["NAG"]}
+    assert d["_pdbx_branch_scheme"]["mon_id"] == []

@@ -51,3 +51,36 @@ def test_file_outputs(tmp_path):
         "m", [str(tmp_path / "a.tsv"), str(tmp_path / "empty")]
     )
     assert r["problems"] == [f"empty directory {tmp_path / 'empty'}"]
+
+
+def test_a_delta_coded_db_must_say_so_in_meta_json(tmp_path):
+    import json
+
+    import lmdb
+
+    from structcooker.release.check import check_lmdb
+
+    path = tmp_path / "reglyco.lmdb"
+    path.mkdir()
+    with lmdb.open(str(path), map_size=1 << 24) as env, env.begin(write=True) as txn:
+        txn.put(b"2pmv_A1_GS00001_conf000", b"x")
+    (tmp_path / "reglyco.lmdb.index.tsv").write_text(
+        "key\tsize\n2pmv_A1_GS00001_conf000\t1\n"
+    )
+    meta = {
+        "schema": "K",
+        "codec": "biomol_zstd",
+        "entries": 1,
+        "total_bytes": 1,
+        "max_bytes": 1,
+    }
+    meta_path = tmp_path / "reglyco.lmdb.meta.json"
+    meta_path.write_text(json.dumps(meta))
+    report = check_lmdb("glycan/reglyco", str(path), "K", None)
+    assert any(
+        "codec biomol_zstd != biomol_zstd_delta" in p for p in report["problems"]
+    )
+    meta["codec"] = "biomol_zstd_delta"
+    meta_path.write_text(json.dumps(meta))
+    report = check_lmdb("glycan/reglyco", str(path), "K", None)
+    assert not any("codec" in p for p in report["problems"])

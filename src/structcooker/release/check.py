@@ -98,6 +98,17 @@ def check_lmdb(
         problems.append(f"index rows {len(keys)} != {report['entries']}")
     if meta.get("schema") and meta["schema"] != schema:
         problems.append(f"meta.json schema {meta['schema']} != config {schema}")
+    from structcooker.build import schemas as _schemas
+
+    if (
+        _schemas.get(schema).codec == _schemas.Codec.biomol_zstd_delta
+        and meta.get("codec") != "biomol_zstd_delta"
+    ):
+        # the pipeline's index step does not know the codec and writes biomol_zstd: a reader that trusts meta.json would
+        # decode delta values as plain frames
+        problems.append(
+            f"meta.json codec {meta.get('codec')} != biomol_zstd_delta (schema {schema})"
+        )
     sample = random.Random(name).sample(  # noqa: S311 - seeded sampling, not security
         keys, min(SAMPLE, len(keys))
     )

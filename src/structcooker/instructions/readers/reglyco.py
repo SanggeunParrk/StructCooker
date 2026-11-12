@@ -98,6 +98,28 @@ def adapt_annotated_cif(d: dict) -> dict:
     for comp in added:
         for col, vals in cc.items():
             vals.append(comp if col in {"id", "name"} else "?")
+    # A lone sugar is a non-polymer in a PDB mmCIF; a branched entity always has a sugar-sugar link. AtomWorks types a
+    # one-residue glycan "branched" without one, which the recipe cannot read: follow the PDB convention (entity type,
+    # scheme and entity tables) for an entity that has no link between its residues.
+    entity_of_asym = {r["asym"]: r["entity"] for r in order}
+    sc0 = d.get("_struct_conn") or {"id": []}
+    linked = {
+        entity_of_asym.get(a1)
+        for a1, a2 in zip(
+            sc0.get("ptnr1_label_asym_id", []),
+            sc0.get("ptnr2_label_asym_id", []),
+            strict=True,
+        )
+        if a1 == a2
+    }
+    lone = {e for e, t in ent_type.items() if t == "branched" and e not in linked}
+    for e in lone:
+        ent_type[e] = "non-polymer"
+    if lone:
+        d["_entity"]["type"] = [
+            "non-polymer" if i in lone else t
+            for i, t in zip(d["_entity"]["id"], d["_entity"]["type"], strict=True)
+        ]
     poly, nonpoly, branch = [], [], []
     for r in order:
         t = ent_type.get(r["entity"], "")
@@ -229,6 +251,7 @@ def adapt_annotated_cif(d: dict) -> dict:
         "branch_res": len(branch),
         "struct_conn": n_conn,
         "branch_links_moved": n_intra,
+        "lone_sugar_entities": len(lone),
     }
 
 

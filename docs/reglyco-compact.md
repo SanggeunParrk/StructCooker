@@ -165,6 +165,35 @@ Decision for the owner: whether to keep the 23 % of records outside the training
 the holdout available), and whether a model needs the dropped PLIP masks and CATH labels (then a sidecar for them is part
 of the stage).
 
+## Result of the build
+
+`lmdb/glycan/reglyco/reglyco.lmdb` was built on 2026-11-11/12 (`glycan/reglyco_worklist` -> `reglyco_entries` -> `reglyco`; 8 nodes, 5.5-7.4 h per node,
+about 11,000 records per minute) from the sha256-verified download. Measured, not extrapolated:
+
+| | estimated above | built |
+|---|---:|---:|
+| records | 2,992,448 | 2,992,448 (11,160 plain entry bases, 2,981,288 deltas) |
+| size, all records | 7.5 GB (6.4-8.3) | **14.95 GB** (entry bases 2.18 GB, deltas 9.64 GB, the rest LMDB pages and keys) |
+| shipped CIF for comparison | 1,574 GB | 1,574.6 GB, i.e. **105 times smaller** |
+| conversion | 1.3 s per record | about 4 s per record (3,000-group sweep), roughly 3,300 core-hours |
+| decode per record | 5-6 ms (sample) | cold (new reader, no cache) mean 51 ms, median 47, p95 99; warm (entry bases cached) mean 36 ms |
+
+The estimate was low by a factor of two because the five sampled entries were smaller than the population: the records average 3.6 MB against
+1.4 MB in the sample, and the entry bases and group-base deltas grow with the record. The build time was set by the same thing. Decode time is dominated by
+rebuilding the arrays, not by zstd, so the entry-base cache saves less than the sample suggested (36 against 51 ms).
+
+Checks of the finished DB (`scripts/analysis/reglyco_check.py verify`): every one of the 2,992,448 records decodes to a BioMol dict with a non-empty
+`assembly_dict` and a deposition date (0 failures, 31 min on 60 workers); 5,000 random records (4,974 of them delta values), each read with a cold reader, equal a fresh
+conversion of their CIF (canonical serialised bytes; 0 mismatches). A sweep of one record in each of 3,000 random (entry, site, glycan) groups converted without
+failure after the adapter learned lone sugars (below). The pipeline's index step wrote `codec: biomol_zstd` into the DB's meta.json; it was set to
+`biomol_zstd_delta` by hand, and `release-check` now fails a delta-coded DB whose meta.json does not say so.
+
+Two things that went wrong, for the next build: (1) a one-residue glycan is typed `branched` by AtomWorks without a sugar-sugar link, which the `pdb/cif` recipe cannot read (the entry
+failed); the adapter now types such an entity `non-polymer`, as a PDB mmCIF does. (2) For an LMDB rebuild the engine runs the first 10 keys of each shard serially before
+the parallel run, and here those are the ten largest entries (about 20,000 records, a day of one core): `test_run: false` in the config. The engine's admission gate also starts at one task and
+grows by one per finished wave, which left most cores idle for hours; `DATACOOKER_ADMISSION_START=32` (a local DataCooker commit, see
+[development](development.md)) starts at 32 per node. The memory gate still applies; the run peaked near 110 GB of 503 GB per node.
+
 ## Layouts on raw CIF text (the earlier measurement)
 
 Before the BioMol requirement was applied, the same shard was measured on the CIF text itself. Kept as the lower bound

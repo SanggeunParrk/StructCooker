@@ -383,6 +383,29 @@ whole entry (the first model of each assembly, units repeated across assemblies 
 unit; the recipe `workflows/filters/unit_records.py` builds each record and the engine writes it as
 `<pdb id>_<assembly>_<model>_<index>`.
 
+## Re-Glyco
+
+`db_configs/glycan/` holds three stages (set manifest `MANIFEST_glycan.yaml`) that turn the RFD4-Proteina Re-Glyco set
+(GlycoShape glycans rebuilt on PDB glycosylation sites, 2,992,448 records, 1.57 TB as shipped; see
+[raw materials](raw-materials.md#rfd4_proteina) and [Re-Glyco, stored compactly](reglyco-compact.md)) into one LMDB of
+ordinary BioMol records. The values are stored as deltas against a base record of the same entry; loaders read them with
+`DeltaReader` ([Reading the Re-Glyco DB](reglyco-loader.md)).
+
+| Stage | Op | Reads | Writes |
+|---|---|---|---|
+| `glycan/reglyco_worklist` | materialize | the component's `blob/index.parquet`, `examples.parquet`, `examples_glycan.parquet` | `materials/intermediate/glycan/reglyco/entries/<pdb>.json` (one worklist per entry), `entries.txt`, and the sidecar `metadata/reglyco_examples.parquet` |
+| `glycan/reglyco_entries` | build, schema L | the worklist files | `reglyco_entries.lmdb`, one key per entry: the records to read (shard, offset, length, sha256, deposition date) |
+| `glycan/reglyco` | rebuild, `explode_entries`, schema K | `reglyco_entries.lmdb`, the shards, `lmdb/ccd/biomol_CCD.lmdb` | `lmdb/glycan/reglyco/reglyco.lmdb`, one record per Hub record: `<pdb>_<site>_<glycan>_conf<NNN>` |
+
+`reglyco` is the 1:N case of the rebuild, like `unit/unit_pdb`: the reader adapter
+`instructions.readers.reglyco.explode_reglyco_entry` sees a whole entry (its records are deltas of one another), reads each
+record's CIF from its shard (sha256 checked against the Hub index), runs the `pdb/cif` recipe on it, and encodes the entry
+with `transforms.delta_codec.encode_entry`; every delta is decoded again and compared with the converted record before it is
+written. The recipe step passes the stored bytes through (`keep_bytes` writer) and the engine writes them as
+`<pdb id>_<sub key>`. An AtomWorks CIF lacks tables the recipe reads; the adapter derives them from `_atom_site` and
+`_entity` and invents nothing (a lone sugar becomes a non-polymer, as in a PDB mmCIF). It is the only DB of the release
+that is not one plain `to_bytes` value per key (codec `biomol_zstd_delta`).
+
 
 ## Template key contracts
 

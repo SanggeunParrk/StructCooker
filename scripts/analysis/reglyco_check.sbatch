@@ -5,8 +5,8 @@
 #SBATCH --job-name=reglyco_chk
 #SBATCH --partition=cpu-long
 #SBATCH --qos=cpu-long-q
-#SBATCH --cpus-per-task=2
-#SBATCH --mem=48G
+#SBATCH --cpus-per-task=64
+#SBATCH --mem=240G
 #SBATCH --time=2-00:00:00
 #SBATCH --exclude=node01,node04,node07
 #SBATCH --output=logs/reglyco_chk_%j.out

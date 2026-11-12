@@ -198,8 +198,15 @@ def cmd_fetch(a: argparse.Namespace) -> None:
 
 def cmd_verify(a: argparse.Namespace) -> None:
     dest = Path(a.dest)
+    rows = read_manifest(dest)
+    if a.component:
+        rows = [
+            r
+            for r in rows
+            if r[0] == a.component and (a.part is None or r[1] == a.part)
+        ]
     bad = 0
-    for _, _, p, size, sha in read_manifest(dest):
+    for _, _, p, size, sha in rows:
         f = dest / p
         if not f.exists() or f.stat().st_size != size:
             print("MISSING/SIZE", p)
@@ -212,7 +219,10 @@ def cmd_verify(a: argparse.Namespace) -> None:
             if h.hexdigest() != sha:
                 print("SHA", p)
                 bad += 1
-    print("verify:", "OK" if not bad else f"{bad} bad")
+    print(
+        f"verify {a.component or 'all'}{'' if a.part is None else f' part {a.part}'}: {len(rows)} files,",
+        "OK" if not bad else f"{bad} bad",
+    )
     sys.exit(1 if bad else 0)
 
 
@@ -231,6 +241,12 @@ def main() -> None:
     f.set_defaults(fn=cmd_fetch)
     v = sp.add_parser("verify")
     v.add_argument("--sha", action="store_true")
+    v.add_argument("--component", help="only this component (default: all)")
+    v.add_argument(
+        "--part",
+        type=int,
+        help="only this part of the component (the download task's slice)",
+    )
     v.set_defaults(fn=cmd_verify)
     a = ap.parse_args()
     a.fn(a)

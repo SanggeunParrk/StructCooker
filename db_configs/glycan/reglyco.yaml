@@ -11,6 +11,11 @@
 # as <pdb id>_<sub key>. The Hub's other per-record columns are in metadata/reglyco_examples.parquet (key join).
 schema: K
 
+# No serial smoke test: for an LMDB rebuild the engine runs the first 10 keys of each shard on one core before the parallel
+# run, and here those are the 10 largest entries (about 20,000 records, a day of single-core work per shard) that the
+# parallel run would then convert again. A bad record fails its entry and is counted, as in pdb/cif.
+test_run: false
+
 old_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/materials/intermediate/glycan/reglyco/reglyco_entries.lmdb}
 new_env_path: ${p:${oc.env:BIOMOL_ROOT,/data/shared/cssb_data/BioMol_clean}/lmdb/glycan/reglyco/reglyco.lmdb}
 
