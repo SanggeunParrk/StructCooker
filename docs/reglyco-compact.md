@@ -186,7 +186,7 @@ Checks of the finished DB (`scripts/analysis/reglyco_check.py verify`): every on
 `assembly_dict` and a deposition date (0 failures, 31 min on 60 workers); 5,000 random records (4,974 of them delta values), each read with a cold reader, equal a fresh
 conversion of their CIF (canonical serialised bytes; 0 mismatches). A sweep of one record in each of 3,000 random (entry, site, glycan) groups converted without
 failure after the adapter learned lone sugars (below). The pipeline's index step wrote `codec: biomol_zstd` into the DB's meta.json; it was set to
-`biomol_zstd_delta` by hand, and `release-check` now fails a delta-coded DB whose meta.json does not say so.
+`biomol_zstd_delta` by hand, and `release-check` now fails a delta-coded DB whose meta.json does not say so. Since 2026-11-13 the build passes the schema's codec to the pipeline (`--codec`), so a rebuild writes it itself (the DataCooker change is a local commit until that repository is pushed).
 
 Two things that went wrong, for the next build: (1) a one-residue glycan is typed `branched` by AtomWorks without a sugar-sugar link, which the `pdb/cif` recipe cannot read (the entry
 failed); the adapter now types such an entity `non-polymer`, as a PDB mmCIF does. (2) For an LMDB rebuild the engine runs the first 10 keys of each shard serially before
