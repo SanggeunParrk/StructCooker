@@ -39,7 +39,7 @@ built 2026-11-11/12 from the RFD4-Proteina Re-Glyco component (Hub commit `aa86d
 BioMol records stored as deltas (codec `biomol_zstd_delta`, schema K; read with `DeltaReader`), 14.95 GB (the shipped component is 1,574.6 GB). The Hub's per-record
 columns are in `metadata/reglyco_examples.parquet`. Built stage by stage like the unit DB (`structcooker build glycan/<stage> --depends-on`, with
 `DATACOOKER_ADMISSION_START=32`). Checked: every record decodes (2,992,448 / 2,992,448); 5,000 random records equal a fresh conversion of their CIF (5,000 / 5,000);
-a 3,000-group sweep converted without failure. `release-check` (2026-11-12) passes `glycan/*` (2,992,448 records, 200 sampled); `e2e-sample` does not sample the Re-Glyco stages yet.
+a 3,000-group sweep converted without failure. `release-check` (2026-11-12) passes `glycan/*` (2,992,448 records, 200 sampled); the sampled run of `MANIFEST_glycan.yaml` (4 entries, 163 records) rebuilds every record identically to the release.
 
 RFD4-Proteina sets (`rfd4/` stages, [docs/rfd4-sets.md](../docs/rfd4-sets.md)): `lmdb/rfd4/<set>/<set>.lmdb`, built 2026-11-12 from Hub commit `aa86df1e` as ordinary BioMol records (schema M, the PDB's own
 recipe): `omol` 53,656,064 (of 53,664,160: 8,096 name a component no CCD or record defines, or are empty; `metadata/rfd4_omol_unconvertible.tsv`), `rna_monomer` 371,017,

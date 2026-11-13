@@ -71,7 +71,7 @@ coordinates, and the atom tables of one record must have the same features). Thi
 
 * Per-residue / per-atom annotations of the CIFs that are not BioMol features: `ig_region`, `cdr` (antibody and TCR sets), the PLIP `condition_*` / `mask_*`
   columns, CATH labels, repair masks, `atom_array_index`. The BioMol record has coordinates, bonds and entities. The per-record summaries
-  (`cdr_annotations`, `ig_chains`, `interface_cluster`, ...) are in the sidecars; a per-residue table of `ig_region` / `cdr` could be built from the shards if it is needed.
+  (`cdr_annotations`, `ig_chains`, `interface_cluster`, ...) are in the sidecars; the per-residue `ig_region` / `cdr` are in `metadata/rfd4_antibody_distill_residues.parquet` and `metadata/rfd4_tcr_distill_residues.parquet` (one row per residue: key, label / auth chain and residue ids, component, `ig_region`[, `cdr`]; `scripts/rfd4/residue_annotations.py`).
 * OMol hydrogens: its CIFs carry them (about half of an OMol molecule's atoms; 144 atoms in the CIF of `009018428`, 73 in its record), the PDB recipe drops hydrogens from every
   record, so an OMol record has none, and the Hub's `n_atoms` (which counts them) is not comparable with the record's atom count. A residue's missing standard atoms are
   listed from the CCD, as in any PDB record. The CIFs in the shards keep the hydrogens if a consumer needs them.

@@ -68,6 +68,7 @@ DEFAULT_COUNTS = {
     "teddymer": 20,
     "afm_homodimer": 20,
     "afm_heterodimer": 20,
+    "reglyco": 4,  # PDB entries of the Re-Glyco set (the smallest ones, with every record of each)
     "rfd4": 40,  # records of each RFD4-Proteina set (the Re-Glyco component has its own entry sampler, none here)
 }
 # Random PDB picks above this size are skipped (a capsid's attached record is tens of GB).
@@ -204,6 +205,7 @@ class Sampler:
         self.teddymer()
         self.afm()
         self.rfd4()
+        self.reglyco()
         self.report["counts"] = self.counts
         (self.root / "sample.json").write_text(
             json.dumps(self.report, indent=1, sort_keys=True)
@@ -597,6 +599,69 @@ class Sampler:
             )
             out[name] = len(rows)
         self.report["rfd4"] = out
+
+    # -- Re-Glyco ---------------------------------------------------------------------
+    def reglyco(self) -> None:
+        """Sample ``reglyco`` PDB entries of the Re-Glyco set: all records of the smallest ones, in one shard."""
+        import pyarrow as pa
+        import pyarrow.compute as pc
+        import pyarrow.parquet as pq
+
+        base = (
+            self.raw
+            / "rfd4_proteina/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco"
+        )
+        if not base.is_dir():
+            return
+        s_base = (
+            self.s_raw
+            / "rfd4_proteina/train_datasets/streaming-latest/synthetic/glycans/2026_09_27_reglyco"
+        )
+        idx = pq.read_table(base / "blob/index.parquet")
+        pdbs = [
+            p.rsplit("/", 1)[-1].split("_", 1)[0]
+            for p in idx.column("path").to_pylist()
+        ]
+        sizes = Counter(pdbs)
+        small = [p for p, n in sizes.items() if n <= 60]
+        chosen = set(pick(small, self.counts["reglyco"], salt="reglyco"))
+        rows = [i for i, p in enumerate(pdbs) if p in chosen]
+        idx = idx.take(rows)
+        shards = {}
+        blob = bytearray()
+        offsets, lengths = [], []
+        for shard, off, n in zip(
+            idx.column("shard").to_pylist(),
+            idx.column("offset").to_pylist(),
+            idx.column("length").to_pylist(),
+            strict=True,
+        ):
+            path = base / "blob/data" / shard
+            shards.setdefault(shard, path.open("rb"))
+            f = shards[shard]
+            f.seek(int(off))
+            frame = f.read(int(n))
+            offsets.append(len(blob))
+            lengths.append(len(frame))
+            blob += frame
+        for f in shards.values():
+            f.close()
+        (s_base / "blob/data").mkdir(parents=True, exist_ok=True)
+        (s_base / "blob/data/sample_00000.bin").write_bytes(bytes(blob))
+        cols = {c: idx.column(c) for c in idx.column_names}
+        cols["shard"] = pa.array(["sample_00000.bin"] * len(rows))
+        cols["offset"] = pa.array(offsets, type=idx.schema.field("offset").type)
+        cols["length"] = pa.array(lengths, type=idx.schema.field("length").type)
+        pq.write_table(pa.table(cols), s_base / "blob/index.parquet")
+        keep_paths = pa.array(idx.column("path").to_pylist())
+        for name in ("examples.parquet", "examples_glycan.parquet"):
+            if (base / name).exists():
+                t = pq.read_table(base / name)
+                pq.write_table(
+                    t.filter(pc.is_in(t.column("path"), value_set=keep_paths)),
+                    s_base / name,
+                )
+        self.report["reglyco"] = {"entries": sorted(chosen), "records": len(rows)}
 
 
 # --------------------------------------------------------------------------- run
